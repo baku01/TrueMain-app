@@ -13,7 +13,7 @@ import { basketName } from '~/utils/next-item'
  */
 const props = defineProps<{ game: GameState }>()
 
-const { failure, statics, order, top, remaining, path, state, name, starter, starterGold, fromKit } = useNextItemPanel(toRef(props, 'game'))
+const { failure, bootsDue, statics, order, top, remaining, path, state, name, starter, starterGold, fromKit } = useNextItemPanel(toRef(props, 'game'))
 
 /** The gold still to earn before it can be bought; 0 once the gold in hand covers it. */
 const { t } = useT()
@@ -52,7 +52,7 @@ const message = computed(() => {
   <OverlayNextItemCard v-if="starter" :label="t('overlay.nextItem.starter')" :item="starterItem" :name="basketName(starter.itemIds, name)" :missing="Math.max(0, starterGold - game.gold)" />
   <div v-else-if="state === 'ready' && top" class="space-y-1.5">
     <!-- The player's active kit (#2185) answers under its own label: its next step, not the mains'. -->
-    <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :label="fromKit ? t('overlay.nextItem.kit') : t('overlay.nextItem.title')" />
+    <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :label="fromKit ? t('overlay.nextItem.kit') : bootsDue ? t('overlay.nextItem.boots') : t('overlay.nextItem.title')" />
     <!-- What to buy first, said once and large: the rest of the path is the context around it. -->
     <div
       v-if="nextComponent"

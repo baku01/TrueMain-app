@@ -14,7 +14,7 @@ withDefaults(defineProps<{ steps: NextItemOrderStep[], statics: Record<number, S
 
 <template>
   <ol v-if="steps.length" class="flex items-center gap-1" :aria-label="t('game.buildOrder')">
-    <li v-for="(step, index) in steps" :key="`${step.itemId}-${index}`" :aria-current="step.state === 'Next' ? 'step' : undefined">
+    <li v-for="(step, index) in steps" :key="`${step.itemId}-${index}`" class="relative" :aria-current="step.state === 'Next' ? 'step' : undefined">
       <GameTooltipItemIcon
         :item="statics[step.itemId] ?? null"
         :width="size"
@@ -26,6 +26,14 @@ withDefaults(defineProps<{ steps: NextItemOrderStep[], statics: Record<number, S
           'opacity-80': step.state === 'Upcoming',
         }"
         :style="{ width: `${size}px`, height: `${size}px` }"
+      />
+      <!-- The boots take two purchases: the base pair first, then the finished ones the row shows. The badge is the pair bought first. -->
+      <GameTooltipItemIcon
+        v-if="step.isBoots && statics[step.itemId]?.from?.[0]"
+        :item="statics[statics[step.itemId]!.from![0]!] ?? null"
+        :width="12"
+        :height="12"
+        class="absolute -right-1 -bottom-1 size-3 rounded-sm ring-1 ring-default"
       />
     </li>
   </ol>
