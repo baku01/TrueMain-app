@@ -603,4 +603,5 @@ click is #1678, and is gated on the DevRel confirmation in #1680.
 
 - Menu icons: [Phosphor Icons](https://phosphoricons.com) (`@iconify-json/ph`), MIT.
 - Interface icons: [Lucide](https://lucide.dev), ISC.
+- Champion subclasses (Classes page): a snapshot of the [League of Legends Wiki](https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data) champion data, CC BY-SA 3.0.
 - Champion, item and rune names and art: Riot Games' Data Dragon and Community Dragon. TrueMain isn't endorsed by Riot Games.
