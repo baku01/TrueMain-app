@@ -67,28 +67,37 @@ function alsoTitle(id: number, here: SubclassId) {
         </div>
       </PageHeader>
 
-      <section v-for="group in visible" :key="group.class.id" class="space-y-4">
-        <header class="flex items-center gap-3 border-b border-default pb-2">
-          <span class="inline-grid size-7 place-items-center rounded-md border border-default text-primary">
-            <UIcon :name="group.class.icon" class="size-4" />
+      <section v-for="group in visible" :key="group.class.id" class="space-y-6">
+        <header class="flex items-start gap-4 border-b border-default pb-5">
+          <span class="grid size-11 shrink-0 place-items-center rounded-xl border border-default bg-elevated text-primary">
+            <UIcon :name="group.class.icon" class="size-6" />
           </span>
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-highlighted">{{ t(`class.${group.class.id}.name`) }}</h2>
-          <span class="rounded-full bg-accented px-2 text-[11px] text-muted">{{ group.total }}</span>
-        </header>
-        <div class="max-w-3xl space-y-1">
-          <p class="text-sm text-muted">{{ t(`class.${group.class.id}.desc`) }}</p>
-          <p v-if="group.class.id === 'marksman'" class="text-xs italic text-dimmed">{{ t('classes.community') }}</p>
-        </div>
-
-        <div v-for="sub in group.subclasses.filter(entry => entry.champions.length > 0)" :key="sub.subclass" class="space-y-2.5">
-          <div>
-            <div class="flex items-baseline gap-2">
-              <h3 class="stat-label">{{ t(`sub.${sub.subclass}.name`) }}</h3>
-              <span class="text-[11px] text-dimmed">{{ sub.champions.length }}</span>
-            </div>
-            <p v-if="group.class.subclasses.length > 1" class="mt-0.5 max-w-3xl text-xs text-muted">{{ t(`sub.${sub.subclass}.desc`) }}</p>
+          <div class="min-w-0">
+            <h2 class="flex items-baseline gap-2.5 text-xl font-semibold tracking-tight text-highlighted">
+              {{ t(`class.${group.class.id}.name`) }}
+              <span class="text-sm font-normal text-dimmed">{{ count(group.total) }}</span>
+            </h2>
+            <p class="mt-1.5 max-w-2xl text-[15px] leading-relaxed text-muted">{{ t(`class.${group.class.id}.desc`) }}</p>
+            <p v-if="group.class.id === 'marksman'" class="mt-2 flex max-w-2xl items-start gap-1.5 text-xs leading-relaxed text-dimmed">
+              <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />{{ t('classes.community') }}
+            </p>
           </div>
-          <ul class="flex flex-wrap gap-3">
+        </header>
+
+        <div
+          v-for="sub in group.subclasses.filter(entry => entry.champions.length > 0)"
+          :key="sub.subclass"
+          class="grid gap-x-10 gap-y-3"
+          :class="group.class.subclasses.length > 1 ? 'md:grid-cols-[15rem_minmax(0,1fr)]' : ''"
+        >
+          <div v-if="group.class.subclasses.length > 1" class="md:pt-1">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+              {{ t(`sub.${sub.subclass}.name`) }}
+              <span class="rounded-full bg-accented px-1.5 text-[11px] font-normal text-muted">{{ sub.champions.length }}</span>
+            </h3>
+            <p class="mt-1.5 text-[13px] leading-relaxed text-muted">{{ t(`sub.${sub.subclass}.desc`) }}</p>
+          </div>
+          <ul class="flex flex-wrap content-start gap-3">
             <li v-for="id in sub.champions" :key="id">
               <NuxtLink
                 :to="`/champions/${id}`"
