@@ -1,145 +1,197 @@
 <script setup lang="ts">
-import { formatCount } from '#shared/utils/counts'
-import type { ProPlayer, ProRole } from '~/utils/pro-build'
-import { PRO_ROLES, searchPros } from '~/utils/pro-build'
-import { getActiveLocale } from '#common/utils/i18n'
+import { formatPercentage } from '#shared/utils/ddragon'
+import type { ChampionStats, Tally } from '~/utils/high-elo'
+import { POSITION_BY_CODE, THIN_SAMPLE, winRate } from '~/utils/high-elo'
+import { kitItemGroups } from '~/utils/kit-items'
 
 /**
- * ProBuild: the builds professional players ran, a player at a time. The list
- * of players on the left, the picked player's games on the right, each with
- * its runes keystone, spells and items in the order they were completed. The
- * source is not connected yet — the page says so while it shows the sample.
+ * ProBuild: the builds and runes of the ladder's best players with a champion —
+ * their recent ranked games, collected with the player's own Riot key
+ * (`ProCollector`) and counted here: how often each keystone, rune, item and
+ * pair of spells was taken, and how often the game was won. A champion is
+ * picked, a lane and a patch narrow it.
  */
 const { t } = useT()
-const { data } = useProBuilds()
-const { nameOf, portraitOf } = useChampionStatics()
+const { champions, nameOf, portraitOf } = useChampionStatics()
 const { items, summoners, runeTree } = useStaticData()
+const { progress, standIn, stats: readStats } = useHighElo()
 
 const query = ref('')
-const role = ref<ProRole | null>(null)
-const selectedId = ref<string | null>(null)
+const championId = ref<number | null>(null)
+const position = ref<string | null>(null)
+const patch = ref<string | null>(null)
+const result = ref<ChampionStats | null>(null)
+const reading = ref(false)
 
-const shown = computed(() => searchPros(data.value.players, query.value, role.value))
-const selected = computed<ProPlayer | null>(() => shown.value.find(player => player.id === selectedId.value) ?? shown.value[0] ?? null)
+const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const matches = computed(() => {
+  const words = fold(query.value).split(/\s+/).filter(Boolean)
+  if (words.length === 0 || championId.value !== null && fold(nameOf(championId.value)) === fold(query.value)) return []
+  return [...champions.value.keys()].filter(id => words.every(word => fold(nameOf(id)).includes(word))).sort((a, b) => nameOf(a).localeCompare(nameOf(b))).slice(0, 8)
+})
 
-const ROLE_LABELS: Record<ProRole, string> = {
-  TOP: 'probuild.role.top',
-  JUNGLE: 'probuild.role.jungle',
-  MIDDLE: 'probuild.role.middle',
-  BOTTOM: 'probuild.role.bottom',
-  UTILITY: 'probuild.role.utility',
+function pick(id: number) {
+  championId.value = id
+  query.value = nameOf(id)
+  position.value = null
+  patch.value = null
 }
-const ROLE_ICONS: Record<ProRole, string> = {
-  TOP: 'i-ph-shield-light',
-  JUNGLE: 'i-ph-tree-light',
-  MIDDLE: 'i-ph-magic-wand-light',
-  BOTTOM: 'i-ph-crosshair-simple-light',
-  UTILITY: 'i-ph-handshake-light',
+
+async function read() {
+  if (championId.value === null) return
+  reading.value = true
+  try {
+    result.value = await readStats(championId.value, patch.value, position.value)
+  }
+  finally {
+    reading.value = false
+  }
 }
 
-const date = (iso: string) => new Intl.DateTimeFormat(getActiveLocale(), { day: 'numeric', month: 'short' }).format(new Date(iso))
-const kda = (build: { kills: number, deaths: number, assists: number }) => `${build.kills} / ${build.deaths} / ${build.assists}`
+// Read again when the pick, a filter or the collection changes: the numbers grow while it runs.
+watch([championId, position, patch, () => progress.value.matchesStored], read)
+
+const groups = computed(() => kitItemGroups(items.value))
+const total = computed(() => result.value?.games ?? 0)
+const thin = computed(() => total.value > 0 && total.value < THIN_SAMPLE)
+const pickRate = (tally: Tally) => (total.value > 0 ? tally.games / total.value : 0)
+
+/** Items the build is made of: the legendaries and the boots, the ones worth reading, each seen often enough to mean something. */
+const mainItems = computed(() => (result.value?.items ?? []).filter(tally => groups.value.get(tally.id) === 'legendary' && tally.games >= Math.max(2, total.value * 0.03)).slice(0, 12))
+const boots = computed(() => (result.value?.items ?? []).filter(tally => groups.value.get(tally.id) === 'boots' && tally.games >= 2).slice(0, 4))
+const keystones = computed(() => (result.value?.keystones ?? []).slice(0, 5))
+const lanes = computed(() => (result.value?.positions ?? []).filter(tally => POSITION_BY_CODE[tally.id]))
+const LANE_KEYS: Record<string, string> = { TOP: 'probuild.role.top', JUNGLE: 'probuild.role.jungle', MIDDLE: 'probuild.role.middle', BOTTOM: 'probuild.role.bottom', UTILITY: 'probuild.role.utility' }
+const percent = (value: number) => formatPercentage(value, 1)
+const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-default')
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-4 p-5">
-    <div class="flex shrink-0 items-center gap-3">
-      <UIcon name="i-ph-trophy-light" class="size-6 text-primary" />
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('probuild.title') }}</h1>
-      <UBadge v-if="data.source === 'sample'" :label="t('probuild.sample')" color="warning" variant="subtle" size="sm" />
-    </div>
+  <SharedPage :eyebrow="t('probuild.eyebrow')" :title="t('probuild.title')">
+    <div class="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+      <PageHeader :eyebrow="t('probuild.eyebrow')" :title="t('probuild.title')" :description="t('probuild.description')" />
 
-    <p v-if="data.source === 'sample'" class="flex shrink-0 items-start gap-2 rounded-lg border border-default bg-elevated/60 px-3 py-2 text-xs text-muted">
-      <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" />{{ t('probuild.sampleNote') }}
-    </p>
+      <p v-if="standIn" class="flex items-start gap-2 rounded-lg border border-default bg-elevated/60 px-3 py-2 text-xs text-muted">
+        <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" />{{ t('probuild.standIn') }}
+      </p>
 
-    <div class="surface grid min-h-0 flex-1 grid-cols-[17rem_minmax(0,1fr)] overflow-hidden rounded-xl">
-      <aside class="flex min-h-0 flex-col border-r border-default bg-muted/50" :aria-label="t('probuild.players')">
-        <div class="space-y-2 p-2.5">
-          <UInput v-model="query" icon="i-lucide-search" size="sm" :placeholder="t('probuild.search')" class="w-full" :aria-label="t('probuild.search')" />
-          <div class="flex flex-wrap gap-1" role="group" :aria-label="t('probuild.roles')">
-            <UButton :label="t('probuild.allRoles')" size="xs" :color="role === null ? 'primary' : 'neutral'" :variant="role === null ? 'soft' : 'ghost'" @click="role = null" />
-            <UButton
-              v-for="entry in PRO_ROLES"
-              :key="entry"
-              :icon="ROLE_ICONS[entry]"
-              size="xs"
-              :color="role === entry ? 'primary' : 'neutral'"
-              :variant="role === entry ? 'soft' : 'ghost'"
-              :aria-label="t(ROLE_LABELS[entry])"
-              :aria-pressed="role === entry"
-              @click="role = entry"
-            />
-          </div>
+      <ProbuildProCollector />
+
+      <section class="space-y-5">
+        <div class="relative max-w-md">
+          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('probuild.champion.search')" class="w-full" :aria-label="t('probuild.champion.search')" @update:model-value="championId = null" />
+          <ul v-if="matches.length" class="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-default bg-elevated p-1 shadow-lg">
+            <li v-for="id in matches" :key="id">
+              <button type="button" class="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-accented" @click="pick(id)">
+                <img v-if="portraitOf(id)" :src="portraitOf(id)!" alt="" width="28" height="28" class="img-skeleton size-7 rounded">
+                <span class="text-sm text-default">{{ nameOf(id) }}</span>
+              </button>
+            </li>
+          </ul>
         </div>
-        <ul class="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
-          <li v-for="player in shown" :key="player.id">
-            <button
-              type="button"
-              class="flex w-full items-center gap-3 rounded-lg border border-transparent px-2.5 py-2 text-left transition hover:bg-elevated focus-visible:outline-2 focus-visible:outline-primary"
-              :class="player.id === selected?.id ? '!border-primary/50 bg-elevated' : ''"
-              :aria-current="player.id === selected?.id"
-              @click="selectedId = player.id"
-            >
-              <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-accented text-muted"><UIcon :name="ROLE_ICONS[player.role]" class="size-5" /></span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-medium text-highlighted">{{ player.name }}</span>
-                <span class="block truncate text-xs text-muted">{{ player.team }} · {{ player.region }}</span>
-              </span>
-              <span class="rounded-full bg-accented px-1.5 text-[11px] text-muted">{{ player.builds.length }}</span>
-            </button>
-          </li>
-          <li v-if="shown.length === 0" class="px-2 py-6 text-center text-xs text-muted">{{ t('probuild.noPlayer') }}</li>
-        </ul>
-      </aside>
 
-      <div class="min-h-0 space-y-4 overflow-y-auto p-5">
-        <template v-if="selected">
-          <header class="flex items-center gap-4 rounded-xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
-            <span class="grid size-14 shrink-0 place-items-center rounded-xl border border-default bg-muted text-primary"><UIcon :name="ROLE_ICONS[selected.role]" class="size-7" /></span>
+        <p v-if="championId === null" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('probuild.champion.pick') }}</p>
+
+        <template v-else-if="result">
+          <header class="flex flex-wrap items-center gap-4 rounded-xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
+            <img v-if="portraitOf(championId)" :src="portraitOf(championId)!" alt="" width="56" height="56" class="img-skeleton size-14 rounded-xl ring-1 ring-default">
             <div class="min-w-0">
-              <h2 class="text-xl font-semibold tracking-tight text-highlighted">{{ selected.name }}</h2>
-              <p class="mt-0.5 text-sm text-muted">{{ selected.team }} · {{ selected.region }} · {{ t(ROLE_LABELS[selected.role]) }}</p>
+              <h2 class="text-xl font-semibold tracking-tight text-highlighted">{{ nameOf(championId) }}</h2>
+              <p class="text-sm text-muted">{{ t('probuild.summary', { games: result.games, rate: percent(winRate(result)), patch: result.patch || '—' }) }}</p>
             </div>
+            <USelectMenu
+              v-if="result.patches.length > 1"
+              :model-value="result.patch"
+              :items="result.patches"
+              class="ml-auto w-32"
+              :aria-label="t('probuild.patch')"
+              @update:model-value="patch = $event"
+            />
           </header>
 
-          <article v-for="build in selected.builds" :key="build.id" class="rounded-xl border border-default bg-default/40 p-4">
-            <header class="flex flex-wrap items-center gap-3">
-              <img v-if="portraitOf(build.championId)" :src="portraitOf(build.championId)!" alt="" width="48" height="48" class="img-skeleton size-12 rounded-lg ring-1 ring-default">
-              <div class="min-w-0">
-                <h3 class="text-base font-semibold text-highlighted">{{ nameOf(build.championId) }}</h3>
-                <p class="text-xs text-muted">{{ t('probuild.patch', { version: build.patch }) }} · {{ date(build.playedAt) }}</p>
-              </div>
-              <UBadge class="ml-auto" :label="build.win ? t('probuild.win') : t('probuild.loss')" :color="build.win ? 'primary' : 'neutral'" variant="subtle" size="sm" />
-              <span class="text-sm font-semibold tabular-nums text-default">{{ kda(build) }}</span>
-            </header>
+          <p v-if="result.games === 0" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('probuild.none') }}</p>
 
-            <div class="mt-4 flex flex-wrap items-start gap-x-10 gap-y-4">
-              <div>
-                <h4 class="stat-label mb-1.5">{{ t('probuild.keystone') }}</h4>
-                <GameTooltipPerkIcon :perk="runeTree?.perks[build.keystoneId] ?? null" :width="40" :height="40" class="size-10 rounded-full" />
-              </div>
-              <div>
-                <h4 class="stat-label mb-1.5">{{ t('probuild.spells') }}</h4>
-                <div class="flex gap-1.5">
-                  <GameTooltipSummonerSpellIcon v-for="id in build.spellIds" :key="id" :spell="summoners[id] ?? null" :width="36" :height="36" class="size-9 rounded" />
-                </div>
-              </div>
-              <div class="min-w-0">
-                <h4 class="stat-label mb-1.5">{{ t('probuild.items') }}</h4>
-                <ol class="flex flex-wrap items-center gap-1.5">
-                  <li v-for="(id, index) in build.itemIds" :key="id" class="flex items-center gap-1.5">
-                    <GameTooltipItemIcon :item="items[id] ?? null" :width="36" :height="36" class="size-9 rounded" />
-                    <UIcon v-if="index < build.itemIds.length - 1" name="i-lucide-chevron-right" class="size-3.5 text-dimmed" />
-                  </li>
-                </ol>
-                <p class="mt-1.5 text-[11px] text-dimmed">{{ t('probuild.itemsGold', { amount: formatCount(build.itemIds.reduce((sum, id) => sum + (items[id]?.totalGold ?? 0), 0)) }) }}</p>
-              </div>
+          <template v-else>
+            <p v-if="thin" class="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-default">
+              <UIcon name="i-lucide-triangle-alert" class="mt-0.5 size-4 shrink-0" />{{ t('probuild.thin', { min: THIN_SAMPLE }) }}
+            </p>
+
+            <div v-if="lanes.length" class="flex flex-wrap items-center gap-1.5" role="group" :aria-label="t('probuild.roles')">
+              <UButton :label="t('probuild.allRoles')" size="xs" :color="position === null ? 'primary' : 'neutral'" :variant="position === null ? 'soft' : 'ghost'" @click="position = null" />
+              <UButton
+                v-for="lane in lanes"
+                :key="lane.id"
+                :label="`${t(LANE_KEYS[POSITION_BY_CODE[lane.id]!]!)} · ${lane.games}`"
+                size="xs"
+                :color="position === POSITION_BY_CODE[lane.id] ? 'primary' : 'neutral'"
+                :variant="position === POSITION_BY_CODE[lane.id] ? 'soft' : 'ghost'"
+                @click="position = POSITION_BY_CODE[lane.id]!"
+              />
             </div>
-          </article>
+
+            <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4">
+              <h3 class="stat-label">{{ t('probuild.keystones') }}</h3>
+              <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <li v-for="tally in keystones" :key="tally.id" class="flex items-center gap-3 rounded-lg border border-default px-3 py-2">
+                  <GameTooltipPerkIcon :perk="runeTree?.perks[tally.id] ?? null" :width="40" :height="40" class="size-10 rounded-full" />
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-medium text-highlighted">{{ runeTree?.perks[tally.id]?.name ?? tally.id }}</span>
+                    <span class="block text-xs text-muted tabular-nums">{{ t('probuild.picked', { rate: percent(pickRate(tally)), games: tally.games }) }}</span>
+                  </span>
+                  <span class="text-sm font-semibold tabular-nums" :class="tone(winRate(tally))">{{ percent(winRate(tally)) }}</span>
+                </li>
+              </ul>
+
+              <h3 class="stat-label pt-2">{{ t('probuild.pages') }}</h3>
+              <ul class="space-y-2">
+                <li v-for="page in result.pages.slice(0, 3)" :key="page.runes.join('-')" class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-default px-3 py-2">
+                  <div class="flex items-center gap-1.5">
+                    <GameTooltipPerkIcon v-for="(id, index) in page.runes" :key="id" :perk="runeTree?.perks[id] ?? null" :width="index === 0 ? 40 : 30" :height="index === 0 ? 40 : 30" :class="index === 0 ? 'size-10 rounded-full' : 'size-[30px] rounded-full'" />
+                  </div>
+                  <span class="ml-auto text-xs text-muted tabular-nums">{{ t('probuild.picked', { rate: percent(page.games / total), games: page.games }) }}</span>
+                  <span class="text-sm font-semibold tabular-nums" :class="tone(winRate(page))">{{ percent(winRate(page)) }}</span>
+                </li>
+              </ul>
+            </section>
+
+            <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4">
+              <h3 class="stat-label">{{ t('probuild.items') }}</h3>
+              <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <li v-for="tally in mainItems" :key="tally.id" class="flex items-center gap-3 rounded-lg border border-default px-3 py-2">
+                  <GameTooltipItemIcon :item="items[tally.id] ?? null" :width="36" :height="36" class="size-9 rounded" />
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-medium text-highlighted">{{ items[tally.id]?.name ?? tally.id }}</span>
+                    <span class="block text-xs text-muted tabular-nums">{{ t('probuild.picked', { rate: percent(pickRate(tally)), games: tally.games }) }}</span>
+                  </span>
+                  <span class="text-sm font-semibold tabular-nums" :class="tone(winRate(tally))">{{ percent(winRate(tally)) }}</span>
+                </li>
+              </ul>
+              <template v-if="boots.length">
+                <h3 class="stat-label pt-2">{{ t('probuild.boots') }}</h3>
+                <ul class="flex flex-wrap gap-2">
+                  <li v-for="tally in boots" :key="tally.id" class="flex items-center gap-2.5 rounded-lg border border-default px-3 py-2">
+                    <GameTooltipItemIcon :item="items[tally.id] ?? null" :width="32" :height="32" class="size-8 rounded" />
+                    <span class="text-xs text-muted tabular-nums">{{ percent(pickRate(tally)) }}</span>
+                    <span class="text-sm font-semibold tabular-nums" :class="tone(winRate(tally))">{{ percent(winRate(tally)) }}</span>
+                  </li>
+                </ul>
+              </template>
+            </section>
+
+            <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4">
+              <h3 class="stat-label">{{ t('probuild.spells') }}</h3>
+              <ul class="flex flex-wrap gap-2">
+                <li v-for="pair in result.spells.slice(0, 4)" :key="pair.spells.join('-')" class="flex items-center gap-3 rounded-lg border border-default px-3 py-2">
+                  <span class="flex gap-1.5"><GameTooltipSummonerSpellIcon v-for="id in pair.spells" :key="id" :spell="summoners[id] ?? null" :width="32" :height="32" class="size-8 rounded" /></span>
+                  <span class="text-xs text-muted tabular-nums">{{ percent(pair.games / total) }}</span>
+                  <span class="text-sm font-semibold tabular-nums" :class="tone(winRate(pair))">{{ percent(winRate(pair)) }}</span>
+                </li>
+              </ul>
+            </section>
+          </template>
         </template>
-        <p v-else class="py-10 text-center text-sm text-muted">{{ t('probuild.noPlayer') }}</p>
-      </div>
+        <div v-else-if="reading" aria-busy="true" class="space-y-3"><USkeleton class="h-24 w-full" /><USkeleton class="h-40 w-full" /></div>
+      </section>
     </div>
-  </div>
+  </SharedPage>
 </template>
