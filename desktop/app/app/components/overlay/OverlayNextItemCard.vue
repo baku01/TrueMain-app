@@ -14,10 +14,10 @@ const [beforeMissing, afterMissing] = aroundParam('overlay.nextItem.toGo', 'miss
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
-    <GameTooltipItemIcon :item="item" :width="28" :height="28" class="size-7 shrink-0 rounded-md ring-1 ring-primary/60" />
+  <div class="flex items-center gap-2.5">
+    <GameTooltipItemIcon :item="item" :width="36" :height="36" class="size-9 shrink-0 rounded-lg ring-1 ring-primary/60" />
     <div class="min-w-0 flex-1">
-      <!-- One line for the label and the gold, one for the name: the header is as tall as its icon. -->
+      <!-- One line for the label and the gold, one for the name. -->
       <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-dimmed">
         <AppMark class="size-2.5" />
         {{ label ?? t('overlay.nextItem.title') }}
@@ -29,7 +29,7 @@ const [beforeMissing, afterMissing] = aroundParam('overlay.nextItem.toGo', 'miss
           {{ beforeMissing }}<span class="text-stat-gold">{{ missing }}</span>{{ afterMissing }}
         </span>
       </p>
-      <p class="truncate text-[13px] font-semibold leading-tight text-highlighted">{{ name }}</p>
+      <p class="mt-0.5 truncate text-sm font-semibold leading-tight text-highlighted">{{ name }}</p>
     </div>
   </div>
 </template>

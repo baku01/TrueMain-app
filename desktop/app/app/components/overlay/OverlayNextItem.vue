@@ -26,6 +26,18 @@ const starterItem = computed(() => {
   return face === undefined ? null : statics.value[face] ?? null
 })
 
+/**
+ * The component to buy next: the first one of the path not yet owned — the
+ * part inside an intermediate that is being started, when it is open — with
+ * what it costs from here and whether the gold in hand pays it now.
+ */
+const nextComponent = computed(() => {
+  const entry = path.value?.entries.find(candidate => candidate.state !== 'owned')
+  if (!entry) return null
+  return entry.parts.find(part => part.state !== 'owned') ?? entry
+})
+const componentToGo = computed(() => (nextComponent.value ? Math.max(0, nextComponent.value.cost - props.game.gold) : 0))
+
 const message = computed(() => {
   switch (state.value) {
     case 'unmeasured': return t('overlay.nextItem.unmeasured')
@@ -41,9 +53,29 @@ const message = computed(() => {
   <div v-else-if="state === 'ready' && top" class="space-y-1.5">
     <!-- The player's active kit (#2185) answers under its own label: its next step, not the mains'. -->
     <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :label="fromKit ? t('overlay.nextItem.kit') : t('overlay.nextItem.title')" />
-    <GameBuildPath v-if="path" :path="path" :statics="statics" :size="20" />
-    <!-- The route needs no rule above it: the path's prices already end it. -->
-    <GameBuildOrder :steps="order" :statics="statics" :size="18" />
+    <!-- What to buy first, said once and large: the rest of the path is the context around it. -->
+    <div
+      v-if="nextComponent"
+      class="flex items-center gap-2 rounded-lg px-2 py-1.5 ring-1"
+      :class="nextComponent.state === 'buy' ? 'bg-primary/10 ring-primary/50' : 'bg-elevated/60 ring-default'"
+    >
+      <GameTooltipItemIcon :item="statics[nextComponent.itemId] ?? null" :width="30" :height="30" class="size-[30px] shrink-0 rounded-md ring-1 ring-primary/60" />
+      <div class="min-w-0 flex-1">
+        <p class="text-[9px] font-semibold uppercase tracking-wider text-dimmed">{{ t('overlay.nextItem.component') }}</p>
+        <p class="truncate text-[12px] font-semibold leading-tight text-highlighted">{{ name(nextComponent.itemId) }}</p>
+      </div>
+      <span class="shrink-0 text-right text-[11px] font-semibold tabular-nums">
+        <span v-if="componentToGo === 0" class="flex items-center gap-0.5 text-primary">
+          <UIcon name="i-lucide-circle-check" class="size-3" />{{ nextComponent.approx ? '≈' : '' }}{{ nextComponent.cost }}
+        </span>
+        <span v-else class="text-stat-gold">{{ nextComponent.cost }}</span>
+      </span>
+    </div>
+    <GameBuildPath v-if="path" :path="path" :statics="statics" :size="22" class="pt-0.5" />
+    <!-- The whole build, set apart from the components by a hairline. -->
+    <div class="border-t border-default pt-1.5">
+      <GameBuildOrder :steps="order" :statics="statics" :size="20" />
+    </div>
   </div>
   <div v-else class="flex items-center gap-2.5">
     <USkeleton v-if="!message" class="size-9 shrink-0 rounded-md" />
