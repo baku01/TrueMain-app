@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RuneTreeResponse, StaticPerkData } from '#shared/types/static-data'
+import { highlightRuneHtml } from '~/utils/rune-highlight'
 
 /**
  * Every rune, tree by tree, as cards tinted with their tree's colour: the
@@ -59,7 +60,7 @@ const sections = computed<Section[]>(() => {
 const selected = computed<StaticPerkData | null>(() => {
   const perk = selectedId.value === null ? null : props.runeTree?.perks[selectedId.value] ?? null
   // The rune texts list their effects with a bare `<li>`, which the card's parser runs together on one line.
-  return perk?.longDesc ? { ...perk, longDesc: perk.longDesc.replace(/<li>/g, '<br>• ') } : perk
+  return perk?.longDesc ? { ...perk, longDesc: highlightRuneHtml(perk.longDesc.replace(/<li>/g, '<br>• ')) } : perk
 })
 const selectedSection = computed(() => sections.value.find(section => section.blocks.some(block => block.perks.includes(selectedId.value ?? -1))) ?? null)
 
