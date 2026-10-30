@@ -3,6 +3,7 @@ import type { RouteLocationRaw } from 'vue-router'
 import type { RegionSlug } from '#shared/types/leaderboard'
 import { getProfileIconUrl } from '#shared/utils/ddragon'
 import { platformIdToRegion } from '#shared/utils/region'
+import { SERVER_FLAGS_KEY, serverFlagIcon } from '#common/utils/server-flag'
 import { riotIdLabel, truemainNameTag, truemainProfilePath } from '#shared/utils/truemain-path'
 
 /**
@@ -98,6 +99,10 @@ const region = computed(() => (props.region !== undefined
   ? props.region
   : platformIdToRegion(props.identity.platformId)))
 
+// The player's own server's flag, where the app asks for it and has drawn it.
+const wantsServerFlag = inject(SERVER_FLAGS_KEY, false)
+const serverFlag = computed(() => (wantsServerFlag && props.region === undefined ? serverFlagIcon(props.identity.platformId) : null))
+
 const href = computed(() => (props.to === false
   ? undefined
   : props.to ?? truemainProfilePath(truemainNameTag(props.identity.gameName, props.identity.tagLine))))
@@ -160,8 +165,8 @@ const riotId = computed(() => riotIdLabel(props.identity.gameName, props.identit
       <!-- `ui.subline` replaces the default spacing rather than adding to it:
            two margins or two gaps on one element leave the winner to
            stylesheet order. -->
-      <div v-if="region || $slots.subline" class="flex min-w-0 items-center" :class="ui.subline ?? 'mt-0.5 gap-1.5'">
-        <LeaderboardRegionFlag v-if="region" :region="region" :width="sized.flag" />
+      <div v-if="region || serverFlag || $slots.subline" class="flex min-w-0 items-center" :class="ui.subline ?? 'mt-0.5 gap-1.5'">
+        <LeaderboardRegionFlag v-if="region || serverFlag" :region="region" :icon="serverFlag" :width="sized.flag" />
         <slot name="subline" />
       </div>
     </template>

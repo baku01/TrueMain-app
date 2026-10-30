@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import { SERVER_FLAGS_KEY } from '#common/utils/server-flag'
+
 const { screen, ready } = useLcuState()
 const { collapsed: sidebarCollapsed } = useSidebar()
 const router = useRouter()
 const route = useRoute()
+
+// The player's real server, not the site's three regions: a Brazilian account shows Brazil's flag, not the US one.
+provide(SERVER_FLAGS_KEY, true)
 
 /**
  * Each overlay panel loads this same bundle on `/overlay/<panel>` in its own webview

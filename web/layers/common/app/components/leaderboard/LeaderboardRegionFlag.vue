@@ -12,6 +12,8 @@ const { t } = useT()
 const props = defineProps<{
   region: RegionSlug | null | undefined
   width?: number
+  /** A server's own flag (`utils/server-flag.ts`), drawn in place of its region's. */
+  icon?: string | null
 }>()
 
 const w = computed(() => props.width ?? 24)
@@ -35,8 +37,8 @@ const label = computed(() => {
     role="img"
   >
     <UIcon
-      v-if="region"
-      :name="`i-region-${region}`"
+      v-if="icon || region"
+      :name="icon ?? `i-region-${region}`"
       class="shrink-0"
       :style="{ width: `${w}px`, height: `${w}px` }"
     />
