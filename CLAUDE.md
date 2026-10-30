@@ -39,7 +39,7 @@ infra details stay out of public GitHub artifacts too.
 
 ## Language
 
-- Talk to the user in French.
+- Talk to the user in Brazilian Portuguese.
 - Everything committed or published — code, comments, commit messages, issues, PR titles/bodies — is in English.
 
 ## Git & PR workflow
