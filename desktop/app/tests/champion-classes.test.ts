@@ -8,6 +8,8 @@ describe('subclassesOf', () => {
   it('reads a champion\'s subclasses, the main one first', () => {
     expect(subclassesOf(799)).toEqual(['diver', 'skirmisher']) // Ambessa
     expect(subclassesOf(1)).toEqual(['burst']) // Annie
+    expect(subclassesOf(51)).toEqual(['lanebully', 'poke']) // Caitlyn
+    expect(subclassesOf(166)).toEqual(['allin', 'assassin']) // Akshan
   })
 
   it('has none for a champion the table does not know', () => {
@@ -40,7 +42,7 @@ describe('CLASSES', () => {
   it('place every subclass of the table under exactly one class', () => {
     const subclasses = CLASSES.flatMap(definition => definition.subclasses)
     expect(new Set(subclasses).size).toBe(subclasses.length)
-    expect(subclasses).toHaveLength(13)
+    expect(subclasses).toHaveLength(17)
   })
 })
 

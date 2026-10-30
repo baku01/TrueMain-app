@@ -1,7 +1,11 @@
 /**
  * Champion classes and subclasses, Riot's own scheme: a class says what a
- * champion does in a fight, a subclass how. Seven classes, thirteen
- * subclasses — a marksman or a specialist is its own subclass.
+ * champion does in a fight, a subclass how. Seven classes; a
+ * specialist is its own subclass.
+ *
+ * Riot defines no subclass for marksmen, so theirs follow the community's
+ * convention (hypercarry, lane bully, poke, utility, all-in) — guides disagree
+ * on some champions, and the page says it is a convention.
  *
  * Data Dragon carries only the coarse tags (`Fighter`, `Mage`, …), so the
  * subclasses are a snapshot of the League wiki's champion data
@@ -16,7 +20,7 @@ export type SubclassId =
   | 'diver' | 'juggernaut'
   | 'assassin' | 'skirmisher'
   | 'burst' | 'battlemage' | 'artillery'
-  | 'marksman'
+  | 'hypercarry' | 'lanebully' | 'poke' | 'utility' | 'allin'
   | 'enchanter' | 'catcher'
   | 'specialist'
 
@@ -32,7 +36,7 @@ export const CLASSES: ClassDef[] = [
   { id: 'fighter', icon: 'i-ph-sword-light', subclasses: ['diver', 'juggernaut'] },
   { id: 'slayer', icon: 'i-ph-knife-light', subclasses: ['assassin', 'skirmisher'] },
   { id: 'mage', icon: 'i-ph-magic-wand-light', subclasses: ['burst', 'battlemage', 'artillery'] },
-  { id: 'marksman', icon: 'i-ph-crosshair-simple-light', subclasses: ['marksman'] },
+  { id: 'marksman', icon: 'i-ph-crosshair-simple-light', subclasses: ['hypercarry', 'lanebully', 'poke', 'utility', 'allin'] },
   { id: 'controller', icon: 'i-ph-handshake-light', subclasses: ['enchanter', 'catcher'] },
   { id: 'specialist', icon: 'i-ph-sparkle-light', subclasses: ['specialist'] },
 ]
@@ -53,21 +57,21 @@ const SUBCLASSES: Record<number, string> = {
   12: 'vanguard', // Alistar
   13: 'battlemage', // Ryze
   14: 'vanguard', // Sion
-  15: 'marksman', // Sivir
+  15: 'utility', // Sivir
   16: 'enchanter', // Soraka
   17: 'specialist', // Teemo
-  18: 'marksman', // Tristana
+  18: 'hypercarry', // Tristana
   19: 'diver', // Warwick
   20: 'vanguard', // Nunu & Willump
-  21: 'marksman', // Miss Fortune
-  22: 'marksman', // Ashe
+  21: 'lanebully,allin', // Miss Fortune
+  22: 'utility', // Ashe
   23: 'skirmisher', // Tryndamere
   24: 'skirmisher', // Jax
   25: 'catcher', // Morgana
   26: 'specialist', // Zilean
   27: 'specialist', // Singed
   28: 'assassin', // Evelynn
-  29: 'marksman', // Twitch
+  29: 'hypercarry', // Twitch
   30: 'battlemage', // Karthus
   31: 'specialist', // Cho'Gath
   32: 'vanguard', // Amumu
@@ -80,13 +84,13 @@ const SUBCLASSES: Record<number, string> = {
   39: 'diver', // Irelia
   40: 'enchanter', // Janna
   41: 'specialist', // Gangplank
-  42: 'marksman', // Corki
+  42: 'poke', // Corki
   43: 'burst,enchanter', // Karma
   44: 'enchanter,warden', // Taric
   45: 'burst', // Veigar
   48: 'juggernaut', // Trundle
   50: 'battlemage', // Swain
-  51: 'marksman', // Caitlyn
+  51: 'lanebully,poke', // Caitlyn
   53: 'catcher', // Blitzcrank
   54: 'vanguard', // Malphite
   55: 'assassin', // Katarina
@@ -99,7 +103,7 @@ const SUBCLASSES: Record<number, string> = {
   62: 'diver', // Wukong
   63: 'burst', // Brand
   64: 'diver', // Lee Sin
-  67: 'marksman', // Vayne
+  67: 'hypercarry', // Vayne
   68: 'battlemage', // Rumble
   69: 'battlemage', // Cassiopeia
   72: 'vanguard,juggernaut', // Skarner
@@ -110,7 +114,7 @@ const SUBCLASSES: Record<number, string> = {
   78: 'warden', // Poppy
   79: 'vanguard', // Gragas
   80: 'diver', // Pantheon
-  81: 'marksman', // Ezreal
+  81: 'poke', // Ezreal
   82: 'juggernaut', // Mordekaiser
   83: 'juggernaut', // Yorick
   84: 'assassin', // Akali
@@ -120,7 +124,7 @@ const SUBCLASSES: Record<number, string> = {
   90: 'battlemage', // Malzahar
   91: 'assassin', // Talon
   92: 'skirmisher', // Riven
-  96: 'marksman', // Kog'Maw
+  96: 'hypercarry', // Kog'Maw
   98: 'warden', // Shen
   99: 'burst,artillery', // Lux
   101: 'artillery', // Xerath
@@ -130,14 +134,14 @@ const SUBCLASSES: Record<number, string> = {
   105: 'assassin', // Fizz
   106: 'juggernaut', // Volibear
   107: 'assassin,diver', // Rengar
-  110: 'marksman,artillery', // Varus
+  110: 'poke,utility,artillery', // Varus
   111: 'vanguard', // Nautilus
   112: 'battlemage', // Viktor
   113: 'vanguard', // Sejuani
   114: 'skirmisher', // Fiora
   115: 'artillery', // Ziggs
   117: 'enchanter', // Lulu
-  119: 'marksman', // Draven
+  119: 'lanebully', // Draven
   120: 'diver', // Hecarim
   121: 'assassin', // Kha'Zix
   122: 'juggernaut', // Darius
@@ -150,7 +154,7 @@ const SUBCLASSES: Record<number, string> = {
   141: 'skirmisher', // Kayn
   142: 'burst', // Zoe
   143: 'catcher', // Zyra
-  145: 'marksman', // Kai'Sa
+  145: 'allin', // Kai'Sa
   147: 'burst,enchanter', // Seraphine
   150: 'specialist,vanguard', // Gnar (Mini Gnar, Mega Gnar)
   154: 'vanguard', // Zac
@@ -158,18 +162,18 @@ const SUBCLASSES: Record<number, string> = {
   161: 'artillery', // Vel'Koz
   163: 'battlemage', // Taliyah
   164: 'diver', // Camille
-  166: 'marksman,assassin', // Akshan
+  166: 'allin,assassin', // Akshan
   200: 'skirmisher', // Bel'Veth
   201: 'warden', // Braum
-  202: 'marksman,catcher', // Jhin
-  203: 'marksman', // Kindred
-  221: 'marksman', // Zeri
-  222: 'marksman', // Jinx
+  202: 'poke,utility,catcher', // Jhin
+  203: 'allin', // Kindred
+  221: 'hypercarry', // Zeri
+  222: 'hypercarry', // Jinx
   223: 'warden', // Tahm Kench
   233: 'diver', // Briar
   234: 'skirmisher', // Viego
-  235: 'marksman,enchanter', // Senna
-  236: 'marksman', // Lucian
+  235: 'utility,enchanter', // Senna
+  236: 'lanebully', // Lucian
   238: 'assassin', // Zed
   240: 'skirmisher', // Kled
   245: 'assassin', // Ekko
@@ -179,26 +183,26 @@ const SUBCLASSES: Record<number, string> = {
   267: 'enchanter', // Nami
   268: 'specialist', // Azir
   350: 'enchanter', // Yuumi
-  360: 'marksman', // Samira
+  360: 'allin', // Samira
   412: 'catcher', // Thresh
   420: 'juggernaut', // Illaoi
   421: 'diver', // Rek'Sai
   427: 'catcher', // Ivern
-  429: 'marksman', // Kalista
+  429: 'lanebully,allin', // Kalista
   432: 'catcher', // Bard
   497: 'catcher', // Rakan
-  498: 'marksman', // Xayah
+  498: 'utility', // Xayah
   516: 'vanguard', // Ornn
   517: 'burst,skirmisher', // Sylas
   518: 'burst,catcher', // Neeko
-  523: 'marksman', // Aphelios
+  523: 'hypercarry', // Aphelios
   526: 'vanguard', // Rell
   555: 'assassin,catcher', // Pyke
   711: 'burst', // Vex
   777: 'assassin,skirmisher', // Yone
   799: 'diver,skirmisher', // Ambessa
   800: 'artillery', // Mel
-  804: 'marksman', // Yunara
+  804: 'hypercarry', // Yunara
   805: 'assassin', // Locke
   875: 'juggernaut', // Sett
   876: 'skirmisher', // Lillia
@@ -207,7 +211,7 @@ const SUBCLASSES: Record<number, string> = {
   893: 'burst,assassin', // Aurora
   895: 'skirmisher', // Nilah
   897: 'warden,skirmisher', // K'Sante
-  901: 'marksman', // Smolder
+  901: 'hypercarry', // Smolder
   902: 'enchanter', // Milio
   904: 'skirmisher', // Zaahen
   910: 'artillery', // Hwei
