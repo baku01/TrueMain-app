@@ -24,7 +24,7 @@ import { goldToComplete, starterCost } from '~/utils/next-item'
  * mains' answer takes over again and `kitDone` says so.
  */
 export function useNextItemPanel(game: Ref<GameState>) {
-  const { answer, pending, failed, order: completed } = useNextItem(game)
+  const { answer, pending, failed, failure, order: completed } = useNextItem(game)
   const { starter: mainsStarter } = useStarter(game)
   const { kit, step: kitStep, row: kitRow, starter: kitStarter } = useKitStep(game, completed)
   const { items: statics } = useStaticData()
@@ -82,5 +82,5 @@ export function useNextItemPanel(game: Ref<GameState>) {
     return 'loading'
   })
 
-  return { answer, pending, statics, build, order, bootsDue, top, runnersUp, boots, why, remaining, path, state, name, percent, reason, affordable, starter, starterGold, kit, fromKit, kitDone }
+  return { answer, pending, failure, statics, build, order, bootsDue, top, runnersUp, boots, why, remaining, path, state, name, percent, reason, affordable, starter, starterGold, kit, fromKit, kitDone }
 }

@@ -26,6 +26,8 @@ export function useNextItem(game: Ref<GameState | null>) {
   const devAnswer = import.meta.dev && !insideTauri() ? useDevScenarios().nextItem : null
   const pending = ref(false)
   const failed = ref(false)
+  /** What the last failed read said, for the panel to show beside "unreachable". */
+  const failure = ref<string | null>(null)
 
   /** The order our items appeared in, kept for this game only. */
   const order = useState<number[]>('next-item-order', () => [])
@@ -82,11 +84,13 @@ export function useNextItem(game: Ref<GameState | null>) {
       if (mine !== generation) return
       answer.value = response
       failed.value = false
+      failure.value = null
       retries = 0
     }
     catch (error) {
       if (mine !== generation) return
       failed.value = true
+      failure.value = String(error)
       console.warn('next-item read failed', error)
       const wait = RETRY_MS[retries++]
       if (wait !== undefined) {
@@ -115,5 +119,5 @@ export function useNextItem(game: Ref<GameState | null>) {
     controller?.abort()
   })
 
-  return { answer, pending, failed, order }
+  return { answer, pending, failed, failure, order }
 }
