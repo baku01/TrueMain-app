@@ -317,7 +317,7 @@ async fn ladder(
     if entries.is_empty() {
         return Err("Riot's ladder carried no players with an id.".to_string());
     }
-    entries.sort_by(|a, b| b.0.cmp(&a.0));
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.0));
     Ok(entries
         .into_iter()
         .take(plan.players as usize)
