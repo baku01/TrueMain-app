@@ -1,6 +1,7 @@
 import type { MatchDetailItemEvent, MatchDetailResponse, MatchDetailSkillEvent } from '#shared/types/match-detail'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import type { WinProbabilityTimeline } from '#shared/types/win-probability'
+import { tr } from '#common/utils/i18n'
 import { gradeDetail } from '~/utils/match-summary'
 
 /**
@@ -78,7 +79,7 @@ interface RiotEvents {
  * timeline and put on each participant. Nothing changes without a key, or when
  * Riot has no timeline for the game: the panel then says there is no build data.
  */
-async function withRiotEvents(detail: MatchDetailResponse, platformId: string | null, matchId: string): Promise<MatchDetailResponse> {
+async function withRiotEvents(detail: MatchDetailResponse, platformId: string | null, matchId: string, toast: ReturnType<typeof useToast>): Promise<MatchDetailResponse> {
   const missing = detail.participants.some(participant => !participant.itemEvents?.length && !participant.skillEvents?.length)
   if (!missing || !platformId || !insideTauri()) return detail
   try {
@@ -93,10 +94,35 @@ async function withRiotEvents(detail: MatchDetailResponse, platformId: string | 
       }),
     }
   }
-  catch {
+  catch (error) {
     // No key, a game Riot no longer keeps, or Riot unreachable.
+    warnRiotEvents(String(error), toast)
     return detail
   }
+}
+
+/** The reasons already told this session: one notice each, not one per opened game. */
+const toldRiotEvents = new Set<string>()
+
+/**
+ * Says why a game has no purchases or skill points when the cause is the
+ * player's to fix — a missing, refused or rate-limited key. A game Riot simply
+ * no longer keeps (404) is nothing to act on and stays silent.
+ */
+function warnRiotEvents(reason: string, toast: ReturnType<typeof useToast>) {
+  const kind = reason.includes('No Riot API key')
+    ? 'noKey'
+    : reason.includes('refused the key')
+      ? 'refused'
+      : reason.includes('over its limit')
+        ? 'limit'
+        : reason.includes('no timeline')
+          ? null
+          : 'failed'
+  console.warn('riot_match_events failed', reason)
+  if (!kind || toldRiotEvents.has(kind)) return
+  toldRiotEvents.add(kind)
+  toast.add({ title: tr('app.riotEvents.title'), description: tr(`app.riotEvents.${kind}`, { reason }), color: 'warning', icon: 'i-lucide-triangle-alert' })
 }
 
 async function readClientDetail(matchId: string): Promise<MatchDetailResponse | null> {
@@ -132,6 +158,7 @@ async function readClientDetail(matchId: string): Promise<MatchDetailResponse | 
  */
 export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: MaybeRefOrGetter<string>) {
   const { record } = usePlayerRecord()
+  const toast = useToast()
   const data = ref<MatchDetailResponse | null>(null)
   const isLoading = ref(true)
   const notFound = ref(false)
@@ -145,7 +172,7 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
       // The client's fallback is cached by the shell; TrueMain is asked again
       // next time, since it may have ingested the game since.
       const read = truemain ?? await readClientDetail(id)
-      data.value = read ? await withRiotEvents(read, record.value?.platformId ?? null, id) : null
+      data.value = read ? await withRiotEvents(read, record.value?.platformId ?? null, id, toast) : null
     }
     catch {
       data.value = null
