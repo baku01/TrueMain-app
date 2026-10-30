@@ -254,6 +254,141 @@ pub fn riot_key_clear() -> Result<(), String> {
     delete_saved()
 }
 
+/// One participant's purchases and skill points in a game, from Riot's match timeline.
+#[derive(Debug, Serialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ParticipantEvents {
+    pub participant_id: u32,
+    pub item_events: Vec<ItemEvent>,
+    pub skill_events: Vec<SkillEvent>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ItemEvent {
+    pub timestamp_ms: u64,
+    pub event_type: String,
+    pub item_id: u32,
+    pub before_id: Option<u32>,
+    pub after_id: Option<u32>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillEvent {
+    pub timestamp_ms: u64,
+    /// 1 Q, 2 W, 3 E, 4 R.
+    pub skill_slot: u32,
+}
+
+/// The purchases and skill points of the ten players of a match, read out of Riot's timeline JSON. The League
+/// client's own timeline lists neither, which is why the dashboard asks Riot for them.
+fn events_of_timeline(timeline: &serde_json::Value) -> Vec<ParticipantEvents> {
+    let mut players: std::collections::BTreeMap<u32, ParticipantEvents> =
+        std::collections::BTreeMap::new();
+    let frames = timeline
+        .pointer("/info/frames")
+        .and_then(|frames| frames.as_array());
+    for event in frames
+        .into_iter()
+        .flatten()
+        .filter_map(|frame| frame.get("events")?.as_array())
+        .flatten()
+    {
+        let number = |key: &str| {
+            event
+                .get(key)
+                .and_then(|value| value.as_u64())
+                .map(|value| value as u32)
+        };
+        // Participant 0 is the game itself (turret plates, minions): not a player.
+        let (Some(participant), Some(kind)) = (
+            number("participantId"),
+            event.get("type").and_then(|value| value.as_str()),
+        ) else {
+            continue;
+        };
+        if participant == 0 {
+            continue;
+        }
+        let timestamp_ms = event
+            .get("timestamp")
+            .and_then(|value| value.as_u64())
+            .unwrap_or(0);
+        let entry = players
+            .entry(participant)
+            .or_insert_with(|| ParticipantEvents {
+                participant_id: participant,
+                ..Default::default()
+            });
+        match kind {
+            "ITEM_PURCHASED" | "ITEM_SOLD" | "ITEM_DESTROYED" => {
+                entry.item_events.push(ItemEvent {
+                    timestamp_ms,
+                    event_type: kind.to_string(),
+                    item_id: number("itemId").unwrap_or(0),
+                    before_id: None,
+                    after_id: None,
+                })
+            }
+            "ITEM_UNDO" => entry.item_events.push(ItemEvent {
+                timestamp_ms,
+                event_type: kind.to_string(),
+                item_id: 0,
+                before_id: number("beforeId"),
+                after_id: number("afterId"),
+            }),
+            // A champion's evolve (Kai'Sa, Viktor) is not a skill point.
+            "SKILL_LEVEL_UP"
+                if event.get("levelUpType").and_then(|value| value.as_str()) == Some("NORMAL") =>
+            {
+                entry.skill_events.push(SkillEvent {
+                    timestamp_ms,
+                    skill_slot: number("skillSlot").unwrap_or(0),
+                });
+            }
+            _ => {}
+        }
+    }
+    players.into_values().collect()
+}
+
+/// The purchases and skill order of every player of one game, with the saved key: Riot's match timeline,
+/// for a game TrueMain has not ingested. `platform_id` is the game's (`BR1`), `game_id` the client's.
+#[tauri::command]
+pub async fn riot_match_events(
+    platform_id: String,
+    game_id: i64,
+) -> Result<Vec<ParticipantEvents>, String> {
+    let key = read_saved().ok_or_else(|| "No Riot API key saved.".to_string())?;
+    let platform = platform_id.to_lowercase();
+    let region = crate::highelo::region_of(&platform)
+        .ok_or_else(|| format!("{platform_id} is not a Riot platform"))?;
+    let url = format!(
+        "https://{region}.api.riotgames.com/lol/match/v5/matches/{}_{game_id}/timeline",
+        platform_id.to_uppercase()
+    );
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(20))
+        .user_agent(concat!("TrueMain-Desktop/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|error| error.to_string())?
+        .get(url)
+        .header("X-Riot-Token", key)
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    match response.status().as_u16() {
+        200 => {}
+        404 => return Err("Riot has no timeline for this game.".to_string()),
+        401 | 403 => return Err("Riot refused the key.".to_string()),
+        429 => return Err("The key is over its limit right now.".to_string()),
+        status => return Err(format!("Riot answered {status}.")),
+    }
+    let timeline: serde_json::Value = response.json().await.map_err(|error| error.to_string())?;
+    Ok(events_of_timeline(&timeline))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,6 +451,63 @@ mod tests {
             "RGAPI-1234 5678-aaaa-bbbb-cccc-1234567890ab"
         ));
         assert!(!looks_like_key("RGAPI-x"));
+    }
+
+    /// Against the real API: `RIOT_KEY=RGAPI-… cargo test --lib live_match_events -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore = "spends the Riot key"]
+    async fn live_match_events() {
+        let key = std::env::var("RIOT_KEY").expect("RIOT_KEY");
+        // `read_saved` reads the keychain, so the test goes through the same URL by hand.
+        let url = "https://americas.api.riotgames.com/lol/match/v5/matches/BR1_3298606942/timeline";
+        let timeline: serde_json::Value = reqwest::Client::new()
+            .get(url)
+            .header("X-Riot-Token", key)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let players = events_of_timeline(&timeline);
+        println!(
+            "{} players; first: {} items, {} skill points",
+            players.len(),
+            players[0].item_events.len(),
+            players[0].skill_events.len()
+        );
+        assert_eq!(players.len(), 10);
+        assert!(players
+            .iter()
+            .all(|p| !p.item_events.is_empty() && p.skill_events.len() >= 10));
+    }
+
+    #[test]
+    fn a_timeline_gives_each_players_purchases_and_skill_points() {
+        let timeline = serde_json::json!({ "info": { "frames": [ { "events": [
+            { "type": "ITEM_PURCHASED", "participantId": 3, "itemId": 1055, "timestamp": 1000 },
+            { "type": "ITEM_UNDO", "participantId": 3, "beforeId": 1055, "afterId": 0, "timestamp": 2000 },
+            { "type": "SKILL_LEVEL_UP", "participantId": 3, "skillSlot": 1, "levelUpType": "NORMAL", "timestamp": 3000 },
+            { "type": "SKILL_LEVEL_UP", "participantId": 3, "skillSlot": 4, "levelUpType": "EVOLVE", "timestamp": 4000 },
+            { "type": "CHAMPION_KILL", "killerId": 1, "timestamp": 5000 },
+            { "type": "ITEM_PURCHASED", "participantId": 1, "itemId": 3006, "timestamp": 6000 }
+        ] } ] } });
+        let players = events_of_timeline(&timeline);
+        assert_eq!(
+            players.iter().map(|p| p.participant_id).collect::<Vec<_>>(),
+            vec![1, 3]
+        );
+        let three = &players[1];
+        assert_eq!(three.item_events.len(), 2);
+        assert_eq!(three.item_events[1].event_type, "ITEM_UNDO");
+        assert_eq!(three.item_events[1].before_id, Some(1055));
+        assert_eq!(
+            three.skill_events,
+            vec![SkillEvent {
+                timestamp_ms: 3000,
+                skill_slot: 1
+            }]
+        );
     }
 
     #[test]

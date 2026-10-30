@@ -418,6 +418,7 @@ pub fn run() {
             riot::riot_key_check,
             riot::riot_key_save,
             riot::riot_key_clear,
+            riot::riot_match_events,
             highelo::highelo_start,
             highelo::highelo_stop,
             highelo::highelo_progress,

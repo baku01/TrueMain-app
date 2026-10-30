@@ -45,7 +45,7 @@ const DEFAULT_GAP_MS: u64 = 1400;
 const MARGIN: f64 = 1.15;
 
 /// A platform's regional host: where its matches live.
-fn region_of(platform: &str) -> Option<&'static str> {
+pub(crate) fn region_of(platform: &str) -> Option<&'static str> {
     Some(match platform {
         "br1" | "na1" | "la1" | "la2" => "americas",
         "euw1" | "eun1" | "tr1" | "ru" | "me1" => "europe",
