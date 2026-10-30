@@ -206,3 +206,17 @@
   border-color: color-mix(in oklch, var(--dark) 60%, transparent);
   background: color-mix(in oklch, var(--dark) 12%, transparent);
 }
+
+/*
+ * The champion banner is always dark art (its gradient is ink-950), so on the light theme the text over it takes the
+ * dark theme's tones: the subtree redefines the text tokens the banner's children read.
+ */
+:root:not(.dark) .on-art {
+  --ui-text-highlighted: #ffffff;
+  --ui-text: #e8eef9;
+  --ui-text-toned: #d1d9e6;
+  --ui-text-muted: #aeb9cc;
+  --ui-text-dimmed: #8693ab;
+  --ui-border: #2d3a4f;
+  --ui-bg-elevated: #131a27;
+}

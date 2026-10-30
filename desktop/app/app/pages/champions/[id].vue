@@ -54,6 +54,7 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
          lane icon. -->
     <div class="shrink-0 px-4 pt-4">
       <ChampionHero
+        class="on-art"
         :champion-name="nameOf(championId)"
         :champion-icon-url="portraitOf(championId)"
         :champion-id="championId"
