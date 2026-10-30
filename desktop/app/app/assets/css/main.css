@@ -187,3 +187,8 @@
 .tier-minimal section.surface > [data-slot='body'] {
   padding: 0.875rem 0 0;
 }
+
+/* Cards catch a little light on their top edge — the one detail that keeps a dark UI from reading as flat boxes. */
+:root.dark .surface {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}

@@ -131,7 +131,7 @@ onMounted(async () => {
       :class="narrow ? 'px-2' : 'px-3'"
       :ui="{
         label: 'mt-3 px-2.5 pb-1.5 stat-label text-[10px]!',
-        link: ['py-2 text-[13px] text-muted hover:text-highlighted data-active:text-highlighted', narrow ? 'justify-center px-0' : 'px-2.5'],
+        link: ['rounded-lg py-2 text-[13px] text-muted transition-colors hover:bg-elevated/60 hover:text-highlighted data-active:bg-primary/10 data-active:text-highlighted', narrow ? 'justify-center px-0' : 'px-2.5'],
         linkLeadingIcon: 'size-5 transition-colors group-data-[active]:text-primary',
         separator: narrow ? 'my-2' : 'hidden',
       }"
