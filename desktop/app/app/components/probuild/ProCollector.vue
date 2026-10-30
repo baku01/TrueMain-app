@@ -12,10 +12,12 @@ const { progress, error, standIn, clear } = useHighElo()
 onMounted(load)
 
 const percent = computed(() => (progress.value.playersTotal > 0 ? Math.round((progress.value.playersDone / progress.value.playersTotal) * 100) : 0))
-const state = computed<'no-key' | 'running' | 'failed' | 'idle'>(() => {
+const state = computed<'no-key' | 'starting' | 'running' | 'failed' | 'idle'>(() => {
   if (!status.value.saved && !standIn) return 'no-key'
   if (progress.value.running) return 'running'
   if (progress.value.phase === 'failed') return 'failed'
+  // A key is saved and nothing has run yet: the collection starts by itself within seconds.
+  if (progress.value.phase === '' && progress.value.matchesStored === 0 && !standIn) return 'starting'
   return 'idle'
 })
 const confirmClear = ref(false)
@@ -29,7 +31,7 @@ async function wipe() {
 <template>
   <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4" aria-live="polite">
     <header class="flex flex-wrap items-center gap-3">
-      <UIcon v-if="state === 'running'" name="i-lucide-loader-circle" class="size-5 animate-spin text-primary" />
+      <UIcon v-if="state === 'running' || state === 'starting'" name="i-lucide-loader-circle" class="size-5 animate-spin text-primary" />
       <UIcon v-else-if="state === 'failed'" name="i-lucide-triangle-alert" class="size-5 text-warning" />
       <UIcon v-else name="i-ph-database-light" class="size-5 text-primary" />
       <div class="min-w-0">

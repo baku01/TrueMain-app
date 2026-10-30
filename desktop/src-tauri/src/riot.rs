@@ -258,6 +258,20 @@ pub fn riot_key_clear() -> Result<(), String> {
 mod tests {
     use super::*;
 
+    /// Against the real API: `RIOT_KEY=RGAPI-… cargo test --lib live_key_check -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore = "spends the Riot key"]
+    async fn live_key_check() {
+        let key = std::env::var("RIOT_KEY").expect("RIOT_KEY");
+        let result = check(&key, "br1").await.expect("a check");
+        println!("{result:?}");
+        assert_eq!(result.state, CheckState::Valid);
+        assert!(
+            !result.app_limits.is_empty(),
+            "no limits read from the headers"
+        );
+    }
+
     #[test]
     fn riots_rate_limit_headers_become_windows_with_their_counts() {
         let windows = parse_windows(Some("100:120,20:1"), Some("3:1,41:120"));

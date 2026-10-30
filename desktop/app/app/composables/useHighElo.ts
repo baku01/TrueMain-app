@@ -17,6 +17,7 @@ export function useHighElo() {
   const error = useState<string | null>('highelo-error', () => null)
   const standIn = import.meta.dev && !insideTauri()
   let timer: ReturnType<typeof setInterval> | null = null
+  let pollingEvery = 0
 
   async function call<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
     if (standIn) return fake(command, args) as T
@@ -43,12 +44,17 @@ export function useHighElo() {
 
   async function refresh() {
     progress.value = await call<Progress>('highelo_progress')
-    if (!progress.value.running) stopPolling()
+    // The pace follows the run: quick while it goes, slow once it rests.
+    const wanted = progress.value.running ? 1000 : 4000
+    if (timer && wanted !== pollingEvery) startPolling()
   }
 
+  /** Once a second while a run is on, every few seconds otherwise: the collection starts by itself (`plugins/highelo-auto.client.ts`), so a page already open must notice a run begin. */
   function startPolling() {
-    if (timer) return
-    timer = setInterval(() => void refresh().catch(() => stopPolling()), 1000)
+    if (timer) clearInterval(timer)
+    const every = progress.value.running ? 1000 : 4000
+    timer = setInterval(() => void refresh().catch(() => {}), every)
+    pollingEvery = every
   }
 
   function stopPolling() {
@@ -61,7 +67,6 @@ export function useHighElo() {
     try {
       await call('highelo_start', { plan })
       await refresh()
-      startPolling()
     }
     catch (failure) {
       error.value = typeof failure === 'string' ? failure : String(failure)
@@ -85,9 +90,7 @@ export function useHighElo() {
     call<ChampionStats>('highelo_stats', { championId, patch, position })
 
   onMounted(() => {
-    void refresh().then(() => {
-      if (progress.value.running) startPolling()
-    })
+    void refresh().catch(() => {}).then(startPolling)
   })
   onBeforeUnmount(stopPolling)
 
