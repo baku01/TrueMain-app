@@ -56,7 +56,7 @@ const title = computed(() => riotIdLabel(identity.value.gameName, identity.value
   <div v-else class="surface flex items-center rounded-xl p-2.5">
     <Account :identity="identity" :patch="patch || null" size="lg" :to="false" class="flex-1">
       <template v-if="state.connected && state.summonerLevel !== null" #avatar-badge>
-        <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full border border-default bg-ink-950 px-1.5 text-[9px] font-semibold leading-4 tabular-nums text-highlighted">{{ state.summonerLevel }}</span>
+        <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full border border-default bg-elevated px-1.5 text-[9px] font-semibold leading-4 tabular-nums text-highlighted">{{ state.summonerLevel }}</span>
       </template>
       <template #subline>
         <span class="flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">

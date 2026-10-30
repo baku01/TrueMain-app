@@ -40,7 +40,7 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
         <ChampionArt :champion-id="column.lead.championId" kind="loading" fade="y" position="50% 18%" class="transition-transform duration-300 group-hover:scale-[1.03]" />
         <span class="relative flex items-end justify-between gap-2">
           <span class="min-w-0 leading-tight">
-            <span class="block truncate text-base font-semibold text-highlighted drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)]">{{ nameOf(column.lead.championId) }}</span>
+            <span class="block truncate text-base font-semibold text-highlighted dark:drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)]">{{ nameOf(column.lead.championId) }}</span>
             <span class="text-xs font-semibold tabular-nums" :class="winRateTone(column.lead.winRate)">{{ t('dash.meta.winRate', { rate: formatPercentage(column.lead.winRate) }) }}</span>
           </span>
           <TierBadge :tier="column.lead.tier" stacked />

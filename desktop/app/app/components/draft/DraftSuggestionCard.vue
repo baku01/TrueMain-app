@@ -92,7 +92,7 @@ const why = computed(() => {
         <UBadge v-if="lead && thin" color="neutral" variant="soft" size="sm" class="self-start">{{ t('draft.card.fewGames') }}</UBadge>
         <span
           v-if="note"
-          class="flex w-fit items-center gap-1 self-start whitespace-nowrap rounded bg-ink-950/70 px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-white/10"
+          class="flex w-fit items-center gap-1 self-start whitespace-nowrap rounded bg-ink-950/70 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white ring-1 ring-white/10"
           :class="note.adds === 'magic' ? 'text-stat-mr' : 'text-stat-ad'"
         >
           <UIcon name="i-lucide-plus" class="size-2.5" />{{ note.adds === 'magic' ? t('draft.card.addsMagic') : t('draft.card.addsPhysical') }}

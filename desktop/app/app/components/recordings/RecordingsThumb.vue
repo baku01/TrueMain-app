@@ -45,7 +45,7 @@ const ago = computed(() => formatRelativeTime(new Date(props.item.atMs).toISOStr
 
     <span
       v-if="item.status !== 'ready'"
-      class="absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-highlighted"
+      class="absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white"
     >
       <template v-if="item.status === 'recording'">
         <span class="size-1.5 animate-tm-pulse rounded-full bg-red-500" />
@@ -63,7 +63,7 @@ const ago = computed(() => formatRelativeTime(new Date(props.item.atMs).toISOStr
 
     <span
       v-if="!item.videoOnDisk"
-      class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-highlighted"
+      class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white"
       :title="t('rec.thumb.youtubeTitle')"
     >
       <UIcon name="i-lucide-youtube" class="size-3" />
@@ -71,8 +71,8 @@ const ago = computed(() => formatRelativeTime(new Date(props.item.atMs).toISOStr
     </span>
 
     <div class="absolute bottom-1.5 right-1.5 flex items-center gap-1 text-[11px] font-medium tabular-nums">
-      <span class="rounded bg-black/70 px-1.5 py-0.5 text-muted">{{ ago }}</span>
-      <span v-if="item.durationMs !== null" class="rounded bg-black/70 px-1.5 py-0.5 text-highlighted">{{ formatClock(item.durationMs) }}</span>
+      <span class="rounded bg-black/70 px-1.5 py-0.5 text-white/70">{{ ago }}</span>
+      <span v-if="item.durationMs !== null" class="rounded bg-black/70 px-1.5 py-0.5 text-white">{{ formatClock(item.durationMs) }}</span>
     </div>
   </div>
 </template>

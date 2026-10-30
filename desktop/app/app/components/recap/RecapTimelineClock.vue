@@ -16,7 +16,7 @@ defineProps<{
     <span v-for="at in ticks" :key="at" class="absolute -translate-x-1/2" :class="hoverMs !== null && 'opacity-40'" :style="{ left: viewPercent(view, at) }">{{ formatClock(at) }}</span>
     <span
       v-if="hoverMs !== null"
-      class="pointer-events-none absolute -translate-x-1/2 rounded bg-ink-950 px-1 text-highlighted"
+      class="pointer-events-none absolute -translate-x-1/2 rounded bg-ink-950 px-1 text-white"
       :style="{ left: viewPercent(view, hoverMs) }"
     >{{ formatClock(hoverMs) }}</span>
   </div>

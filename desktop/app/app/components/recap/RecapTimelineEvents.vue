@@ -73,7 +73,7 @@ const tooltipShift = computed(() => {
   <div
     v-if="hovered"
     role="tooltip"
-    class="pointer-events-none absolute bottom-full z-30 mb-1.5 min-w-40 rounded-md bg-ink-950/95 px-2 py-1.5 text-xs shadow-lg ring-1 ring-default backdrop-blur"
+    class="pointer-events-none absolute bottom-full z-30 mb-1.5 min-w-40 rounded-md bg-elevated/95 px-2 py-1.5 text-xs shadow-lg ring-1 ring-default backdrop-blur"
     :style="{ left: viewPercent(view, hovered.ms), transform: tooltipShift }"
   >
     <ul class="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1.5">

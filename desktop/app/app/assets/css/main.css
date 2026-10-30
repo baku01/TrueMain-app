@@ -69,6 +69,14 @@
   --ui-bg-surface: color-mix(in oklch, #ffffff 75%, transparent);
   --ui-border: #d8dde7;
   --ui-border-accented: #c2c9d8;
+  /* The data axis and the tier colours, deeper so they read on white. */
+  --color-data-good: #1a6fd6;
+  --color-data-good-dim: #6b9fd9;
+  --color-tier-s: #1a6fd6;
+  --color-tier-a: #a8741a;
+  --color-tier-b: #647083;
+  --color-tier-c: #9a5a22;
+  --color-tier-d: #6b6265;
   /* The stat colours are tuned to read on a dark page; on a light one they are pulled toward black. */
   --color-stat-health: color-mix(in oklch, #24a564 62%, black);
   --color-stat-armor: color-mix(in oklch, #f3c057 62%, black);
@@ -191,4 +199,10 @@
 /* Cards catch a little light on their top edge — the one detail that keeps a dark UI from reading as flat boxes. */
 :root.dark .surface {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+:root:not(.dark) .tier-flat {
+  color: var(--dark);
+  border-color: color-mix(in oklch, var(--dark) 60%, transparent);
+  background: color-mix(in oklch, var(--dark) 12%, transparent);
 }

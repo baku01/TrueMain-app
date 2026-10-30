@@ -33,7 +33,8 @@ const style = computed(() => (metal.value
       '--light': metal.value.light,
       '--dark': metal.value.dark,
       '--letter': metal.value.letter,
-      'filter': `drop-shadow(0 0 10px ${metal.value.glow})`,
+      '--glow': metal.value.glow,
+      'filter': props.stacked ? `drop-shadow(0 0 10px ${metal.value.glow})` : undefined,
     }
   : undefined))
 </script>
@@ -54,8 +55,8 @@ const style = computed(() => (metal.value
     </span>
     <span
       v-else-if="metal"
-      class="inline-grid size-6 place-items-center rounded-md border font-mono text-[13px] font-bold"
-      :style="{ color: metal.dark === '#2563eb' ? '#60a5fa' : metal.light, borderColor: `color-mix(in oklch, ${metal.light} 55%, transparent)`, background: `color-mix(in oklch, ${metal.light} 10%, transparent)` }"
+      class="tier-flat inline-grid size-6 place-items-center rounded-md border font-mono text-[13px] font-bold"
+      :style="style"
     >{{ label }}</span>
     <span v-else class="inline-flex h-6 min-w-7 items-center justify-center font-mono text-sm font-bold text-muted">–</span>
     <span v-if="stacked" class="mt-1 text-[9px] font-medium uppercase tracking-[0.14em] text-default/80">{{ t('common.tier') }}</span>
@@ -74,5 +75,12 @@ const style = computed(() => (metal.value
 .medal-face {
   background:
     linear-gradient(180deg, color-mix(in oklch, var(--dark) 38%, #0b0b0d), color-mix(in oklch, var(--dark) 14%, #0b0b0d));
+}
+
+/* Flat, in a list: the metal's light edge on a dark page (`main.css` swaps in the dark edge on a light one, where the light would vanish). */
+.tier-flat {
+  color: var(--light);
+  border-color: color-mix(in oklch, var(--light) 55%, transparent);
+  background: color-mix(in oklch, var(--light) 10%, transparent);
 }
 </style>
