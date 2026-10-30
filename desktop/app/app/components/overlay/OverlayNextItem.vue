@@ -36,6 +36,8 @@ const nextComponent = computed(() => {
   if (!entry) return null
   return entry.parts.find(part => part.state !== 'owned') ?? entry
 })
+/** The path as one row of components: an intermediate being started is replaced by its own parts, so nothing is framed or drawn twice. */
+const steps = computed(() => path.value?.entries.flatMap(entry => (entry.parts.length ? entry.parts : [entry])) ?? [])
 const componentToGo = computed(() => (nextComponent.value ? Math.max(0, nextComponent.value.cost - props.game.gold) : 0))
 
 const message = computed(() => {
@@ -71,7 +73,12 @@ const message = computed(() => {
         <span v-else class="text-stat-gold">{{ nextComponent.cost }}</span>
       </span>
     </div>
-    <GameBuildPath v-if="path" :path="path" :statics="statics" :size="24" class="pt-1" />
+    <ol v-if="steps.length" class="flex flex-wrap items-start gap-y-2 pt-1" :aria-label="t('game.buildPath')">
+      <li v-for="(step, index) in steps" :key="`${step.itemId}-${index}`" class="flex items-start">
+        <UIcon v-if="index > 0" name="i-lucide-chevron-right" class="mx-0.5 mt-1.5 size-3 shrink-0 text-dimmed" />
+        <GameBuildPathTile :tile="step" :statics="statics" :size="26" />
+      </li>
+    </ol>
     <!-- The whole build, set apart from the components by a hairline. -->
     <div class="border-t border-default pt-2">
       <GameBuildOrder :steps="order" :statics="statics" :size="22" />
