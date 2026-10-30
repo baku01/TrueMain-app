@@ -180,8 +180,9 @@ watch(() => state.value.phase, (next, previous) => {
     </template>
 
     <template v-else>
-      <section class="relative flex min-h-56 items-end overflow-hidden rounded-2xl border border-default p-7">
-        <ChampionArt :alias="backdropAlias()" fade="x" position="70% 22%" />
+      <section class="relative flex min-h-60 items-end overflow-hidden rounded-2xl border border-default p-7">
+        <!-- Anchored near the top of the splash, where its face is: a short band would otherwise show the chest. -->
+        <ChampionArt :alias="backdropAlias()" fade="x" position="70% 6%" />
         <div class="relative flex max-w-lg flex-col gap-3">
           <span class="flex items-center gap-2">
             <span class="relative flex size-2">

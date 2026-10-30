@@ -27,16 +27,17 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
     </div>
   <div class="grid grid-cols-5 gap-3">
     <div v-for="column in view.columns" :key="column.lane" class="surface flex flex-col overflow-hidden rounded-2xl">
+      <!-- The lane sits above the art, never over it: a portrait's face is somewhere in its corner. -->
+      <div class="flex items-center gap-1.5 px-3 py-2">
+        <img :src="getPositionIconUrl(column.lane)" alt="" class="size-4">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">{{ column.label }}</span>
+      </div>
       <NuxtLink
         v-if="column.lead"
         :to="`/champions/${column.lead.championId}?position=${column.lane}`"
-        class="group relative flex h-44 flex-col justify-between p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        class="group relative flex h-44 flex-col justify-end p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
       >
         <ChampionArt :champion-id="column.lead.championId" kind="loading" fade="y" position="50% 18%" class="transition-transform duration-300 group-hover:scale-[1.03]" />
-        <span class="relative flex w-fit items-center gap-1.5 rounded-full bg-ink-950/70 py-0.5 pr-2 pl-1 ring-1 ring-white/10 backdrop-blur-sm">
-          <img :src="getPositionIconUrl(column.lane)" alt="" class="size-4">
-          <span class="text-[11px] font-semibold uppercase tracking-wide text-white">{{ column.label }}</span>
-        </span>
         <span class="relative flex items-end justify-between gap-2">
           <span class="min-w-0 leading-tight">
             <span class="block truncate text-base font-semibold text-highlighted drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)]">{{ nameOf(column.lead.championId) }}</span>
@@ -46,11 +47,7 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
         </span>
       </NuxtLink>
       <USkeleton v-else-if="view.loading" class="h-44 rounded-none" />
-      <div v-else class="flex h-44 flex-col justify-between p-3">
-        <span class="flex items-center gap-1.5">
-          <img :src="getPositionIconUrl(column.lane)" alt="" class="size-4">
-          <span class="text-[11px] font-semibold uppercase tracking-wide text-muted">{{ column.label }}</span>
-        </span>
+      <div v-else class="flex h-44 flex-col justify-end p-3">
         <span class="text-xs text-dimmed">{{ t('dash.meta.notEnough') }}</span>
       </div>
 
