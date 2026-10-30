@@ -417,7 +417,12 @@ pub fn run() {
             riot::riot_key_status,
             riot::riot_key_check,
             riot::riot_key_save,
-            riot::riot_key_clear
+            riot::riot_key_clear,
+            highelo::highelo_start,
+            highelo::highelo_stop,
+            highelo::highelo_progress,
+            highelo::highelo_stats,
+            highelo::highelo_clear
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.
@@ -437,6 +442,7 @@ pub fn run() {
             app.manage(recorder.clone());
             recording::start(&handle, recorder, phases);
             app.manage(kits::Kits::new(&handle));
+            app.manage(Arc::new(highelo::Collector::new(&handle)));
             overlay::setup(&handle)?;
             window_state::restore(&handle);
             tauri::async_runtime::spawn(supervisor::run(handle, shared, client));

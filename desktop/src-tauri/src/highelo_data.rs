@@ -121,10 +121,14 @@ pub fn rows_of_match(body: &Value) -> Vec<Row> {
                     .unwrap_or_default()
                     .to_string(),
                 w: p.get("win").and_then(Value::as_bool).unwrap_or(false),
-                i: (0..6).map(|slot| number(p, &format!("item{slot}"))).collect(),
+                i: (0..6)
+                    .map(|slot| number(p, &format!("item{slot}")))
+                    .collect(),
                 s: [number(p, "summoner1Id"), number(p, "summoner2Id")],
                 k: keystone,
-                ps: style("primaryStyle").map(|s| number(s, "style")).unwrap_or(0),
+                ps: style("primaryStyle")
+                    .map(|s| number(s, "style"))
+                    .unwrap_or(0),
                 ss: style("subStyle").map(|s| number(s, "style")).unwrap_or(0),
                 r: runes,
                 sh: [shard("offense"), shard("flex"), shard("defense")],
@@ -367,7 +371,11 @@ mod tests {
 
     #[test]
     fn a_remake_or_a_malformed_match_gives_nothing() {
-        let mut short = game("BR1_2", "16.21.1", vec![participant(222, true, "BOTTOM", 8005)]);
+        let mut short = game(
+            "BR1_2",
+            "16.21.1",
+            vec![participant(222, true, "BOTTOM", 8005)],
+        );
         short["info"]["gameDuration"] = json!(200);
         assert!(rows_of_match(&short).is_empty());
         assert!(rows_of_match(&json!({})).is_empty());
@@ -378,27 +386,70 @@ mod tests {
         let rows: Vec<Row> = [("a", true, 8005), ("b", true, 8005), ("c", false, 8021)]
             .iter()
             .flat_map(|(id, win, keystone)| {
-                rows_of_match(&game(id, "16.21.1", vec![participant(222, *win, "BOTTOM", *keystone)]))
+                rows_of_match(&game(
+                    id,
+                    "16.21.1",
+                    vec![participant(222, *win, "BOTTOM", *keystone)],
+                ))
             })
             .collect();
         let stats = champion_stats(&rows, 222, None, None);
-        assert_eq!((stats.games, stats.wins, stats.patch.as_str()), (3, 2, "16.21"));
-        assert_eq!(stats.keystones[0], Tally { id: 8005, games: 2, wins: 2 });
-        assert_eq!(stats.keystones[1], Tally { id: 8021, games: 1, wins: 0 });
+        assert_eq!(
+            (stats.games, stats.wins, stats.patch.as_str()),
+            (3, 2, "16.21")
+        );
+        assert_eq!(
+            stats.keystones[0],
+            Tally {
+                id: 8005,
+                games: 2,
+                wins: 2
+            }
+        );
+        assert_eq!(
+            stats.keystones[1],
+            Tally {
+                id: 8021,
+                games: 1,
+                wins: 0
+            }
+        );
         assert_eq!(
             stats.items.iter().find(|t| t.id == 3031),
-            Some(&Tally { id: 3031, games: 3, wins: 2 })
+            Some(&Tally {
+                id: 3031,
+                games: 3,
+                wins: 2
+            })
         );
-        assert!(stats.items.iter().all(|t| t.id != 3340), "the trinket slot is not kept");
-        assert_eq!(stats.spells[0], SpellPair { spells: [4, 7], games: 3, wins: 2 });
+        assert!(
+            stats.items.iter().all(|t| t.id != 3340),
+            "the trinket slot is not kept"
+        );
+        assert_eq!(
+            stats.spells[0],
+            SpellPair {
+                spells: [4, 7],
+                games: 3,
+                wins: 2
+            }
+        );
         assert_eq!(stats.pages[0].games, 2);
         assert_eq!(stats.positions[0].id, 4);
     }
 
     #[test]
     fn the_newest_patch_is_the_default_and_another_can_be_asked_for() {
-        let mut rows = rows_of_match(&game("a", "16.9.1", vec![participant(222, true, "BOTTOM", 8005)]));
-        rows.extend(rows_of_match(&game("b", "16.21.1", vec![participant(222, false, "BOTTOM", 8005)])));
+        let mut rows = rows_of_match(&game(
+            "a",
+            "16.9.1",
+            vec![participant(222, true, "BOTTOM", 8005)],
+        ));
+        rows.extend(rows_of_match(&game(
+            "b",
+            "16.21.1",
+            vec![participant(222, false, "BOTTOM", 8005)],
+        )));
         let stats = champion_stats(&rows, 222, None, None);
         assert_eq!(stats.patch, "16.21");
         assert_eq!(stats.patches, vec!["16.21", "16.9"]);
@@ -408,8 +459,16 @@ mod tests {
 
     #[test]
     fn a_position_narrows_the_numbers_but_not_the_lane_split() {
-        let mut rows = rows_of_match(&game("a", "16.21.1", vec![participant(222, true, "BOTTOM", 8005)]));
-        rows.extend(rows_of_match(&game("b", "16.21.1", vec![participant(222, true, "MIDDLE", 8005)])));
+        let mut rows = rows_of_match(&game(
+            "a",
+            "16.21.1",
+            vec![participant(222, true, "BOTTOM", 8005)],
+        ));
+        rows.extend(rows_of_match(&game(
+            "b",
+            "16.21.1",
+            vec![participant(222, true, "MIDDLE", 8005)],
+        )));
         let stats = champion_stats(&rows, 222, None, Some("MIDDLE"));
         assert_eq!(stats.games, 1);
         assert_eq!(stats.positions.len(), 2);
