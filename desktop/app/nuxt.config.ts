@@ -39,7 +39,12 @@ export default defineNuxtConfig({
   devServer: { port: 3003 },
   // Tauri serves the bundle from a custom protocol; hashed asset names at the
   // root keep every reference relative to it.
-  app: { baseURL: './' },
+  app: {
+    baseURL: './',
+    // A short fade-and-rise between tabs (`.tm-page-*` in `main.css`); out-in so
+    // two pages are never in the pane at once.
+    pageTransition: { name: 'tm-page', mode: 'out-in' },
+  },
   // The route lives in the hash: the custom protocol serves files, not an SPA
   // fallback, so a history-mode path would 404 on a reload.
   router: { options: { hashMode: true } },

@@ -30,7 +30,9 @@ onBeforeUnmount(() => suspended.end())
         @pending="suspended.begin()"
         @resolve="suspended.end()"
       >
-        <slot />
+        <div class="tm-stagger">
+          <slot />
+        </div>
 
         <template #fallback>
           <div

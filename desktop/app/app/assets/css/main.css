@@ -239,6 +239,114 @@
   animation: none !important;
 }
 
+/*
+ * Motion. One easing and three durations for the whole window: a press is
+ * instant (120 ms), a hover or a state change is quick (180 ms), an arrival
+ * takes a beat (260 ms). All of it stands still under `prefers-reduced-motion`
+ * and with hardware acceleration off.
+ */
+:root {
+  --tm-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Page change: the old tab fades, the new one rises into place. */
+.tm-page-enter-active {
+  transition: opacity 260ms var(--tm-ease), transform 260ms var(--tm-ease);
+}
+
+.tm-page-leave-active {
+  transition: opacity 100ms ease-in;
+}
+
+.tm-page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.tm-page-leave-to {
+  opacity: 0;
+}
+
+/* A page's own blocks arrive one after the other (the page root's children, the first ten; the rest come in with the last). */
+@keyframes tm-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.tm-stagger > * > * {
+  animation: tm-rise 340ms var(--tm-ease) backwards;
+}
+
+.tm-stagger > * > :nth-child(2) { animation-delay: 40ms; }
+.tm-stagger > * > :nth-child(3) { animation-delay: 80ms; }
+.tm-stagger > * > :nth-child(4) { animation-delay: 120ms; }
+.tm-stagger > * > :nth-child(5) { animation-delay: 160ms; }
+.tm-stagger > * > :nth-child(6) { animation-delay: 200ms; }
+.tm-stagger > * > :nth-child(7) { animation-delay: 240ms; }
+.tm-stagger > * > :nth-child(8) { animation-delay: 280ms; }
+.tm-stagger > * > :nth-child(9) { animation-delay: 320ms; }
+.tm-stagger > * > :nth-child(n+10) { animation-delay: 360ms; }
+
+/* Every button and link that is a button: pressed, it sinks a little. */
+button:not(:disabled, [role="tab"], [role="switch"]),
+[role="button"]:not([aria-disabled="true"]) {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-timing-function: var(--tm-ease);
+  transition-duration: 180ms;
+}
+
+button:not(:disabled, [role="tab"], [role="switch"]):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+  transition-duration: 90ms;
+}
+
+/* Focus arrives instead of snapping on. */
+:focus-visible {
+  transition: outline-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* The sidebar: an entry's icon leans in on hover, and sinks with the press. */
+aside nav a svg,
+aside nav a [class*="i-"] {
+  transition: transform 220ms var(--tm-ease), color 180ms ease;
+}
+
+aside nav a:hover svg,
+aside nav a:hover [class*="i-"] {
+  transform: translateX(2px) scale(1.08);
+}
+
+aside nav a:active {
+  transform: scale(0.98);
+  transition: transform 90ms var(--tm-ease);
+}
+
+/* Images fade in once drawn rather than popping, when they declare it. */
+img.tm-fade {
+  animation: tm-rise 320ms var(--tm-ease) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-page-enter-active,
+  .tm-page-leave-active,
+  .tm-stagger > * > *,
+  img.tm-fade,
+  button,
+  [role="button"],
+  aside nav a,
+  aside nav a svg {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+:root.reduce-effects .tm-page-enter-active,
+:root.reduce-effects .tm-page-leave-active {
+  transition: none !important;
+}
+
 /* Thin, dark scrollbars: the window is small and a default bar is a stripe of white. */
 * {
   scrollbar-width: thin;
