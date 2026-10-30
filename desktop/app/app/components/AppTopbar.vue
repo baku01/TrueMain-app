@@ -46,7 +46,10 @@ defineShortcuts({
       </span>
     </button>
 
-    <ThemeToggle class="ml-2 shrink-0" />
+    <UTooltip :text="t('nav.settings')">
+      <UButton to="/settings" icon="i-ph-gear-six-light" color="neutral" variant="ghost" size="sm" class="ml-2 shrink-0" :aria-label="t('nav.settings')" />
+    </UTooltip>
+    <ThemeToggle class="ml-1 shrink-0" />
     <LanguageSwitcher class="ml-1 shrink-0" />
 
     <ChampionSearch v-model:open="open" />
