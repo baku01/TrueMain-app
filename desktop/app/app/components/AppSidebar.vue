@@ -40,7 +40,7 @@ const items = computed<NavigationMenuItem[][]>(() => [
     { label: t('nav.classes'), icon: 'i-ph-tree-structure-light', to: '/classes', active: isActive('/classes') },
     { label: t('nav.tierlist'), icon: 'i-ph-ranking-light', to: '/tierlist', active: isActive('/tierlist') },
     { label: t('nav.matchup'), icon: 'i-ph-scales-light', to: '/matchup', active: isActive('/matchup') },
-    { label: t('nav.truemains'), icon: 'i-ph-crown-simple-light', to: '/truemains', active: isActive('/truemains') },
+    { label: t('nav.probuild'), icon: 'i-ph-trophy-light', to: '/probuild', active: isActive('/probuild') },
     { label: t('nav.kits'), icon: 'i-ph-backpack-light', to: '/kits', active: isActive('/kits') },
     { label: t('nav.items'), icon: 'i-ph-flask-light', to: '/items', active: isActive('/items') },
     { label: t('nav.patchnotes'), icon: 'i-ph-scroll-light', to: '/patchnotes', active: isActive('/patchnotes') },

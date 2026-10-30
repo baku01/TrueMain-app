@@ -256,6 +256,7 @@ mounted components (`ProcessSummaryView`, `PanelTitle`). No page-level tests.
 Reads the local League client (LCU) in Rust; the webview renders the state. Details and dev workflow in
 `desktop/README.md`; decisions in [`decisions/desktop.md`](decisions/desktop.md).
 
+- **ProBuild** — `/probuild` replaces Truemains in the sidebar (the leaderboard page stays at `/truemains`, and the champion page still lists a champion's truemains): professional players and the games they played — keystone, spells, items in completion order — a player at a time. **No source is connected yet**: it shows flagged placeholder players (`utils/pro-build.ts`, `useProBuilds`) and says so on the page; TrueMain's API has no endpoint for professionals.
 - **Language** — English or Português (Brasil), from the language menu in the top bar; the choice is kept across launches and reloads the window. Every visible string (menus, pages, overlay panels, recap, kits, reasons built in code), the item / champion / rune / spell names (Data Dragon `pt_BR`, Community Dragon `pt_br`) and the native menu and tray follow it. Dev-only tools (`/dev/*`) stay English.
 - **Shell** — sidebar (Dashboard, Champions, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
