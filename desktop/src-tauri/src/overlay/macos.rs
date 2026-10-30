@@ -124,14 +124,21 @@ fn build_now(
                 .ignores_cycle(),
         )
         .with_window(move |window| {
-            window
+            let window = window
                 // The webview's own background too (needs `macOSPrivateApi`).
                 .transparent(see_through)
                 .decorations(false)
                 .resizable(false)
                 .focused(false)
                 .visible(false)
-                .skip_taskbar(true)
+                .skip_taskbar(true);
+            // An opaque panel is the page's own dark, so a strip the page has not
+            // drawn yet (the panel resizes to its content) is never white.
+            if see_through {
+                window
+            } else {
+                window.background_color(tauri::window::Color(8, 12, 20, 255))
+            }
         })
         .build()?;
     panel.hide();
