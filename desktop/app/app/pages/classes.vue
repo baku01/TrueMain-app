@@ -84,14 +84,15 @@ function alsoTitle(id: number, here: SubclassId) {
           </div>
         </header>
 
+        <div class="divide-y divide-default/70">
         <div
           v-for="sub in group.subclasses.filter(entry => entry.champions.length > 0)"
           :key="sub.subclass"
-          class="grid gap-x-10 gap-y-3"
+          class="grid gap-x-10 gap-y-3 py-5 first:pt-0 last:pb-0"
           :class="group.class.subclasses.length > 1 ? 'md:grid-cols-[15rem_minmax(0,1fr)]' : ''"
         >
           <div v-if="group.class.subclasses.length > 1" class="md:pt-1">
-            <h3 class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-highlighted before:h-4 before:w-0.5 before:rounded-full before:bg-primary/70">
               {{ t(`sub.${sub.subclass}.name`) }}
               <span class="rounded-full bg-accented px-1.5 text-[11px] font-normal text-muted">{{ sub.champions.length }}</span>
             </h3>
@@ -118,6 +119,7 @@ function alsoTitle(id: number, here: SubclassId) {
               </NuxtLink>
             </li>
           </ul>
+        </div>
         </div>
       </section>
 
