@@ -5,12 +5,12 @@ import type { ChampionStaticData, RuneTreeResponse, StaticItemData, StaticSummon
 /**
  * The core of a build, from the site's own blocks (`Champion/Core/*`), laid out
  * in cards for the app's pane rather than spread by flex as the site's
- * `Champion/BuildPanel/Core` does. From a 56rem container, two columns: the
- * runes, large, and beside them the small
- * pieces — summoners, starter, boots — in a band with the build's item tree
- * under it (the `tree` slot); the skill order, with its level-by-level grid,
- * across the bottom (`BuildSkillGrid`). Narrower, the same cards stack, the band
- * and the tree first. There is no
+ * `Champion/BuildPanel/Core` does. From a 56rem container, two columns: on the
+ * left the runes, large, with the small pieces — summoners, starter, boots —
+ * in a card under them; on the right the build's item tree (the `tree` slot),
+ * stretched to the height of the left column so neither leaves a hollow; the
+ * skill order, with its level-by-level grid, across the bottom
+ * (`BuildSkillGrid`). Narrower, the same cards stack, the tree first. There is no
  * build path line: the tree draws it, item by item.
  *
  * The runes carry the import button in their corner (#1678).
@@ -39,7 +39,7 @@ withDefaults(defineProps<{
 <template>
   <div class="@container">
     <div class="grid gap-4 @4xl:grid-cols-[24rem_minmax(0,1fr)]">
-      <!-- Runes, large — the part of a build most worth reading at a glance — and the skill order under them. -->
+      <!-- The runes, large — the part of a build most worth reading at a glance — and under them the small pieces. -->
       <div class="flex flex-col gap-4">
         <div class="relative rounded-xl border border-default bg-default/40 p-4">
           <div class="mx-auto w-full max-w-[22rem] overflow-hidden">
@@ -48,24 +48,25 @@ withDefaults(defineProps<{
           </div>
           <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" class="absolute right-3 top-3" />
         </div>
-      </div>
 
-      <div class="order-first flex min-w-0 flex-col gap-4 @4xl:order-none">
-        <!-- The small pieces in one band, spread edge to edge instead of floating apart. -->
-        <div class="flex flex-wrap items-start justify-between gap-x-8 gap-y-5 rounded-xl border border-default bg-default/40 p-4">
+        <div class="grid flex-1 content-start gap-x-6 gap-y-5 rounded-xl border border-default bg-default/40 p-4 sm:grid-cols-2">
           <div class="relative">
             <ChampionCoreSpells :summoners="summonerSpells" :summoners-map="summonersMap" :summoners-pending="summonersPending" />
             <!-- A kit's spell import (#2185), in the summoners' corner as the runes' is in theirs. -->
             <div v-if="$slots.spells" class="absolute -right-8 top-6"><slot name="spells" /></div>
           </div>
-          <ChampionCoreStarterItems :starter="starterItems" :items-map="itemsMap" />
           <ChampionCoreBoots :boots="boots" :items-map="itemsMap" />
+          <div class="sm:col-span-2">
+            <ChampionCoreStarterItems :starter="starterItems" :items-map="itemsMap" />
+          </div>
         </div>
+      </div>
 
-        <!-- The build's item tree: the sequence the items are bought in. -->
-        <div v-if="$slots.tree" class="flex-1 rounded-xl border border-default bg-default/40 p-4">
-          <h3 class="stat-label mb-3">{{ t('build.tree.title') }}</h3>
-          <slot name="tree" />
+      <!-- The build's item tree: the sequence the items are bought in, centred in a card as tall as the column beside it. -->
+      <div v-if="$slots.tree" class="order-first flex flex-col rounded-xl border border-default bg-default/40 p-4 @4xl:order-none">
+        <h3 class="stat-label mb-3">{{ t('build.tree.title') }}</h3>
+        <div class="flex flex-1 items-center justify-center">
+          <div class="w-full"><slot name="tree" /></div>
         </div>
       </div>
     </div>

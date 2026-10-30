@@ -25,9 +25,9 @@ defineProps<{
       :first-item-id="build.firstItemId"
       :item-path="build.core.itemPath?.itemIds ?? []"
       :items-map="items"
-      :item-size="28"
-      :h-gap="10"
-      :v-gap="20"
+      :item-size="36"
+      :h-gap="14"
+      :v-gap="26"
     />
     <div v-else-if="build.core.itemPath?.itemIds.length" class="flex justify-center">
       <ChampionCoreBuildPath :path="build.core.itemPath" :items-map="items" />
