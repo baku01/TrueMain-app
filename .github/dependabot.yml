@@ -99,7 +99,7 @@ updates:
       - dependencies
       - docker
     ignore:
-      - dependency-name: "ghcr.io/ilyanfraimbault/truemain-*"
+      - dependency-name: "ghcr.io/baku01/truemain-*"
     groups:
       minor-and-patch:
         patterns:

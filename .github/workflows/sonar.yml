@@ -1,11 +1,6 @@
 name: SonarQube Cloud
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-  push:
-    branches:
-      - develop
   workflow_dispatch:
 
 permissions:
@@ -16,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SONAR_ORGANIZATION: ilyanfraimbault
-  SONAR_PROJECT_KEY: ilyanfraimbault_TrueMain
+  SONAR_ORGANIZATION: baku01
+  SONAR_PROJECT_KEY: baku01_TrueMain-app
 
 jobs:
   plan:

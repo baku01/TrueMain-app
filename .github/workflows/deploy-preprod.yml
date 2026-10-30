@@ -1,9 +1,6 @@
 name: Deploy Preprod
 
 on:
-  push:
-    branches:
-      - develop
   workflow_dispatch:
 
 permissions:

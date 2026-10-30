@@ -12,15 +12,15 @@ two environments and the migration path in detail.
 | `ci.yml` | PRs, pushes to `develop`/`master`, manual | Build, test and sanity-check whatever the change touches |
 | `claude-review.yml` | PRs to `develop`/`master` | Automated formal code review |
 | `codeql.yml` | PRs (per language, by path), pushes to `develop`, weekly, manual | CodeQL security analysis of C#, JS/TS, Rust and the workflows themselves (below) |
-| `sonar.yml` | PRs, pushes to `develop`, manual | SonarQube Cloud analysis with backend and frontend coverage; its quality gate is a required check (below) |
-| `deploy-preprod.yml` | push to `develop`, manual | Preflight → version → publish images → roll out → tag |
-| `deploy-prod.yml` | GitHub Release published | Preflight → publish images → roll out → verify the edge, and serve a held desktop app build the release catches up with |
+| `sonar.yml` | manual (no longer on PRs and pushes: it needs a SonarQube Cloud project and `SONAR_TOKEN`) | SonarQube Cloud analysis with backend and frontend coverage; its quality gate is a required check (below) |
+| `deploy-preprod.yml` | manual (no longer on pushes to `develop`: it needs a VPS, Docker Manager and the `PREPROD_*` secrets) | Preflight → version → publish images → roll out → tag |
+| `deploy-prod.yml` | none — its `release: published` trigger is removed because it needs a VPS, Docker Manager and the `PROD_*` secrets; every step reads the release's tag, so restore the trigger rather than dispatching it | Preflight → publish images → roll out → verify the edge, and serve a held desktop app build the release catches up with |
 | `build-images.yml` | called by both deploys | Builds and pushes the four images with the requested tags |
 | `rollout.yml` | called by both deploys | Applies migrations over SSH, pre-pulls the images over SSH where enabled, then redeploys the Docker Manager project |
 | `loadtest-preprod.yml` | manual | k6 load test against preprod from a GitHub runner; summary on the job page (`docs/load-testing.md`) |
 | `desktop.yml` | PRs and `develop`/`master` pushes touching `desktop/`, `web/layers/common/` or `web/shared/`, each job on its own paths | fmt, clippy and tests of the desktop app's Rust crates; the macOS capture spike built and published as an artifact; the Windows capture helper built and smoke-tested on a Windows runner; the overlay smoke-tested on a Windows desktop; lint, typecheck, unit tests and static build of its Nuxt app (below) |
 | `desktop-macos.yml` | pushes to any branch but `develop`/`master` touching `desktop/`, `web/layers/common/` or `web/shared/` (Markdown aside), or manual | Builds the desktop app for macOS (universal `.dmg`, ad-hoc signed, no updater artifacts, no secrets) and keeps it as a 14-day artifact; `develop` is built by `desktop-release.yml` instead |
-| `desktop-release.yml` | `develop` pushes touching `desktop/`, `web/layers/common/` or `web/shared/` (Markdown aside), or manual | Builds the desktop app for macOS and Windows: a preprod build every time, a production build on a version bump, served by production once it runs what the build reads (below) |
+| `desktop-release.yml` | manual (no longer on `develop` pushes: it needs the updater signing key and a site that serves the feed) | Builds the desktop app for macOS and Windows: a preprod build every time, a production build on a version bump, served by production once it runs what the build reads (below) |
 | `desktop-promote.yml` | manual, with a version | Serves a desktop production build on truemain.lol by hand — a rollback, or a held build (below) |
 
 `.github/actions/migration-script` is the composite action every job that
@@ -1026,7 +1026,7 @@ One weekly PR per ecosystem groups every minor and patch update; majors stay
 individual so a breaking change is reviewed on its own. `docker-compose`
 watches the third-party images pinned in the stacks (postgres, pgbouncer,
 mongo, umami, caddy), which no Dockerfile references; our own
-`ghcr.io/ilyanfraimbault/truemain-*` images are ignored there because their
+`ghcr.io/baku01/truemain-*` images are ignored there because their
 tag is chosen by the deploy, not by a registry lookup. Every stream targets
 `develop`.
 

@@ -1,9 +1,6 @@
 name: Desktop release
 
 on:
-  push:
-    branches: [develop]
-    paths: ["desktop/**", "web/layers/common/**", "web/shared/**", "!**/*.md"]
   workflow_dispatch:
 
 permissions:

@@ -17,8 +17,8 @@ ISSUE="${1:?usage: project-set.sh <issue> <Status|Priority|Sprint> <value>}"
 FIELD="${2:?missing field (Status|Priority|Sprint)}"
 VALUE="${3:?missing value}"
 
-OWNER="ilyanfraimbault"
-REPO="TrueMain"
+OWNER="baku01"
+REPO="TrueMain-app"
 PROJECT_NUMBER=2
 PROJECT_ID="PVT_kwHOAhairc4BYUu-"
 SPRINT_FIELD_ID="PVTIF_lAHOAhairc4BYUu-zhWtII0"

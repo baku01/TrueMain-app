@@ -7,7 +7,7 @@ import { ISSUE_QUERY, PR_JSON_FIELDS, contextSection, glyph, headline, issueOfBr
 const status = atom({ plugin: 'truemain-pr', key: 'status' } as const, null)
 const isHidden = atom({ plugin: 'truemain-pr', key: 'isHidden' } as const, false)
 
-const OWNER = 'ilyanfraimbault'
+const OWNER = 'baku01'
 const REPO = 'TrueMain'
 const HOT_MS = 60_000
 const COLD_MS = 300_000

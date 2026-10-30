@@ -22,7 +22,7 @@ import type { DesktopChannel, DesktopPlatform, DesktopRelease } from '~~/shared/
 // The largest page GitHub serves. The site's releases and the betas push an older stable release down the list,
 // so `findDesktopRelease` reads further pages until the channel has its release.
 const PAGE_SIZE = 100
-export const DESKTOP_RELEASES_URL = `https://api.github.com/repos/ilyanfraimbault/TrueMain/releases?per_page=${PAGE_SIZE}`
+export const DESKTOP_RELEASES_URL = `https://api.github.com/repos/baku01/TrueMain-app/releases?per_page=${PAGE_SIZE}`
 // GitHub lists the newest releases first: the newest beta is on the first page, the one stable release may be
 // further down. Each page is an upstream call counted against GitHub's sixty an hour, hence a bound.
 const MAX_PAGES = 5

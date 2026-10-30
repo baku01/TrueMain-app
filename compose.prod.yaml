@@ -116,7 +116,7 @@ services:
       - truemain_internal
 
   api:
-    image: ghcr.io/ilyanfraimbault/truemain-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/baku01/truemain-api:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: truemain-api
     restart: unless-stopped
@@ -157,7 +157,7 @@ services:
       - truemain_internal
 
   web:
-    image: ghcr.io/ilyanfraimbault/truemain-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/baku01/truemain-web:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: truemain-web
     restart: unless-stopped
@@ -181,7 +181,7 @@ services:
       - truemain_edge
 
   admin:
-    image: ghcr.io/ilyanfraimbault/truemain-admin:${IMAGE_TAG:-latest}
+    image: ghcr.io/baku01/truemain-admin:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: truemain-admin
     restart: unless-stopped
@@ -262,7 +262,7 @@ services:
       - truemain_internal
 
   ingestor:
-    image: ghcr.io/ilyanfraimbault/truemain-ingestor:${IMAGE_TAG:-latest}
+    image: ghcr.io/baku01/truemain-ingestor:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: truemain-ingestor
     restart: unless-stopped
@@ -290,7 +290,7 @@ services:
       - truemain_internal
 
   ingestor-aggregate:
-    image: ghcr.io/ilyanfraimbault/truemain-ingestor:${IMAGE_TAG:-latest}
+    image: ghcr.io/baku01/truemain-ingestor:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: truemain-ingestor-aggregate
     restart: unless-stopped

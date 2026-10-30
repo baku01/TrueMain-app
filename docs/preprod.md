@@ -109,8 +109,8 @@ mkdir -p /docker/truemain-preprod && cd /docker/truemain-preprod
 # Fetch the compose file and env template from the repo (develop branch):
 # Named docker-compose.yml on the host so plain `docker compose` (and Docker
 # Manager) picks it up without -f.
-curl -fsSL https://raw.githubusercontent.com/ilyanfraimbault/TrueMain/develop/compose.preprod.yaml -o docker-compose.yml
-curl -fsSL https://raw.githubusercontent.com/ilyanfraimbault/TrueMain/develop/.env.preprod.example -o .env
+curl -fsSL https://raw.githubusercontent.com/baku01/TrueMain-app/develop/compose.preprod.yaml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/baku01/TrueMain-app/develop/.env.preprod.example -o .env
 
 # Fill in the secrets: the NEW preprod Riot API key (RGAPI-…), strong
 # Postgres/Mongo/admin passwords, a 32+ char OPS_API_KEY and

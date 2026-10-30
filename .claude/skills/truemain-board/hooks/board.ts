@@ -1,6 +1,6 @@
 import type { Board, BoardFilter, BoardItem, BoardIteration } from '../types'
 
-export const OWNER = 'ilyanfraimbault'
+export const OWNER = 'baku01'
 export const REPO = 'TrueMain'
 export const PROJECT_NUMBER = 2
 
