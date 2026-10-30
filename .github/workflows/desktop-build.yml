@@ -126,9 +126,11 @@ jobs:
             exit 1
           fi
           ls -la dist
-          gh release delete latest --cleanup-tag --yes || true
+          gh release delete latest --yes || true
+          git tag -f latest "$GITHUB_SHA"
+          git push --force origin refs/tags/latest
           gh release create latest "${existing[@]}" \
-            --target "$GITHUB_SHA" \
+            --verify-tag \
             --title "TrueMain App — build mais recente" \
             --latest \
             --notes "Build automático do commit $GITHUB_SHA na branch main. Os instaladores não são assinados: no macOS, rode \`xattr -cr /Applications/TrueMain.app\` depois de copiar o app; no Windows, o SmartScreen pede para confirmar ('Mais informações' → 'Executar assim mesmo')."
