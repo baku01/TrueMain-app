@@ -181,20 +181,34 @@ fn entry() -> Result<keyring::Entry, String> {
 }
 
 #[cfg(any(target_os = "macos", windows))]
-pub(crate) fn read_saved() -> Option<String> {
+fn keychain_read() -> Option<String> {
     entry().ok()?.get_password().ok()
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]
-pub(crate) fn read_saved() -> Option<String> {
+fn keychain_read() -> Option<String> {
     None
+}
+
+/// What the keychain held when it was last touched in this run: `None` until
+/// the first read. Every access to the credential store can ask the player
+/// for permission (macOS asks again for each build signed ad hoc), so the key
+/// is read from it once per run, then kept here — and updated by a save or a
+/// removal, never re-read.
+static KEY_IN_MEMORY: std::sync::Mutex<Option<Option<String>>> = std::sync::Mutex::new(None);
+
+pub(crate) fn read_saved() -> Option<String> {
+    let mut held = KEY_IN_MEMORY.lock().expect("key cache poisoned");
+    held.get_or_insert_with(keychain_read).clone()
 }
 
 #[cfg(any(target_os = "macos", windows))]
 fn write_saved(key: &str) -> Result<(), String> {
     entry()?
         .set_password(key)
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    *KEY_IN_MEMORY.lock().expect("key cache poisoned") = Some(Some(key.to_string()));
+    Ok(())
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]
@@ -205,7 +219,10 @@ fn write_saved(_key: &str) -> Result<(), String> {
 #[cfg(any(target_os = "macos", windows))]
 fn delete_saved() -> Result<(), String> {
     match entry()?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Ok(()) | Err(keyring::Error::NoEntry) => {
+            *KEY_IN_MEMORY.lock().expect("key cache poisoned") = Some(None);
+            Ok(())
+        }
         Err(error) => Err(error.to_string()),
     }
 }
