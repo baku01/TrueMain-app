@@ -165,8 +165,11 @@ const emptyMessage = computed(() => {
         :rune-tree="runeTree"
         :no-runes-message="shown.key === 'draft' ? t('build.view.noRunes') : null"
         :champion-name="championStatic(championId)?.championName || null"
-      />
-      <BuildTreeBlock :build="shown" :items="items" :item-set-subject="itemSetSubject" />
+      >
+        <template #tree>
+          <BuildTreeBlock :build="shown" :items="items" :item-set-subject="itemSetSubject" />
+        </template>
+      </BuildCore>
     </div>
 
     <div v-else class="flex flex-col items-center justify-center gap-2 p-8 text-center">
