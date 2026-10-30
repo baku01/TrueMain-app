@@ -1,27 +1,28 @@
 <script setup lang="ts">
 import { formatPercentage } from '#shared/utils/ddragon'
+import type { ChampionBuildResponse } from '~/types/build'
 import type { ChampionStats, Tally } from '~/utils/high-elo'
 import { POSITION_BY_CODE, THIN_SAMPLE, winRate } from '~/utils/high-elo'
 import { kitItemGroups } from '~/utils/kit-items'
+import { mostPlayedLane, statsFromSite } from '~/utils/site-build'
 
 /**
- * ProBuild: the builds and runes of the ladder's best players with a champion —
- * their recent ranked games, collected with the player's own Riot key
- * (`ProCollector`) and counted here: how often each keystone, rune, item and
- * pair of spells was taken, and how often the game was won. A champion is
- * picked, a lane and a patch narrow it.
+ * ProBuild: what truemain.lol measured for a champion — how often each
+ * keystone, rune page, item and pair of spells was taken, and how often the
+ * game was won (`useProBuilds`, `utils/site-build.ts`). A champion is picked;
+ * the page opens on its most played lane, and the lanes narrow it.
  */
 const { t } = useT()
 const { champions, nameOf, portraitOf } = useChampionStatics()
 const { items, summoners, runeTree } = useStaticData()
-const { progress, standIn, stats: readStats } = useHighElo()
+const { lanes: readLanes } = useProBuilds()
 
 const query = ref('')
 const championId = ref<number | null>(null)
 const position = ref<string | null>(null)
-const patch = ref<string | null>(null)
 const result = ref<ChampionStats | null>(null)
 const reading = ref(false)
+const answers = ref<Record<string, ChampionBuildResponse>>({})
 
 const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const matches = computed(() => {
@@ -34,22 +35,32 @@ function pick(id: number) {
   championId.value = id
   query.value = nameOf(id)
   position.value = null
-  patch.value = null
 }
 
 async function read() {
   if (championId.value === null) return
+  const id = championId.value
   reading.value = true
   try {
-    result.value = await readStats(championId.value, patch.value, position.value)
+    const read = await readLanes(id)
+    if (id !== championId.value) return
+    answers.value = read
+    // Opened on the lane most played, until another is chosen.
+    position.value ??= mostPlayedLane(read)
+    result.value = statsFromSite(id, read, position.value ?? '')
   }
   finally {
     reading.value = false
   }
 }
 
-// Read again when the pick, a filter or the collection changes: the numbers grow while it runs.
-watch([championId, position, patch, () => progress.value.matchesStored], read)
+watch(championId, () => {
+  result.value = null
+  void read()
+})
+watch(position, (lane) => {
+  if (championId.value !== null && lane) result.value = statsFromSite(championId.value, answers.value, lane)
+})
 
 const groups = computed(() => kitItemGroups(items.value))
 const total = computed(() => result.value?.games ?? 0)
@@ -70,12 +81,6 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
   <SharedPage :eyebrow="t('probuild.eyebrow')" :title="t('probuild.title')">
     <div class="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <PageHeader :eyebrow="t('probuild.eyebrow')" :title="t('probuild.title')" :description="t('probuild.description')" />
-
-      <p v-if="standIn" class="flex items-start gap-2 rounded-lg border border-default bg-elevated/60 px-3 py-2 text-xs text-muted">
-        <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" />{{ t('probuild.standIn') }}
-      </p>
-
-      <ProbuildProCollector />
 
       <section class="space-y-5">
         <div class="relative max-w-md">
@@ -99,14 +104,6 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
               <h2 class="text-xl font-semibold tracking-tight text-highlighted">{{ nameOf(championId) }}</h2>
               <p class="text-sm text-muted">{{ t('probuild.summary', { games: result.games, rate: percent(winRate(result)), patch: result.patch || '—' }) }}</p>
             </div>
-            <USelectMenu
-              v-if="result.patches.length > 1"
-              :model-value="result.patch"
-              :items="result.patches"
-              class="ml-auto w-32"
-              :aria-label="t('probuild.patch')"
-              @update:model-value="patch = $event"
-            />
           </header>
 
           <p v-if="result.games === 0" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('probuild.none') }}</p>
@@ -117,7 +114,6 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
             </p>
 
             <div v-if="lanes.length" class="flex flex-wrap items-center gap-1.5" role="group" :aria-label="t('probuild.roles')">
-              <UButton :label="t('probuild.allRoles')" size="xs" :color="position === null ? 'primary' : 'neutral'" :variant="position === null ? 'soft' : 'ghost'" @click="position = null" />
               <UButton
                 v-for="lane in lanes"
                 :key="lane.id"
