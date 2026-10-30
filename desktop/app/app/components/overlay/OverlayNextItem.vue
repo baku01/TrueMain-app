@@ -71,10 +71,10 @@ const message = computed(() => {
         <span v-else class="text-stat-gold">{{ nextComponent.cost }}</span>
       </span>
     </div>
-    <GameBuildPath v-if="path" :path="path" :statics="statics" :size="22" class="pt-0.5" />
+    <GameBuildPath v-if="path" :path="path" :statics="statics" :size="24" class="pt-1" />
     <!-- The whole build, set apart from the components by a hairline. -->
-    <div class="border-t border-default pt-1.5">
-      <GameBuildOrder :steps="order" :statics="statics" :size="20" />
+    <div class="border-t border-default pt-2">
+      <GameBuildOrder :steps="order" :statics="statics" :size="22" />
     </div>
   </div>
   <div v-else class="flex items-center gap-2.5">

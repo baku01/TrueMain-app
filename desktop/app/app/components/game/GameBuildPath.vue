@@ -14,19 +14,19 @@ withDefaults(defineProps<{ path: BuildPath, statics: Record<number, StaticItemDa
 </script>
 
 <template>
-  <ol v-if="path.entries.length" class="flex flex-wrap items-start gap-1.5" :aria-label="t('game.buildPath')">
+  <ol v-if="path.entries.length" class="flex flex-wrap items-start gap-x-3 gap-y-2.5" :aria-label="t('game.buildPath')">
     <li v-for="(entry, index) in path.entries" :key="`${entry.itemId}-${index}`">
       <div
         v-if="entry.parts.length"
-        class="relative flex gap-1 rounded-md px-1 pt-1.5 pb-0.5 ring-1"
+        class="relative mt-1.5 flex gap-2 rounded-lg px-2 pt-2.5 pb-1 ring-1"
         :class="entry.state === 'buy' ? 'bg-primary/5 ring-primary/30' : 'ring-default'"
         :aria-label="statics[entry.itemId]?.name"
       >
         <GameTooltipItemIcon
           :item="statics[entry.itemId] ?? null"
-          :width="12"
-          :height="12"
-          class="absolute -top-1.5 left-1 size-3 rounded-sm ring-1 ring-default"
+          :width="16"
+          :height="16"
+          class="absolute -top-2 left-1.5 size-4 rounded-sm bg-default ring-1 ring-default"
         />
         <GameBuildPathTile v-for="(part, partIndex) in entry.parts" :key="`${part.itemId}-${partIndex}`" :tile="part" :statics="statics" :size="size" />
       </div>

@@ -16,7 +16,7 @@ const TOP_MARGIN = 56
 
 /** Each panel's width, as its window (`pages/overlay/[panel].vue`) and the editor lay it out. */
 export const PANEL_WIDTHS: Record<OverlayPanel, number> = {
-  'next-item': 232,
+  'next-item': 260,
   'win-probability': 160,
   'item-value': 300,
   'stats': 176,
@@ -30,7 +30,7 @@ export const PANEL_WIDTHS: Record<OverlayPanel, number> = {
  * measured the panel drawn with its sample.
  */
 const HEIGHTS: Record<OverlayPanel, number> = {
-  'next-item': 172,
+  'next-item': 196,
   'win-probability': 48,
   'item-value': 200,
   'stats': 84,

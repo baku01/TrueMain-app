@@ -21,7 +21,7 @@ const label = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-0.5" :aria-label="label">
+  <div class="flex flex-col items-center gap-1" :aria-label="label">
     <div class="relative">
       <GameTooltipItemIcon
         :item="statics[tile.itemId] ?? null"

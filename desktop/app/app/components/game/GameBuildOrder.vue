@@ -13,7 +13,7 @@ withDefaults(defineProps<{ steps: NextItemOrderStep[], statics: Record<number, S
 </script>
 
 <template>
-  <ol v-if="steps.length" class="flex items-center gap-1" :aria-label="t('game.buildOrder')">
+  <ol v-if="steps.length" class="flex items-center gap-1.5" :aria-label="t('game.buildOrder')">
     <li v-for="(step, index) in steps" :key="`${step.itemId}-${index}`" class="relative" :aria-current="step.state === 'Next' ? 'step' : undefined">
       <GameTooltipItemIcon
         :item="statics[step.itemId] ?? null"
