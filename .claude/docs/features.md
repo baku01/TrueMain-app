@@ -260,7 +260,13 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
 - **Riot API key** (`/settings`, gear in the top bar) — the player's own key, typed once, kept by the shell in the system credential store (Keychain / Credential Manager; never in the webview) and verified with one `lol/status/v4/platform-data` call (`src-tauri/src/riot.rs`). Riot's `X-App-Rate-Limit` headers give the key's windows (a personal key is 20/s and 100/2 min), shown with what is spent and the sustained budget per minute. **Nothing in the app spends the key yet.**
 - **Build and skill order of a client-read game** — a game TrueMain never ingested is read from the League client, whose timeline lists no purchases or skill points. With a Riot key saved, the dashboard asks Riot's match timeline for them (`riot_match_events`, `usePlayerGameDetail`) and fills each participant's build order and skill order; without a key, or for a game Riot no longer keeps, the panel says there is no build data.
 - **Language** — English or Português (Brasil), from the language menu in the top bar; the choice is kept across launches and reloads the window. Every visible string (menus, pages, overlay panels, recap, kits, reasons built in code), the item / champion / rune / spell names (Data Dragon `pt_BR`, Community Dragon `pt_br`) and the native menu and tray follow it. Dev-only tools (`/dev/*`) stay English.
-- **Shell** — sidebar (Dashboard, Champions, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
+- **Classes** (`/classes`, `pages/classes.vue`) — every champion by Riot's class and subclass (7 classes, the
+  marksman subclasses a community convention, said on the page), from a fixed table in `utils/champion-classes.ts`
+  (a League wiki snapshot; a champion newer than it lands in "Unclassified"). Each class is a card with its
+  subclasses as panels side by side; class tabs (counting the whole roster) stay pinned at the top while scrolling,
+  and a filter beside the title narrows by name. A champion in two subclasses shows in both, its tooltip naming the
+  other; a click opens its page.
+- **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no
   back/forward, no patch label). Hash routing; the gameflow phase opens `/draft` on its own, and `/game` from home or

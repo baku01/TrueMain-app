@@ -45,9 +45,13 @@ export default defineNuxtConfig({
   router: { options: { hashMode: true } },
   // No server to resolve an icon at runtime and a CSP that only reaches Data
   // Dragon: every icon the source names is bundled at build time instead.
+  // The scan reads `.ts` too: the default globs skip it, so an icon named only
+  // in a util or a composable (the class icons, toast icons) rendered blank.
   icon: {
     provider: 'none',
-    clientBundle: { scan: true },
+    clientBundle: {
+      scan: { globInclude: ['**/*.{vue,jsx,tsx,ts,md,mdc,mdx,yml,yaml}'] },
+    },
   },
   nitro: {
     preset: 'static',
