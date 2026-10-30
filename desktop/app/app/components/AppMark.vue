@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** The site's M-check mark alone: an M whose last stroke becomes a checkmark, on the wordmark's rose-gold ramp. */
+/** The site's M-check mark alone: an M whose last stroke becomes a checkmark, on the app's blue ramp. */
 // Each instance names its own gradient: two marks on one page would otherwise share the first one's.
 const gradient = `tm-mark-${useId()}`
 </script>
@@ -8,9 +8,9 @@ const gradient = `tm-mark-${useId()}`
   <svg viewBox="0 0 64 64" aria-hidden="true">
     <defs>
       <linearGradient :id="gradient" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#f2cfa6" />
-        <stop offset="0.55" stop-color="#e2917e" />
-        <stop offset="1" stop-color="#8a3b44" />
+        <stop offset="0" stop-color="#a5d4ff" />
+        <stop offset="0.55" stop-color="#3b97f7" />
+        <stop offset="1" stop-color="#1659ad" />
       </linearGradient>
     </defs>
     <path

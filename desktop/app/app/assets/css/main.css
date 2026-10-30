@@ -11,21 +11,34 @@
  * every use (the site, which shares the layer, keeps its own).
  */
 :root {
-  --color-rosegold-50: #eff6ff;
-  --color-rosegold-100: #dbeafe;
-  --color-rosegold-200: #bfdbfe;
-  --color-rosegold-300: #93c5fd;
-  --color-rosegold-400: #60a5fa;
-  --color-rosegold-500: #3b82f6;
-  --color-rosegold-600: #2563eb;
-  --color-rosegold-700: #1d4ed8;
-  --color-rosegold-800: #1e40af;
-  --color-rosegold-900: #1e3a8a;
-  --color-rosegold-950: #172554;
-  /* The data axis and the top tier were the same rose; they follow the accent. */
-  --color-data-good: #60a5fa;
+  /* Accent: a clear, slightly cool blue. */
+  --color-rosegold-50: #eef7ff;
+  --color-rosegold-100: #d9edff;
+  --color-rosegold-200: #b9dcff;
+  --color-rosegold-300: #86c2ff;
+  --color-rosegold-400: #52a8ff;
+  --color-rosegold-500: #2b8cf5;
+  --color-rosegold-600: #1a6fd6;
+  --color-rosegold-700: #1659ad;
+  --color-rosegold-800: #174a8a;
+  --color-rosegold-900: #173f70;
+  --color-rosegold-950: #0f2646;
+  /* Neutrals: the charcoal leans navy, so every grey of the app — text, borders, wells — is tinted the same way. */
+  --color-ink-50: #f4f7fb;
+  --color-ink-100: #e8edf5;
+  --color-ink-200: #d1d9e6;
+  --color-ink-300: #aeb9cc;
+  --color-ink-400: #8693ab;
+  --color-ink-500: #61708a;
+  --color-ink-600: #45536b;
+  --color-ink-700: #2d3a4f;
+  --color-ink-800: #1c2535;
+  --color-ink-900: #111827;
+  --color-ink-950: #080c14;
+/* The data axis and the top tier were the same rose; they follow the accent. */
+  --color-data-good: #52a8ff;
   --color-data-good-dim: #7f9cc4;
-  --color-tier-s: #60a5fa;
+  --color-tier-s: #52a8ff;
 }
 
 /*
@@ -35,8 +48,16 @@
  * `:root:not(.dark)` out-specifies the layer's `:root` block whatever the
  * source order.
  */
-:root {
+:root,
+:root.dark {
   color-scheme: dark;
+  --ui-bg: #080c14;
+  --ui-bg-muted: #0d121c;
+  --ui-bg-elevated: #131a27;
+  --ui-bg-accented: #1b2434;
+  --ui-bg-surface: color-mix(in oklch, #0d121c 70%, transparent);
+  --ui-border: #1c2535;
+  --ui-border-accented: #2d3a4f;
 }
 
 :root:not(.dark) {
