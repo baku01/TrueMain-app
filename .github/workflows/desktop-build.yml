@@ -100,7 +100,7 @@ jobs:
   release:
     name: Publish the downloads
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -117,9 +117,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          shopt -s nullglob
+          files=(dist/TrueMain-macOS.dmg dist/TrueMain-Windows-setup.exe)
+          existing=()
+          for file in "${files[@]}"; do [ -f "$file" ] && existing+=("$file"); done
+          if [ ${#existing[@]} -eq 0 ]; then
+            echo "::error::Neither platform produced an installer"
+            exit 1
+          fi
           ls -la dist
           gh release delete latest --cleanup-tag --yes || true
-          gh release create latest dist/TrueMain-macOS.dmg dist/TrueMain-Windows-setup.exe \
+          gh release create latest "${existing[@]}" \
             --target "$GITHUB_SHA" \
             --title "TrueMain App — build mais recente" \
             --latest \
