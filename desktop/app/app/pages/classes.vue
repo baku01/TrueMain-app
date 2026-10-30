@@ -46,6 +46,7 @@ function alsoTitle(id: number, here: SubclassId) {
 <template>
   <SharedPage :eyebrow="t('classes.eyebrow')" :title="t('classes.page.title')">
     <div class="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
+      <div class="relative">
       <PageHeader :eyebrow="t('classes.eyebrow')" :title="t('classes.page.title')" :description="t('classes.page.description')">
         <div class="flex flex-wrap items-center gap-3">
           <div class="inline-flex flex-wrap overflow-hidden rounded-lg border border-default" role="group" :aria-label="t('classes.page.title')">
@@ -63,9 +64,17 @@ function alsoTitle(id: number, here: SubclassId) {
               <span class="text-[11px] text-dimmed">{{ tab.count }}</span>
             </button>
           </div>
-          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('classes.search')" class="ml-auto w-64" :aria-label="t('classes.search')" />
         </div>
       </PageHeader>
+      <!-- Beside the title, where the eye lands first, rather than on a row of its own under the filters. -->
+      <UInput
+        v-model="query"
+        icon="i-lucide-search"
+        :placeholder="t('classes.search')"
+        class="mt-3 w-full md:absolute md:right-0 md:top-7 md:mt-0 md:w-72"
+        :aria-label="t('classes.search')"
+      />
+      </div>
 
       <section v-for="group in visible" :key="group.class.id" class="space-y-6">
         <header class="flex items-start gap-4 border-b border-default pb-5">
