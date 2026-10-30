@@ -6,10 +6,11 @@ import type { ChampionStaticData, RuneTreeResponse, StaticItemData, StaticSummon
  * The core of a build, from the site's own blocks (`Champion/Core/*`), laid out
  * in cards for the app's pane rather than spread by flex as the site's
  * `Champion/BuildPanel/Core` does. From a 56rem container, two columns: the
- * runes, large, with the skill order under them, and beside them the small
+ * runes, large, and beside them the small
  * pieces — summoners, starter, boots — in a band with the build's item tree
- * under it (the `tree` slot). Narrower, the same cards stack, the band and the
- * tree first. There is no
+ * under it (the `tree` slot); the skill order, with its level-by-level grid,
+ * across the bottom (`BuildSkillGrid`). Narrower, the same cards stack, the band
+ * and the tree first. There is no
  * build path line: the tree draws it, item by item.
  *
  * The runes carry the import button in their corner (#1678).
@@ -47,9 +48,6 @@ withDefaults(defineProps<{
           </div>
           <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" class="absolute right-3 top-3" />
         </div>
-        <div v-if="championStatic" class="flex-1 rounded-xl border border-default bg-default/40 p-4">
-          <ChampionCoreSkillOrder :skill-order="skillOrder" :champion-static="championStatic" />
-        </div>
       </div>
 
       <div class="order-first flex min-w-0 flex-col gap-4 @4xl:order-none">
@@ -70,6 +68,11 @@ withDefaults(defineProps<{
           <slot name="tree" />
         </div>
       </div>
+    </div>
+
+    <!-- The skill order across the bottom: the priority and, beside it, the level-by-level grid. -->
+    <div v-if="championStatic" class="mt-4 rounded-xl border border-default bg-default/40 p-4">
+      <BuildSkillGrid :skill-order="skillOrder" :champion-static="championStatic" />
     </div>
   </div>
 </template>
