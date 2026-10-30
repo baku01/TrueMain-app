@@ -3,6 +3,8 @@ import type { AxisCluster, AxisEvent } from '#common/utils/timeline-events'
 import { AXIS_CLUSTER_PX, axisRows, clusterAxisEvents, clusterNear } from '#common/utils/timeline-events'
 import { formatGameClock } from '#common/utils/win-probability-swing'
 
+const { t } = useT()
+
 /**
  * Under the gold / XP / CS curves and their lead band: the game's kills and
  * objectives as dots on a time axis, drawn after the desktop recap's timeline
@@ -55,7 +57,7 @@ function describe(cluster: AxisCluster) {
     const what = row.type === 'objective'
       ? row.marker.label
       : `${row.killerId === null ? '' : props.champion(row.killerId).name + ' '}${row.label.toLowerCase()}: ${row.victimIds.map(id => props.champion(id).name).join(', ')}`
-    return `${what} at ${formatGameClock(row.ms)}`
+    return t('match.axis.at', { what, time: formatGameClock(row.ms) })
   }).join('; ')
 }
 </script>

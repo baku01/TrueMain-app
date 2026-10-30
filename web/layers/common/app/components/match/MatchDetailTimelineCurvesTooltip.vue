@@ -3,6 +3,8 @@ import type { CurveMetric, TeamCurves } from '#common/utils/timeline-curves'
 import { formatCurveValue, formatTeamDifference } from '#common/utils/timeline-curves'
 import { formatGameClock } from '#common/utils/win-probability-swing'
 
+const { t } = useT()
+
 // The curves' hover card (#2102): the frame's game clock and team lead, then
 // all ten players at that frame — your side's column first, the enemy's
 // second, highest first in each — as a champion portrait and a figure. Gold is
@@ -60,7 +62,7 @@ const placement = computed(() => (props.x < 50
         v-for="column in columns"
         :key="column.teamId"
         class="flex flex-col gap-0.5"
-        :aria-label="column.ours ? 'Your team' : 'Enemy team'"
+        :aria-label="column.ours ? t('match.team.yours') : t('match.team.enemy')"
       >
         <li
           v-for="row in column.rows"

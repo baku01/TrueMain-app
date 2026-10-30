@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { CURVE_METRICS, type CurveMetric } from '#common/utils/timeline-curves'
 
+const { t } = useT()
+
 // The curves' Gold / XP / CS switch (#2102): the same segmented control as the
 // profile's activity window switch — one choice, one inset strip.
 const metric = defineModel<CurveMetric>({ required: true })
@@ -9,7 +11,7 @@ const metric = defineModel<CurveMetric>({ required: true })
 <template>
   <fieldset class="flex gap-0.5 rounded-md bg-elevated p-0.5">
     <legend class="sr-only">
-      Curve metric
+      {{ t('match.curves.metric') }}
     </legend>
     <button
       v-for="option in CURVE_METRICS"

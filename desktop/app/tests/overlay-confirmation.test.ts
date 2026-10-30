@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { tr } from '#common/utils/i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import OverlayConfirmation from '../app/pages/overlay/confirmation.vue'
@@ -21,6 +22,7 @@ let tauri = true
 
 beforeEach(() => {
   for (const [name, value] of Object.entries({ ref, watch, nextTick, onMounted, onBeforeUnmount })) vi.stubGlobal(name, value)
+  vi.stubGlobal('useT', () => ({ t: tr }))
   vi.stubGlobal('useHead', () => {})
   vi.stubGlobal('insideTauri', () => tauri)
   tauri = true

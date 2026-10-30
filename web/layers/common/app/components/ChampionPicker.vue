@@ -35,6 +35,7 @@ const props = withDefaults(
   { clearable: true },
 )
 
+const { t } = useT()
 const emit = defineEmits<{
   'update:championId': [value: number | null]
 }>()
@@ -91,12 +92,12 @@ function clear(event: Event) {
     <USelectMenu
       :model-value="selectedChampion"
       :items="championItems"
-      :placeholder="placeholder ?? 'Any champion'"
+      :placeholder="placeholder ?? t('common.anyChampion')"
       :avatar="triggerAvatar"
       :size="size"
       :disabled="disabled"
       searchable
-      searchable-placeholder="Search champion…"
+      :searchable-placeholder="t('common.searchChampion')"
       class="w-full"
       @update:model-value="onChange"
     >
@@ -125,7 +126,7 @@ function clear(event: Event) {
       v-if="showClear"
       type="button"
       class="absolute inset-y-0 end-7 inline-flex items-center px-1 text-dimmed transition-colors hover:text-default focus:outline-none focus-visible:text-default"
-      aria-label="Clear champion filter"
+      :aria-label="t('common.clearChampionFilter')"
       @click.stop="clear"
     >
       <UIcon name="i-lucide-x" class="size-4" />

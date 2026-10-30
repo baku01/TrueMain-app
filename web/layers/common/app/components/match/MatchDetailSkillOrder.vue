@@ -2,6 +2,8 @@
 import type { MatchDetailSkillEvent } from '#shared/types/match-detail'
 import { isLoadingStatus } from '#common/utils/async-data'
 
+const { t } = useT()
+
 // The selected player's skill order: one column per level (chronological), one
 // row per slot, each row headed by the real spell icon with its Q/W/E/R badge.
 const props = defineProps<{
@@ -39,7 +41,7 @@ const rows = computed(() => [1, 2, 3, 4].map((slot) => {
 </script>
 
 <template>
-  <MatchDetailCard title="Skill order">
+  <MatchDetailCard :title="t('match.skill.title')">
     <!-- `overflow-y-hidden` is explicit: a lone `overflow-x-auto` computes the
          other axis to `auto` too, so any spill raises a phantom vertical
          scrollbar. The inner block is `w-fit mx-auto` so the grid sits centred
@@ -70,6 +72,6 @@ const rows = computed(() => [1, 2, 3, 4].map((slot) => {
         </div>
       </div>
     </div>
-    <p v-else class="text-[11px] text-muted">No skill data for this game.</p>
+    <p v-else class="text-[11px] text-muted">{{ t('match.skill.empty') }}</p>
   </MatchDetailCard>
 </template>

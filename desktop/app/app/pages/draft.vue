@@ -7,6 +7,7 @@
  * send it, from `/dev/draft-sim` — see desktop/README.md.
  */
 const { state, screen } = useLcuState()
+const { t } = useT()
 </script>
 
 <template>
@@ -19,11 +20,9 @@ const { state, screen } = useLcuState()
       <span class="relative inline-flex size-1.5 rounded-full bg-primary" />
     </span>
     <div class="relative space-y-2">
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">Not in champion select</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('draft.page.title') }}</h1>
       <p class="max-w-sm text-sm text-muted">
-        {{ state.connected
-          ? 'This page opens on its own when your next champion select starts.'
-          : 'Start League of Legends: this page follows you into champion select on its own.' }}
+        {{ state.connected ? t('draft.page.connected') : t('draft.page.disconnected') }}
       </p>
     </div>
   </div>

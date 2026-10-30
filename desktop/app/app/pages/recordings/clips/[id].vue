@@ -4,6 +4,8 @@ import type { RecordingWinProbability } from '~/types/recordings'
 import { formatClock, momentCast } from '~/utils/recording-moments'
 import { getQueueLabel } from '#common/utils/queues'
 
+const { t } = useT()
+
 /**
  * A saved clip's player: the clip's own file with the moments inside it on its
  * timeline, its title (renamed in place), favourite, publishing on YouTube,
@@ -56,7 +58,7 @@ async function remove() {
 <template>
   <div v-if="clip" class="flex h-full flex-col gap-3 overflow-y-auto p-4">
     <header class="flex items-center gap-3">
-      <UButton to="/recordings" icon="i-lucide-arrow-left" color="neutral" variant="ghost" size="sm" aria-label="Back to recordings" />
+      <UButton to="/recordings" icon="i-lucide-arrow-left" color="neutral" variant="ghost" size="sm" :aria-label="t('rec.clip.back')" />
       <ChampionPortrait :champion-id="clip.championId" size="sm" />
       <div class="min-w-0 flex-1 leading-tight">
         <UInput
@@ -66,24 +68,24 @@ async function remove() {
           size="sm"
           :maxlength="80"
           class="w-full max-w-md"
-          aria-label="Clip name"
+          :aria-label="t('rec.clip.name')"
           @keydown.enter="commitRename"
           @keydown.esc="editing = false"
           @blur="commitRename"
         />
-        <button v-else type="button" class="group flex max-w-full items-center gap-1.5 text-left" title="Rename" @click="startRename">
+        <button v-else type="button" class="group flex max-w-full items-center gap-1.5 text-left" :title="t('rec.clip.rename')" @click="startRename">
           <h1 class="truncate text-lg font-semibold tracking-tight text-highlighted">{{ clip.title }}</h1>
           <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-dimmed opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
         <p class="flex items-center gap-1.5 truncate text-xs text-muted tabular-nums">
-          <span class="text-default">{{ clip.championId ? nameOf(clip.championId) : 'Game' }}<template v-if="clip.win !== null"> · {{ clip.win ? 'Victory' : 'Defeat' }}</template></span>
+          <span class="text-default">{{ clip.championId ? nameOf(clip.championId) : t('rec.card.game') }}<template v-if="clip.win !== null"> · {{ clip.win ? t('rec.lib.victory') : t('rec.lib.defeat') }}</template></span>
           <template v-if="kda"><span>{{ kda.line }}</span><span>{{ kda.ratio }}</span></template>
           <span class="text-dimmed">·</span>
           <span>{{ getQueueLabel(clip.queueId) }}</span>
           <span class="text-dimmed">·</span>
-          <span>{{ dayLabel(clip.gameStartedAtMs) }}, at {{ formatClock(clip.startMs) }}</span>
+          <span>{{ t('rec.clip.dayAt', { day: dayLabel(clip.gameStartedAtMs), time: formatClock(clip.startMs) }) }}</span>
           <span class="text-dimmed">·</span>
-          <span>{{ clip.videoOnDisk ? formatBytes(clip.sizeBytes) : 'On YouTube only' }}</span>
+          <span>{{ clip.videoOnDisk ? formatBytes(clip.sizeBytes) : t('rec.clip.youtubeOnly') }}</span>
         </p>
       </div>
 
@@ -92,7 +94,7 @@ async function remove() {
           v-if="source"
           :to="`/recordings/${encodeURIComponent(source.id)}`"
           icon="i-lucide-film"
-          label="Full game"
+          :label="t('rec.card.fullGame')"
           color="neutral"
           variant="outline"
           size="sm"
@@ -100,7 +102,7 @@ async function remove() {
         <UButton
           v-if="clip.youtubeUrl && clip.videoOnDisk"
           icon="i-lucide-youtube"
-          label="Watch on YouTube"
+          :label="t('rec.watchYoutube')"
           color="neutral"
           variant="outline"
           size="sm"
@@ -112,16 +114,16 @@ async function remove() {
           color="neutral"
           variant="ghost"
           size="sm"
-          aria-label="Remove the video from this PC"
-          title="Remove the video from this PC — it plays from YouTube"
+          :aria-label="t('rec.clip.removeVideo')"
+          :title="t('rec.clip.removeVideoTitle')"
           @click="freeing = true"
         />
         <UButton
           v-if="clip.videoOnDisk"
           icon="i-lucide-youtube"
-          :label="clip.youtubeUrl ? undefined : 'Publish on YouTube'"
-          :aria-label="clip.youtubeUrl ? 'Publish on YouTube' : undefined"
-          :title="clip.youtubeUrl ? 'Publish on YouTube' : undefined"
+          :label="clip.youtubeUrl ? undefined : t('rec.publish.action')"
+          :aria-label="clip.youtubeUrl ? t('rec.publish.action') : undefined"
+          :title="clip.youtubeUrl ? t('rec.publish.action') : undefined"
           :color="clip.youtubeUrl ? 'neutral' : 'primary'"
           :variant="clip.youtubeUrl ? 'ghost' : 'soft'"
           size="sm"
@@ -133,12 +135,12 @@ async function remove() {
           :variant="clip.favorite ? 'soft' : 'ghost'"
           size="sm"
           :aria-pressed="clip.favorite"
-          :aria-label="clip.favorite ? 'Remove from favourites' : 'Add to favourites'"
-          :title="clip.favorite ? 'Remove from favourites' : 'Add to favourites'"
+          :aria-label="clip.favorite ? t('rec.favourite.remove') : t('rec.favourite.add')"
+          :title="clip.favorite ? t('rec.favourite.remove') : t('rec.favourite.add')"
           @click="updateClip(clip.id, { favorite: !clip.favorite })"
         />
         <UButton v-if="clip.videoOnDisk" icon="i-lucide-folder-open" color="neutral" variant="ghost" size="sm" :aria-label="revealLabel()" :title="revealLabel()" @click="reveal(clip.videoPath)" />
-        <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" aria-label="Delete clip" title="Delete clip" @click="confirming = true" />
+        <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" :aria-label="t('rec.deleteClip')" :title="t('rec.deleteClip')" @click="confirming = true" />
       </div>
     </header>
 
@@ -157,9 +159,9 @@ async function remove() {
 
     <RecordingsConfirm
       v-model:open="confirming"
-      title="Delete this clip?"
-      :description="clip.videoOnDisk ? `&quot;${clip.title}&quot; is removed from your disk.` : `&quot;${clip.title}&quot; leaves your recordings; the video stays on YouTube.`"
-      confirm-label="Delete clip"
+      :title="t('rec.confirmClip.title')"
+      :description="clip.videoOnDisk ? t('rec.confirmClip.onDisk', { title: clip.title }) : t('rec.confirmClip.youtubeOnly', { title: clip.title })"
+      :confirm-label="t('rec.deleteClip')"
       @confirm="remove"
     />
   </div>
@@ -167,8 +169,8 @@ async function remove() {
   <div v-else-if="loadState !== 'pending' && library" class="flex h-full items-center justify-center">
     <UEmpty
       icon="i-lucide-scissors"
-      title="This clip is no longer on disk"
-      :actions="[{ label: 'Recordings', icon: 'i-lucide-arrow-left', color: 'neutral', variant: 'outline', to: '/recordings' }]"
+      :title="t('rec.clip.missing')"
+      :actions="[{ label: t('rec.page.title'), icon: 'i-lucide-arrow-left', color: 'neutral', variant: 'outline', to: '/recordings' }]"
       variant="naked"
     />
   </div>

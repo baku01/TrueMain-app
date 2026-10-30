@@ -10,6 +10,7 @@
 import { itemTitle, latestClips } from '~/utils/recording-library'
 
 const SLOTS = 4
+const { t } = useT()
 
 const { library, status } = useRecordings()
 const { nameOf } = useChampionStatics()
@@ -23,10 +24,10 @@ const playerPath = (id: string) => `/recordings/clips/${encodeURIComponent(id)}`
 <template>
   <section v-if="clips.length" class="surface flex flex-col gap-3 rounded-lg px-4 py-3">
     <div class="flex items-center justify-between">
-      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">Latest clips</h2>
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">{{ t('dash.clips.latest') }}</h2>
       <UButton
         to="/recordings?kind=clips"
-        label="See all"
+        :label="t('dash.clips.seeAll')"
         trailing-icon="i-lucide-chevron-right"
         color="neutral"
         variant="link"

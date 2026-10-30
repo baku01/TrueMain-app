@@ -11,12 +11,13 @@ import { favouriteClips, recordingKda } from '~/utils/recording-library'
 
 const { library, updateClip } = useRecordings()
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 
 const clips = computed(() => favouriteClips(library.value))
 
 function summary(clip: (typeof clips.value)[number]) {
-  const parts = [clip.championId ? nameOf(clip.championId) : 'Game']
-  if (clip.win !== null) parts.push(clip.win ? 'Victory' : 'Defeat')
+  const parts = [clip.championId ? nameOf(clip.championId) : t('dash.favorites.game')]
+  if (clip.win !== null) parts.push(clip.win ? t('dash.result.victory') : t('dash.result.defeat'))
   const kda = recordingKda(clip)
   if (kda) parts.push(kda.line)
   return parts.join(' · ')
@@ -26,7 +27,7 @@ function summary(clip: (typeof clips.value)[number]) {
 <template>
   <section v-if="clips.length" class="space-y-3" aria-labelledby="favorites-clips">
     <h2 id="favorites-clips" class="eyebrow">
-      Clips
+      {{ t('dash.favorites.clips') }}
     </h2>
     <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <li v-for="clip in clips" :key="clip.id" class="surface flex items-center gap-2 rounded-lg p-1.5">
@@ -42,7 +43,7 @@ function summary(clip: (typeof clips.value)[number]) {
         </NuxtLink>
         <FavoriteStar
           active
-          :label="`Remove ${clip.title} from favorites`"
+          :label="t('dash.favorites.remove', { title: clip.title })"
           @toggle="updateClip(clip.id, { favorite: false })"
         />
       </li>

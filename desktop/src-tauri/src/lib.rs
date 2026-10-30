@@ -406,7 +406,8 @@ pub fn run() {
             champselect::champ_select_lock,
             champselect::champ_select_choices,
             champselect::champ_select_spells,
-            telemetry::telemetry_page
+            telemetry::telemetry_page,
+            menu::set_menu_language
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.

@@ -56,7 +56,7 @@ const props = withDefaults(defineProps<{
   activeChampionId: null,
   scope: 'all',
   mainsOf: null,
-  placeholder: 'Search a champion or player…',
+  placeholder: undefined,
   shortcut: false,
   size: 'md',
 })
@@ -68,12 +68,14 @@ const emit = defineEmits<{
   selectTruemain: [result: SearchResult]
 }>()
 
+const { t } = useT()
 const open = ref(false)
 const term = ref('')
 const router = useRouter()
 const { pathFor } = useChampionSlugs()
 const playersOnly = computed(() => props.scope === 'players')
-const label = computed(() => (playersOnly.value ? 'Search a truemain' : 'Search a champion or player'))
+const label = computed(() => (playersOnly.value ? t('search.truemain') : t('search.championOrPlayer')))
+const placeholderText = computed(() => props.placeholder ?? t('search.placeholder'))
 
 // Champions — shared static list, filtered locally by the palette's Fuse; by
 // id for the mains on each truemain row. One cached read for both.
@@ -179,33 +181,33 @@ function truemainItemsFor(state: Exclude<TruemainSearchState, { kind: 'idle' }>)
   }
 }
 
-const BROWSE: SearchItem[] = [
-  { label: 'Champion tier list', icon: 'i-lucide-swords', onSelect: () => go('/champions') },
-  { label: 'Truemains leaderboard', icon: 'i-lucide-trophy', onSelect: () => go('/truemains') },
-]
+const browse = computed<SearchItem[]>(() => [
+  { label: t('search.browse.tierlist'), icon: 'i-lucide-swords', onSelect: () => go('/champions') },
+  { label: t('search.browse.leaderboard'), icon: 'i-lucide-trophy', onSelect: () => go('/truemains') },
+])
 
 const groups = computed<CommandPaletteGroup<SearchItem>[]>(() => {
   const state = truemainState.value
   const truemains = state.kind === 'idle'
     ? []
-    : [{ id: 'truemains', label: 'Truemains', ignoreFilter: true, items: truemainItemsFor(state) }]
+    : [{ id: 'truemains', label: t('search.group.truemains'), ignoreFilter: true, items: truemainItemsFor(state) }]
   if (playersOnly.value) return truemains
 
   // The reset row mirrors the region select's "All regions"; `ignoreFilter`
   // keeps it reachable while a term is typed, so a mistyped name is one step
   // from undone.
   const filter = props.championMode === 'filter' && props.activeChampionId != null
-    ? [{ id: 'filter', label: 'Filter', ignoreFilter: true, items: [{ label: 'All champions', icon: 'i-lucide-x', onSelect: () => clearFilter() }] }]
+    ? [{ id: 'filter', label: t('search.group.filter'), ignoreFilter: true, items: [{ label: t('search.allChampions'), icon: 'i-lucide-x', onSelect: () => clearFilter() }] }]
     : []
   const knownPlayers = playerItems.value.length
-    ? [{ id: 'players', label: 'Players', ignoreFilter: true, items: playerItems.value }]
+    ? [{ id: 'players', label: t('search.group.players'), ignoreFilter: true, items: playerItems.value }]
     : []
   return [
     ...filter,
-    { id: 'champions', label: 'Champions', items: championItems.value },
+    { id: 'champions', label: t('search.group.champions'), items: championItems.value },
     ...knownPlayers,
     ...truemains,
-    { id: 'browse', label: 'Browse', items: BROWSE },
+    { id: 'browse', label: t('search.group.browse'), items: browse.value },
   ]
 })
 
@@ -235,7 +237,7 @@ defineShortcuts(computed(() => ({
     <SearchTrigger
       :variant="variant"
       :size="size"
-      :placeholder="placeholder"
+      :placeholder="placeholderText"
       :label="label"
       :active-champion="activeChampion"
       @open="open = true"
@@ -244,8 +246,8 @@ defineShortcuts(computed(() => ({
 
     <UModal
       v-model:open="open"
-      title="Search"
-      :description="playersOnly ? 'Search a truemain' : 'Search a champion or a player'"
+      :title="t('search.title')"
+      :description="playersOnly ? t('search.truemain') : t('search.championOrAPlayer')"
       :ui="{ content: 'sm:max-w-xl' }"
     >
       <template #content>
@@ -264,7 +266,7 @@ defineShortcuts(computed(() => ({
         <LazyUCommandPalette
           v-model:search-term="term"
           :groups="groups"
-          :placeholder="placeholder"
+          :placeholder="placeholderText"
           :loading="status === 'pending'"
           icon="i-lucide-search"
           class="h-96"

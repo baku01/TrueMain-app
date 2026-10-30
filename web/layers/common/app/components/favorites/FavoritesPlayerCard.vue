@@ -11,6 +11,8 @@ import { truemainProfilePath } from '#shared/utils/truemain-path'
 import { platformIdToRegion } from '#shared/utils/region'
 import { formatRank } from '#common/utils/tiers'
 
+const { t } = useT()
+
 // One followed player on the favorites view: identity + ranked summary from
 // the profile endpoint, then their latest games rendered with the shared
 // <MatchRow> used by the profile page's match history.
@@ -110,9 +112,9 @@ const staticBundleReady = computed(() =>
           <USkeleton v-if="profileLoading" class="h-3 w-28" />
           <span v-else-if="rankedLabel" class="text-xs text-muted tabular-nums">
             {{ rankedLabel }}
-            <template v-if="winRateLabel"> · {{ winRateLabel }} WR</template>
+            <template v-if="winRateLabel"> · {{ t('favorites.wr', { rate: winRateLabel }) }}</template>
           </span>
-          <span v-else class="text-xs text-muted">Unranked</span>
+          <span v-else class="text-xs text-muted">{{ t('favorites.unranked') }}</span>
         </template>
       </Account>
 
@@ -134,7 +136,7 @@ const staticBundleReady = computed(() =>
       <template v-if="profileNotFound">
         <UEmpty
           size="xs"
-          description="This player is no longer tracked. Unfollow them to clean up the list."
+          :description="t('favorites.notTracked')"
         />
       </template>
       <template v-else-if="matchesLoading || !staticBundleReady">
@@ -143,7 +145,7 @@ const staticBundleReady = computed(() =>
       <template v-else-if="matchesNotFound || matches.length === 0">
         <UEmpty
           size="xs"
-          description="No tracked matches yet."
+          :description="t('favorites.noMatches')"
         />
       </template>
       <template v-else>
@@ -161,7 +163,7 @@ const staticBundleReady = computed(() =>
           :to="profileHref"
           class="block px-1 pt-1 text-center text-xs font-medium text-primary hover:underline"
         >
-          Full match history
+          {{ t('favorites.fullHistory') }}
         </NuxtLink>
       </template>
     </div>

@@ -19,7 +19,8 @@ import { nudgeLabel } from '~/utils/scoreboard-geometry'
 const { view, save, preview, readBinds } = useGameOverlay()
 const current = computed(() => view.value?.settings ?? null)
 
-const SHOWS: { value: OverlayShow, label: string }[] = [{ value: 'always', label: 'Whole game' }, { value: 'whileDead', label: 'While dead' }]
+const { t } = useT()
+const SHOWS: { value: OverlayShow, label: string }[] = [{ value: 'always', label: t('overlay.settings.showAlways') }, { value: 'whileDead', label: t('overlay.settings.showWhileDead') }]
 
 function apply(change: Partial<OverlaySettings>) {
   void save(change)
@@ -68,12 +69,12 @@ onBeforeUnmount(() => void preview(false))
   <div class="flex h-full flex-col gap-4 overflow-y-auto p-5">
     <div class="flex items-center gap-3">
       <UIcon name="i-lucide-layers" class="size-6 text-primary" />
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">Overlay</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('overlay.title') }}</h1>
       <USwitch
         v-if="current"
         class="ml-auto"
         :model-value="current.enabled"
-        label="Show in game"
+        :label="t('overlay.settings.showInGame')"
         :disabled="view?.supported === false"
         @update:model-value="apply({ enabled: $event })"
       />
@@ -84,8 +85,8 @@ onBeforeUnmount(() => void preview(false))
       color="neutral"
       variant="subtle"
       icon="i-lucide-monitor-x"
-      title="The overlay works on macOS and Windows."
-      description="The game page shows the same panels in this window."
+      :title="t('overlay.settings.unsupported.title')"
+      :description="t('overlay.settings.unsupported.description')"
     />
     <UAlert v-else-if="view?.notice" color="neutral" variant="subtle" icon="i-lucide-info" :description="view.notice" />
 
@@ -101,13 +102,13 @@ onBeforeUnmount(() => void preview(false))
       @hide="hide"
     >
       <section class="flex flex-col gap-2">
-        <h3 class="stat-label">On your screen</h3>
+        <h3 class="stat-label">{{ t('overlay.settings.onScreen') }}</h3>
         <p class="text-xs text-muted">
-          {{ view?.preview ? 'The panels are over your screen: drag each where it goes, then Done.' : 'Or show the panels over your real screen and drag them there.' }}
+          {{ view?.preview ? t('overlay.settings.onScreenPreviewing') : t('overlay.settings.onScreenIdle') }}
         </p>
         <div class="flex gap-2">
           <UButton
-            :label="view?.preview ? 'Done' : 'Place on screen'"
+            :label="view?.preview ? t('overlay.settings.done') : t('overlay.settings.placeOnScreen')"
             :icon="view?.preview ? 'i-lucide-check' : 'i-lucide-move'"
             size="xs"
             :color="view?.preview ? 'primary' : 'neutral'"
@@ -115,17 +116,17 @@ onBeforeUnmount(() => void preview(false))
             :disabled="!view?.supported"
             @click="preview(!view?.preview)"
           />
-          <UButton v-if="moved" label="Reset positions" icon="i-lucide-rotate-ccw" size="xs" color="neutral" variant="ghost" @click="resetPositions" />
+          <UButton v-if="moved" :label="t('overlay.settings.resetPositions')" icon="i-lucide-rotate-ccw" size="xs" color="neutral" variant="ghost" @click="resetPositions" />
         </div>
       </section>
 
       <section v-if="current.nextItem.enabled" class="flex flex-col gap-2">
-        <h3 class="stat-label">Build path shows</h3>
+        <h3 class="stat-label">{{ t('overlay.settings.buildPathShows') }}</h3>
         <RecordingsSegmented :model-value="current.show" :items="SHOWS" @update:model-value="apply({ show: $event })" />
       </section>
 
       <section v-if="shownPanels.length" class="flex flex-col gap-3">
-        <h3 class="stat-label">In game, shown</h3>
+        <h3 class="stat-label">{{ t('overlay.settings.inGameShown') }}</h3>
         <OverlayTriggerPicker
           v-for="panel in shownPanels"
           :key="panel"
@@ -138,7 +139,7 @@ onBeforeUnmount(() => void preview(false))
 
       <section v-if="current.laneGold.enabled" class="flex flex-col gap-2">
         <div class="flex items-baseline justify-between">
-          <h3 class="stat-label">Lane gold nudge</h3>
+          <h3 class="stat-label">{{ t('overlay.settings.laneGoldNudge') }}</h3>
           <span class="stat-value text-sm">{{ nudgeLabel(nudge) }}</span>
         </div>
         <USlider
@@ -153,7 +154,7 @@ onBeforeUnmount(() => void preview(false))
 
       <section class="flex flex-col gap-2">
         <div class="flex items-baseline justify-between">
-          <h3 class="stat-label">Size</h3>
+          <h3 class="stat-label">{{ t('overlay.settings.size') }}</h3>
           <span class="stat-value text-sm">{{ formatPercentage(scale, 0) }}</span>
         </div>
         <USlider
@@ -168,7 +169,7 @@ onBeforeUnmount(() => void preview(false))
 
       <section class="flex flex-col gap-2">
         <div class="flex items-baseline justify-between">
-          <h3 class="stat-label">Opacity</h3>
+          <h3 class="stat-label">{{ t('overlay.settings.opacity') }}</h3>
           <span class="stat-value text-sm">{{ formatPercentage(opacity, 0) }}</span>
         </div>
         <USlider
@@ -182,10 +183,10 @@ onBeforeUnmount(() => void preview(false))
       </section>
 
       <section class="flex flex-col gap-2">
-        <h3 class="stat-label">Shortcut</h3>
+        <h3 class="stat-label">{{ t('overlay.settings.shortcut') }}</h3>
         <div class="flex items-center gap-2 text-xs text-muted">
           <UKbd size="md">{{ view?.shortcut }}</UKbd>
-          <span>hides it until the game ends; again to bring it back.</span>
+          <span>{{ t('overlay.settings.shortcutHint') }}</span>
         </div>
       </section>
     </OverlayLayoutEditor>

@@ -38,6 +38,7 @@ const props = defineProps<{
 }>()
 
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 
 const texts = computed(() => props.reasons.map(reason => describeReason(reason, nameOf, props.position)))
 const lead = computed(() => texts.value[0] ?? null)
@@ -53,10 +54,10 @@ const why = computed(() => {
   const note = props.note?.text ?? null
   const comfort = props.comfort ?? null
   if (!texts.value.length) {
-    const lane = props.entry ? `Win rate on this lane: ${formatPercentage(props.entry.winRate)} over ${formatCount(props.entry.games)} games` : null
+    const lane = props.entry ? t('draft.card.laneWinRate', { rate: formatPercentage(props.entry.winRate), games: formatCount(props.entry.games) }) : null
     return [lane, note, comfort].filter(Boolean).join('\n') || undefined
   }
-  return [...texts.value.map(text => text.full), props.thin ? 'Few games behind these figures' : null, note, comfort].filter(Boolean).join('\n')
+  return [...texts.value.map(text => text.full), props.thin ? t('draft.card.fewGamesBehind') : null, note, comfort].filter(Boolean).join('\n')
 })
 </script>
 
@@ -64,7 +65,7 @@ const why = computed(() => {
   <div class="relative flex h-full w-[112px] shrink-0 flex-col justify-end gap-1.5" :title="why">
     <p class="text-center font-bold tabular-nums leading-none tracking-tight" :class="[tone, focused ? 'text-[26px]' : 'text-[22px]']">
       <template v-if="lead">{{ lead.headline }}<span class="text-xs"> {{ lead.unit }}</span></template>
-      <template v-else-if="entry">{{ formatPercentage(entry.winRate) }}<span class="text-xs"> WR</span></template>
+      <template v-else-if="entry">{{ formatPercentage(entry.winRate) }}<span class="text-xs"> {{ t('draft.card.wr') }}</span></template>
     </p>
 
     <div
@@ -80,21 +81,21 @@ const why = computed(() => {
         <p v-if="lead" class="truncate text-[11px] leading-tight text-muted">{{ lead.short }}</p>
         <div v-if="focused && entry" class="grid grid-cols-2 gap-1">
           <div class="flex flex-col">
-            <span class="stat-label text-[9px]!">Win rate</span>
+            <span class="stat-label text-[9px]!">{{ t('draft.card.winRate') }}</span>
             <span class="stat-value text-xs">{{ formatPercentage(entry.winRate) }}</span>
           </div>
           <div class="flex flex-col">
-            <span class="stat-label text-[9px]!">Pick rate</span>
+            <span class="stat-label text-[9px]!">{{ t('draft.card.pickRate') }}</span>
             <span class="stat-value text-xs">{{ formatPercentage(entry.pickRate) }}</span>
           </div>
         </div>
-        <UBadge v-if="lead && thin" color="neutral" variant="soft" size="sm" class="self-start">Few games</UBadge>
+        <UBadge v-if="lead && thin" color="neutral" variant="soft" size="sm" class="self-start">{{ t('draft.card.fewGames') }}</UBadge>
         <span
           v-if="note"
           class="flex w-fit items-center gap-1 self-start whitespace-nowrap rounded bg-ink-950/70 px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-white/10"
           :class="note.adds === 'magic' ? 'text-stat-mr' : 'text-stat-ad'"
         >
-          <UIcon name="i-lucide-plus" class="size-2.5" />{{ note.adds === 'magic' ? 'Magic damage' : 'Physical damage' }}
+          <UIcon name="i-lucide-plus" class="size-2.5" />{{ note.adds === 'magic' ? t('draft.card.addsMagic') : t('draft.card.addsPhysical') }}
         </span>
       </div>
       <TierBadge v-if="entry" stacked :tier="entry.tier" class="absolute left-2 top-2 scale-75 origin-top-left" />

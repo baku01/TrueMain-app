@@ -7,6 +7,8 @@ import { isChampionPosition, type ChampionPosition } from '#common/utils/positio
 import { isLoadingStatus } from '#common/utils/async-data'
 import { describeStaleFetchError } from '#common/utils/errors'
 
+const { t } = useT()
+
 const { pathFor } = useChampionSlugs()
 
 const { filters } = useChampionFilters()
@@ -51,7 +53,7 @@ const { status: tierListStatus, refresh: refreshTierList } = tierListFetch
 // toast (#1668); only a failed first load is the inline alert.
 const actionToast = useActionToast()
 const { data: tierList, error: tierListError, staleError: tierListStaleError } = useRefetchFallback(tierListFetch, {
-  onStaleFailure: failure => actionToast.failure('Could not update the tier list', describeStaleFetchError(failure)),
+  onStaleFailure: failure => actionToast.failure(t('pages.tierlist.updateFailed'), describeStaleFetchError(failure)),
 })
 
 // Static champion list (names + icons) — shared composable so navigating between
@@ -120,8 +122,8 @@ await tierListFetch
     <!-- Same header and filter row as the /champions directory, so moving
          between the two pages keeps every control in place. -->
     <PageHeader
-      eyebrow="Meta"
-      title="Tier List"
+      :eyebrow="t('pages.tierlist.eyebrow')"
+      :title="t('pages.tierlist.title')"
     >
       <ChampionListFilters
         :champions="staticList ?? []"
@@ -133,7 +135,7 @@ await tierListFetch
       <FetchErrorAlert
         v-if="error"
         :error="error"
-        title="Failed to load the tier list"
+        :title="t('pages.tierlist.loadFailed')"
       />
 
       <TierlistSkeleton v-else-if="isPending" />
@@ -141,7 +143,7 @@ await tierListFetch
       <template v-else>
         <StaleContentNotice
           :error="tierListStaleError"
-          subject="the previous tiers"
+          :subject="t('pages.tierlist.previousTiers')"
           :on-retry="() => refreshTierList()"
         />
 
@@ -153,7 +155,7 @@ await tierListFetch
             <template #title>
               <div class="flex items-center gap-2">
                 <TierBadge :tier="group.tier" />
-                <span class="text-xs text-muted">{{ group.entries.length }} champions</span>
+                <span class="text-xs text-muted">{{ t('pages.tierlist.championsCount', { count: group.entries.length }) }}</span>
               </div>
             </template>
 
@@ -183,7 +185,7 @@ await tierListFetch
           v-if="!hasRows"
           class="text-sm text-muted"
         >
-          No champions match these filters.
+          {{ t('pages.noChampionsMatch') }}
         </p>
       </template>
 

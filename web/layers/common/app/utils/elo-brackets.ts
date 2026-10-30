@@ -12,6 +12,7 @@
  * It is no longer the *page* default — see `DEFAULT_ELO_BRACKET`.
  */
 
+import { tr } from '#common/utils/i18n'
 import { formatTierName } from '#common/utils/tiers'
 
 /** Ranked tiers, ascending (Iron→Challenger); each apex tier is its own bucket. */
@@ -102,7 +103,7 @@ export function resolveEloBracket(
 /** Human label, e.g. `Gold`, `Gold+`, `All ranks`. */
 export function eloBracketLabel(value: string | null | undefined): string {
   const filter = normalizeEloBracket(value)
-  if (filter === ELO_BRACKET_ALL) return 'All ranks'
+  if (filter === ELO_BRACKET_ALL) return tr('common.allRanks')
   const andAbove = filter.endsWith(ELO_PLUS_SUFFIX)
   const tier = andAbove ? filter.slice(0, -ELO_PLUS_SUFFIX.length) : filter
   const label = formatTierName(tier)

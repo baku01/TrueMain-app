@@ -964,3 +964,14 @@ as that one), listed on each of their champion pages; the My kits page lists the
 no switch any more — every kit on the pick's lane is offered in champion select as rows of the build pane's list,
 beside the draft's build (still the default, answering the matchup) and the favourite truemains' builds; the kit
 picked there is the one the next item follows in game — #2205.
+
+**The desktop app speaks English and Brazilian Portuguese; the site stays English-only.** The language is the player's
+choice in the top bar, kept in `localStorage`, and a change reloads the window: Data Dragon / Community Dragon names
+(items, champions, runes, spells), the shared pages' copies and every rendered string are fetched or built in the
+language active when they loaded, and a reload is the one way to make all of them ask again. Messages live in one
+dictionary file per area (`web/layers/common/app/i18n` for the shared layer, `desktop/app/app/i18n` for the app),
+collected by `import.meta.glob`; `tr()` reads the active language, and `tests/i18n-messages.test.ts` fails on a key
+missing from a language, a drifted `{param}` or a literal key nobody defined. Shared-layer English output stays
+byte-identical, so the site is unaffected. The native menu and tray are the Rust shell's, told the language by the
+webview (`set_menu_language`) (2026-10-30) — no issue yet
+

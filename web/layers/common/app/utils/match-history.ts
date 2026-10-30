@@ -1,4 +1,5 @@
 import type { MatchSummaryResponse } from '#shared/types/matches'
+import { getActiveLocale } from './i18n'
 
 // Day grouping for the match-history lists. A page of 20 identically-shaped
 // rows reads as one undifferentiated wall; players think in play sessions
@@ -20,12 +21,20 @@ export interface MatchDayGroup {
 
 // Shared formatter instances — rebuilding Intl.DateTimeFormat per row is
 // measurable on a long feed (same reason as the relative-time formatter).
-const dayFormatter = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
-const dayWithYearFormatter = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+const FORMATTER_LOCALES = { 'en': 'en-GB', 'pt-BR': 'pt-BR' } as const
+const dayFormatters = new Map<string, { day: Intl.DateTimeFormat, dayWithYear: Intl.DateTimeFormat }>()
+function formattersFor(locale: keyof typeof FORMATTER_LOCALES) {
+  let formatters = dayFormatters.get(locale)
+  if (!formatters) {
+    const tag = FORMATTER_LOCALES[locale]
+    formatters = {
+      day: new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short' }),
+      dayWithYear: new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', year: 'numeric' }),
+    }
+    dayFormatters.set(locale, formatters)
+  }
+  return formatters
+}
 
 const UNKNOWN_DAY_KEY = 'unknown-day'
 
@@ -41,9 +50,10 @@ function localDayKey(date: Date): string {
 export function formatMatchDay(isoTimestamp: string, now: Date = new Date()): string {
   const date = new Date(isoTimestamp)
   if (Number.isNaN(date.getTime())) return ''
+  const { day, dayWithYear } = formattersFor(getActiveLocale())
   return date.getFullYear() === now.getFullYear()
-    ? dayFormatter.format(date)
-    : dayWithYearFormatter.format(date)
+    ? day.format(date)
+    : dayWithYear.format(date)
 }
 
 /**

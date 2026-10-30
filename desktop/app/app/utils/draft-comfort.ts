@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import type { PlayerGame } from '~/types/record'
 
 /** The player's own recent games on one champion: how many of the last `of`, and how many won. */
@@ -25,5 +26,5 @@ export function comfortOf(games: PlayerGame[], championId: number): Comfort | nu
 
 /** "Your Annie: 12 of your last 20 games, 7 wins". */
 export function comfortText(name: string, comfort: Comfort): string {
-  return `Your ${name}: ${comfort.played} of your last ${comfort.of} games, ${comfort.wins} win${comfort.wins === 1 ? '' : 's'}`
+  return tr(comfort.wins === 1 ? 'draft.comfort.one' : 'draft.comfort.other', { name, played: comfort.played, of: comfort.of, wins: comfort.wins })
 }

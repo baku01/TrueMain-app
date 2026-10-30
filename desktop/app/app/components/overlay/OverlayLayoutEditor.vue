@@ -22,6 +22,7 @@ import { platesBox } from '~/utils/scoreboard-geometry'
 const props = defineProps<{ settings: OverlaySettings, chords?: OverlayView['chords'], hud?: HudSettings }>()
 const emit = defineEmits<{ place: [panel: OverlayPanel, custom: Point], show: [panel: OverlayPanel], hide: [panel: OverlayPanel] }>()
 
+const { t } = useT()
 const screen = currentScreen()
 const canvas = ref<HTMLElement | null>(null)
 const tray = useTemplateRef<{ $el: HTMLElement }>('tray')
@@ -175,7 +176,7 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
         class="relative w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse_at_40%_35%,var(--ui-bg-accented),var(--ui-bg-muted)_70%)] ring-1 ring-default"
         :class="ghost?.over && 'ring-primary/60'"
         :style="{ aspectRatio: `${screen.width} / ${screen.height}` }"
-        aria-label="Your screen"
+        :aria-label="t('overlay.editor.screen')"
       >
         <OverlayScreenHud :screen="screen" :scoreboard="settings.laneGold.enabled ? hud : null" />
 
@@ -187,7 +188,7 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
           :style="boxStyle(panel)"
           tabindex="0"
           role="button"
-          :aria-label="onScoreboard(panel) ? `${OVERLAY_PANEL_INFO[panel].label}: on the scoreboard, Delete to remove` : `${OVERLAY_PANEL_INFO[panel].label}: drag to move, arrow keys to nudge, Delete to remove`"
+          :aria-label="t(onScoreboard(panel) ? 'overlay.editor.panelOnScoreboard' : 'overlay.editor.panelMovable', { panel: OVERLAY_PANEL_INFO[panel].label })"
           @pointerdown="!onScoreboard(panel) && begin(panel, 'screen', $event)"
           @keydown="nudge(panel, $event)"
         >
@@ -204,7 +205,7 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
         </div>
 
         <p v-if="!shown.length" class="absolute inset-0 flex items-center justify-center text-sm text-muted">
-          Drag a panel here from the right.
+          {{ t('overlay.editor.empty') }}
         </p>
       </div>
     </div>

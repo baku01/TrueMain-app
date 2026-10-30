@@ -2,6 +2,8 @@
 import type { RecapTurningPoint } from '~/utils/recording-win-probability'
 import { formatGameClock, formatSwingPoints } from '#common/utils/win-probability-swing'
 
+const { t } = useT()
+
 /**
  * The moments that swung the game most (#1911), largest first: when in the
  * game, what happened, and how many points of win probability it moved for
@@ -13,16 +15,16 @@ const emit = defineEmits<{ jump: [point: RecapTurningPoint] }>()
 
 <template>
   <div class="flex flex-col gap-1">
-    <h3 class="stat-label px-1">Turning points</h3>
+    <h3 class="stat-label px-1">{{ t('rec.turning.title') }}</h3>
     <p class="px-1 pb-1 text-xs leading-relaxed text-muted">
-      The moments that moved your side's chance to win most, in points.
+      {{ t('rec.turning.description') }}
     </p>
     <ul class="flex flex-col">
       <li v-for="(point, index) in points" :key="index">
         <button
           type="button"
           class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accented"
-          :title="point.gold ? `${point.label} · ${point.gold} gold` : point.label"
+          :title="point.gold ? t('rec.turning.gold', { label: point.label, gold: point.gold }) : point.label"
           @click="emit('jump', point)"
         >
           <span class="w-9 shrink-0 tabular-nums text-dimmed">{{ formatGameClock(point.gameMs) }}</span>

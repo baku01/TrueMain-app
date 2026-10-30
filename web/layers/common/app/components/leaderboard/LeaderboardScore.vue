@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { TruemainDedication } from '#shared/types/dedication'
 
+const { t } = useT()
+
 // A truemain's score on their signature champion (#1701), with the verdict,
 // the facts and the points each one added on hover. Every figure comes from
 // the API payload — the parts are never recomputed here, so the tooltip can't
@@ -32,14 +34,14 @@ const TOOLTIP_UI = { content: 'p-0 h-auto max-w-none bg-transparent ring-0 shado
         class="font-semibold tabular-nums"
         :class="{ 'underline decoration-dotted underline-offset-2': highlighted }"
       >{{ score }}</span>
-      <span v-if="labelled" class="stat-label mt-0.5">Score</span>
+      <span v-if="labelled" class="stat-label mt-0.5">{{ t('leaderboard.score') }}</span>
     </div>
 
     <template #content>
       <GameTooltipSurface>
         <div class="mb-2 flex w-64 items-center gap-2">
           <p class="min-w-0 flex-1 truncate text-xs font-semibold text-default">
-            {{ TRUEMAIN_SCORE_LABEL }} {{ score }} · {{ championName }}
+            {{ t('dedication.scoreLabel') }} {{ score }} · {{ championName }}
           </p>
           <DedicationVerdict :dedication="dedication" />
         </div>

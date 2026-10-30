@@ -9,6 +9,7 @@ import { lanePicksView } from '~/utils/lane-picks'
  */
 const { laneEntries, status, patch } = useTierList()
 const { nameOf, portraitOf } = useChampionStatics()
+const { t } = useT()
 
 const view = computed(() => lanePicksView(laneEntries, status.value))
 </script>
@@ -18,11 +19,11 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
     <div class="flex items-end justify-between gap-4">
       <div>
         <p class="eyebrow">
-          This patch<template v-if="patch"> · {{ patch }}</template>
+          {{ t('dash.meta.thisPatch') }}<template v-if="patch"> · {{ patch }}</template>
         </p>
-        <h2 class="mt-1 text-2xl font-semibold tracking-tight text-highlighted">The strongest picks, lane by lane.</h2>
+        <h2 class="mt-1 text-2xl font-semibold tracking-tight text-highlighted">{{ t('dash.meta.heading') }}</h2>
       </div>
-      <UButton to="/tierlist" label="Full tier list" trailing-icon="i-lucide-arrow-right" color="primary" variant="link" size="xs" />
+      <UButton to="/tierlist" :label="t('dash.meta.fullTierList')" trailing-icon="i-lucide-arrow-right" color="primary" variant="link" size="xs" />
     </div>
   <div class="grid grid-cols-5 gap-3">
     <div v-for="column in view.columns" :key="column.lane" class="surface flex flex-col overflow-hidden rounded-2xl">
@@ -39,7 +40,7 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
         <span class="relative flex items-end justify-between gap-2">
           <span class="min-w-0 leading-tight">
             <span class="block truncate text-base font-semibold text-highlighted drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)]">{{ nameOf(column.lead.championId) }}</span>
-            <span class="text-xs font-semibold tabular-nums" :class="winRateTone(column.lead.winRate)">{{ formatPercentage(column.lead.winRate) }} WR</span>
+            <span class="text-xs font-semibold tabular-nums" :class="winRateTone(column.lead.winRate)">{{ t('dash.meta.winRate', { rate: formatPercentage(column.lead.winRate) }) }}</span>
           </span>
           <TierBadge :tier="column.lead.tier" stacked />
         </span>
@@ -50,7 +51,7 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
           <img :src="getPositionIconUrl(column.lane)" alt="" class="size-4">
           <span class="text-[11px] font-semibold uppercase tracking-wide text-muted">{{ column.label }}</span>
         </span>
-        <span class="text-xs text-dimmed">Not enough games yet.</span>
+        <span class="text-xs text-dimmed">{{ t('dash.meta.notEnough') }}</span>
       </div>
 
       <ul class="flex flex-col py-1">

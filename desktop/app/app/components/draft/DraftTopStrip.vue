@@ -18,6 +18,7 @@ const props = defineProps<{
 }>()
 
 const { nameOf, portraitOf } = useChampionStatics()
+const { t } = useT()
 
 const pad = (bans: number[]) => Array.from({ length: 5 }, (_, index) => bans[index] ?? null)
 
@@ -43,8 +44,8 @@ const urgent = computed(() => props.secondsLeft > 0 && props.secondsLeft <= 10)
         <img
           v-if="champion !== null && portraitOf(champion)"
           :src="portraitOf(champion)!"
-          :alt="`${nameOf(champion)} banned`"
-          :title="`${nameOf(champion)} banned`"
+          :alt="t('draft.strip.banned', { name: nameOf(champion) })"
+          :title="t('draft.strip.banned', { name: nameOf(champion) })"
           class="img-skeleton size-8 rounded-md object-cover opacity-60 grayscale"
         >
         <span v-else class="flex size-8 items-center justify-center rounded-md bg-elevated ring-1 ring-inset ring-default">

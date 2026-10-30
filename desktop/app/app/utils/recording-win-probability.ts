@@ -1,5 +1,6 @@
 import type { WinProbabilitySwingKind } from '#shared/types/win-probability'
 import type { MomentKind, RecordingWinProbability } from '~/types/recordings'
+import { tr } from '#common/utils/i18n'
 import { buildWinProbability } from '#common/utils/win-probability-timeline'
 import { describeSwing, forTeam, SWINGS_SHOWN, type DescribedSwing } from '#common/utils/win-probability-swing'
 
@@ -65,7 +66,7 @@ export function recapWinProbability(
     perspectiveTeamId: data.teamId,
     championName: (participantId: number) => {
       const championId = champions.get(participantId)
-      return championId ? championName(championId) : 'Unknown'
+      return championId ? championName(championId) : tr('rec.winProb.unknown')
     },
   }
   return {

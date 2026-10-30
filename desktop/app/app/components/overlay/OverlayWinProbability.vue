@@ -10,6 +10,7 @@ import { winProbability } from '~/utils/item-value'
  * side on the left in blue, theirs on the right in red (blue and red sides
  * when spectating) — the colours say which is which, so no labels.
  */
+const { t } = useT()
 const props = defineProps<{ game: GameState, syncedAt: number }>()
 
 // The game is read every couple of seconds and only a change is sent: an
@@ -30,7 +31,7 @@ const ours = computed(() => Math.round(winProbability(props.game, clock.value) *
   <div class="flex flex-col gap-1.5">
     <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-dimmed">
       <AppMark class="size-2.5" />
-      Win probability
+      {{ t('overlay.panel.winProbability.label') }}
     </p>
     <div class="flex items-end justify-between gap-3">
       <span class="stat-value text-2xl leading-none tabular-nums text-ally">{{ ours }}<span class="text-sm">%</span></span>

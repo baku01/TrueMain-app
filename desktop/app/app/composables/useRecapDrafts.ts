@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { Clip, GameRecording } from '~/types/recordings'
+import { tr } from '#common/utils/i18n'
 import { proposeClipTitle } from '~/utils/recording-moments'
 
 /** A range of a full game the player is cutting, not saved yet. */
@@ -41,7 +42,7 @@ export function useRecapDrafts(recording: Ref<GameRecording | null>, lengthMs: R
 
   function propose(startMs: number, endMs: number) {
     const game = recording.value
-    if (!game) return 'Clip'
+    if (!game) return tr('rec.origin.clip')
     return proposeClipTitle(game.moments, startMs, endMs, game.championId ? nameOf(game.championId) : null)
   }
 

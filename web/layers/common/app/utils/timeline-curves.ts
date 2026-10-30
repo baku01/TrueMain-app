@@ -4,6 +4,7 @@ import type {
 } from '#shared/types/win-probability'
 import { formatCount } from '#shared/utils/counts'
 import { formatKilo } from './match-detail-format'
+import { tr } from './i18n'
 
 /**
  * The ten players' gold, experience and creep score over a finished game, and
@@ -17,9 +18,9 @@ import { formatKilo } from './match-detail-format'
 export type CurveMetric = 'gold' | 'xp' | 'cs'
 
 export const CURVE_METRICS: { key: CurveMetric, label: string, unit: string }[] = [
-  { key: 'gold', label: 'Gold', unit: 'gold' },
-  { key: 'xp', label: 'XP', unit: 'XP' },
-  { key: 'cs', label: 'CS', unit: 'CS' },
+  { key: 'gold', get label() { return tr('match.curves.gold') }, get unit() { return tr('match.curves.goldUnit') } },
+  { key: 'xp', get label() { return tr('match.curves.xp') }, get unit() { return tr('match.curves.xp') } },
+  { key: 'cs', get label() { return tr('match.curves.cs') }, get unit() { return tr('match.curves.cs') } },
 ]
 
 export interface CurvePoint {
@@ -149,8 +150,8 @@ export function formatCurveDelta(value: number, metric: CurveMetric): string {
 /** The header's verdict: `Your team +4.3k gold`, `Your team −12 CS`, `Teams even on XP`. */
 export function formatTeamDifference(difference: number, metric: CurveMetric): string {
   const unit = CURVE_METRICS.find(entry => entry.key === metric)!.unit
-  if (Math.round(difference) === 0) return `Teams even on ${unit}`
-  return `Your team ${formatCurveDelta(difference, metric)} ${unit}`
+  if (Math.round(difference) === 0) return tr('match.curves.even', { unit })
+  return tr('match.curves.lead', { delta: formatCurveDelta(difference, metric), unit })
 }
 
 /** The time axis' minute labels: every 5 minutes, every 10 past half an hour. */

@@ -22,6 +22,7 @@ const props = defineProps<{
 }>()
 
 const { portraitOf, nameOf } = useChampionStatics()
+const { t } = useT()
 /** The true-main mark (#1910), from the lookup the page asked. */
 const markOf = useTruemainMarkOf()
 
@@ -73,7 +74,7 @@ const rate = (player: LoadingPlayer) => player.form!.championWins / player.form!
               <p class="flex items-center gap-1 truncate text-xs font-medium text-muted">
                 <UIcon name="i-lucide-eye-off" class="size-3 shrink-0" />{{ nameOf(player.championId) }}
               </p>
-              <p class="text-[11px] text-dimmed">Anonymous</p>
+              <p class="text-[11px] text-dimmed">{{ t('dash.loading.anonymous') }}</p>
             </template>
             <template v-else>
               <p class="flex min-w-0 items-center gap-1 text-xs font-medium text-highlighted">
@@ -83,7 +84,7 @@ const rate = (player: LoadingPlayer) => player.form!.championWins / player.form!
               <p v-if="player.form && player.form.championGames > 0" class="text-[11px] tabular-nums text-muted">
                 {{ player.form.championGames }} · <span :class="rate(player) >= 0.5 ? 'text-data-good' : 'text-data-bad'">{{ formatPercentage(rate(player), 0) }}</span>
               </p>
-              <p v-else-if="player.form" class="text-[11px] text-dimmed">1st</p>
+              <p v-else-if="player.form" class="text-[11px] text-dimmed">{{ t('dash.loading.first') }}</p>
               <p v-else-if="player.failed" class="text-[11px] text-dimmed">–</p>
               <USkeleton v-else class="mt-1 h-2 w-12" />
             </template>

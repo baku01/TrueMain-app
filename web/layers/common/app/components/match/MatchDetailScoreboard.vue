@@ -9,6 +9,8 @@ import type {
 import { formatKilo } from '#common/utils/match-detail-format'
 import { resultTone } from '#common/utils/result-tone'
 
+const { t } = useT()
+
 // One side of the Overview tab: a header with the side's result and real team
 // totals (no fabricated objective/score data), then one `MatchDetailScoreboardRow`
 // per player.
@@ -24,7 +26,7 @@ const props = defineProps<{
 
 const championById = computed(() => new Map(props.champions.map(c => [c.championId, c])))
 const tone = computed(() => resultTone(props.win))
-const sideLabel = computed(() => (props.teamId === 100 ? 'Blue' : 'Red'))
+const sideLabel = computed(() => (props.teamId === 100 ? t('match.scoreboard.blue') : t('match.scoreboard.red')))
 
 // Highest damage across the rendered side — drives every row's damage bar.
 const maxDamage = computed(() =>
@@ -49,7 +51,7 @@ const teamGold = computed(() => props.participants.reduce((sum, p) => sum + p.go
       class="flex items-center justify-between px-3 py-2 text-xs font-semibold"
       :class="tone.text"
     >
-      <span>{{ sideLabel }} team — {{ tone.label }}</span>
+      <span>{{ t('match.scoreboard.team', { side: sideLabel, result: tone.label }) }}</span>
       <span class="flex items-center gap-2 text-muted tabular-nums">
         <span>
           {{ teamKda.k }}<span class="text-muted/60">/</span>{{ teamKda.d }}<span class="text-muted/60">/</span>{{ teamKda.a }}

@@ -1,6 +1,7 @@
 import { formatPercentage } from '#shared/utils/ddragon'
 import { formatKdaRatio, kdaRatio } from '#shared/utils/kda'
 import { POSITIONS } from '#common/utils/positions'
+import { tr } from '#common/utils/i18n'
 import type { PlayerGame } from '~/types/record'
 
 /**
@@ -85,16 +86,16 @@ export const METRICS: MetricDefinition[] = [
   },
   {
     key: 'kp',
-    label: 'Kill part.',
+    get label() { return tr('dash.metric.kp') },
     perGame: game => (game.teamKills ? (game.kills + game.assists) / game.teamKills : null),
     over: games => ratioOfSums(games, game => (game.teamKills ? game.kills + game.assists : null), game => game.teamKills || null),
     format: percent,
   },
-  { key: 'cs', label: 'CS / min', ...perMinute(game => game.cs), format: fixed(1) },
-  { key: 'damage', label: 'DMG / min', ...perMinute(game => game.damageToChampions), format: fixed(0) },
+  { key: 'cs', get label() { return tr('dash.metric.cs') }, ...perMinute(game => game.cs), format: fixed(1) },
+  { key: 'damage', get label() { return tr('dash.metric.damage') }, ...perMinute(game => game.damageToChampions), format: fixed(0) },
   {
     key: 'share',
-    label: 'Damage share',
+    get label() { return tr('dash.metric.share') },
     perGame: game => (game.teamDamageToChampions ? game.damageToChampions / game.teamDamageToChampions : null),
     over: games => ratioOfSums(
       games,
@@ -103,11 +104,11 @@ export const METRICS: MetricDefinition[] = [
     ),
     format: percent,
   },
-  { key: 'gold', label: 'Gold / min', ...perMinute(game => game.gold), format: fixed(0) },
-  { key: 'vision', label: 'Vision / min', ...perMinute(game => game.visionScore), format: fixed(2) },
+  { key: 'gold', get label() { return tr('dash.metric.gold') }, ...perMinute(game => game.gold), format: fixed(0) },
+  { key: 'vision', get label() { return tr('dash.metric.vision') }, ...perMinute(game => game.visionScore), format: fixed(2) },
   {
     key: 'deaths',
-    label: 'Deaths',
+    get label() { return tr('dash.metric.deaths') },
     perGame: game => game.deaths,
     over: games => (games.length ? games.reduce((sum, game) => sum + game.deaths, 0) / games.length : null),
     format: fixed(1),

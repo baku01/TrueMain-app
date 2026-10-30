@@ -2,6 +2,8 @@
 import type { AutoClipKind } from '~/types/recordings'
 import { AUTO_CLIP_KINDS, toggleAutoClip } from '~/utils/auto-clips'
 
+const { t } = useT()
+
 /**
  * The automatic clips (#1766): once a game is finalised, the plays the player
  * picks here are cut as clips of their own, titled from what the game's events
@@ -19,11 +21,11 @@ function toggle(enabled: boolean) {
 
 <template>
   <section class="flex flex-col gap-3">
-    <h3 class="stat-label">Automatic clips</h3>
+    <h3 class="stat-label">{{ t('rec.auto.title') }}</h3>
     <USwitch
       :model-value="on"
-      label="Clip my best plays"
-      description="Once a game is finalised, each play you pick becomes a clip of its own. Clips are never deleted by the budget."
+      :label="t('rec.auto.switch')"
+      :description="t('rec.auto.switchDescription')"
       @update:model-value="toggle"
     />
     <div v-if="on" class="flex flex-col gap-2 pl-1">

@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { tr } from '#common/utils/i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed } from 'vue'
 import type { StaticItemData } from '#shared/types/static-data'
@@ -39,7 +40,10 @@ const path: BuildPath = {
   ],
 }
 
-beforeEach(() => vi.stubGlobal('computed', computed))
+beforeEach(() => {
+  vi.stubGlobal('computed', computed)
+  vi.stubGlobal('useT', () => ({ t: tr }))
+})
 afterEach(() => vi.unstubAllGlobals())
 
 describe('GameBuildPath', () => {

@@ -19,6 +19,7 @@ two environments and the migration path in detail.
 | `rollout.yml` | called by both deploys | Applies migrations over SSH, pre-pulls the images over SSH where enabled, then redeploys the Docker Manager project |
 | `loadtest-preprod.yml` | manual | k6 load test against preprod from a GitHub runner; summary on the job page (`docs/load-testing.md`) |
 | `desktop.yml` | PRs and `develop`/`master` pushes touching `desktop/`, `web/layers/common/` or `web/shared/`, each job on its own paths | fmt, clippy and tests of the desktop app's Rust crates; the macOS capture spike built and published as an artifact; the Windows capture helper built and smoke-tested on a Windows runner; the overlay smoke-tested on a Windows desktop; lint, typecheck, unit tests and static build of its Nuxt app (below) |
+| `desktop-macos.yml` | pushes to any branch but `develop`/`master` touching `desktop/`, `web/layers/common/` or `web/shared/` (Markdown aside), or manual | Builds the desktop app for macOS (universal `.dmg`, ad-hoc signed, no updater artifacts, no secrets) and keeps it as a 14-day artifact; `develop` is built by `desktop-release.yml` instead |
 | `desktop-release.yml` | `develop` pushes touching `desktop/`, `web/layers/common/` or `web/shared/` (Markdown aside), or manual | Builds the desktop app for macOS and Windows: a preprod build every time, a production build on a version bump, served by production once it runs what the build reads (below) |
 | `desktop-promote.yml` | manual, with a version | Serves a desktop production build on truemain.lol by hand — a rollback, or a held build (below) |
 
@@ -151,7 +152,7 @@ the baseline still runs the check — otherwise loosening an entry would be the 
 It also runs `deploy-scripts` for eight seconds, which is cheaper than a second filter output.
 
 Generated code (migrations, the compiled model, build output), every test tree
-and `web/server/utils/dev-api-mock.ts` are excluded — a long test file costs far
+`web/server/utils/dev-api-mock.ts` and the message dictionaries (`**/i18n/*.ts`, one key per line) are excluded — a long test file costs far
 less to read than a long production file. The job runs its own test suite
 (`check-file-size.test.sh`) first, because the check is shell walking a
 directory tree and its failure mode is silently passing.

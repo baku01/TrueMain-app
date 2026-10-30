@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import type { HudSettings } from '~/types/overlay'
 import type { Box, Size } from '~/utils/overlay-layout'
 import { SCOREBOARD_NUDGE } from '~/types/overlay'
@@ -52,8 +53,8 @@ export function scoreboardRows(frame: Size, hud: Pick<HudSettings, 'globalScale'
 
 /** The player's nudge as the Overlay page shows it: `None`, `12 px up`, `8 px down`. */
 export function nudgeLabel(nudge: number): string {
-  if (nudge === 0) return 'None'
-  return `${Math.abs(nudge)} px ${nudge < 0 ? 'up' : 'down'}`
+  if (nudge === 0) return tr('overlay.settings.nudgeNone')
+  return tr(nudge < 0 ? 'overlay.settings.nudgeUp' : 'overlay.settings.nudgeDown', { pixels: Math.abs(nudge) })
 }
 
 /** The lane-gold window on `frame`: `width` wide, on the board's middle, as tall as its rows — the shell's `plates_rect`. */

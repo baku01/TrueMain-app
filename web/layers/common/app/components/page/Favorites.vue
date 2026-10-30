@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useT()
 // Followed truemains + their latest games (#531), then the starred champions
 // (#2080), as the site and the desktop app both render it (#1732).
 // The lists are local to the device (localStorage) until Riot SSO lands, so the
@@ -28,8 +29,8 @@ function clear() {
 }
 
 const breadcrumbItems = [
-  { label: 'Truemains', to: '/truemains' },
-  { label: 'Favorites' },
+  { label: t('pages.favorites.crumbTruemains'), to: '/truemains' },
+  { label: t('pages.favorites.title') },
 ]
 
 // ─── Clear all ─────────────────────────────────────────────────────────────
@@ -89,27 +90,27 @@ const runeTree = computed(() => runeTreeData.value ?? null)
     <UBreadcrumb :items="breadcrumbItems" />
 
     <PageHeader
-      eyebrow="Truemains"
-      title="Favorites"
-      description="Saved on this device only."
+      :eyebrow="t('pages.favorites.eyebrow')"
+      :title="t('pages.favorites.title')"
+      :description="t('pages.favorites.description')"
     >
       <div v-if="hydrated && count > 0" class="flex flex-wrap items-center gap-3">
-        <span class="text-sm text-muted tabular-nums">{{ count }} saved</span>
+        <span class="text-sm text-muted tabular-nums">{{ t('pages.favorites.saved', { count }) }}</span>
         <UButton
           size="xs"
           :color="clearArmed ? 'error' : 'neutral'"
           :variant="clearArmed ? 'soft' : 'ghost'"
           icon="i-lucide-trash-2"
-          :label="clearArmed ? `Remove all ${count}?` : 'Clear all'"
+          :label="clearArmed ? t('pages.favorites.removeAll', { count }) : t('pages.favorites.clearAll')"
           :aria-label="clearArmed
-            ? `Confirm removing all ${count} favorites`
-            : `Clear all ${count} favorites`"
+            ? t('pages.favorites.confirmRemove', { count })
+            : t('pages.favorites.clearAllCount', { count })"
           @click="onClearClick"
           @blur="disarmClear"
         />
         <!-- role=status so the armed state is announced, not just recoloured. -->
         <span v-if="clearArmed" role="status" class="text-xs text-muted">
-          Click again to confirm — this can't be undone.
+          {{ t('pages.favorites.clickAgain') }}
         </span>
       </div>
     </PageHeader>
@@ -131,18 +132,18 @@ const runeTree = computed(() => runeTreeData.value ?? null)
     <UEmpty
       v-else-if="count === 0 && props.extraCount === 0"
       icon="i-lucide-star"
-      title="No favorites yet"
-      description="Follow a player, or star a champion from its page, and it shows up here."
+      :title="t('pages.favorites.emptyTitle')"
+      :description="t('pages.favorites.emptyDescription')"
       :actions="[
-        { to: '/truemains', color: 'primary', variant: 'soft', icon: 'i-lucide-trophy', label: 'Browse the leaderboard' },
-        { to: '/champions', color: 'neutral', variant: 'ghost', icon: 'i-lucide-swords', label: 'Browse champions' },
+        { to: '/truemains', color: 'primary', variant: 'soft', icon: 'i-lucide-trophy', label: t('pages.favorites.browseLeaderboard') },
+        { to: '/champions', color: 'neutral', variant: 'ghost', icon: 'i-lucide-swords', label: t('pages.favorites.browseChampions') },
       ]"
     />
 
     <template v-else>
       <section v-if="favorites.length > 0" class="space-y-3" aria-labelledby="favorites-players">
         <h2 id="favorites-players" class="eyebrow">
-          Players
+          {{ t('pages.favorites.players') }}
         </h2>
         <FavoritesPlayerCard
           v-for="favorite in favorites"
@@ -159,7 +160,7 @@ const runeTree = computed(() => runeTreeData.value ?? null)
 
       <section v-if="favoriteChampions.length > 0" class="space-y-3" aria-labelledby="favorites-champions">
         <h2 id="favorites-champions" class="eyebrow">
-          Champions
+          {{ t('pages.favorites.champions') }}
         </h2>
         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <FavoritesChampionRow

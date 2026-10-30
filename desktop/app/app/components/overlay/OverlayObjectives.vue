@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GameState, NeutralTimers } from '~/types/game'
 import type { ObjectiveKey, PillStatus } from '~/utils/objective-timers'
-import { SOON_SECONDS, dragonLabel, drakeIcon, formatCountdown, objectiveIcon, pillStatus } from '~/utils/objective-timers'
+import { SOON_SECONDS, dragonLabel, drakeIcon, drakeName, formatCountdown, objectiveIcon, pillStatus } from '~/utils/objective-timers'
 
 /**
  * The neutral objectives' next spawns as one compact strip (#2078, redrawn by
@@ -41,7 +41,8 @@ const red = computed(() => props.game.objectives.chaos.drakes)
 /** The pit's next drake shows between the sides once there is a race: a drake fell. */
 const racing = computed(() => blue.value.length + red.value.length > 0)
 
-const NAMES: Record<Exclude<ObjectiveKey, 'dragon'>, string> = { grubs: 'Voidgrubs', herald: 'Rift Herald', baron: 'Baron Nashor' }
+const { t } = useT()
+const NAMES: Record<Exclude<ObjectiveKey, 'dragon'>, string> = { grubs: t('overlay.objectives.voidgrubs'), herald: t('overlay.objectives.herald'), baron: t('overlay.objectives.baron') }
 
 const pills = computed(() => {
   const all = timers.value
@@ -94,27 +95,27 @@ const soon = (status: PillStatus) => status.kind === 'countdown' && status.secon
         >
           {{ formatCountdown(pill.status.seconds) }}
         </span>
-        <span v-else class="size-1.5 rounded-full bg-success shadow-[0_0_4px] shadow-success" data-up role="img" aria-label="Up" />
+        <span v-else class="size-1.5 rounded-full bg-success shadow-[0_0_4px] shadow-success" data-up role="img" :aria-label="t('overlay.objectives.up')" />
       </li>
     </ol>
     <!-- The soul race: blue side's drakes from the left, red side's from the right, the pit's next between them. -->
     <div class="grid h-3.5 grid-cols-[1fr_auto_1fr] items-center gap-1" data-soul-race>
       <span class="flex items-center justify-end gap-0.5" data-side="blue">
         <span class="h-px flex-1 bg-linear-to-r from-transparent to-ally/50" />
-        <img v-for="(element, index) in blue" :key="index" :src="drakeIcon(element)" :alt="element" class="size-3.5 rounded-full ring-1 ring-ally/70">
+        <img v-for="(element, index) in blue" :key="index" :src="drakeIcon(element)" :alt="drakeName(element).toLowerCase()" class="size-3.5 rounded-full ring-1 ring-ally/70">
       </span>
       <span class="flex size-3.5 items-center justify-center">
         <img v-if="racing" :src="objectiveIcon('dragon', timers)" :alt="dragonLabel(timers)" class="size-3.5" data-next>
         <span v-else class="size-1 rounded-full bg-accented" />
       </span>
       <span class="flex items-center gap-0.5" data-side="red">
-        <img v-for="(element, index) in red" :key="index" :src="drakeIcon(element)" :alt="element" class="size-3.5 rounded-full ring-1 ring-enemy/70">
+        <img v-for="(element, index) in red" :key="index" :src="drakeIcon(element)" :alt="drakeName(element).toLowerCase()" class="size-3.5 rounded-full ring-1 ring-enemy/70">
         <span class="h-px flex-1 bg-linear-to-r from-enemy/50 to-transparent" />
       </span>
     </div>
   </div>
   <p v-else class="flex items-center gap-1.5 text-[11px] leading-snug text-muted">
     <AppMark class="size-3 shrink-0" />
-    Timers follow Summoner's Rift's standard rules, not this mode's.
+    {{ t('overlay.objectives.standardRules') }}
   </p>
 </template>

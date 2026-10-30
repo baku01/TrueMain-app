@@ -43,6 +43,7 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:order': [order: DirectoryOrder] }>()
 
 // Literal class strings, for Tailwind's scan.
+const { t } = useT()
 const FROM_XL = 'hidden @xl:table-cell'
 const FROM_2XL = 'hidden @2xl:table-cell'
 const FROM_4XL = 'hidden @4xl:table-cell'
@@ -50,11 +51,11 @@ const FIGURE = 'w-14 text-right @2xl:w-16'
 
 const columns: TableColumn<DirectoryRow>[] = [
   { id: 'place', header: '#', meta: { class: { th: 'w-6 @xl:w-10', td: 'w-6 @xl:w-10' } } },
-  { id: 'champion', header: 'Champion', meta: { class: { th: 'w-full max-w-0', td: 'w-full max-w-0' } } },
-  { id: 'lane', header: 'Lane', meta: { class: { th: 'w-10 text-center', td: 'w-10' } } },
+  { id: 'champion', header: t('champion.col.champion'), meta: { class: { th: 'w-full max-w-0', td: 'w-full max-w-0' } } },
+  { id: 'lane', header: t('champion.col.lane'), meta: { class: { th: 'w-10 text-center', td: 'w-10' } } },
   { id: 'tier', accessorKey: 'tier', enableSorting: true, meta: { class: { th: 'w-12 text-center', td: 'w-12' } } },
-  { id: 'runes', header: 'Runes', meta: { class: { th: `${FROM_2XL} w-12 text-center`, td: `${FROM_2XL} w-12` } } },
-  { id: 'build', header: 'Core build', meta: { class: { th: FROM_4XL, td: FROM_4XL } } },
+  { id: 'runes', header: t('champion.col.runes'), meta: { class: { th: `${FROM_2XL} w-12 text-center`, td: `${FROM_2XL} w-12` } } },
+  { id: 'build', header: t('champion.col.coreBuild'), meta: { class: { th: FROM_4XL, td: FROM_4XL } } },
   { id: 'winRate', accessorKey: 'winRate', enableSorting: true, meta: { class: { th: FIGURE, td: FIGURE } } },
   { id: 'pickRate', accessorKey: 'pickRate', enableSorting: true, meta: { class: { th: FIGURE, td: FIGURE } } },
   { id: 'banRate', accessorKey: 'banRate', enableSorting: true, meta: { class: { th: `${FROM_XL} ${FIGURE}`, td: `${FROM_XL} ${FIGURE}` } } },
@@ -62,11 +63,11 @@ const columns: TableColumn<DirectoryRow>[] = [
 ]
 
 const SORTABLE: { id: string, label: string, title: string, align: 'center' | 'end' }[] = [
-  { id: 'tier', label: 'Tier', title: 'tier', align: 'center' },
-  { id: 'winRate', label: 'WR', title: 'win rate', align: 'end' },
-  { id: 'pickRate', label: 'PR', title: 'pick rate', align: 'end' },
-  { id: 'banRate', label: 'BR', title: 'ban rate', align: 'end' },
-  { id: 'games', label: 'Games', title: 'games', align: 'end' },
+  { id: 'tier', label: t('champion.col.tier'), title: t('champion.col.tierTitle'), align: 'center' },
+  { id: 'winRate', label: t('champion.col.wr'), title: t('champion.col.wrTitle'), align: 'end' },
+  { id: 'pickRate', label: t('champion.col.pr'), title: t('champion.col.prTitle'), align: 'end' },
+  { id: 'banRate', label: t('champion.col.br'), title: t('champion.col.brTitle'), align: 'end' },
+  { id: 'games', label: t('champion.col.games'), title: t('champion.col.gamesTitle'), align: 'end' },
 ]
 
 const sorting = computed(() => directoryOrderToSorting(props.order))

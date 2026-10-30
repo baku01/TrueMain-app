@@ -1,5 +1,6 @@
 import type { DragonKind, Moment, MomentKind, RecordingWinProbability } from '~/types/recordings'
 import { formatDuration } from '#common/utils/relativeTime'
+import { tr } from '#common/utils/i18n'
 
 /**
  * How a recording's moments read: their names and colours on the
@@ -40,40 +41,40 @@ export function momentStart(moment: Pick<Moment, 'videoMs'> & Partial<Pick<Momen
 }
 
 const OBJECTIVE_NAMES: Record<Exclude<MomentKind, 'kill' | 'death' | 'assist' | 'marked'>, string> = {
-  elder: 'Elder Dragon',
-  baron: 'Baron',
-  atakhan: 'Atakhan',
-  dragon: 'Dragon',
-  herald: 'Rift Herald',
-  grubs: 'Voidgrubs',
-  inhibitor: 'Inhibitor',
-  tower: 'Tower',
+  elder: 'rec.moment.elder',
+  baron: 'rec.moment.baron',
+  atakhan: 'rec.moment.atakhan',
+  dragon: 'rec.moment.dragon',
+  herald: 'rec.moment.herald',
+  grubs: 'rec.moment.grubs',
+  inhibitor: 'rec.moment.inhibitor',
+  tower: 'rec.moment.tower',
 }
 
 /** Most telling first: the objective a clip is named after when it holds several. */
 const OBJECTIVE_RANK: MomentKind[] = ['elder', 'baron', 'atakhan', 'dragon', 'herald', 'grubs', 'inhibitor', 'tower']
 
-const MULTI_KILLS = ['Kill', 'Double kill', 'Triple kill', 'Quadra kill', 'Pentakill']
+const MULTI_KILLS = ['rec.moment.kill1', 'rec.moment.kill2', 'rec.moment.kill3', 'rec.moment.kill4', 'rec.moment.kill5']
 
 const DRAKE_NAMES: Record<DragonKind, string> = {
-  infernal: 'Infernal Drake',
-  mountain: 'Mountain Drake',
-  ocean: 'Ocean Drake',
-  cloud: 'Cloud Drake',
-  hextech: 'Hextech Drake',
-  chemtech: 'Chemtech Drake',
+  infernal: 'rec.moment.drake.infernal',
+  mountain: 'rec.moment.drake.mountain',
+  ocean: 'rec.moment.drake.ocean',
+  cloud: 'rec.moment.drake.cloud',
+  hextech: 'rec.moment.drake.hextech',
+  chemtech: 'rec.moment.drake.chemtech',
 }
 
 /** "Triple kill", "Death", "Baron", "Enemy Infernal Drake" ("Enemy Dragon" when the element was not kept). */
 export function momentLabel(moment: Moment): string {
   switch (moment.kind) {
-    case 'kill': return MULTI_KILLS[Math.min(Math.max(moment.kills, 1), 5) - 1]!
-    case 'death': return 'Death'
-    case 'assist': return 'Assist'
-    case 'marked': return 'Marked moment'
+    case 'kill': return tr(MULTI_KILLS[Math.min(Math.max(moment.kills, 1), 5) - 1]!)
+    case 'death': return tr('rec.moment.death')
+    case 'assist': return tr('rec.moment.assist')
+    case 'marked': return tr('rec.moment.marked')
     default: {
-      const name = (moment.kind === 'dragon' && moment.dragon && DRAKE_NAMES[moment.dragon]) || OBJECTIVE_NAMES[moment.kind]
-      return moment.ally === false ? `Enemy ${name}` : name
+      const name = tr((moment.kind === 'dragon' && moment.dragon && DRAKE_NAMES[moment.dragon]) || OBJECTIVE_NAMES[moment.kind])
+      return moment.ally === false ? tr('rec.moment.enemy', { name }) : name
     }
   }
 }
@@ -179,15 +180,15 @@ export function proposeClipTitle(moments: Moment[], startMs: number, endMs: numb
   let killPart = ''
   // One kill run is named by its size; several are counted, unless one of them
   // is a triple or more, which is the headline.
-  if (kills.length === 1 || biggest >= 3) killPart = MULTI_KILLS[Math.min(Math.max(biggest, 1), 5) - 1]!
-  else if (kills.length > 1) killPart = `${killCount} kills`
+  if (kills.length === 1 || biggest >= 3) killPart = tr(MULTI_KILLS[Math.min(Math.max(biggest, 1), 5) - 1]!)
+  else if (kills.length > 1) killPart = tr('rec.moment.kills', { count: killCount })
 
   const taken = inside.filter(moment => moment.ally === true)
   const objective = OBJECTIVE_RANK.find(kind => taken.some(moment => moment.kind === kind))
-  const objectivePart = objective ? OBJECTIVE_NAMES[objective as keyof typeof OBJECTIVE_NAMES] : ''
+  const objectivePart = objective ? tr(OBJECTIVE_NAMES[objective as keyof typeof OBJECTIVE_NAMES]) : ''
 
   if (killPart && objectivePart) return `${killPart} + ${objectivePart}`
-  if (killPart) return champion ? `${killPart} on ${champion}` : killPart
+  if (killPart) return champion ? tr('rec.moment.killOn', { kill: killPart, champion }) : killPart
   if (objectivePart) return objectivePart
   return quietTitle(inside, startMs, champion)
 }
@@ -195,10 +196,10 @@ export function proposeClipTitle(moments: Moment[], startMs: number, endMs: numb
 /** A range without a kill or an objective taken: its assists, a death, an objective lost, a mark, else its place. */
 function quietTitle(inside: Moment[], startMs: number, champion: string | null): string {
   const assists = inside.filter(moment => moment.kind === 'assist').length
-  if (assists) return assists === 1 ? 'Assist' : `${assists} assists`
-  if (inside.some(moment => moment.kind === 'death')) return 'Death'
+  if (assists) return assists === 1 ? tr('rec.moment.assist') : tr('rec.moment.assists', { count: assists })
+  if (inside.some(moment => moment.kind === 'death')) return tr('rec.moment.death')
   const lost = inside.find(moment => moment.ally === false)
   if (lost) return momentLabel(lost)
-  if (inside.some(isMarked)) return 'Marked moment'
-  return champion ? `${champion} at ${formatClock(startMs)}` : `Clip at ${formatClock(startMs)}`
+  if (inside.some(isMarked)) return tr('rec.moment.marked')
+  return champion ? tr('rec.moment.championAt', { champion, time: formatClock(startMs) }) : tr('rec.moment.clipAt', { time: formatClock(startMs) })
 }

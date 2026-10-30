@@ -1,5 +1,5 @@
 import type { WinProbabilityTimeline, WinProbabilityTimelineEvent } from '#shared/types/win-probability'
-import { monsterLabel, structureLabel } from './win-probability-swing'
+import { monsterLabel, sideLabel, structureLabel } from './win-probability-swing'
 import { sideOf } from './win-probability-timeline'
 
 /**
@@ -55,7 +55,7 @@ function labelOf(event: WinProbabilityTimelineEvent, kind: ObjectiveMarkerKind, 
   }
   const name = monsterLabel(event.monsterType ?? '', event.monsterSubType || null)
   const times = count > 1 ? ' ×' + count : ''
-  return `${ours ? 'Your' : 'Enemy'} ${name}${times}`
+  return sideLabel(ours, name + times)
 }
 
 /** The game's objectives in time order, read for `perspectiveTeamId`. */

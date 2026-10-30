@@ -9,9 +9,10 @@ const props = withDefaults(defineProps<{
 }>(), { championId: null, size: 'md', dimmed: false, emptyIcon: true })
 
 const { nameOf, portraitOf } = useChampionStatics()
+const { t } = useT()
 
 const source = computed(() => (props.championId ? portraitOf(props.championId) : null))
-const label = computed(() => (props.championId ? nameOf(props.championId) : 'Not picked yet'))
+const label = computed(() => (props.championId ? nameOf(props.championId) : t('app.notPicked')))
 
 const box = computed(() => ({ sm: 'size-8', md: 'size-12', lg: 'size-16' }[props.size]))
 </script>
@@ -23,7 +24,7 @@ const box = computed(() => ({ sm: 'size-8', md: 'size-12', lg: 'size-16' }[props
     :title="label"
   >
     <img v-if="source" :src="source" :alt="label" class="img-skeleton size-full object-cover" loading="lazy">
-    <div v-else class="flex size-full items-center justify-center rounded-lg border border-dashed border-accented text-dimmed" aria-label="Not picked yet">
+    <div v-else class="flex size-full items-center justify-center rounded-lg border border-dashed border-accented text-dimmed" :aria-label="t('app.notPicked')">
       <UIcon v-if="emptyIcon" name="i-lucide-help-circle" class="size-1/2 opacity-60" />
     </div>
   </div>

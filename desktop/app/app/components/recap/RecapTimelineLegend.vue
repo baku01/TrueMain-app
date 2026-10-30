@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { TIMELINE_CURVE_HEIGHT, TIMELINE_PANEL_TOP } from '~/utils/recording-timeline'
 
+const { t } = useT()
+
 /** The timeline's rows named: the curve's glyph beside its lane when the game has one. Kept as a gutter without, so the clock lines up. */
 defineProps<{
   /** The track's height. */
@@ -15,7 +17,7 @@ defineProps<{
       v-if="curve"
       class="absolute inset-x-0 flex items-center justify-center"
       :style="{ top: `${TIMELINE_PANEL_TOP}px`, height: `${TIMELINE_CURVE_HEIGHT}px` }"
-      title="Win probability"
+      :title="t('rec.timeline.winProb')"
     >
       <UIcon name="i-lucide-chart-spline" class="size-3.5 text-ally" />
     </div>

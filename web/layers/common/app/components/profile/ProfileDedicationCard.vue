@@ -2,7 +2,9 @@
 import type { TruemainDedication } from '#shared/types/dedication'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { championDisplayName } from '#shared/utils/champion-name'
-import { TRUEMAIN_SCORE_LABEL, dedicationParts, formatDedicationLastPlayed, formatDedicationScore } from '#common/utils/dedication'
+import { dedicationParts, formatDedicationLastPlayed, formatDedicationScore } from '#common/utils/dedication'
+
+const { t } = useT()
 
 // TrueMain's signature metric — the Truemain score (#1701) — on the player's
 // signature champion. Every figure on this card — the score, the verdict, the
@@ -37,7 +39,7 @@ const scoreLabel = computed(() => formatDedicationScore(props.dedication.score))
 <template>
   <section class="flex flex-col gap-2">
     <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-      {{ TRUEMAIN_SCORE_LABEL }}
+      {{ t('dedication.scoreLabel') }}
     </h2>
 
     <div class="surface flex flex-col gap-3 rounded-lg p-3">
@@ -52,7 +54,7 @@ const scoreLabel = computed(() => formatDedicationScore(props.dedication.score))
             <DedicationVerdict :dedication="dedication" />
           </div>
           <span class="mt-1 text-[10px] uppercase tracking-wide text-muted">
-            out of 100
+            {{ t('profile.outOf100') }}
           </span>
         </div>
 

@@ -8,11 +8,12 @@ import type { NextItemOrderStep } from '~/utils/next-item'
  * to come, the boots at the step the mains complete them at. Under the next
  * item in the game page's panel and on the overlay.
  */
+const { t } = useT()
 withDefaults(defineProps<{ steps: NextItemOrderStep[], statics: Record<number, StaticItemData>, size?: number }>(), { size: 24 })
 </script>
 
 <template>
-  <ol v-if="steps.length" class="flex items-center gap-1" aria-label="Build order">
+  <ol v-if="steps.length" class="flex items-center gap-1" :aria-label="t('game.buildOrder')">
     <li v-for="(step, index) in steps" :key="`${step.itemId}-${index}`" :aria-current="step.state === 'Next' ? 'step' : undefined">
       <GameTooltipItemIcon
         :item="statics[step.itemId] ?? null"

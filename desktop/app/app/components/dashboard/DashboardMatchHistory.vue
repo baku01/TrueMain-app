@@ -45,6 +45,7 @@ const storedScores = useTruemainScores(() => props.nameTag)
 // A play button when this game was recorded: its recap, or its clips once the full game is gone.
 const { watchTarget } = useRecordings()
 
+const { t } = useT()
 const PAGE_SIZE = 10
 const page = ref(1)
 watch(() => props.queue, () => (page.value = 1))
@@ -78,7 +79,7 @@ const loadingPage = computed(() => props.pending || (!pageMatches.value.length &
 
 <template>
   <!-- No visible heading: the rows say what they are; the name stays for assistive tech. -->
-  <section ref="section" class="flex min-w-0 scroll-mt-4 flex-col gap-2" aria-label="Match history">
+  <section ref="section" class="flex min-w-0 scroll-mt-4 flex-col gap-2" :aria-label="t('dash.history.label')">
     <MatchHistoryList
       v-model:page="page"
       :matches="pageMatches"
@@ -90,7 +91,7 @@ const loadingPage = computed(() => props.pending || (!pageMatches.value.length &
       :summoner-spells="summonerSpells"
       :rune-tree="runeTree"
       :name-tag="nameTag"
-      :filtered="queue !== 'All'"
+      :filtered="queue !== 'all'"
       own
     >
       <template #actions="{ match }">
@@ -106,8 +107,8 @@ const loadingPage = computed(() => props.pending || (!pageMatches.value.length &
             size="xs"
             square
             class="relative"
-            aria-label="Watch the recording of this game"
-            title="Watch the recording"
+            :aria-label="t('dash.history.watchLabel')"
+            :title="t('dash.history.watchTitle')"
             @click.stop
             @keydown.enter.stop
             @keydown.space.stop

@@ -2,6 +2,7 @@ import type { DraftReason } from '~/types/draft'
 import { formatCount } from '#shared/utils/counts'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { formatPointDelta } from '#shared/utils/deltas'
+import { tr } from '#common/utils/i18n'
 import { positionLabel } from '#common/utils/positions'
 
 /**
@@ -37,7 +38,7 @@ export function draftPercent(rate: number): string {
   return formatPercentage(rate, rate < 0.1 ? 1 : 0)
 }
 
-const games = (count: number) => `${formatCount(count)} game${count === 1 ? '' : 's'}`
+const games = (count: number) => tr(count === 1 ? 'draft.reason.gamesOne' : 'draft.reason.gamesOther', { count: formatCount(count) })
 
 /** Below this, the solver's lane guess is said to be one. */
 const SURE_OPPONENT = 0.9
@@ -53,16 +54,17 @@ function laneLabel(position: string): string {
  */
 const TEAM_BANDS: Record<string, Record<string, { short: string, full: string }>> = {
   AllyMagicDamage: {
-    Low: { short: 'Physical team', full: 'a mostly physical team' },
-    Mid: { short: 'Mixed team', full: 'a mixed-damage team' },
-    High: { short: 'Magic team', full: 'a mostly magic team' },
+    Low: { short: 'draft.reason.team.physicalShort', full: 'draft.reason.team.physicalFull' },
+    Mid: { short: 'draft.reason.team.mixedShort', full: 'draft.reason.team.mixedFull' },
+    High: { short: 'draft.reason.team.magicShort', full: 'draft.reason.team.magicFull' },
   },
   AllyFrontline: {
-    Low: { short: 'No frontline', full: 'no frontliner among its allies' },
-    Mid: { short: 'One frontline', full: 'one frontliner among its allies' },
-    High: { short: 'Frontline team', full: 'two frontliners or more among its allies' },
+    Low: { short: 'draft.reason.team.noFrontShort', full: 'draft.reason.team.noFrontFull' },
+    Mid: { short: 'draft.reason.team.oneFrontShort', full: 'draft.reason.team.oneFrontFull' },
+    High: { short: 'draft.reason.team.frontShort', full: 'draft.reason.team.frontFull' },
   },
 }
+const TEAM_FALLBACK = { short: 'draft.reason.team.fallbackShort', full: 'draft.reason.team.fallbackFull' }
 
 function signTone(value: number | null): ReasonText['tone'] {
   if (value === null || value === 0) return 'neutral'
@@ -78,15 +80,19 @@ export function describeReason(reason: DraftReason, nameOf: (championId: number)
   const delta = reason.delta ?? 0
   const lane = laneLabel(position)
 
+  const pts = tr('draft.reason.pts')
+
   switch (reason.kind) {
     case 'laneMatchup': {
       const guess = reason.probability !== null && reason.probability < SURE_OPPONENT
+      const params = { delta: draftPoints(delta), name, games: games(reason.games) }
       return {
         headline: signed(delta),
-        unit: 'pts',
-        short: `vs ${name}${guess ? ' (likely)' : ''}`,
-        full: `${draftPoints(delta)} vs ${name} over ${games(reason.games)}`
-          + (guess ? ` — ${draftPercent(reason.probability!)} sure ${name} plays your lane` : ''),
+        unit: pts,
+        short: tr(guess ? 'draft.reason.laneMatchup.shortLikely' : 'draft.reason.laneMatchup.short', { name }),
+        full: guess
+          ? tr('draft.reason.laneMatchup.fullGuess', { ...params, chance: draftPercent(reason.probability!) })
+          : tr('draft.reason.laneMatchup.full', params),
         tone: signTone(delta),
       }
     }
@@ -95,36 +101,35 @@ export function describeReason(reason: DraftReason, nameOf: (championId: number)
       const of = reason.of ?? 0
       return {
         headline: signed(delta),
-        unit: 'pts',
-        short: count === 0 ? 'Safe blind' : `Behind ${count}/${of} blind`,
-        full: `Blind: ${draftPoints(delta)} on average into the ${lane} opponents still open, `
-          + `clearly behind into ${count} of the ${of} most played (${games(reason.games)})`,
+        unit: pts,
+        short: count === 0 ? tr('draft.reason.blind.safe') : tr('draft.reason.blind.behind', { count, of }),
+        full: tr('draft.reason.blind.full', { delta: draftPoints(delta), lane, count, of, games: games(reason.games) }),
         tone: count > 1 ? 'bad' : signTone(delta),
       }
     }
     case 'laneStrength':
       return {
         headline: signed(delta),
-        unit: 'pts',
-        short: delta >= 0 ? `Strong ${lane}` : `Weak ${lane}`,
-        full: `${draftPoints(delta)} over the ${lane} average, ${games(reason.games)}`,
+        unit: pts,
+        short: tr(delta >= 0 ? 'draft.reason.laneStrength.strong' : 'draft.reason.laneStrength.weak', { lane }),
+        full: tr('draft.reason.laneStrength.full', { delta: draftPoints(delta), lane, games: games(reason.games) }),
         tone: signTone(delta),
       }
     case 'synergy':
       return {
         headline: signed(delta),
-        unit: 'pts',
-        short: `With ${name}${reason.tentative ? ' (hover)' : ''}`,
-        full: `${draftPoints(delta)} with ${name}${reason.tentative ? ', who is only hovering' : ''} over ${games(reason.games)}`,
+        unit: pts,
+        short: tr(reason.tentative ? 'draft.reason.synergy.shortHover' : 'draft.reason.synergy.short', { name }),
+        full: tr(reason.tentative ? 'draft.reason.synergy.fullHover' : 'draft.reason.synergy.full', { delta: draftPoints(delta), name, games: games(reason.games) }),
         tone: signTone(delta),
       }
     case 'teamFit': {
-      const team = TEAM_BANDS[reason.axis ?? '']?.[reason.bucket ?? ''] ?? { short: 'Your team', full: 'your team so far' }
+      const team = TEAM_BANDS[reason.axis ?? '']?.[reason.bucket ?? ''] ?? TEAM_FALLBACK
       return {
         headline: signed(delta),
-        unit: 'pts',
-        short: `${team.short}${reason.tentative ? ' (hover)' : ''}`,
-        full: `${draftPoints(delta)} with ${team.full}${reason.tentative ? ', counting a hovered pick' : ''}, over ${games(reason.games)}`,
+        unit: pts,
+        short: tr(reason.tentative ? 'draft.reason.teamFit.shortHover' : 'draft.reason.teamFit.short', { team: tr(team.short) }),
+        full: tr(reason.tentative ? 'draft.reason.teamFit.fullHover' : 'draft.reason.teamFit.full', { delta: draftPoints(delta), team: tr(team.full), games: games(reason.games) }),
         tone: signTone(delta),
       }
     }
@@ -133,34 +138,37 @@ export function describeReason(reason: DraftReason, nameOf: (championId: number)
       return {
         headline: draftPercent(rate).replace('%', ''),
         unit: '%',
-        short: `${rate >= 0.5 ? 'Wins' : 'Loses'} lane vs ${name}`,
-        full: `Ahead at 15 minutes in ${draftPercent(rate)} of ${games(reason.games)} decided lanes vs ${name}`,
+        short: tr(rate >= 0.5 ? 'draft.reason.lanePhase.wins' : 'draft.reason.lanePhase.loses', { name }),
+        full: tr('draft.reason.lanePhase.full', { rate: draftPercent(rate), games: games(reason.games), name }),
         tone: signTone(rate - 0.5),
       }
     }
-    case 'laneThreat':
+    case 'laneThreat': {
+      const params = { name, delta: draftPoints(delta), games: games(reason.games) }
       return {
         headline: signed(delta),
-        unit: 'pts',
-        short: `Into your ${name}`,
-        full: `Your ${name}: ${draftPoints(delta)} into it over ${games(reason.games)}`
-          + (reason.share !== null ? `, which is played in ${draftPercent(reason.share)} of ${lane} games` : ''),
+        unit: pts,
+        short: tr('draft.reason.laneThreat.short', { name }),
+        full: reason.share !== null
+          ? tr('draft.reason.laneThreat.fullShare', { ...params, share: draftPercent(reason.share), lane })
+          : tr('draft.reason.laneThreat.full', params),
         tone: 'bad',
       }
+    }
     case 'banRate': {
       const rate = reason.rate ?? 0
       return {
         headline: draftPercent(rate).replace('%', ''),
         unit: '%',
-        short: `Banned in ${draftPercent(rate)}`,
-        full: `Banned in ${draftPercent(rate)} of ${games(reason.games)} this patch — the lane's most banned, not a threat measured against you`,
+        short: tr('draft.reason.banRate.short', { rate: draftPercent(rate) }),
+        full: tr('draft.reason.banRate.full', { rate: draftPercent(rate), games: games(reason.games) }),
         tone: 'neutral',
       }
     }
     default:
       return {
         headline: reason.delta !== null ? signed(delta) : reason.rate !== null ? draftPercent(reason.rate).replace('%', '') : '',
-        unit: reason.delta !== null ? 'pts' : reason.rate !== null ? '%' : '',
+        unit: reason.delta !== null ? pts : reason.rate !== null ? '%' : '',
         short: name,
         full: name,
         tone: signTone(reason.delta),

@@ -1,3 +1,5 @@
+import { tr } from '#common/utils/i18n'
+
 /**
  * The one source for a game's result colours — blue for a win, red for a loss —
  * shared by the match row (edge mark, wash, result label) and the match detail
@@ -9,9 +11,9 @@
  */
 export interface ResultTone {
   /** Long label: the row and the team headers. */
-  label: 'Victory' | 'Defeat'
+  label: string
   /** Short label: the selected player's chip. */
-  short: 'Win' | 'Loss'
+  short: string
   /** Text colour of the result label. */
   text: string
   /** Fill of the row's edge mark. */
@@ -23,8 +25,8 @@ export interface ResultTone {
 }
 
 const WIN: ResultTone = {
-  label: 'Victory',
-  short: 'Win',
+  get label() { return tr('match.result.victory') },
+  get short() { return tr('match.result.win') },
   text: 'text-sky-400',
   edge: 'bg-sky-400',
   wash: 'from-sky-500/12',
@@ -32,8 +34,8 @@ const WIN: ResultTone = {
 }
 
 const LOSS: ResultTone = {
-  label: 'Defeat',
-  short: 'Loss',
+  get label() { return tr('match.result.defeat') },
+  get short() { return tr('match.result.loss') },
   text: 'text-red-400',
   edge: 'bg-red-400',
   wash: 'from-red-500/12',

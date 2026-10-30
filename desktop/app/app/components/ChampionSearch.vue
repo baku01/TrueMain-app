@@ -8,10 +8,11 @@ import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 const open = defineModel<boolean>('open', { default: false })
 
 const { champions, portraitOf } = useChampionStatics()
+const { t } = useT()
 
 const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [{
   id: 'champions',
-  label: 'Champions',
+  label: t('app.search.group'),
   items: [...champions.value.values()]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(champion => ({
@@ -29,7 +30,7 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [{
     <template #content>
       <UCommandPalette
         :groups="groups"
-        placeholder="Search a champion…"
+        :placeholder="t('app.search.placeholder')"
         class="h-96"
         close
         @update:open="open = $event"

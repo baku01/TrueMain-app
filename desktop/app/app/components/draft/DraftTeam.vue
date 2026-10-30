@@ -28,6 +28,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ view: [championId: number], swap: [from: Lane, to: Lane] }>()
 
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 const { entryOf, mainEntryOf } = useTierList()
 
 /** The tier on the lane the card holds; an enemy on no lane yet reads its main lane's. */
@@ -77,7 +78,8 @@ function laneChoices(row: TeamRow): DropdownMenuItem[] {
 
 function label(row: TeamRow) {
   if (row.championId === null) return undefined
-  return `Build for ${nameOf(row.championId)}${row.lane ? `, ${positionLabel(row.lane, { short: true })}` : ''}`
+  const name = nameOf(row.championId)
+  return row.lane ? t('draft.team.buildForLane', { name, lane: positionLabel(row.lane, { short: true }) }) : t('draft.team.buildFor', { name })
 }
 </script>
 
@@ -124,8 +126,8 @@ function label(row: TeamRow) {
           <button
             type="button"
             class="flex size-6 items-center justify-center rounded transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            :aria-label="`${nameOf(row.championId)} plays ${positionLabel(row.lane, { short: true })} — change`"
-            :title="`${positionLabel(row.lane, { short: true })} — click to change`"
+            :aria-label="t('draft.team.change', { name: nameOf(row.championId), lane: positionLabel(row.lane, { short: true }) })"
+            :title="t('draft.team.clickToChange', { lane: positionLabel(row.lane, { short: true }) })"
           >
             <img :src="getPositionIconUrl(row.lane)" alt="" class="size-4">
           </button>

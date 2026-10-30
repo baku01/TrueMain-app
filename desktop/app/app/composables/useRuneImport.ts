@@ -1,4 +1,5 @@
 import type { KitRunePage } from '#shared/types/kit'
+import { tr } from '#common/utils/i18n'
 
 /** What the shell answers when every rune page is the player's own (`runes.rs`). */
 const NO_SLOT = 'no-slot'
@@ -33,8 +34,8 @@ export function useRuneImport() {
       clearTimeout(doneTimer)
       doneTimer = setTimeout(() => (done.value = false), 2500)
       toast.add({
-        title: 'Runes imported',
-        description: insideTauri() ? 'The TrueMain page is selected in the client.' : 'Dev server: nothing was sent to a client.',
+        title: tr('build.runes.imported'),
+        description: insideTauri() ? tr('build.runes.importedDescription') : tr('build.devNothingSent'),
         icon: 'i-lucide-check',
         color: 'success',
       })
@@ -43,13 +44,13 @@ export function useRuneImport() {
       const message = String(error)
       toast.add(message === NO_SLOT
         ? {
-            title: 'No free rune page',
-            description: 'Delete one of your rune pages in the client, then import again. TrueMain never deletes a page it did not create.',
+            title: tr('build.runes.noSlot'),
+            description: tr('build.runes.noSlotDescription'),
             icon: 'i-lucide-triangle-alert',
             color: 'warning',
           }
         : {
-            title: 'Could not import the runes',
+            title: tr('build.runes.failed'),
             description: message,
             icon: 'i-lucide-circle-x',
             color: 'error',

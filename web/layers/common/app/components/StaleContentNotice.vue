@@ -7,6 +7,7 @@ const props = defineProps<{
   /** Re-runs the failed request; the button is left out when absent. */
   onRetry?: () => unknown
 }>()
+const { t } = useT()
 </script>
 
 <template>
@@ -27,14 +28,14 @@ const props = defineProps<{
       class="size-4 shrink-0 text-warning"
       aria-hidden="true"
     />
-    <span>Couldn't update — showing {{ props.subject }}.</span>
+    <span>{{ t('common.staleNotice', { subject: props.subject }) }}</span>
     <UButton
       v-if="props.onRetry"
       size="xs"
       color="neutral"
       variant="link"
       icon="i-lucide-refresh-cw"
-      label="Retry"
+      :label="t('common.retry')"
       class="p-0"
       @click="props.onRetry()"
     />

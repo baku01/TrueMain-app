@@ -18,11 +18,12 @@ import type {
   StaticPerkStyleData,
   StaticSummonerSpellData,
 } from '#shared/types/static-data'
+import { cdragonLocale, getActiveLocale } from '#common/utils/i18n'
 import { getChampionSpellImageUrl, getSummonerSpellImageUrl } from '#shared/utils/ddragon'
 
 export const DDRAGON = 'https://ddragon.leagueoflegends.com/cdn'
 const COMMUNITY_DRAGON_BASE = 'https://raw.communitydragon.org'
-const COMMUNITY_DRAGON_PATH_SUFFIX = 'plugins/rcp-be-lol-game-data/global/default'
+const COMMUNITY_DRAGON_PATH_SUFFIX = 'plugins/rcp-be-lol-game-data/global'
 const PATCH_FORMAT_RE = /^\d+\.\d+(?:\.\d+)?$/
 
 /** `15.10.1` → `15.10`; anything else → `latest`. */
@@ -32,8 +33,8 @@ function communityDragonVersion(patch?: string | null): string {
   return `${segments[0]}.${segments[1]}`
 }
 
-export function communityDragonPrefix(patch?: string | null): string {
-  return `${COMMUNITY_DRAGON_BASE}/${communityDragonVersion(patch)}/${COMMUNITY_DRAGON_PATH_SUFFIX}`
+export function communityDragonPrefix(patch?: string | null, folder = 'default'): string {
+  return `${COMMUNITY_DRAGON_BASE}/${communityDragonVersion(patch)}/${COMMUNITY_DRAGON_PATH_SUFFIX}/${folder}`
 }
 
 function rewriteCdragonAsset(iconPath: string, patch?: string | null): string {
@@ -135,7 +136,9 @@ export async function fetchRuneTree(patch: string | null): Promise<RuneTreeRespo
 }
 
 async function fetchRuneTreeAt(patch: string | null): Promise<RuneTreeResponse> {
-  const prefix = communityDragonPrefix(patch)
+  // Names and texts come from the language's folder; the icon paths inside
+  // them are rewritten onto `default`, which is where the art lives.
+  const prefix = communityDragonPrefix(patch, cdragonLocale(getActiveLocale()))
   const [perks, perkStyles] = await Promise.all([
     $fetch<CdragonPerkRow[]>(`${prefix}/v1/perks.json`),
     $fetch<{ styles: CdragonPerkStyleRow[] }>(`${prefix}/v1/perkstyles.json`),

@@ -22,6 +22,7 @@ const props = defineProps<{
 
 const selected = defineModel<string | null>({ default: null })
 
+const { t } = useT()
 const { items, runeTree } = useStaticData()
 const { nameOf, portraitOf } = useChampionStatics()
 const { perk, perkStyle, item } = useBuildResolvers(runeTree, items)
@@ -32,12 +33,12 @@ const laneOptions = computed(() => props.options.filter(option => option.key !==
 const groups = computed(() => [
   ...(draftOption.value
     ? [{
-        label: draftOption.value.standard ? 'Standard build' : (props.draftLabel ?? 'This draft'),
+        label: draftOption.value.standard ? t('build.list.standard') : (props.draftLabel ?? t('build.list.thisDraft')),
         opponent: draftOption.value.standard ? null : props.draftOpponent ?? null,
         options: [draftOption.value],
       }]
     : []),
-  ...(laneOptions.value.length ? [{ label: draftOption.value ? 'On the lane' : 'Builds', opponent: null, options: laneOptions.value }] : []),
+  ...(laneOptions.value.length ? [{ label: draftOption.value ? t('build.list.onLane') : t('build.list.builds'), opponent: null, options: laneOptions.value }] : []),
 ])
 </script>
 
@@ -45,7 +46,7 @@ const groups = computed(() => [
   <div class="flex flex-col gap-3">
     <div v-for="group in groups" :key="group.label" class="flex flex-col gap-0.5">
       <h3 v-if="group.opponent" class="flex items-center gap-1.5 px-2 pb-1 stat-label">
-        VS
+        {{ t('build.list.versus') }}
         <img v-if="portraitOf(group.opponent)" :src="portraitOf(group.opponent)!" :alt="nameOf(group.opponent)" :title="nameOf(group.opponent)" class="img-skeleton size-4 rounded">
       </h3>
       <h3 v-else class="truncate px-2 pb-1 stat-label">{{ group.label }}</h3>
@@ -94,7 +95,7 @@ const groups = computed(() => [
           <p class="text-xs font-semibold tabular-nums" :class="winRateTone(option.winRate)">
             {{ formatPercentageOrDash(option.winRate, 0) }}
           </p>
-          <p class="text-[10px] tabular-nums text-dimmed">{{ formatCount(option.games) }} games</p>
+          <p class="text-[10px] tabular-nums text-dimmed">{{ t('build.games', { count: formatCount(option.games) }) }}</p>
         </div>
       </button>
     </div>
@@ -102,6 +103,6 @@ const groups = computed(() => [
     <div v-if="pending && !options.length" class="flex flex-col gap-1.5 px-2">
       <USkeleton v-for="index in 3" :key="index" class="h-9 w-full" />
     </div>
-    <p v-else-if="!options.length" class="px-2 text-xs text-dimmed">No build recorded on this lane</p>
+    <p v-else-if="!options.length" class="px-2 text-xs text-dimmed">{{ t('build.list.none') }}</p>
   </div>
 </template>

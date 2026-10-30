@@ -15,6 +15,7 @@ const props = defineProps<{
   paginated?: boolean
 }>()
 
+const { t } = useT()
 const { filters, setFilter } = useChampionFilters()
 const filterChampionId = useRouteQueryChampionId()
 const { data: versions } = useDDragonVersions()
@@ -58,7 +59,7 @@ function onPatchChange(value: unknown) {
     <ChampionPicker
       :champions="champions"
       :champion-id="filterChampionId"
-      placeholder="Search for a champion"
+      :placeholder="t('champion.searchForChampion')"
       trigger-class="w-56"
       @update:champion-id="value => update({ championId: value })"
     />
@@ -81,7 +82,7 @@ function onPatchChange(value: unknown) {
       <USelect
         :model-value="selectedPatch || undefined"
         :items="patchOptions"
-        placeholder="Patch"
+        :placeholder="t('champion.patch')"
         size="sm"
         class="w-20"
         @update:model-value="onPatchChange"

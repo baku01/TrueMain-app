@@ -2,6 +2,8 @@
 import type { BuildSummonerSpells } from '#shared/types/champions'
 import type { StaticSummonerSpellData } from '#shared/types/static-data'
 
+const { t } = useT()
+
 defineProps<{
   summoners: BuildSummonerSpells | null
   summonersMap: Record<number, StaticSummonerSpellData>
@@ -19,7 +21,7 @@ defineProps<{
 <template>
   <div>
     <h2 class="text-sm font-medium text-muted">
-      Summoners
+      {{ t('champion.core.summoners') }}
     </h2>
     <!-- Fixed from sm: 2 spells × 36 px + 1 gap × 4 px = 76 px wide, 36 px tall.
          Height and width are pinned so the A1 column never shifts when data
@@ -42,7 +44,7 @@ defineProps<{
         v-else
         class="text-sm text-muted"
       >
-        No data
+        {{ t('common.noData') }}
       </span>
     </div>
   </div>

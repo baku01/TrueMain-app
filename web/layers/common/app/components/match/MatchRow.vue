@@ -20,6 +20,8 @@ import type {
 } from '#shared/types/static-data'
 import { resultTone } from '#common/utils/result-tone'
 
+const { t } = useT()
+
 const props = defineProps<{
   match: MatchSummaryResponse
   champions: ChampionStaticListItem[]
@@ -62,7 +64,7 @@ const result = computed(() => resultTone(self.value.win))
        keeps its size. Block size only: the width is the list's. -->
   <article
     class="@container surface overflow-hidden rounded-lg [content-visibility:auto] [contain-intrinsic-block-size:auto_54px]"
-    :aria-label="`${result.label} as ${championName}, ${self.kills}/${self.deaths}/${self.assists}`"
+    :aria-label="t('match.row.label', { result: result.label, champion: championName, kda: `${self.kills}/${self.deaths}/${self.assists}` })"
   >
     <!-- The row sizes off its own width, not the viewport (#967): it sits
          full-width on a page, in a ~33rem drawer and on a phone. Columns come

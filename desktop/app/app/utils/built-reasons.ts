@@ -1,4 +1,5 @@
 import type { ItemContextPhraseToken, ItemContextTone } from '#shared/utils/item-context'
+import { tr } from '#common/utils/i18n'
 
 /**
  * How the in-game reasons of the next item read (#1750): what the enemies
@@ -12,38 +13,37 @@ import type { ItemContextPhraseToken, ItemContextTone } from '#shared/utils/item
  * champion select.
  */
 
-function phrase(...parts: (string | [string, ItemContextTone])[]): ItemContextPhraseToken[] {
-  return parts.map(part => (typeof part === 'string' ? { text: part } : { text: part[0], tone: part[1] }))
-}
+type PhraseSpec = [prefixKey: string, nounKey: string, tone: ItemContextTone]
 
-const BUILT_AXIS_PHRASES: Record<string, { high: ItemContextPhraseToken[], low: ItemContextPhraseToken[] }> = {
+/** Each axis' two readings as message keys, worded at the call: the language is not known when this module loads. */
+const BUILT_AXIS_PHRASES: Record<string, { high: PhraseSpec, low: PhraseSpec }> = {
   EnemyArmorBuilt: {
-    high: phrase('once the enemies have built ', ['armor', 'armor']),
-    low: phrase('while the enemies have little ', ['armor', 'armor']),
+    high: ['build.reason.enemiesBuilt', 'build.reason.armor', 'armor'],
+    low: ['build.reason.enemiesLittle', 'build.reason.armor', 'armor'],
   },
   EnemyMagicResistBuilt: {
-    high: phrase('once the enemies have built ', ['magic resist', 'magic']),
-    low: phrase('while the enemies have little ', ['magic resist', 'magic']),
+    high: ['build.reason.enemiesBuilt', 'build.reason.magicResist', 'magic'],
+    low: ['build.reason.enemiesLittle', 'build.reason.magicResist', 'magic'],
   },
   OpponentArmorBuilt: {
-    high: phrase('once your lane opponent has built ', ['armor', 'armor']),
-    low: phrase('while your lane opponent has no ', ['armor', 'armor']),
+    high: ['build.reason.opponentBuilt', 'build.reason.armor', 'armor'],
+    low: ['build.reason.opponentNo', 'build.reason.armor', 'armor'],
   },
   OpponentMagicResistBuilt: {
-    high: phrase('once your lane opponent has built ', ['magic resist', 'magic']),
-    low: phrase('while your lane opponent has no ', ['magic resist', 'magic']),
+    high: ['build.reason.opponentBuilt', 'build.reason.magicResist', 'magic'],
+    low: ['build.reason.opponentNo', 'build.reason.magicResist', 'magic'],
   },
   EnemyHealingBuilt: {
-    high: phrase('once the enemies have built ', ['life steal', 'heal']),
-    low: phrase('while no enemy has built ', ['life steal', 'heal']),
+    high: ['build.reason.enemiesBuilt', 'build.reason.lifeSteal', 'heal'],
+    low: ['build.reason.noEnemyBuilt', 'build.reason.lifeSteal', 'heal'],
   },
   EnemyMagicDamageBuilt: {
-    high: phrase('once the enemies have built ', ['magic damage', 'magic']),
-    low: phrase('once the enemies have built ', ['physical damage', 'physical']),
+    high: ['build.reason.enemiesBuilt', 'build.reason.magicDamage', 'magic'],
+    low: ['build.reason.enemiesBuilt', 'build.reason.physicalDamage', 'physical'],
   },
   EnemyCritBuilt: {
-    high: phrase('once the enemies have built ', ['crit', 'crit']),
-    low: phrase('while the enemies have built no ', ['crit', 'crit']),
+    high: ['build.reason.enemiesBuilt', 'build.reason.crit', 'crit'],
+    low: ['build.reason.enemiesNoBuilt', 'build.reason.crit', 'crit'],
   },
 }
 
@@ -52,5 +52,6 @@ export const BUILT_AXES: readonly string[] = Object.keys(BUILT_AXIS_PHRASES)
 
 /** How an in-game reason reads, or null for an axis this module does not word. */
 export function builtAxisPhrase(axis: string, bucket: 'High' | 'Low'): ItemContextPhraseToken[] | null {
-  return BUILT_AXIS_PHRASES[axis]?.[bucket === 'High' ? 'high' : 'low'] ?? null
+  const spec = BUILT_AXIS_PHRASES[axis]?.[bucket === 'High' ? 'high' : 'low']
+  return spec ? [{ text: tr(spec[0]) }, { text: tr(spec[1]), tone: spec[2] }] : null
 }

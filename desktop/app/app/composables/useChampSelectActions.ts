@@ -1,5 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { DraftState, TeamSlot } from '~/types/lcu'
+import { tr } from '#common/utils/i18n'
 import { positionLabel } from '#common/utils/positions'
 
 /** The two writes the app makes to champion select — on a click, never on its own. */
@@ -21,11 +22,11 @@ interface Choices {
 
 /** The shell's refusals (`lcu::champ_select::Refusal`, `champselect.rs`), in the player's words. */
 const REFUSALS: Record<string, (champion: string) => { title: string, description: string }> = {
-  'not-your-turn': () => ({ title: 'Not your turn', description: 'The client has no ban or pick of yours open right now. Nothing was sent.' }),
-  'not-pickable': champion => ({ title: `${champion} is not available`, description: 'The client does not let you pick it: not owned, disabled or already taken.' }),
-  'not-bannable': champion => ({ title: `${champion} cannot be banned`, description: 'It is already banned or picked.' }),
-  'hover-mismatch': champion => ({ title: 'Your hover changed', description: `The client no longer shows ${champion} hovered. Nothing was locked.` }),
-  'client-refused': () => ({ title: 'The client refused', description: 'Your turn probably ended, or the draft moved on. Nothing was changed.' }),
+  'not-your-turn': () => ({ title: tr('draft.refusal.notYourTurn.title'), description: tr('draft.refusal.notYourTurn.text') }),
+  'not-pickable': name => ({ title: tr('draft.refusal.notPickable.title', { name }), description: tr('draft.refusal.notPickable.text') }),
+  'not-bannable': name => ({ title: tr('draft.refusal.notBannable.title', { name }), description: tr('draft.refusal.notBannable.text') }),
+  'hover-mismatch': name => ({ title: tr('draft.refusal.mismatch.title'), description: tr('draft.refusal.mismatch.text', { name }) }),
+  'client-refused': () => ({ title: tr('draft.refusal.refused.title'), description: tr('draft.refusal.refused.text') }),
 }
 
 const KEY: InjectionKey<ReturnType<typeof create>> = Symbol('champ-select-actions')
@@ -81,14 +82,14 @@ function create(draft: Ref<DraftState>) {
 
   /** Whose turn it is, for the strip over the draft. `null` when the draft is no longer about ours. */
   const turnLabel = computed(() => {
-    if (action.value?.kind === 'ban') return 'Your ban'
-    if (action.value?.kind === 'pick') return 'Your pick'
-    if (planning.value) return 'Declare your pick'
+    if (action.value?.kind === 'ban') return tr('draft.turn.ban')
+    if (action.value?.kind === 'pick') return tr('draft.turn.pick')
+    if (planning.value) return tr('draft.turn.declare')
     const next = draft.value.myNextAction
     const turns = draft.value.turnsUntilMyAction
     if (!next || turns === null) return null
-    const what = next.kind === 'ban' ? 'Your ban' : 'Your pick'
-    return turns <= 1 ? `${what} is next` : `${what} in ${turns} turns`
+    if (next.kind === 'ban') return turns <= 1 ? tr('draft.turn.banNext') : tr('draft.turn.banIn', { turns })
+    return turns <= 1 ? tr('draft.turn.pickNext') : tr('draft.turn.pickIn', { turns })
   })
 
   /** An ally showing `championId` as their pick intent, not yet locked. */
@@ -99,7 +100,7 @@ function create(draft: Ref<DraftState>) {
   /** "your Jungle", or "an ally" in queues without lanes. */
   function allyName(slot: TeamSlot) {
     const lane = positionLabel(slot.position, { short: true })
-    return lane ? `your ${lane}` : 'an ally'
+    return lane ? tr('draft.ally.lane', { lane }) : tr('draft.ally.any')
   }
 
   const banned = computed(() => new Set([...draft.value.allyBans, ...draft.value.enemyBans]))
@@ -110,12 +111,12 @@ function create(draft: Ref<DraftState>) {
 
   function availability(championId: number): Availability {
     const blocked = (reason: string) => ({ allowed: false, reason })
-    if (!kind.value) return blocked(turnLabel.value ? `Not your turn — ${turnLabel.value.toLowerCase()}` : 'Not your turn')
-    if (banned.value.has(championId)) return blocked('Banned')
-    if (picked.value.has(championId)) return blocked('Already picked')
+    if (!kind.value) return blocked(turnLabel.value ? tr('draft.avail.notYourTurnThen', { turn: turnLabel.value.toLowerCase() }) : tr('draft.avail.notYourTurn'))
+    if (banned.value.has(championId)) return blocked(tr('draft.avail.banned'))
+    if (picked.value.has(championId)) return blocked(tr('draft.avail.picked'))
     const listed = kind.value === 'pick' ? choices.value.pickable : choices.value.bannable
-    if (listed && !listed.includes(championId)) return blocked(kind.value === 'pick' ? 'Not owned or disabled' : 'Cannot be banned')
-    if (kind.value === 'pick' && hovered.value === championId) return blocked('Hovered in the client')
+    if (listed && !listed.includes(championId)) return blocked(tr(kind.value === 'pick' ? 'draft.avail.notOwned' : 'draft.avail.cannotBan'))
+    if (kind.value === 'pick' && hovered.value === championId) return blocked(tr('draft.avail.hoveredInClient'))
     return { allowed: true, reason: null }
   }
 
@@ -131,7 +132,7 @@ function create(draft: Ref<DraftState>) {
     const known = REFUSALS[message]
     toast.add(known
       ? { ...known(nameOf(championId)), icon: 'i-lucide-triangle-alert', color: 'warning' }
-      : { title: 'Nothing was sent to the client', description: message, icon: 'i-lucide-circle-x', color: 'error' })
+      : { title: tr('draft.toast.nothingSent'), description: message, icon: 'i-lucide-circle-x', color: 'error' })
   }
 
   /** One write, from one click: no queue, no retry. */
@@ -140,7 +141,7 @@ function create(draft: Ref<DraftState>) {
     pending.value = { kind, championId }
     try {
       await write()
-      if (!insideTauri()) toast.add({ title: done, description: 'Dev server: nothing was sent to a client.', icon: 'i-lucide-check', color: 'success' })
+      if (!insideTauri()) toast.add({ title: done, description: tr('draft.toast.devServer'), icon: 'i-lucide-check', color: 'success' })
     }
     catch (error) {
       refused(error, championId)
@@ -155,7 +156,7 @@ function create(draft: Ref<DraftState>) {
   function hover(championId: number) {
     const current = kind.value
     if (!current) return
-    return run(current, championId, () => send('champ_select_hover', current, championId), `${nameOf(championId)} hovered`)
+    return run(current, championId, () => send('champ_select_hover', current, championId), tr('draft.toast.hovered', { name: nameOf(championId) }))
   }
 
   /** Ban `championId`: hovered, then the ban completed — one confirmed click. */
@@ -164,14 +165,14 @@ function create(draft: Ref<DraftState>) {
     return run('ban', championId, async () => {
       await send('champ_select_hover', 'ban', championId)
       await send('champ_select_lock', 'ban', championId)
-    }, `${nameOf(championId)} banned`)
+    }, tr('draft.toast.banned', { name: nameOf(championId) }))
   }
 
   /** Lock in the champion the client shows hovered on our pick. */
   function lock() {
     const championId = hovered.value
     if (!canLock.value || championId === null) return
-    return run('lock', championId, () => send('champ_select_lock', 'pick', championId), `${nameOf(championId)} locked in`)
+    return run('lock', championId, () => send('champ_select_lock', 'pick', championId), tr('draft.toast.locked', { name: nameOf(championId) }))
   }
 
   /** What the client lets the player pick and ban now; read again whenever the draft moves. */

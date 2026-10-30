@@ -7,6 +7,8 @@ import { formatPercentage } from '#shared/utils/ddragon'
 import { POSITION_BY_VALUE } from '#common/utils/positions'
 import { winRateBand } from '#common/utils/rate-tone'
 
+const { t } = useT()
+
 /**
  * The page's single line of numbers (#1111): what the recommendation below was
  * computed from. How the lane itself goes at 15 minutes is read over the same
@@ -73,38 +75,35 @@ interface StatCell {
 const stats = computed<StatCell[]>(() => {
   const sample = build.value
   const conf = confidence.value
-  const champion = props.championName ?? 'the champion'
+  const champion = props.championName ?? t('builder.stats.theChampion')
 
   return [
     {
       key: 'games',
-      label: 'Games used',
+      label: t('builder.stats.gamesUsed'),
       value: sample === null ? '—' : formatCount(sample.gamesConsidered),
       caption: conf === null
-        ? 'no build sampled'
-        : `${conf.truemainGameCount} by mains · of ${formatCount(conf.candidatePoolSize)} scanned`,
-      hint: 'The build below is computed from these games only — games piloted by a main of '
-        + 'the champion first, then the most similar to your draft, out of all recent games '
-        + `scanned for ${champion} at this role.`,
+        ? t('builder.stats.noBuild')
+        : t('builder.stats.byMains', { mains: conf.truemainGameCount, scanned: formatCount(conf.candidatePoolSize) }),
+      hint: t('builder.stats.gamesHint', { champion }),
       tone: 'default',
     },
     {
       key: 'similarity',
-      label: 'Draft match',
+      label: t('builder.stats.draftMatch'),
       // maxPossibleScore is 0 when nothing but the matchup was pinned: there is
       // no draft to be similar to, and 0% would read as "nothing resembles it".
       value: conf !== null && conf.maxPossibleScore > 0 ? formatPercentage(conf.meanSimilarity, 0) : '—',
-      caption: 'avg similarity',
-      hint: 'Average similarity between those games and the rest of your draft.',
+      caption: t('builder.stats.avgSimilarity'),
+      hint: t('builder.stats.similarityHint'),
       tone: 'default',
     },
     {
       key: 'winRate',
-      label: 'Win rate',
+      label: t('builder.stats.winRate'),
       value: sampleWinRate.value === null ? '—' : formatPercentage(sampleWinRate.value, 0),
-      caption: 'across those games',
-      hint: 'Win rate across the games the build is computed from — the same games every '
-        + `cell of this line counts, and the ${laneNoun.value} win rate in the duel above too.`,
+      caption: t('builder.stats.acrossGames'),
+      hint: t(laneNoun.value === 'matchup' ? 'builder.stats.winRateHintMatchup' : 'builder.stats.winRateHintLane'),
       tone: winRateBand(sampleWinRate.value),
     },
   ]
@@ -112,16 +111,18 @@ const stats = computed<StatCell[]>(() => {
 
 /** Nothing recorded at all — said in one line rather than as three em dashes. */
 const emptyNotice = computed(() => {
-  const champion = props.championName ?? 'This champion'
-  const opponent = props.opponentName ?? 'that champion'
+  const champion = props.championName ?? t('builder.stats.thisChampion')
+  const opponent = props.opponentName ?? t('builder.rec.thatChampion')
   const role = POSITION_BY_VALUE.get(props.position)?.label.toLowerCase()
-  return `No recorded ${champion} vs ${opponent} game${role ? ` at ${role}` : ''} yet.`
+  return role
+    ? t('builder.stats.emptyRole', { champion, opponent, role })
+    : t('builder.stats.empty', { champion, opponent })
 })
 </script>
 
 <template>
   <SectionCard
-    title="Behind this build"
+    :title="t('builder.stats.title')"
     :level="2"
   >
     <!-- Skeleton on every fetch, not only the first (#1659 follow-up). A cold
@@ -171,7 +172,7 @@ const emptyNotice = computed(() => {
                for it. Only meaningful once there is a sample to list. -->
           <UTooltip
             v-if="stat.key === 'games' && (build?.gamesConsidered ?? 0) > 0"
-            text="See the games this build was computed from"
+            :text="t('builder.stats.seeGames')"
             :delay-duration="150"
           >
             <UButton
@@ -180,7 +181,7 @@ const emptyNotice = computed(() => {
               variant="subtle"
               size="xs"
               square
-              aria-label="See the games this build was computed from"
+              :aria-label="t('builder.stats.seeGames')"
               @click="emit('show-games')"
             />
           </UTooltip>

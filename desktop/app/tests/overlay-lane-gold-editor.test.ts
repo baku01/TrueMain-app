@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { tr } from '#common/utils/i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef } from 'vue'
 import type { OverlaySettings } from '../app/types/overlay'
@@ -26,6 +27,7 @@ function settings(change: Partial<OverlaySettings> = {}): OverlaySettings {
 
 beforeEach(() => {
   for (const [name, value] of Object.entries({ ref, computed, reactive, onMounted, onBeforeUnmount, useTemplateRef })) vi.stubGlobal(name, value)
+  vi.stubGlobal('useT', () => ({ t: tr }))
   vi.stubGlobal('useStaticData', () => ({ items: ref({}) }))
   vi.stubGlobal('useChampionStatics', () => ({ champions: ref(new Map()), portraitOf: () => null, patch: ref('') }))
 })

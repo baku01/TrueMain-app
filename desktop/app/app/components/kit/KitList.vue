@@ -11,13 +11,14 @@ import { kitPaths } from '~/utils/kit-tree'
 withDefaults(defineProps<{ kits: Kit[], showPositions?: boolean }>(), { showPositions: false })
 const selected = defineModel<string | null>({ required: true })
 
+const { t } = useT()
 const { items, summoners, runeTree } = useStaticData()
 
 const firstPath = (kit: Kit) => kitPaths(kit.tree)[0] ?? []
 </script>
 
 <template>
-  <ul class="space-y-1" aria-label="Your kits">
+  <ul class="space-y-1" :aria-label="t('kit.list.label')">
     <li v-for="kit in kits" :key="kit.id">
       <button
         type="button"

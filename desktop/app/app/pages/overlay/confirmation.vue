@@ -10,7 +10,7 @@
  * built asks for the press that built it (`overlay_confirmation`), emitted
  * before it listened. In a browser-only `npm run dev`, a sample line shows.
  */
-const SAMPLE = 'Last 30 s saved'
+const { t } = useT()
 
 const text = ref<string | null>(null)
 const content = ref<HTMLElement | null>(null)
@@ -26,7 +26,7 @@ let stopListening: (() => void) | undefined
 onBeforeUnmount(() => stopListening?.())
 onMounted(async () => {
   if (!insideTauri()) {
-    text.value = SAMPLE
+    text.value = t('overlay.confirmation.sample')
     return
   }
   const { listen } = await import('@tauri-apps/api/event')
@@ -39,7 +39,7 @@ onMounted(async () => {
 watch(text, () => void nextTick(fit))
 
 useHead({
-  title: 'TrueMain overlay',
+  title: t('overlay.windowTitle'),
   htmlAttrs: { class: 'overflow-hidden bg-default' },
   bodyAttrs: { class: 'overflow-hidden bg-default' },
 })

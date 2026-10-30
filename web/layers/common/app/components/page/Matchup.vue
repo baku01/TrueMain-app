@@ -3,6 +3,8 @@
 // each app's route file wraps this with its own head tags and nothing else.
 import { POSITION_OPTIONS, isChampionPosition, type ChampionPosition } from '#common/utils/positions'
 
+const { t } = useT()
+
 const route = useRoute()
 const router = useRouter()
 
@@ -111,13 +113,13 @@ function setEnemy(position: ChampionPosition, championId: number | null) {
 <template>
   <div class="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
     <PageHeader
-      eyebrow="Draft tools"
-      title="Matchup"
+      :eyebrow="t('pages.matchup.eyebrow')"
+      :title="t('pages.matchup.title')"
     />
 
     <FetchErrorAlert
       :error="staticError"
-      title="Failed to load the champion list"
+      :title="t('pages.championListFailed')"
     />
 
     <BuilderDraftBoard
@@ -154,13 +156,13 @@ function setEnemy(position: ChampionPosition, championId: number | null) {
 
     <FetchErrorAlert
       :error="error"
-      title="Failed to load the recommendation"
+      :title="t('pages.matchup.recommendationFailed')"
     />
 
     <StaleContentNotice
       v-if="isDraftReady && !isLoading"
       :error="staleError"
-      subject="the previous recommendation"
+      :subject="t('pages.matchup.previousRecommendation')"
       :on-retry="retryDraft"
     />
 

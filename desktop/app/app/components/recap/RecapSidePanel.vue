@@ -5,6 +5,8 @@ import type { RecapTurningPoint } from '~/utils/recording-win-probability'
 import { formatClock } from '~/utils/recording-moments'
 import { clipOrigin } from '~/utils/auto-clips'
 
+const { t } = useT()
+
 /**
  * Beside the recap's video: the clips — those being cut, each named and saved
  * on its own (or all at once), then those already saved from this game — the
@@ -33,10 +35,10 @@ const emit = defineEmits<{
 
 const tab = ref<'clips' | 'moments' | 'turning'>('clips')
 const tabs = computed(() => [
-  { label: 'Clips', value: 'clips', badge: props.drafts.length + props.saved.length || undefined },
-  { label: 'Moments', value: 'moments', badge: props.moments.length || undefined },
+  { label: t('rec.side.clips'), value: 'clips', badge: props.drafts.length + props.saved.length || undefined },
+  { label: t('rec.side.moments'), value: 'moments', badge: props.moments.length || undefined },
   // "Swings": three tabs share the panel's narrow width; the list is titled in full.
-  ...(props.turningPoints?.length ? [{ label: 'Swings', value: 'turning' }] : []),
+  ...(props.turningPoints?.length ? [{ label: t('rec.side.swings'), value: 'turning' }] : []),
 ])
 // A game whose curve goes away (its data no longer reads) leaves no empty tab open.
 watch(() => props.turningPoints?.length, (count) => {
@@ -51,8 +53,7 @@ const savingAny = computed(() => props.drafts.some(draft => draft.saving))
 
     <div v-if="tab === 'clips'" class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
       <p v-if="!drafts.length" class="rounded-lg bg-elevated p-3 text-xs leading-relaxed text-muted">
-        Drag across the timeline to cut a clip, or press <UKbd value="I" size="sm" /> and <UKbd value="O" size="sm" /> at the
-        playhead. Cut as many as you like: each is saved as its own video.
+        {{ t('rec.side.hintPre') }} <UKbd value="I" size="sm" /> {{ t('rec.side.hintAnd') }} <UKbd value="O" size="sm" /> {{ t('rec.side.hintPost') }}
       </p>
       <RecapDraftRow
         v-for="draft in drafts"
@@ -67,7 +68,7 @@ const savingAny = computed(() => props.drafts.some(draft => draft.saving))
       />
       <UButton
         v-if="drafts.length > 1"
-        :label="`Save all ${drafts.length}`"
+        :label="t('rec.side.saveAll', { count: drafts.length })"
         icon="i-lucide-save-all"
         variant="soft"
         size="sm"
@@ -77,7 +78,7 @@ const savingAny = computed(() => props.drafts.some(draft => draft.saving))
       />
 
       <template v-if="saved.length">
-        <h3 class="stat-label mt-2 px-1">Saved clips · {{ saved.length }}</h3>
+        <h3 class="stat-label mt-2 px-1">{{ t('rec.side.saved', { count: saved.length }) }}</h3>
         <div v-for="clip in saved" :key="clip.id" class="group flex items-center gap-0.5">
           <NuxtLink
             :to="`/recordings/clips/${encodeURIComponent(clip.id)}`"
@@ -94,8 +95,8 @@ const savingAny = computed(() => props.drafts.some(draft => draft.saving))
             color="neutral"
             variant="ghost"
             size="xs"
-            :aria-label="`Adjust the range of ${clip.title}`"
-            title="Adjust its range on the timeline"
+            :aria-label="t('rec.side.adjust', { title: clip.title })"
+            :title="t('rec.side.adjustTitle')"
             @click="emit('adjust', clip)"
           />
         </div>

@@ -3,6 +3,8 @@ import type { Clip } from '~/types/recordings'
 import { formatBytes, revealLabel } from '~/utils/recording-library'
 import { formatClock } from '~/utils/recording-moments'
 
+const { t } = useT()
+
 /** The publish dialog's clip, dragged onto YouTube's upload page — or found in its folder. */
 defineProps<{
   clip: Clip
@@ -20,7 +22,7 @@ const { startDrag } = useClipPublish()
     draggable="true"
     role="button"
     tabindex="-1"
-    aria-label="Drag the clip's video onto YouTube"
+    :aria-label="t('rec.publish.dragAria')"
     class="surface surface-hover flex cursor-grab items-center gap-3 rounded-lg p-2 active:cursor-grabbing"
     @dragstart.prevent="startDrag(clip.id)"
   >

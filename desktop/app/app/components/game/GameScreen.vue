@@ -43,8 +43,9 @@ onBeforeUnmount(() => clearInterval(ticking))
 
 const clock = computed(() => props.game.gameTime + Math.max(0, now.value - props.syncedAt) / 1000)
 
-const MAPS: Record<number, string> = { 11: 'Summoner\'s Rift', 12: 'Howling Abyss', 30: 'Arena' }
-const mapName = computed(() => MAPS[props.game.mapNumber] ?? 'Live game')
+const { t } = useT()
+const MAPS: Record<number, string> = { 11: t('game.map.rift'), 12: t('game.map.abyss'), 30: t('game.map.arena') }
+const mapName = computed(() => MAPS[props.game.mapNumber] ?? t('game.map.live'))
 
 // ─── The board ──────────────────────────────────────────────────────────────
 
@@ -79,8 +80,8 @@ const rows = computed(() => {
 const kills = (team: GameTeam) => props.game.players.filter(player => player.team === team).reduce((sum, player: GamePlayer) => sum + player.kills, 0)
 
 const sideLabel = (team: GameTeam, ours: boolean) => {
-  if (props.game.myTeam) return ours ? 'Your team' : 'Enemy team'
-  return team === 'ORDER' ? 'Blue side' : 'Red side'
+  if (props.game.myTeam) return ours ? t('game.side.yours') : t('game.side.enemy')
+  return team === 'ORDER' ? t('game.side.blue') : t('game.side.red')
 }
 </script>
 
@@ -95,14 +96,14 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
         <span class="stat-label">{{ mapName }}</span>
       </div>
 
-      <div class="flex items-baseline gap-3" :title="`Kills: ${sideLabel(left, true).toLowerCase()} ${kills(left)}, ${sideLabel(right, false).toLowerCase()} ${kills(right)}`">
+      <div class="flex items-baseline gap-3" :title="t('game.killsTitle', { left: sideLabel(left, true).toLowerCase(), leftKills: kills(left), right: sideLabel(right, false).toLowerCase(), rightKills: kills(right) })">
         <span class="stat-value text-2xl leading-none text-ally">{{ kills(left) }}</span>
         <UIcon name="i-lucide-swords" class="size-4 self-center text-dimmed" />
         <span class="stat-value text-2xl leading-none text-enemy">{{ kills(right) }}</span>
       </div>
 
       <div class="flex items-center gap-3 justify-self-end">
-        <span class="stat-value text-xl leading-none tabular-nums" title="Game time">{{ formatDuration(clock) }}</span>
+        <span class="stat-value text-xl leading-none tabular-nums" :title="t('game.gameTime')">{{ formatDuration(clock) }}</span>
         <slot name="actions" />
       </div>
     </header>

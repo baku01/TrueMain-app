@@ -16,28 +16,30 @@ defineProps<{ compact?: boolean }>()
 
 const { state } = useLcuState()
 const { patch } = useChampionStatics()
+const { t } = useT()
 
 const identity = computed<AccountIdentity>(() => {
-  if (!state.value.connected) return { gameName: 'League client', tagLine: null }
+  if (!state.value.connected) return { gameName: t('app.leagueClient'), tagLine: null }
   const [gameName, tagLine] = state.value.riotId?.split('#') ?? []
-  return { gameName: gameName ?? 'Logging in…', tagLine: tagLine ?? null, profileIconId: state.value.profileIconId }
+  return { gameName: gameName ?? t('app.loggingIn'), tagLine: tagLine ?? null, profileIconId: state.value.profileIconId }
 })
 
 /** The client's phase in the player's words. `live` phases pulse. */
 const STATUS: Partial<Record<GameflowPhase, { label: string, live?: boolean }>> = {
-  Lobby: { label: 'In lobby' },
-  Matchmaking: { label: 'In queue', live: true },
-  ReadyCheck: { label: 'Match found', live: true },
-  ChampSelect: { label: 'Champion select', live: true },
-  InProgress: { label: 'In game', live: true },
-  Reconnect: { label: 'Reconnecting', live: true },
-  WaitingForStats: { label: 'Post-game' },
-  PreEndOfGame: { label: 'Post-game' },
-  EndOfGame: { label: 'Post-game' },
+  Lobby: { label: 'app.status.lobby' },
+  Matchmaking: { label: 'app.status.queue', live: true },
+  ReadyCheck: { label: 'app.status.matchFound', live: true },
+  ChampSelect: { label: 'app.status.champSelect', live: true },
+  InProgress: { label: 'app.status.inGame', live: true },
+  Reconnect: { label: 'app.status.reconnecting', live: true },
+  WaitingForStats: { label: 'app.status.postGame' },
+  PreEndOfGame: { label: 'app.status.postGame' },
+  EndOfGame: { label: 'app.status.postGame' },
 }
 const status = computed(() => {
-  if (!state.value.connected) return { label: 'Client not running', live: false }
-  return STATUS[state.value.phase] ?? { label: 'Online' }
+  if (!state.value.connected) return { label: t('app.status.clientOff'), live: false }
+  const known = STATUS[state.value.phase]
+  return known ? { ...known, label: t(known.label) } : { label: t('app.status.online') }
 })
 const dot = computed(() => (!state.value.connected ? 'bg-ink-400' : status.value.live ? 'bg-primary' : 'bg-success'))
 const title = computed(() => riotIdLabel(identity.value.gameName, identity.value.tagLine))

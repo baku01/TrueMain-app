@@ -8,6 +8,8 @@ import { isLoadingStatus } from '#common/utils/async-data'
 import { firstParamValue } from '#common/utils/route-params'
 import { directoryOrderToQuery, parseDirectoryOrder, type DirectoryOrder } from '#common/utils/table-sorting'
 
+const { t } = useT()
+
 // Mirrors the backend default; the page size is fixed in the UI (no
 // per-page selector) so the only stateful pagination value carried in the
 // URL is the page number.
@@ -145,8 +147,8 @@ await directory.ready
 <template>
   <div class="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
     <PageHeader
-      eyebrow="Builds & stats"
-      title="Champions"
+      :eyebrow="t('pages.champions.eyebrow')"
+      :title="t('pages.champions.title')"
     >
       <ChampionListFilters
         :champions="staticList ?? []"
@@ -164,14 +166,14 @@ await directory.ready
       <FetchErrorAlert
         v-if="error"
         :error="error"
-        title="Failed to load the champion list"
+        :title="t('pages.championListFailed')"
       />
 
       <template v-else>
         <!-- A failed filter/sort/page click: the previous rows stay, marked stale (#1668). -->
         <StaleContentNotice
           :error="directoryStaleError"
-          subject="the previous results"
+          :subject="t('pages.previousResults')"
           :on-retry="() => directory.refresh()"
         />
 
@@ -190,7 +192,7 @@ await directory.ready
         />
 
         <p v-else class="text-sm text-muted">
-          No champions match these filters.
+          {{ t('pages.noChampionsMatch') }}
         </p>
 
         <!-- Only when there is more than one page, and only once the data is in. -->

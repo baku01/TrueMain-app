@@ -3,6 +3,8 @@ import type { ProfilePositionStat } from '#shared/types/profile'
 import { formatPercentage, getPositionIconUrl } from '#shared/utils/ddragon'
 import { positionLabel } from '#common/utils/positions'
 
+const { t } = useT()
+
 // Each role's share of the player's games, main role first. The app's
 // dashboard adds how the player fares on each through the `games` slot
 // (`DashboardRolesCard`).
@@ -10,7 +12,7 @@ const props = withDefaults(defineProps<{
   positions: ProfilePositionStat[]
   title?: string
 }>(), {
-  title: 'Role distribution',
+  title: undefined,
 })
 
 defineSlots<{
@@ -32,7 +34,7 @@ const sorted = computed(() =>
 <template>
   <section v-if="sorted.length > 0" class="flex flex-col gap-2">
     <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-      {{ title }}
+      {{ title ?? t('profile.roleDistribution') }}
     </h2>
     <!-- No `overflow-hidden`: the rows have no edge background to clip. It used
          to be forbidden here anyway — `glass`'s backdrop-filter made WebKit clip
@@ -55,7 +57,7 @@ const sorted = computed(() =>
           />
         </UTooltip>
         <span class="text-xs text-muted tabular-nums">
-          <slot name="games" :role="stat">{{ stat.games }} games</slot>
+          <slot name="games" :role="stat">{{ t('profile.gamesCount', { count: stat.games }) }}</slot>
         </span>
         <span class="w-12 text-right text-sm font-semibold tabular-nums text-default">
           {{ formatPercentage(stat.rate, 0) }}

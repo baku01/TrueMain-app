@@ -7,6 +7,8 @@ import type {
   StaticSummonerSpellData,
 } from '#shared/types/static-data'
 
+const { t } = useT()
+
 /**
  * Provenance drawer for the composition recommendation (#940): the games the
  * "Games used" stat counts, one row per game (reusing the plain match-history
@@ -86,7 +88,7 @@ watch(draftKey, () => {
 onBeforeUnmount(clear)
 
 const title = computed(() =>
-  props.championName ? `Games used for ${props.championName}` : 'Games used')
+  props.championName ? t('builder.games.titleNamed', { name: props.championName }) : t('builder.games.title'))
 
 // Profile icons are keyed by the *current* Data Dragon version, not by the
 // patch the games were played on: `data.patch` is a game version ("15.14"),
@@ -102,7 +104,7 @@ const iconPatch = computed(() => ddragonVersions.value?.[0] ?? data.value?.patch
     direction="right"
     handle-only
     :title="title"
-    description="The games this build was computed from, in the order the selection picked them."
+    :description="t('builder.games.description')"
     :ui="{
       // Wide enough for a MatchRow to clear its @xl tier, where the row shows
       // both team compositions — the reason to open this drawer at all.
@@ -128,7 +130,7 @@ const iconPatch = computed(() => ddragonVersions.value?.[0] ?? data.value?.patch
       >
         <FetchErrorAlert
           :error="error"
-          title="Failed to load the games"
+          :title="t('builder.games.error')"
         />
 
         <!-- Skeletons on *every* fetch, not just the first: a page change goes
@@ -144,7 +146,7 @@ const iconPatch = computed(() => ddragonVersions.value?.[0] ?? data.value?.patch
             v-if="data.games.length === 0"
             size="sm"
             icon="i-lucide-list-x"
-            description="No sampled games to show."
+            :description="t('builder.games.empty')"
           />
 
           <BuilderGamesDrawerGame

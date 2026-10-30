@@ -16,6 +16,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ grab: [panel: OverlayPanel, event: PointerEvent], show: [panel: OverlayPanel] }>()
+const { t } = useT()
 </script>
 
 <template>
@@ -23,9 +24,9 @@ const emit = defineEmits<{ grab: [panel: OverlayPanel, event: PointerEvent], sho
     class="flex flex-col gap-2 rounded-lg p-2 ring-1 transition-colors"
     :class="dropping ? 'bg-error/5 ring-error/50' : 'ring-transparent'"
   >
-    <h3 class="stat-label">Hidden panels</h3>
+    <h3 class="stat-label">{{ t('overlay.hidden.title') }}</h3>
     <p v-if="!hidden.length" class="text-xs text-muted">
-      {{ dropping ? 'Drop to hide it.' : 'Every panel is on your screen. Remove one with its × or drag it here.' }}
+      {{ dropping ? t('overlay.hidden.drop') : t('overlay.hidden.empty') }}
     </p>
     <button
       v-for="panel in hidden"
@@ -33,7 +34,7 @@ const emit = defineEmits<{ grab: [panel: OverlayPanel, event: PointerEvent], sho
       type="button"
       class="flex cursor-grab touch-none items-start gap-2.5 rounded-md bg-elevated/60 p-2.5 text-left ring-1 ring-default transition hover:ring-primary/60"
       :class="dragged === panel && 'opacity-40'"
-      :title="`Drag onto the screen, or click to show ${OVERLAY_PANEL_INFO[panel].label} where it was`"
+      :title="t('overlay.hidden.show', { panel: OVERLAY_PANEL_INFO[panel].label })"
       @pointerdown="emit('grab', panel, $event)"
       @keydown.enter.prevent="emit('show', panel)"
       @keydown.space.prevent="emit('show', panel)"

@@ -17,6 +17,8 @@ import {
 } from '#common/utils/timeline-curves'
 import { axisEvents } from '#common/utils/timeline-events'
 
+const { t } = useT()
+
 /**
  * The ten players' gold, XP or creep score over the game (#2102), above the
  * win probability in the desktop app's Timeline view: one curve a player — the
@@ -111,8 +113,8 @@ function onMove(event: PointerEvent) {
   hoverIndex.value = best
 }
 
-const summary = computed(() => `${unit.value} of the ten players over the game; ${formatTeamDifference(difference.value, metric.value)} at the end`)
-const leadSummary = computed(() => `Team ${unit.value} lead over the game, your side above the line`)
+const summary = computed(() => t('match.curves.summary', { unit: unit.value, difference: formatTeamDifference(difference.value, metric.value) }))
+const leadSummary = computed(() => t('match.curves.leadSummary', { unit: unit.value }))
 const differenceTone = computed(() => {
   if (Math.round(difference.value) === 0) return 'text-muted'
   return difference.value > 0 ? 'text-ally' : 'text-enemy'
@@ -124,7 +126,7 @@ const differenceTone = computed(() => {
     <header class="flex flex-wrap items-center justify-between gap-2">
       <div class="flex items-baseline gap-3">
         <h3 class="text-xs font-semibold uppercase tracking-wider text-muted">
-          {{ CURVE_METRICS.find(entry => entry.key === metric)!.label }} over the game
+          {{ t('match.curves.title', { metric: CURVE_METRICS.find(entry => entry.key === metric)!.label }) }}
         </h3>
         <span class="text-xs font-semibold tabular-nums" :class="differenceTone">
           {{ formatTeamDifference(difference, metric) }}

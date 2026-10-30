@@ -8,6 +8,8 @@ import type {
 } from '#shared/types/static-data'
 import { truemainNameTag } from '#shared/utils/truemain-path'
 
+const { t } = useT()
+
 // One game of the provenance drawer: who piloted it, then the plain
 // match-history row.
 defineProps<{
@@ -33,7 +35,7 @@ function pilotNameTag(pilot: CompositionGamePilot | null): string | null {
 // A game whose pilot the API could not resolve still gets the chip, unlinked,
 // with the user glyph (`Account` draws it for icon id 0, the API's "never
 // resolved" marker — there is no such asset, so it is never requested).
-const UNKNOWN_PILOT = { gameName: 'Unknown player', tagLine: null, profileIconId: 0 }
+const UNKNOWN_PILOT = { gameName: t('builder.games.unknownPlayer'), tagLine: null, profileIconId: 0 }
 </script>
 
 <template>

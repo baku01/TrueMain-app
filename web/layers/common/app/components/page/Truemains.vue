@@ -7,6 +7,8 @@ import type { ChampionPosition } from '#common/utils/positions'
 import { REGION_SLUGS } from '#shared/types/leaderboard'
 import { parseLeaderboardSort } from '#shared/utils/leaderboard-sort'
 
+const { t } = useT()
+
 const LEADERBOARD_PAGE_SIZE = 25
 const VALID_REGIONS: ReadonlySet<RegionSlug> = new Set(REGION_SLUGS)
 
@@ -86,7 +88,7 @@ const {
 } = useTruemainsLeaderboard(currentPage, {
   pageSize: LEADERBOARD_PAGE_SIZE,
   // A failed filter, sort or page click keeps the previous rows (#1668).
-  refetchFailureTitle: 'Could not update the leaderboard',
+  refetchFailureTitle: t('pages.truemains.updateFailed'),
   region: filterRegion,
   position: filterPosition,
   championId: filterChampionId,
@@ -117,15 +119,15 @@ await leaderboardReady
 <template>
   <div class="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
     <PageHeader
-      eyebrow="Leaderboard"
-      title="Truemains"
+      :eyebrow="t('pages.truemains.eyebrow')"
+      :title="t('pages.truemains.title')"
     />
 
     <AppSearch
       variant="field"
       champion-mode="filter"
       :active-champion-id="filterChampionId"
-      placeholder="Search a champion or player…"
+      :placeholder="t('search.placeholder')"
       @filter-champion="setChampionId"
     />
 
@@ -140,12 +142,12 @@ await leaderboardReady
 
     <FetchErrorAlert
       :error="leaderboardError"
-      title="Failed to load the leaderboard"
+      :title="t('pages.truemains.loadFailed')"
     />
 
     <StaleContentNotice
       :error="leaderboardStaleError"
-      subject="the previous results"
+      :subject="t('pages.previousResults')"
       :on-retry="() => refreshLeaderboard()"
     />
 
@@ -153,7 +155,7 @@ await leaderboardReady
       v-if="!leaderboardInitialLoading && rows.length === 0 && !leaderboardError"
       size="sm"
       icon="i-lucide-filter-x"
-      description="No truemains match these filters yet."
+      :description="t('pages.truemains.empty')"
     />
 
     <!-- The page awaits its first page of rows (above), so the table is never

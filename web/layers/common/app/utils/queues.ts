@@ -8,6 +8,8 @@
 // public static.developer.riotgames.com/docs/lol/queues.json, which
 // lags the live game data).
 
+import { tr } from '#common/utils/i18n'
+
 const QUEUE_LABELS: Record<number, string> = {
   0: 'Custom',
 
@@ -70,12 +72,19 @@ const GAME_MODE_LABELS: Record<string, string> = {
  */
 export function getQueueLabel(queueId: number, gameMode?: string): string {
   const mapped = QUEUE_LABELS[queueId]
-  if (mapped) return mapped
+  if (mapped) return localised(mapped)
 
   if (gameMode) {
     const modeLabel = GAME_MODE_LABELS[gameMode.toUpperCase()]
-    if (modeLabel) return modeLabel
+    if (modeLabel) return localised(modeLabel)
   }
 
-  return queueId === 0 ? 'Custom' : `Queue ${queueId}`
+  return queueId === 0 ? localised('Custom') : tr('queue.unknown', { id: queueId })
+}
+
+/** A label in the active language; one without a translation stays as written. */
+function localised(label: string): string {
+  const key = `queue.${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+  const translated = tr(key)
+  return translated === key ? label : translated
 }

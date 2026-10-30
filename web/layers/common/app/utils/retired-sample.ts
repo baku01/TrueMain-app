@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import { formatMatchDay } from '#common/utils/match-history'
 
 /**
@@ -28,5 +29,5 @@ export function retiredSampleTooltip(
   const day = formatMatchDay(measuredAtUtc, now)
   if (!day) return null
 
-  return `Last measured on ${day}, games since aged out`
+  return tr('profile.retiredSample', { day })
 }

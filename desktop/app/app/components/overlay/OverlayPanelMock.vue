@@ -19,6 +19,7 @@ import { PANEL_WIDTHS } from '~/utils/overlay-layout'
 const props = defineProps<{ panel: OverlayPanel, zoom: number, removable?: boolean, chord?: string | null, height?: number, lanes?: boolean }>()
 const emit = defineEmits<{ remove: [], measure: [size: Size] }>()
 
+const { t } = useT()
 const info = computed(() => OVERLAY_PANEL_INFO[props.panel])
 const plates = computed(() => onScoreboard(props.panel))
 
@@ -50,8 +51,8 @@ onBeforeUnmount(() => observer?.disconnect())
     v-if="removable"
     type="button"
     class="absolute -right-1.5 -top-1.5 z-10 flex size-4.5 items-center justify-center rounded-full bg-elevated text-muted opacity-0 shadow ring-1 ring-default transition hover:bg-error hover:text-white focus-visible:opacity-100 group-hover:opacity-100 group-focus-visible:opacity-100"
-    :aria-label="`Remove ${info.label}`"
-    :title="`Remove ${info.label}`"
+    :aria-label="t('overlay.editor.remove', { panel: info.label })"
+    :title="t('overlay.editor.remove', { panel: info.label })"
     @pointerdown.stop
     @click.stop="emit('remove')"
   >

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { formatKilo } from '#common/utils/match-detail-format'
 
+const { t } = useT()
+
 // A scoreboard player's damage to champions: the bar first, then the figure and
 // its per-minute rate under it. The side's top dealer gets the full-strength
 // fill so the carry reads at a glance; everyone else sits on a softer tone.
@@ -26,7 +28,7 @@ const percent = computed(() => props.maxDamage > 0 ? Math.round((props.damage / 
     </div>
     <span class="whitespace-nowrap text-[11px] leading-none tabular-nums">
       <span class="font-semibold text-default">{{ formatKilo(damage) }}</span>
-      <span class="text-muted"> ({{ Math.round(damagePerMin) }}/m)</span>
+      <span class="text-muted"> ({{ t('match.scoreboard.perMinute', { value: Math.round(damagePerMin) }) }})</span>
     </span>
   </div>
 </template>

@@ -3,6 +3,8 @@ import type { CompositionBuildRequest, CompositionBuildResponse } from '#shared/
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { POSITION_BY_VALUE, type ChampionPosition } from '#common/utils/positions'
 
+const { t } = useT()
+
 // The matchup page's recommendation, in each of its states: loading, the
 // standard-build fallback, no similar games, and the recommendation itself.
 const props = defineProps<{
@@ -44,11 +46,12 @@ const matchupMissing = computed(() =>
 
 /** Tooltip on the standard build's warning dot — the whole explanation, in one line. */
 const missingMatchupNotice = computed(() => {
-  const champion = props.playedChampion?.name ?? 'this champion'
-  const opponent = props.opponentChampion?.name ?? 'that champion'
-  const roleLabel = POSITION_BY_VALUE.get(props.playedPosition)?.label.toLowerCase() ?? null
-  const role = roleLabel ? ` at ${roleLabel}` : ''
-  return `No ${champion} vs ${opponent} game${role}, standard build shown`
+  const champion = props.playedChampion?.name ?? t('builder.rec.thisChampion')
+  const opponent = props.opponentChampion?.name ?? t('builder.rec.thatChampion')
+  const role = POSITION_BY_VALUE.get(props.playedPosition)?.label.toLowerCase() ?? null
+  return role
+    ? t('builder.rec.missingRole', { champion, opponent, role })
+    : t('builder.rec.missing', { champion, opponent })
 })
 </script>
 
@@ -89,14 +92,14 @@ const missingMatchupNotice = computed(() => {
 
     <SectionCard
       v-else-if="recommendation.build.gamesConsidered === 0"
-      :title="playedChampion ? `Recommended for ${playedChampion.name}` : 'Recommendation'"
+      :title="playedChampion ? t('builder.rec.titleNamed', { name: playedChampion.name }) : t('builder.rec.title')"
     >
       <!-- Description-only: this card's title is an `<h3>` and `UEmpty`'s
            `title` prop renders an `<h2>` — see FallbackBuild.vue. -->
       <UEmpty icon="i-lucide-search-x">
         <template #description>
-          <span class="block font-medium text-highlighted">No similar games found</span>
-          Nothing recorded for this champion at this position yet.
+          <span class="block font-medium text-highlighted">{{ t('builder.rec.noneTitle') }}</span>
+          {{ t('builder.rec.noneBody') }}
         </template>
       </UEmpty>
     </SectionCard>

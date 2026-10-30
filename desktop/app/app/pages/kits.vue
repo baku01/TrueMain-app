@@ -8,6 +8,7 @@ import { cloneKit } from '~/utils/kit'
  * here for any champion and one or several positions (`KitNew`). Each is
  * offered in champion select on its positions, beside TrueMain's builds.
  */
+const { t } = useT()
 const { store, save } = useKits()
 const { nameOf, portraitOf } = useChampionStatics()
 const run = useKitAction()
@@ -16,7 +17,7 @@ const groups = computed(() => {
   const byChampion = new Map<number, Kit[]>()
   for (const kit of store.value.kits) byChampion.set(kit.championId, [...(byChampion.get(kit.championId) ?? []), kit])
   return [...byChampion.entries()]
-    .map(([championId, kits]) => ({ championId, name: nameOf(championId) || `Champion ${championId}`, kits: [...kits].sort((a, b) => a.name.localeCompare(b.name)) }))
+    .map(([championId, kits]) => ({ championId, name: nameOf(championId) || t('kit.page.champion', { id: championId }), kits: [...kits].sort((a, b) => a.name.localeCompare(b.name)) }))
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
@@ -34,7 +35,7 @@ const shown = computed(() => store.value.kits.find(kit => kit.id === selected.va
 
 async function saveEdited(kit: Kit) {
   saving.value = true
-  if (await run(() => save(kit), 'Could not save the kit')) {
+  if (await run(() => save(kit), t('kit.error.save'))) {
     selected.value = kit.id
     editing.value = null
   }
@@ -47,8 +48,8 @@ async function saveEdited(kit: Kit) {
   <div class="flex h-full min-h-0 flex-col gap-4 p-5">
     <div class="flex items-center gap-3">
       <UIcon name="i-lucide-backpack" class="size-6 text-primary" />
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">My kits</h1>
-      <UButton class="ml-auto" label="New kit" icon="i-lucide-plus" size="sm" :disabled="editing !== null" @click="creating = true" />
+      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('kit.page.title') }}</h1>
+      <UButton class="ml-auto" :label="t('kit.new.button')" icon="i-lucide-plus" size="sm" :disabled="editing !== null" @click="creating = true" />
     </div>
 
     <div v-if="groups.length || editing" class="surface grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
@@ -75,9 +76,9 @@ async function saveEdited(kit: Kit) {
 
     <div v-else class="flex flex-1 flex-col items-center justify-center gap-2 text-center">
       <UIcon name="i-lucide-backpack" class="size-6 text-dimmed" />
-      <p class="text-sm text-muted">Your own builds: an item tree, a rune page and two spells, for a champion on the positions you pick</p>
-      <p class="max-w-sm text-xs text-dimmed">Champion select offers it beside TrueMain's builds; picked there, the overlay follows its items.</p>
-      <UButton class="mt-2" label="New kit" icon="i-lucide-plus" size="sm" @click="creating = true" />
+      <p class="text-sm text-muted">{{ t('kit.page.empty') }}</p>
+      <p class="max-w-sm text-xs text-dimmed">{{ t('kit.empty.hint') }}</p>
+      <UButton class="mt-2" :label="t('kit.new.button')" icon="i-lucide-plus" size="sm" @click="creating = true" />
     </div>
 
     <KitNew v-model:open="creating" @create="kit => (editing = kit)" />

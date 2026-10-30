@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { GameRecording } from '~/types/recordings'
-import { dayLabel, formatBytes, itemTitle, gameItem, recordingKda, revealLabel } from '~/utils/recording-library'
+import { dateLocale, dayLabel, formatBytes, itemTitle, gameItem, recordingKda, revealLabel } from '~/utils/recording-library'
 import { getQueueLabel } from '#common/utils/queues'
+
+const { t } = useT()
 
 /**
  * The recap's header: the game (champion, result, K/D/A, queue, when) and the
@@ -17,7 +19,7 @@ const { setKept, reveal } = useRecordings()
 const title = computed(() => itemTitle(gameItem(props.recording), nameOf))
 const kda = computed(() => recordingKda(props.recording))
 const when = computed(() => {
-  const time = new Date(props.recording.startedAtMs).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const time = new Date(props.recording.startedAtMs).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
   return `${dayLabel(props.recording.startedAtMs)} ${time}`
 })
 const busy = ref(false)
@@ -31,7 +33,7 @@ async function toggleKept() {
 
 <template>
   <header class="flex items-center gap-3">
-    <UButton to="/recordings" icon="i-lucide-arrow-left" color="neutral" variant="ghost" size="sm" aria-label="Back to recordings" />
+    <UButton to="/recordings" icon="i-lucide-arrow-left" color="neutral" variant="ghost" size="sm" :aria-label="t('rec.clip.back')" />
     <ChampionPortrait :champion-id="recording.championId" size="sm" />
     <div class="min-w-0 leading-tight">
       <h1 class="truncate text-lg font-semibold tracking-tight text-highlighted">
@@ -54,17 +56,17 @@ async function toggleKept() {
     <div class="ml-auto flex shrink-0 items-center gap-2">
       <UButton
         :icon="recording.kept ? 'i-lucide-check' : 'i-lucide-pin'"
-        :label="recording.kept ? 'Kept · exempt from budget' : 'Keep full game'"
+        :label="recording.kept ? t('rec.header.kept') : t('rec.card.keepGame')"
         :color="recording.kept ? 'primary' : 'neutral'"
         :variant="recording.kept ? 'soft' : 'outline'"
         size="sm"
         :loading="busy"
         :aria-pressed="recording.kept"
-        :title="recording.kept ? 'Kept: never deleted to free space. Click to stop keeping it.' : 'Keep it out of the disk budget: it is never deleted to free space.'"
+        :title="recording.kept ? t('rec.header.keptTitle') : t('rec.header.keepTitle')"
         @click="toggleKept"
       />
       <UButton icon="i-lucide-folder-open" color="neutral" variant="ghost" size="sm" :aria-label="revealLabel()" :title="revealLabel()" @click="reveal(recording.videoPath)" />
-      <UButton icon="i-lucide-trash-2" label="Delete full game" color="error" variant="ghost" size="sm" @click="emit('delete')" />
+      <UButton icon="i-lucide-trash-2" :label="t('rec.deleteGame')" color="error" variant="ghost" size="sm" @click="emit('delete')" />
     </div>
   </header>
 </template>

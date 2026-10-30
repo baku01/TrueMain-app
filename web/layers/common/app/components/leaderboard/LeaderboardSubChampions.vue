@@ -3,6 +3,8 @@ import type { LeaderboardTopChampion } from '#shared/types/leaderboard'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { leaderboardChampionIcon, leaderboardChampionName, subChampionSlots } from '#common/utils/leaderboard-row'
 
+const { t } = useT()
+
 // The sub-mains beside a truemain's signature champion: always two slots, an
 // empty box where the player has no such champion — a filled square would
 // read as an icon that failed to load. Each links to the player's own page on
@@ -30,7 +32,7 @@ const slots = computed(() => subChampionSlots(props.topChampions).map(champion =
         :name="champion.name"
         :icon-url="champion.iconUrl"
         :name-tag="nameTag"
-        :title="`${champion.name} · ${champion.games} games`"
+        :title="t('leaderboard.championTitle', { name: champion.name, games: champion.games })"
         class="size-6"
       />
       <div v-else class="size-6 shrink-0" aria-hidden="true" />

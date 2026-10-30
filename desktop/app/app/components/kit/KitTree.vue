@@ -64,10 +64,11 @@ const layout = computed(() => layoutKitTree(props.tree, { size: cell.value, ...g
 const width = computed(() => layout.value.width)
 const height = computed(() => Math.max(layout.value.height, cell.value))
 
-const name = (itemId: number) => props.items[itemId]?.name ?? `Item ${itemId}`
+const { t } = useT()
+const name = (itemId: number) => props.items[itemId]?.name ?? t('kit.slots.item', { id: itemId })
 function slotLabel(slot: KitTreeSlot): string {
-  if (slot.after === null) return props.tree.length ? 'Add another first item' : 'Add the first item'
-  return slot.branch ? `Add another branch after ${name(slot.after)}` : `Add an item after ${name(slot.after)}`
+  if (slot.after === null) return props.tree.length ? t('kit.tree.addAnotherFirst') : t('kit.tree.addFirst')
+  return slot.branch ? t('kit.tree.addBranch', { name: name(slot.after) }) : t('kit.tree.addAfter', { name: name(slot.after) })
 }
 const allows = (a: number[], b: number[]) => swapNodes(props.tree, a, b, maxDepth(props.boots)) !== null
 const canMove = computed(() => layout.value.nodes.length > 1)
@@ -196,7 +197,7 @@ const edgePath = ({ parent, child }: { parent: { x: number, y: number }, child: 
           type="button"
           class="flex size-full rounded transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-primary"
           :class="[canMove && 'cursor-grab touch-none active:cursor-grabbing', dropping(node) && 'outline-2 outline-dashed outline-offset-2 outline-primary']"
-          :aria-label="`Replace ${name(node.itemId)}`"
+          :aria-label="t('kit.slots.replace', { name: name(node.itemId) })"
           :aria-keyshortcuts="canMove ? 'Alt+ArrowLeft Alt+ArrowRight' : undefined"
           @pointerdown="grab(node, $event)"
           @pointermove="follow"
@@ -215,7 +216,7 @@ const edgePath = ({ parent, child }: { parent: { x: number, y: number }, child: 
           v-if="editable"
           type="button"
           class="absolute -right-1.5 -top-1.5 hidden size-4 items-center justify-center rounded-full bg-elevated text-dimmed ring-1 ring-default hover:text-error group-hover:flex group-focus-within:flex"
-          :aria-label="`Remove ${name(node.itemId)} and what follows`"
+          :aria-label="t('kit.tree.removeAndFollowing', { name: name(node.itemId) })"
           @click="emit('remove', node.at)"
         >
           <UIcon name="i-lucide-x" class="size-3" />

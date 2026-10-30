@@ -2,6 +2,8 @@
 import type { Clip } from '~/types/recordings'
 import { formatBytes } from '~/utils/recording-library'
 
+const { t } = useT()
+
 /**
  * The publish dialog's last step: the video's link, given back once it is up and
  * checked with YouTube — then the clip can leave this PC and play from there.
@@ -23,15 +25,15 @@ const { openVideo } = useClipPublish()
     <div class="flex items-center gap-2 text-sm">
       <UIcon name="i-lucide-circle-check" class="size-4 shrink-0 text-success" />
       <span class="min-w-0 flex-1 truncate text-default">{{ clip.youtubeUrl }}</span>
-      <UButton icon="i-lucide-external-link" label="Watch" color="neutral" variant="outline" size="xs" @click="openVideo(clip.id)" />
+      <UButton icon="i-lucide-external-link" :label="t('rec.publish.watch')" color="neutral" variant="outline" size="xs" @click="openVideo(clip.id)" />
       <UButton
         v-if="clip.videoOnDisk"
         icon="i-lucide-x"
         color="neutral"
         variant="ghost"
         size="xs"
-        aria-label="Forget the link"
-        title="Forget the link"
+        :aria-label="t('rec.publish.forget')"
+        :title="t('rec.publish.forget')"
         @click="emit('forget')"
       />
     </div>
@@ -39,13 +41,13 @@ const { openVideo } = useClipPublish()
     <div v-if="clip.videoOnDisk" class="flex items-center gap-3">
       <UButton
         icon="i-lucide-hard-drive-download"
-        :label="`Remove from this PC · ${formatBytes(clip.sizeBytes)}`"
+        :label="t('rec.publish.removeSized', { size: formatBytes(clip.sizeBytes) })"
         color="neutral"
         variant="soft"
         size="sm"
         @click="emit('free')"
       />
-      <span class="text-xs text-muted">The clip stays in your recordings and plays from YouTube.</span>
+      <span class="text-xs text-muted">{{ t('rec.publish.staysNote') }}</span>
     </div>
   </template>
   <form v-else class="flex flex-col gap-1.5" @submit.prevent="emit('save')">
@@ -54,13 +56,13 @@ const { openVideo } = useClipPublish()
         v-model="link"
         placeholder="https://youtu.be/…"
         class="flex-1"
-        aria-label="The video's YouTube link"
+        :aria-label="t('rec.publish.linkAria')"
         :color="error ? 'error' : undefined"
         :highlight="Boolean(error)"
       />
-      <UButton type="submit" label="Check and save" color="neutral" variant="outline" :loading="saving" :disabled="!link.trim()" />
+      <UButton type="submit" :label="t('rec.publish.checkSave')" color="neutral" variant="outline" :loading="saving" :disabled="!link.trim()" />
     </div>
     <p v-if="error" class="text-xs text-error" role="alert">{{ error }}</p>
-    <p v-else class="text-xs text-muted">TrueMain checks with YouTube that it is this clip's video.</p>
+    <p v-else class="text-xs text-muted">{{ t('rec.publish.checkNote') }}</p>
   </form>
 </template>

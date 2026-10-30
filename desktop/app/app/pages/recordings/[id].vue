@@ -4,6 +4,8 @@ import type { Clip, GameRecording, Moment, RecordingWinProbability } from '~/typ
 import { momentCast } from '~/utils/recording-moments'
 import { recapWinProbability } from '~/utils/recording-win-probability'
 
+const { t } = useT()
+
 /**
  * The recap of a recorded game (#1777): the video, the game's timeline under
  * it with the player's kills, deaths and assists and the objectives, and the
@@ -79,12 +81,12 @@ async function removeGame() {
 
 const note = computed(() => {
   switch (recording.value?.status) {
-    case 'recording': return { title: 'This game is still being recorded', description: 'The video and its moments fill in once the game ends.' }
+    case 'recording': return { title: t('rec.page.recording.title'), description: t('rec.page.recording.description') }
     case 'processing': return {
-      title: 'The highlights are still being finalised',
+      title: t('rec.page.processing.title'),
       description: recording.value.highlightsSource === 'live'
-        ? 'The moments shown were noted live during the game; the match history\'s will replace them shortly.'
-        : 'They fill in once the match history has the game.',
+        ? t('rec.page.processing.live')
+        : t('rec.page.processing.wait'),
     }
     default: return null
   }
@@ -145,11 +147,11 @@ const note = computed(() => {
 
     <RecordingsConfirm
       v-model:open="confirming"
-      title="Delete the full game?"
+      :title="t('rec.page.confirmGame.title')"
       :description="saved.length
-        ? `Its video is removed from your disk. The ${saved.length} clip${saved.length === 1 ? '' : 's'} you saved from it stay${saved.length === 1 ? 's' : ''}.`
-        : 'Its video is removed from your disk. Save the clips you want first: unsaved ranges are lost.'"
-      confirm-label="Delete full game"
+        ? t(saved.length === 1 ? 'rec.page.confirmGame.keepOne' : 'rec.page.confirmGame.keepMany', { count: saved.length })
+        : t('rec.page.confirmGame.none')"
+      :confirm-label="t('rec.deleteGame')"
       @confirm="removeGame"
     />
   </div>
@@ -157,9 +159,9 @@ const note = computed(() => {
   <div v-else-if="missing" class="flex h-full items-center justify-center">
     <UEmpty
       icon="i-lucide-film"
-      title="This full game is no longer on disk"
-      description="It was deleted, or freed to stay within the disk budget. The clips saved from it are still in Recordings."
-      :actions="[{ label: 'Recordings', icon: 'i-lucide-arrow-left', color: 'neutral', variant: 'outline', to: '/recordings' }]"
+      :title="t('rec.page.missing.title')"
+      :description="t('rec.page.missing.description')"
+      :actions="[{ label: t('rec.page.title'), icon: 'i-lucide-arrow-left', color: 'neutral', variant: 'outline', to: '/recordings' }]"
       variant="naked"
     />
   </div>

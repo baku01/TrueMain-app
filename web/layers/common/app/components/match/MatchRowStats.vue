@@ -3,6 +3,8 @@ import type { MatchSummarySelf } from '#shared/types/matches'
 import { formatDuration } from '#common/utils/relativeTime'
 import { formatSigned } from '#shared/utils/deltas'
 
+const { t } = useT()
+
 // Secondary stats of a match row: the LP the game moved when it is known (a
 // measurement, so the data axis rather than the result's blue and red), the
 // duration otherwise, and CS per minute under it.
@@ -21,6 +23,6 @@ const csPerMin = computed(() => (props.self.cs / Math.max(props.durationSeconds 
       {{ formatSigned(lp) }} LP
     </p>
     <p v-else class="text-xs text-muted">{{ formatDuration(durationSeconds) }}</p>
-    <p class="text-[11px] text-dimmed">{{ csPerMin }} CS/m</p>
+    <p class="text-[11px] text-dimmed">{{ t('match.row.csPerMin', { value: csPerMin }) }}</p>
   </div>
 </template>

@@ -12,6 +12,7 @@ import type { LoadingPlayer } from '~/types/loading'
  * player's portrait goes grey under the seconds left before they are back,
  * counted down on screen from the respawn time the game gave at the death.
  */
+const { t } = useT()
 const props = withDefaults(defineProps<{
   player: GamePlayer | null
   /** Seconds of game time now, run on the page's clock between readings. */
@@ -95,6 +96,6 @@ const respawnIn = computed(() => {
   </div>
 
   <div v-else class="flex h-12 items-center" :class="mirrored && 'justify-end'">
-    <span class="stat-label">Empty slot</span>
+    <span class="stat-label">{{ t('game.emptySlot') }}</span>
   </div>
 </template>

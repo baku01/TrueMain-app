@@ -13,6 +13,8 @@ import {
   viewTicks,
 } from '~/utils/recording-timeline'
 
+const { t } = useT()
+
 /**
  * The recap's timeline (#1777): the video's length, the game's events as dots
  * above it — blue the player's side's way, red the enemy's, rose gold a
@@ -188,7 +190,7 @@ function onMoment(moment: Pick<Moment, 'videoMs'>) {
             :key="clip.id"
             class="absolute bottom-0 h-1 rounded-full bg-gold/70"
             :style="{ left: pct(clip.startMs), width: `calc(${pct(clip.endMs)} - ${pct(clip.startMs)})` }"
-            :title="`Saved: ${clip.title}`"
+            :title="t('rec.timeline.saved', { title: clip.title })"
           />
         </div>
 
@@ -207,7 +209,7 @@ function onMoment(moment: Pick<Moment, 'videoMs'>) {
           </template>
         </div>
         <div v-if="ghost" class="pointer-events-none absolute rounded-md bg-primary/20 ring-1 ring-primary" :style="{ top: `${PANEL_TOP}px`, height: `${panelHeight}px`, left: pct(ghost.startMs), width: `calc(${pct(ghost.endMs)} - ${pct(ghost.startMs)})` }" />
-        <div v-if="pendingIn !== null && inView(pendingIn)" class="pointer-events-none absolute bottom-0 border-l-2 border-dashed border-primary" :style="{ top: `${PANEL_TOP - 4}px`, left: pct(pendingIn) }" title="In point" />
+        <div v-if="pendingIn !== null && inView(pendingIn)" class="pointer-events-none absolute bottom-0 border-l-2 border-dashed border-primary" :style="{ top: `${PANEL_TOP - 4}px`, left: pct(pendingIn) }" :title="t('rec.timeline.inPoint')" />
 
         <RecapWinProbabilityLane
           v-if="winProbability"

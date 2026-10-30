@@ -10,8 +10,9 @@ import { RIFT_SPELLS } from '~/utils/kit-items'
 const props = defineProps<{ summoners: Record<number, StaticSummonerSpellData> }>()
 const spells = defineModel<[number, number]>({ required: true })
 
+const { t } = useT()
 const open = ref<[boolean, boolean]>([false, false])
-const name = (id: number) => props.summoners[id]?.name ?? `Spell ${id}`
+const name = (id: number) => props.summoners[id]?.name ?? t('kit.spells.fallback', { id })
 
 function choose(slot: 0 | 1, spellId: number) {
   const other = slot === 0 ? 1 : 0
@@ -29,12 +30,12 @@ function choose(slot: 0 | 1, spellId: number) {
       <button
         type="button"
         class="flex rounded transition hover:brightness-125 focus-visible:outline-2 focus-visible:outline-primary"
-        :aria-label="`Spell ${slot + 1}: ${name(spells[slot])}`"
+        :aria-label="t('kit.spells.slotNamed', { n: slot + 1, name: name(spells[slot]) })"
       >
         <GameTooltipSummonerSpellIcon :spell="summoners[spells[slot]] ?? null" :width="36" :height="36" class="size-9 rounded" />
       </button>
       <template #content>
-        <div class="grid grid-cols-5 gap-1.5 p-2" role="group" :aria-label="`Spell ${slot + 1}`">
+        <div class="grid grid-cols-5 gap-1.5 p-2" role="group" :aria-label="t('kit.spells.slot', { n: slot + 1 })">
           <button
             v-for="spellId in RIFT_SPELLS"
             :key="spellId"

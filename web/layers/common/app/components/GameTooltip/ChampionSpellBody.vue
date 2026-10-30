@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import type { StaticChampionSpellData } from '#shared/types/static-data'
 import { parseChampionSpell } from '#shared/utils/tooltip-parser'
 
+const { t } = useT()
+
 const props = defineProps<{
   spell: StaticChampionSpellData
 }>()
@@ -45,15 +47,15 @@ const showsRange = computed(() => !isAllZeros(props.spell.rangeBurn))
           class="text-xs text-muted"
         >
           <template v-if="spell.cooldownBurn">
-            Cooldown: <span class="text-stat-speed font-semibold">{{ spell.cooldownBurn }}s</span>
+            {{ t('tooltip.cooldown') }} <span class="text-stat-speed font-semibold">{{ spell.cooldownBurn }}s</span>
           </template>
           <template v-if="showsCost">
             <span v-if="spell.cooldownBurn"> · </span>
-            Cost: <span class="text-stat-mana font-semibold">{{ spell.costBurn }} {{ spell.costType?.trim() }}</span>
+            {{ t('tooltip.cost') }} <span class="text-stat-mana font-semibold">{{ spell.costBurn }} {{ spell.costType?.trim() }}</span>
           </template>
           <template v-if="showsRange">
             <span v-if="spell.cooldownBurn || showsCost"> · </span>
-            Range: <span class="text-default font-semibold">{{ spell.rangeBurn }}</span>
+            {{ t('tooltip.range') }} <span class="text-default font-semibold">{{ spell.rangeBurn }}</span>
           </template>
         </div>
       </div>

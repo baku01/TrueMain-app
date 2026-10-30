@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import { tr } from '#common/utils/i18n'
 
 /**
  * The player's kits in champion select (#2205): every kit on our pick's lane,
@@ -18,7 +19,7 @@ export function useDraftKits(pick: Ref<{ championId: number, position: string } 
   function keepForGame(id: string | null) {
     const current = pick.value
     if (!current || activeIdFor(current.championId, current.position) === id) return
-    void run(() => setActive(current.championId, current.position, id), 'Could not keep the kit for the game')
+    void run(() => setActive(current.championId, current.position, id), tr('draft.kit.keepFailed'))
   }
 
   let last: string | null = null

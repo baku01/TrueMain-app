@@ -2,6 +2,8 @@
 import { formatPercentage } from '#shared/utils/ddragon'
 import { formatGameClock, formatSwingPoints } from '#common/utils/win-probability-swing'
 
+const { t } = useT()
+
 // What a hovered minute of the win-probability curve says: the clock and the
 // chance, then that stretch's turning points (by side, with their swing) and
 // the monsters no turning point already marks.
@@ -28,7 +30,7 @@ defineProps<{
     <span v-for="swing in swings" :key="`hover-swing-${swing.index}`" class="flex items-center gap-2">
       <span class="size-1.5 shrink-0 rounded-full" :class="swing.ours ? 'bg-ally' : 'bg-enemy'" />
       <span class="min-w-0 flex-1 text-default">{{ swing.label }}</span>
-      <span class="shrink-0 font-semibold tabular-nums text-highlighted">{{ formatSwingPoints(swing.delta) }}<span class="font-normal text-dimmed"> pts</span></span>
+      <span class="shrink-0 font-semibold tabular-nums text-highlighted">{{ formatSwingPoints(swing.delta) }}<span class="font-normal text-dimmed"> {{ t('match.winProb.points') }}</span></span>
     </span>
     <span v-for="objective in objectives" :key="`hover-objective-${objective.ms}`" class="flex items-center gap-2">
       <span class="size-1.5 shrink-0 rounded-full bg-[var(--ui-text-dimmed)]" />

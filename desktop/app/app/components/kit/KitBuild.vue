@@ -11,6 +11,7 @@ import { kitCoreView } from '~/utils/kit'
  */
 const props = defineProps<{ kit: Kit }>()
 
+const { t } = useT()
 const { items, summoners, runeTree, pending } = useStaticData()
 const { nameOf } = useChampionStatics()
 const { available, inChampSelect, pending: importing, importItems, importSpells } = useKitImport()
@@ -35,7 +36,7 @@ const champion = computed(() => nameOf(props.kit.championId))
       :champion-name="champion || null"
     >
       <template v-if="inChampSelect" #spells>
-        <UTooltip text="Set these spells in champion select" :content="{ side: 'right' }">
+        <UTooltip :text="t('kit.build.setSpells')" :content="{ side: 'right' }">
           <UButton
             size="xs"
             color="neutral"
@@ -43,7 +44,7 @@ const champion = computed(() => nameOf(props.kit.championId))
             square
             icon="i-lucide-download"
             :loading="importing === 'spells'"
-            aria-label="Set these spells in champion select"
+            :aria-label="t('kit.build.setSpells')"
             class="text-dimmed hover:text-highlighted"
             @click="importSpells(kit)"
           />
@@ -52,7 +53,7 @@ const champion = computed(() => nameOf(props.kit.championId))
     </BuildCore>
 
     <div class="relative">
-      <UTooltip v-if="available" text="Import items into the client" :content="{ side: 'left' }">
+      <UTooltip v-if="available" :text="t('kit.build.importItems')" :content="{ side: 'left' }">
         <UButton
           size="xs"
           color="neutral"
@@ -60,7 +61,7 @@ const champion = computed(() => nameOf(props.kit.championId))
           square
           icon="i-lucide-download"
           :loading="importing === 'items'"
-          aria-label="Import items into the client"
+          :aria-label="t('kit.build.importItems')"
           class="absolute right-0 top-0 z-10 text-dimmed hover:text-highlighted"
           @click="importItems(kit, champion)"
         />

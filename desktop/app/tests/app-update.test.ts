@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref, watch, type Ref } from 'vue'
+import { appDictionaries } from './i18n-setup'
 
 /**
  * `useAppUpdate` against stand-ins for the Nuxt auto-imports and the Tauri
@@ -37,6 +38,8 @@ function current() {
 /** Starts the composable the way `app.vue` does, with `update` on the feed. */
 async function launch(update: ReturnType<typeof fakeUpdate>) {
   updater.check.mockResolvedValue(update)
+  // `resetModules` gave the composable a fresh, empty message table.
+  ;(await import('#common/utils/i18n')).registerMessages(appDictionaries)
   const { useAppUpdate } = await import('~/composables/useAppUpdate')
   const app = useAppUpdate()
   await app.start()
@@ -162,6 +165,7 @@ describe('useAppUpdate during champion select and games', () => {
   it('takes an offer already on screen away for the phase and brings it back after', async () => {
     const update = fakeUpdate(() => new Promise(() => {}))
     updater.check.mockResolvedValue(null)
+    ;(await import('#common/utils/i18n')).registerMessages(appDictionaries)
     const { useAppUpdate } = await import('~/composables/useAppUpdate')
     const app = useAppUpdate()
     await app.start()
@@ -198,6 +202,7 @@ describe('useAppUpdate timer', () => {
     updater.check.mockReset()
     const update = fakeUpdate(() => new Promise(() => {}))
     updater.check.mockResolvedValue(null)
+    ;(await import('#common/utils/i18n')).registerMessages(appDictionaries)
     const { useAppUpdate } = await import('~/composables/useAppUpdate')
     await useAppUpdate().start()
     await vi.advanceTimersByTimeAsync(0)

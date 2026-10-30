@@ -3,6 +3,8 @@ import type { ButtonProps } from '@nuxt/ui'
 import type { RecordingsEmptyReason } from '~/utils/recording-library'
 import { RESOLUTION_LABELS, formatBytes } from '~/utils/recording-library'
 
+const { t } = useT()
+
 /**
  * Why the Recordings page has nothing to list, and the one thing to do about
  * it: capture not allowed or not available, recording off (with what turning
@@ -19,10 +21,10 @@ const hourCost = computed(() => {
   if (!view) return null
   const { resolution, frameRate } = view.settings.quality
   const estimate = view.estimates.find(entry => entry.resolution === resolution && entry.frameRate === frameRate)
-  const preset = `${RESOLUTION_LABELS[resolution]} at ${frameRate} fps`
+  const preset = t('rec.empty.preset', { resolution: RESOLUTION_LABELS[resolution], frameRate })
   return estimate?.bytesPerHour
-    ? `About ${formatBytes(estimate.bytesPerHour)} an hour at ${preset} (an estimate), within a ${formatBytes(view.settings.budgetBytes)} budget that drops the oldest games you did not keep.`
-    : `Recordings stay within a ${formatBytes(view.settings.budgetBytes)} budget that drops the oldest games you did not keep.`
+    ? t('rec.empty.cost', { size: formatBytes(estimate.bytesPerHour), preset, budget: formatBytes(view.settings.budgetBytes) })
+    : t('rec.empty.budget', { budget: formatBytes(view.settings.budgetBytes) })
 })
 
 function turnOn() {
@@ -30,43 +32,43 @@ function turnOn() {
 }
 
 const content = computed<{ icon: string, title: string, description: string, actions: ButtonProps[] }>(() => {
-  const settingsButton: ButtonProps = { label: 'Settings', icon: 'i-lucide-settings-2', color: 'neutral', variant: 'outline', onClick: () => emit('settings') }
+  const settingsButton: ButtonProps = { label: t('rec.settings.button'), icon: 'i-lucide-settings-2', color: 'neutral', variant: 'outline', onClick: () => emit('settings') }
   switch (props.reason) {
     case 'unavailable':
-      return { icon: 'i-lucide-video-off', title: 'Recording is not part of this build', description: 'This version of the app cannot record games yet.', actions: [] }
+      return { icon: 'i-lucide-video-off', title: t('rec.empty.unavailable.title'), description: t('rec.empty.unavailable.description'), actions: [] }
     case 'permission':
       return {
         icon: 'i-lucide-shield-alert',
-        title: 'TrueMain needs to record your screen',
-        description: `${status.value?.message ?? 'Screen Recording is not allowed for TrueMain.'} macOS asks once; after an update it may ask again.`,
-        actions: [{ label: 'Allow Screen Recording', icon: 'i-lucide-monitor', onClick: () => void requestPermission() }],
+        title: t('rec.empty.permission.title'),
+        description: t('rec.empty.permission.description', { message: status.value?.message ?? t('rec.empty.permission.fallback') }),
+        actions: [{ label: t('rec.empty.permission.allow'), icon: 'i-lucide-monitor', onClick: () => void requestPermission() }],
       }
     case 'unsupported':
-      return { icon: 'i-lucide-monitor-x', title: 'Recording is not available here', description: status.value?.message ?? 'Recording works on macOS 13.3 and Windows 10 (1903) or later.', actions: [] }
+      return { icon: 'i-lucide-monitor-x', title: t('rec.empty.unsupported.title'), description: status.value?.message ?? t('rec.empty.unsupported.description'), actions: [] }
     case 'missing':
-      return { icon: 'i-lucide-triangle-alert', title: 'The recorder is missing', description: `${status.value?.message ?? 'Part of the app is missing.'} Reinstalling the app brings it back.`, actions: [] }
+      return { icon: 'i-lucide-triangle-alert', title: t('rec.empty.missing.title'), description: t('rec.empty.missing.description', { message: status.value?.message ?? t('rec.empty.missing.fallback') }), actions: [] }
     case 'off':
       return {
         icon: 'i-lucide-video',
-        title: 'Record your games',
-        description: `Rewatch every game with your kills, deaths and assists on its timeline, and cut clips from it. ${hourCost.value ?? ''}`,
-        actions: [{ label: 'Turn recording on', icon: 'i-lucide-circle-dot', onClick: turnOn }, settingsButton],
+        title: t('rec.empty.off.title'),
+        description: t('rec.empty.off.description', { cost: hourCost.value ?? '' }),
+        actions: [{ label: t('rec.empty.off.turnOn'), icon: 'i-lucide-circle-dot', onClick: turnOn }, settingsButton],
       }
     case 'nothing':
       return {
         icon: 'i-lucide-clapperboard',
-        title: 'Nothing recorded yet',
+        title: t('rec.empty.nothing.title'),
         description: settings.value?.settings.queues === 'all'
-          ? 'Your next game is recorded, and its recap opens when it ends.'
-          : 'Your next ranked game is recorded, and its recap opens when it ends.',
+          ? t('rec.empty.nothing.all')
+          : t('rec.empty.nothing.ranked'),
         actions: [settingsButton],
       }
     default:
       return {
         icon: 'i-lucide-search-x',
-        title: 'Nothing matches',
-        description: 'No clip or full game fits these filters.',
-        actions: [{ label: 'Clear filters', icon: 'i-lucide-x', color: 'neutral', variant: 'outline', onClick: () => emit('clear') }],
+        title: t('rec.empty.noMatch.title'),
+        description: t('rec.empty.noMatch.description'),
+        actions: [{ label: t('rec.clearFilters'), icon: 'i-lucide-x', color: 'neutral', variant: 'outline', onClick: () => emit('clear') }],
       }
   }
 })

@@ -9,6 +9,7 @@ import type { LaneEdge } from '~/utils/lane-edge'
  * edge on. What it starts from is in its tooltip.
  */
 const props = defineProps<{ edge: LaneEdge | null | undefined }>()
+const { t } = useT()
 
 /** From this chance on the arrow doubles. */
 const CLEAR_EDGE = 0.6
@@ -30,9 +31,9 @@ const tooltip = computed(() => {
   const edge = props.edge
   if (!edge) return ''
   const start = edge.matchupGames
-    ? `Matchup ${formatPercentage(edge.matchup, 0)} over ${formatCount(edge.matchupGames)} games`
-    : 'No matchup data: starts even'
-  return `${start}, moved by each player's last games on their champion — win rate, gold, CS and XP at 15 minutes.`
+    ? t('game.edge.matchup', { share: formatPercentage(edge.matchup, 0), games: formatCount(edge.matchupGames) })
+    : t('game.edge.noMatchup')
+  return t('game.edge.tooltip', { start })
 })
 </script>
 

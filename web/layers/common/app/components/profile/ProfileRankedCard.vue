@@ -4,6 +4,8 @@ import type { ApexCutoff } from '#shared/types/apex-cutoffs'
 import type { RankHistoryEntry } from '#shared/types/rank-history'
 import { rankChartPoints } from '#common/utils/rank-chart'
 
+const { t } = useT()
+
 // The player's Solo/Duo standing: rank, record, LP moved over 7 and 30 days,
 // and the LP curve over the rank-history window. The site's profile and
 // player-scoped champion page read the history from TrueMain; the app's
@@ -32,7 +34,7 @@ const showEmptyChart = computed(
 <template>
   <section class="flex flex-col gap-3 surface rounded-lg px-4 py-3">
     <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-      Ranked Solo/Duo
+      {{ t('profile.rankedSoloDuo') }}
     </h2>
 
     <template v-if="ranked">
@@ -48,7 +50,7 @@ const showEmptyChart = computed(
       <ProfileLpDeltaChips :points="points" />
     </template>
     <p v-else class="text-base text-muted">
-      Unranked
+      {{ t('profile.unranked') }}
     </p>
 
     <slot name="standing" />
@@ -56,7 +58,7 @@ const showEmptyChart = computed(
     <USkeleton v-if="historyLoading" class="h-[150px] w-full rounded-md" />
 
     <p v-else-if="showEmptyChart" class="text-sm text-muted">
-      No ranked snapshots in the last 90 days.
+      {{ t('profile.noSnapshots') }}
     </p>
 
     <ProfileRankChart

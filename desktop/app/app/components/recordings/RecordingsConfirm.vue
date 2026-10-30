@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useT()
+
 /** The one "are you sure" of the recordings pages: a deletion, which cannot be undone. */
 defineProps<{
   title: string
@@ -17,7 +19,7 @@ function confirm() {
 <template>
   <UModal v-model:open="open" :title="title" :description="description" :ui="{ footer: 'justify-end' }">
     <template #footer>
-      <UButton label="Cancel" color="neutral" variant="ghost" @click="open = false" />
+      <UButton :label="t('rec.cancel')" color="neutral" variant="ghost" @click="open = false" />
       <UButton :label="confirmLabel" color="error" icon="i-lucide-trash-2" @click="confirm" />
     </template>
   </UModal>

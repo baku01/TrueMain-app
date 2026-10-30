@@ -1,3 +1,4 @@
+import { ddragonLocale, getActiveLocale } from '#common/utils/i18n'
 import type {
   ChampionStaticData,
   RuneTreeResponse,
@@ -31,8 +32,8 @@ export function useStaticData() {
     loadedFor.value = version
     pending.value = true
     const [itemData, summonerData, tree] = await Promise.allSettled([
-      $fetch<ItemListResponse>(`${DDRAGON}/${version}/data/en_US/item.json`),
-      $fetch<SummonerListResponse>(`${DDRAGON}/${version}/data/en_US/summoner.json`),
+      $fetch<ItemListResponse>(`${DDRAGON}/${version}/data/${ddragonLocale(getActiveLocale())}/item.json`),
+      $fetch<SummonerListResponse>(`${DDRAGON}/${version}/data/${ddragonLocale(getActiveLocale())}/summoner.json`),
       fetchRuneTree(version),
     ])
     if (itemData.status === 'fulfilled') items.value = toItemsMap(itemData.value, version)
@@ -51,7 +52,7 @@ export function useStaticData() {
     const alias = aliasOf(championId)
     if (!version || !alias || champions.value[championId]) return
     try {
-      const detail = await $fetch<ChampionDetailResponse>(`${DDRAGON}/${version}/data/en_US/champion/${alias}.json`)
+      const detail = await $fetch<ChampionDetailResponse>(`${DDRAGON}/${version}/data/${ddragonLocale(getActiveLocale())}/champion/${alias}.json`)
       champions.value = { ...champions.value, [championId]: toChampionStatic(detail, alias, nameOf(championId), version) }
     }
     catch {

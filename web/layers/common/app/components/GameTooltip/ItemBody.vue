@@ -5,7 +5,10 @@ import { parseItemDescription } from '#shared/utils/tooltip-parser'
 import { formatCount } from '#shared/utils/counts'
 import { formatPercentageAdaptive } from '#shared/utils/ddragon'
 import type { ItemContextCard } from '#shared/utils/item-context'
-import { ITEM_CONTEXT_TONE_CLASS, capitalizePhrase, itemContextAxisPhrase, wordableAxes } from '#shared/utils/item-context'
+import { ITEM_CONTEXT_TONE_CLASS, capitalizePhrase, wordableAxes } from '#shared/utils/item-context'
+import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
+
+const { t } = useT()
 
 const props = defineProps<{
   item: StaticItemData
@@ -35,7 +38,7 @@ const contextLines = computed(() =>
   props.context
     ? wordableAxes(props.context).map(axis => ({
         key: `${axis.axis}-${axis.bucket}`,
-        phrase: capitalizePhrase(itemContextAxisPhrase(axis)!),
+        phrase: capitalizePhrase(localizedAxisPhrase(axis)!),
       }))
     : [],
 )
@@ -48,8 +51,8 @@ const contextLines = computed(() =>
  */
 const contextClassLabel = computed(() => {
   switch (props.context?.class) {
-    case 'Core': return 'Core item'
-    case 'Situational': return 'Situational'
+    case 'Core': return t('tooltip.item.core')
+    case 'Situational': return t('tooltip.item.situational')
     default: return null
   }
 })
@@ -89,7 +92,7 @@ const pickRateLabel = computed(() =>
         v-if="pickRateLabel"
         class="shrink-0 self-start text-xs font-semibold text-muted"
       >
-        {{ pickRateLabel }} pick
+        {{ t('tooltip.item.pick', { rate: pickRateLabel }) }}
       </div>
     </header>
     <div class="border-t border-default/40 pt-2 text-sm">

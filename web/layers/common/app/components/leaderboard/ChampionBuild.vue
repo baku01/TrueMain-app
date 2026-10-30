@@ -3,6 +3,8 @@ import type { LeaderboardTopChampion } from '#shared/types/leaderboard'
 import type { StaticItemData, StaticPerkData, StaticPerkStyleData } from '#shared/types/static-data'
 import { formatPercentage } from '#shared/utils/ddragon'
 
+const { t } = useT()
+
 // The "this is what they main" cluster used on the truemains leaderboard and
 // the homepage teaser: champion icon + play rate + the player's keystone (with
 // secondary tree overlay) + their first item — mirroring how the champion list
@@ -70,7 +72,7 @@ const playRatePct = computed(() => {
 const iconSize = computed(() => (props.compact ? 28 : 30))
 const buildSize = computed(() => (props.compact ? 20 : 22))
 const secondaryOverlaySize = computed(() => (props.compact ? 11 : 13))
-const championTitle = computed(() => `${props.name} · ${props.champion.games} games`)
+const championTitle = computed(() => t('leaderboard.championTitle', { name: props.name, games: props.champion.games }))
 
 // Play-rate box under `reserveSlots`: wide enough for the longest value the
 // figure can take ("100%") at each size, so a 23% row and a 100% row put the
@@ -90,7 +92,7 @@ const showPlayRateSlot = computed(() => playRatePct.value !== null || props.rese
   <component
     :is="nameTag ? NuxtLinkComponent : 'div'"
     :to="championHref"
-    :aria-label="nameTag ? `${name} — view ${name} build` : undefined"
+    :aria-label="nameTag ? t('leaderboard.viewBuild', { name }) : undefined"
     class="flex items-center gap-2 rounded-lg"
     :class="nameTag ? 'surface-hover -mx-1 px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary' : ''"
   >
@@ -116,7 +118,7 @@ const showPlayRateSlot = computed(() => playRatePct.value !== null || props.rese
           class="font-semibold tabular-nums"
           :class="compact ? 'text-xs' : 'text-sm'"
         >{{ playRatePct }}</span>
-        <span class="stat-label mt-0.5">PR</span>
+        <span class="stat-label mt-0.5">{{ t('leaderboard.pr') }}</span>
       </template>
     </div>
 

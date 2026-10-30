@@ -5,6 +5,8 @@ import type { EventCluster, TimelineView } from '~/utils/recording-timeline'
 import { formatClock, momentDuel, momentLabel, momentSide, objectiveIconUrl } from '~/utils/recording-moments'
 import { viewPercent } from '~/utils/recording-timeline'
 
+const { t } = useT()
+
 /**
  * The game's events above the timeline: one dot per event, blue when it went
  * the player's side's way, red when it went the enemy's — events too close to
@@ -43,7 +45,7 @@ const rows = computed(() => (props.hovered?.moments ?? []).map((moment) => {
 }))
 
 const describe = (cluster: EventCluster) =>
-  cluster.moments.map(moment => `${momentLabel(moment)} at ${formatClock(moment.videoMs)}`).join(', ')
+  cluster.moments.map(moment => t('rec.timeline.momentAt', { label: momentLabel(moment), time: formatClock(moment.videoMs) })).join(', ')
 
 /** Near an edge, the tooltip hangs from the dot towards the middle instead of spilling out of the track. */
 const tooltipShift = computed(() => {

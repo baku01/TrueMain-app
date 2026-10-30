@@ -4,6 +4,8 @@ import type { StaticItemData } from '#shared/types/static-data'
 import { isBuildOrderEvent, resolveEventItemId } from '#shared/utils/build'
 import { formatGameClock } from '#common/utils/win-probability-swing'
 
+const { t } = useT()
+
 // The selected player's purchases grouped into shopping trips: consecutive
 // events in the same game-minute collapse into one cluster under a single time
 // label, minute 0 being the starting purchase ("Starter"). `isBuildOrderEvent`
@@ -26,7 +28,7 @@ const groups = computed<BuildGroup[]>(() => {
     const minute = Math.floor(ev.timestampMs / 60000)
     const last = result.at(-1)
     if (last && last.minute === minute) last.events.push(ev)
-    else result.push({ minute, label: minute === 0 ? 'Starter' : `${minute} min`, events: [ev] })
+    else result.push({ minute, label: minute === 0 ? t('match.build.starter') : t('match.build.minute', { minutes: minute }), events: [ev] })
   }
   return result
 })
@@ -44,7 +46,7 @@ function isCorrection(type: string) {
 </script>
 
 <template>
-  <MatchDetailCard title="Build order">
+  <MatchDetailCard :title="t('match.build.title')">
     <div v-if="groups.length" class="flex flex-wrap items-start gap-x-1 gap-y-3">
       <template v-for="(group, gi) in groups" :key="`grp-${gi}`">
         <div class="flex flex-col items-center gap-1">
@@ -78,6 +80,6 @@ function isCorrection(type: string) {
         />
       </template>
     </div>
-    <p v-else class="text-[11px] text-muted">No build data for this game.</p>
+    <p v-else class="text-[11px] text-muted">{{ t('match.build.empty') }}</p>
   </MatchDetailCard>
 </template>

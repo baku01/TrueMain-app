@@ -1,4 +1,6 @@
 
+import { tr } from '#common/utils/i18n'
+
 /**
  * Bands the average gold gap at 15 minutes into a one-phrase verdict (#976).
  *
@@ -49,18 +51,18 @@ export function laneVerdict(
   if (averageGoldDiffAt15 === null || sampleLanes < LANE_VERDICT_MIN_GAMES) return null
 
   if (averageGoldDiffAt15 >= LANE_DOMINANT_GOLD) {
-    return { label: `Very good ${noun}`, color: 'success', variant: 'subtle' }
+    return { label: tr(`match.lane.veryGood.${noun}`), color: 'success', variant: 'subtle' }
   }
   if (averageGoldDiffAt15 >= LANE_EVEN_GOLD) {
-    return { label: `Good ${noun}`, color: 'success', variant: 'soft' }
+    return { label: tr(`match.lane.good.${noun}`), color: 'success', variant: 'soft' }
   }
   if (averageGoldDiffAt15 <= -LANE_DOMINANT_GOLD) {
-    return { label: `Hard ${noun}`, color: 'error', variant: 'subtle' }
+    return { label: tr(`match.lane.hard.${noun}`), color: 'error', variant: 'subtle' }
   }
   if (averageGoldDiffAt15 <= -LANE_EVEN_GOLD) {
-    return { label: `Bad ${noun}`, color: 'warning', variant: 'soft' }
+    return { label: tr(`match.lane.bad.${noun}`), color: 'warning', variant: 'soft' }
   }
-  return { label: `Even ${noun}`, color: 'neutral', variant: 'soft' }
+  return { label: tr(`match.lane.even.${noun}`), color: 'neutral', variant: 'soft' }
 }
 
 /**

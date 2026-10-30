@@ -2,6 +2,8 @@
 import type { DraftClip } from '~/composables/useRecapDrafts'
 import { formatClock } from '~/utils/recording-moments'
 
+const { t } = useT()
+
 /** One range being cut: its name (proposed, editable), its place in the game, a preview, and Save. */
 const props = defineProps<{ draft: DraftClip, selected: boolean }>()
 const emit = defineEmits<{
@@ -25,8 +27,8 @@ const length = computed(() => formatClock(props.draft.endMs - props.draft.startM
       :model-value="draft.title"
       size="sm"
       variant="none"
-      placeholder="Name this clip"
-      aria-label="Clip name"
+      :placeholder="t('rec.draft.placeholder')"
+      :aria-label="t('rec.clip.name')"
       :maxlength="80"
       :disabled="draft.saving"
       class="-mx-1"
@@ -36,7 +38,7 @@ const length = computed(() => formatClock(props.draft.endMs - props.draft.startM
     />
     <p v-if="draft.replaces" class="flex items-center gap-1 text-[11px] text-muted">
       <UIcon name="i-lucide-replace" class="size-3 shrink-0" />
-      Saving replaces the saved clip.
+      {{ t('rec.draft.replaces') }}
     </p>
     <div class="flex items-center gap-1">
       <span class="text-[11px] tabular-nums text-muted">
@@ -44,10 +46,10 @@ const length = computed(() => formatClock(props.draft.endMs - props.draft.startM
         <span class="text-dimmed">· {{ length }}</span>
       </span>
       <div class="ml-auto flex items-center gap-0.5">
-        <UButton icon="i-lucide-play" color="neutral" variant="ghost" size="xs" aria-label="Preview" title="Play this range" :disabled="draft.saving" @click.stop="emit('preview')" />
-        <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" aria-label="Remove" title="Remove this range" :disabled="draft.saving" @click.stop="emit('remove')" />
+        <UButton icon="i-lucide-play" color="neutral" variant="ghost" size="xs" :aria-label="t('rec.draft.preview')" :title="t('rec.draft.previewTitle')" :disabled="draft.saving" @click.stop="emit('preview')" />
+        <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" :aria-label="t('rec.draft.remove')" :title="t('rec.draft.removeTitle')" :disabled="draft.saving" @click.stop="emit('remove')" />
         <UButton
-          label="Save"
+          :label="t('rec.draft.save')"
           icon="i-lucide-save"
           size="xs"
           :loading="draft.saving"

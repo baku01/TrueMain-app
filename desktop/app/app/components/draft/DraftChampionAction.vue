@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
 }>(), { size: 'xs' })
 
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 const { writable, kind, shownKind, pending, availability, allyHovering, allyName, hover, ban } = useChampSelectActions()
 
 const state = computed(() => availability(props.championId))
@@ -27,9 +28,9 @@ const confirming = ref(false)
 
 const question = computed(() => {
   const name = nameOf(props.championId)
-  const intent = ally.value ? `${name} is ${allyName(ally.value)}'s pick intent.` : null
-  if (kind.value === 'ban') return intent ? `${intent} Ban it anyway?` : `Ban ${name}?`
-  return `${intent} Hover it anyway?`
+  const intent = ally.value ? t('draft.action.intent', { name, ally: allyName(ally.value) }) : null
+  if (kind.value === 'ban') return intent ? t('draft.action.banAnyway', { intent }) : t('draft.action.banQuestion', { name })
+  return t('draft.action.hoverAnyway', { intent: intent ?? '' })
 })
 
 function act() {
@@ -59,20 +60,20 @@ function onOpen(open: boolean) {
           :color="isBan ? 'error' : 'primary'"
           :variant="state.allowed ? 'subtle' : 'soft'"
           :icon="busy ? 'i-lucide-loader-circle' : isBan ? 'i-lucide-ban' : 'i-lucide-hand'"
-          :label="state.reason === 'Hovered in the client' ? 'Hovered' : isBan ? 'Ban' : 'Hover'"
+          :label="state.reason === t('draft.avail.hoveredInClient') ? t('draft.action.hovered') : isBan ? t('draft.action.ban') : t('draft.action.hover')"
           :disabled="!state.allowed || busy"
           :class="!state.allowed && 'pointer-events-none'"
           :ui="{ leadingIcon: busy ? 'animate-spin' : undefined }"
-          :aria-label="`${isBan ? 'Ban' : 'Hover'} ${nameOf(championId)}`"
+          :aria-label="isBan ? t('draft.action.banChampion', { name: nameOf(championId) }) : t('draft.action.hoverChampion', { name: nameOf(championId) })"
         />
 
         <template #content>
           <div class="flex max-w-60 flex-col gap-2.5 p-3">
             <p class="text-sm text-highlighted">{{ question }}</p>
-            <p v-if="kind === 'ban'" class="text-xs text-muted">A ban cannot be undone.</p>
+            <p v-if="kind === 'ban'" class="text-xs text-muted">{{ t('draft.action.banFinal') }}</p>
             <div class="flex justify-end gap-2">
-              <UButton size="xs" color="neutral" variant="ghost" label="Cancel" @click="confirming = false" />
-              <UButton size="xs" :color="kind === 'ban' ? 'error' : 'primary'" :label="kind === 'ban' ? 'Ban' : 'Hover'" @click="act" />
+              <UButton size="xs" color="neutral" variant="ghost" :label="t('draft.action.cancel')" @click="confirming = false" />
+              <UButton size="xs" :color="kind === 'ban' ? 'error' : 'primary'" :label="kind === 'ban' ? t('draft.action.ban') : t('draft.action.hover')" @click="act" />
             </div>
           </div>
         </template>

@@ -11,8 +11,9 @@ import { markFigures } from '~/utils/player-intel'
 const props = defineProps<{ mark: TruemainMark }>()
 
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 
-const title = computed(() => `True main of ${nameOf(props.mark.championId)}`)
+const title = computed(() => t('app.trueMainOf', { champion: nameOf(props.mark.championId) }))
 const figures = computed(() => markFigures(props.mark))
 const label = computed(() => [title.value, ...figures.value].join(' · '))
 </script>

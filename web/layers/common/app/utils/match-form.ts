@@ -5,6 +5,7 @@ import { formatKdaRatio, kdaRatio } from '#shared/utils/kda'
 import { formatCount } from '#shared/utils/counts'
 import { positionLabel } from '#common/utils/positions'
 import { formatTierName } from '#common/utils/tiers'
+import { tr } from '#common/utils/i18n'
 
 /** How many of the newest games a form tile weighs against the whole sample. */
 export const RECENT_GAMES = 5
@@ -41,7 +42,7 @@ export interface FormReference {
 
 interface Metric {
   key: FormTile['key']
-  label: string
+  label: () => string
   read: (match: MatchSummaryResponse) => number
   format: (value: number) => string
   /** The move's size, unsigned (the arrow gives the direction); `format` unless the unit differs. */
@@ -52,14 +53,14 @@ interface Metric {
 const METRICS: Metric[] = [
   {
     key: 'kda',
-    label: 'KDA',
+    label: () => 'KDA',
     read: ({ self }) => kdaRatio(self),
     format: formatKdaRatio,
     higherIsBetter: true,
   },
   {
     key: 'killParticipation',
-    label: 'Kill part.',
+    label: () => tr('match.form.killPart'),
     read: ({ self }) => self.killParticipation,
     format: value => formatPercentage(value, 0),
     // A move between two rates is in points, not a percentage of a percentage.
@@ -68,14 +69,14 @@ const METRICS: Metric[] = [
   },
   {
     key: 'csPerMinute',
-    label: 'CS / min',
+    label: () => tr('match.form.csPerMin'),
     read: ({ self, gameDurationSeconds }) => self.cs / Math.max(gameDurationSeconds / 60, 1),
     format: value => value.toFixed(1),
     higherIsBetter: true,
   },
   {
     key: 'deaths',
-    label: 'Deaths',
+    label: () => tr('match.form.deaths'),
     read: ({ self }) => self.deaths,
     format: value => value.toFixed(1),
     higherIsBetter: false,
@@ -102,7 +103,7 @@ export function formTiles(matches: MatchSummaryResponse[], benchmark: FormRefere
     const diff = recent === null ? 0 : recent - mean
     return {
       key: metric.key,
-      label: metric.label,
+      label: metric.label(),
       value: metric.format(mean),
       delta: recent === null || diff === 0
         ? null
@@ -123,6 +124,6 @@ function tierReference(benchmark: FormReference, metric: Metric, median: number)
   return {
     text: metric.format(median),
     tier: benchmark.tier,
-    hint: `Median ${metric.label} of ${tier} players on ${lane}: ${metric.format(median)} (${formatCount(benchmark.samples)} games)`,
+    hint: tr('match.form.hint', { metric: metric.label(), tier, lane, value: metric.format(median), games: formatCount(benchmark.samples) }),
   }
 }

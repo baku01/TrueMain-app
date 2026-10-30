@@ -5,6 +5,8 @@ import { formatPercentage } from '#shared/utils/ddragon'
 import type { ChampionPosition } from '#common/utils/positions'
 import { winRateTone } from '#common/utils/rate-tone'
 
+const { t } = useT()
+
 /**
  * Between the two teams, as the desktop app's champion select draws it
  * (`DraftLaneDuel`): the role, the player's champion against the role
@@ -35,9 +37,9 @@ const laneNoun = computed<'lane' | 'matchup'>(() => (props.position === 'JUNGLE'
 
 /** The figures are read once all three picks are in; before that the duel says what is missing. */
 const missing = computed(() => {
-  if (!props.position) return 'Pick your role'
-  if (!props.champion) return 'Pick your champion'
-  if (!props.opponent) return 'Pick the role opponent'
+  if (!props.position) return t('builder.duel.pickRole')
+  if (!props.champion) return t('builder.duel.pickChampion')
+  if (!props.opponent) return t('builder.duel.pickOpponent')
   return null
 })
 </script>
@@ -54,7 +56,7 @@ const missing = computed(() => {
       <button
         type="button"
         class="flex size-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-elevated ring-2 ring-primary outline-none transition hover:brightness-110 focus-visible:ring-offset-2 focus-visible:ring-offset-default"
-        :aria-label="champion ? `Your champion — ${champion.name}` : 'Choose your champion'"
+        :aria-label="champion ? t('builder.duel.yourChampion', { name: champion.name }) : t('builder.draft.chooseYours')"
         :title="champion?.name"
         @click="$emit('pick-champion')"
       >
@@ -69,12 +71,12 @@ const missing = computed(() => {
           class="text-2xl font-semibold text-dimmed"
         >?</span>
       </button>
-      <span class="stat-label">vs</span>
+      <span class="stat-label">{{ t('builder.duel.vs') }}</span>
       <button
         type="button"
         class="flex size-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-elevated ring-2 outline-none transition hover:brightness-110 hover:ring-primary focus-visible:ring-primary"
         :class="opponent ? 'ring-primary/35' : 'ring-accented'"
-        :aria-label="opponent ? `Role opponent — ${opponent.name}` : 'Choose the role opponent'"
+        :aria-label="opponent ? t('builder.duel.roleOpponent', { name: opponent.name }) : t('builder.draft.chooseOpponent')"
         :title="opponent?.name"
         @click="$emit('pick-opponent')"
       >
@@ -107,7 +109,7 @@ const missing = computed(() => {
           class="text-3xl font-semibold leading-none tabular-nums"
           :class="winRateTone(lane.winRate)"
         >{{ formatPercentage(lane.winRate, 0) }}</span>
-        <span class="stat-label">{{ laneNoun === 'matchup' ? 'Ahead at 15' : 'Lane win rate' }}</span>
+        <span class="stat-label">{{ laneNoun === 'matchup' ? t('builder.duel.ahead') : t('builder.duel.laneWinRate') }}</span>
         <BuilderMatchupLaneGaps
           :lane="lane"
           :lane-noun="laneNoun"
@@ -115,8 +117,8 @@ const missing = computed(() => {
       </template>
       <template v-else>
         <span class="text-3xl font-semibold leading-none text-dimmed">—</span>
-        <span class="stat-label">{{ laneNoun === 'matchup' ? 'Ahead at 15' : 'Lane win rate' }}</span>
-        <span class="text-xs text-muted">nothing decided yet</span>
+        <span class="stat-label">{{ laneNoun === 'matchup' ? t('builder.duel.ahead') : t('builder.duel.laneWinRate') }}</span>
+        <span class="text-xs text-muted">{{ t('builder.duel.undecided') }}</span>
       </template>
     </div>
   </div>

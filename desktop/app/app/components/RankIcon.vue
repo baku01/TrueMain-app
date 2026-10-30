@@ -12,6 +12,7 @@ const props = defineProps<{
   loading?: 'lazy' | 'eager'
 }>()
 
+const { t } = useT()
 const dim = computed(() => props.size ?? 28)
 const tierName = computed(() => (props.tier ? formatTierName(props.tier) : undefined))
 
@@ -26,7 +27,7 @@ const iconUrl = computed(() => {
   <img
     v-if="iconUrl"
     :src="iconUrl"
-    :alt="`${tierName} rank`"
+    :alt="t('app.rankAlt', { tier: tierName ?? '' })"
     :title="tierName"
     :width="dim"
     :height="dim"

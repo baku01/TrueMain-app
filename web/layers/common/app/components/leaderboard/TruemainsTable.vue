@@ -9,6 +9,8 @@ import { winRateTone } from '#common/utils/rate-tone'
 import { leaderboardSortToSorting, sortingToLeaderboardSort, type TableSorting } from '#common/utils/table-sorting'
 import { clickSelectableRow, wantsNewTab } from '#common/utils/table-rows'
 
+const { t } = useT()
+
 // The /truemains leaderboard as a `UTable` (#1734). The page already holds one
 // page of rows in the order the API ranked them; the table draws them and
 // turns a header click into a new order. Five columns sort — Rank (LP), Score
@@ -43,9 +45,9 @@ const FROM_2XL = 'hidden @2xl:table-cell'
 
 const columns: TableColumn<Row>[] = [
   { id: 'place', header: '#', meta: { class: { th: 'w-6 @xl:w-10', td: 'w-6 @xl:w-10' } } },
-  { id: 'player', header: 'Player', meta: { class: { th: 'w-full max-w-0', td: 'w-full max-w-0' } } },
-  { id: 'lanes', header: 'Lanes', meta: { class: { th: `${FROM_2XL} text-center`, td: FROM_2XL } } },
-  { id: 'main', header: 'Main', meta: { class: { th: 'text-center' } } },
+  { id: 'player', header: t('leaderboard.col.player'), meta: { class: { th: 'w-full max-w-0', td: 'w-full max-w-0' } } },
+  { id: 'lanes', header: t('leaderboard.col.lanes'), meta: { class: { th: `${FROM_2XL} text-center`, td: FROM_2XL } } },
+  { id: 'main', header: t('leaderboard.col.main'), meta: { class: { th: 'text-center' } } },
   { id: 'dedication', accessorFn: row => row.dedication?.score ?? null, enableSorting: true, meta: { class: { th: 'text-right', td: 'text-right' } } },
   { id: 'rank', accessorFn: row => row.ranked?.score ?? null, enableSorting: true, meta: { class: { th: 'text-center' } } },
   { id: 'games', accessorFn: row => row.stats.games, enableSorting: true, meta: { class: { th: `${FROM_XL} text-right`, td: `${FROM_XL} text-right` } } },
@@ -99,22 +101,22 @@ const viewOf = (row: Row) => views.value.get(row) ?? rowView(row)
     @keydown="clickSelectableRow"
   >
     <template #dedication-header="{ column }">
-      <TableSortHeader :column="column" label="Score" title="Truemain score" align="end" @sort="column.toggleSorting(true)" />
+      <TableSortHeader :column="column" :label="t('leaderboard.col.score')" :title="t('leaderboard.col.scoreTitle')" align="end" @sort="column.toggleSorting(true)" />
     </template>
     <template #rank-header="{ column }">
-      <TableSortHeader :column="column" label="Rank" title="rank (LP)" align="center" @sort="column.toggleSorting(true)" />
+      <TableSortHeader :column="column" :label="t('leaderboard.col.rank')" :title="t('leaderboard.col.rankTitle')" align="center" @sort="column.toggleSorting(true)" />
     </template>
     <template #games-header="{ column }">
-      <TableSortHeader :column="column" label="Games" title="games on main champions" align="end" @sort="column.toggleSorting(true)" />
+      <TableSortHeader :column="column" :label="t('leaderboard.col.games')" :title="t('leaderboard.col.gamesTitle')" align="end" @sort="column.toggleSorting(true)" />
     </template>
     <template #kda-header="{ column }">
-      <TableSortHeader :column="column" label="KDA" title="KDA on main champions" align="end" @sort="column.toggleSorting(true)" />
+      <TableSortHeader :column="column" label="KDA" :title="t('leaderboard.col.kdaTitle')" align="end" @sort="column.toggleSorting(true)" />
     </template>
     <template #winRate-header="{ column }">
-      <TableSortHeader :column="column" label="WR" title="ranked win rate" align="end" @sort="column.toggleSorting(true)" />
+      <TableSortHeader :column="column" :label="t('leaderboard.col.wr')" :title="t('leaderboard.col.wrTitle')" align="end" @sort="column.toggleSorting(true)" />
     </template>
     <template #follow-header>
-      <span class="sr-only">Follow</span>
+      <span class="sr-only">{{ t('leaderboard.col.follow') }}</span>
     </template>
 
     <template #place-cell="{ row }">

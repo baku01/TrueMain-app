@@ -6,11 +6,12 @@ import { formatSigned } from '#shared/utils/deltas'
 // ranked card's curve (`latestLpMoves`). A measurement, so the data axis's
 // colours rather than the result's blue and red, as on the match rows.
 defineProps<{ moves: readonly LpMove[] }>()
+const { t } = useT()
 </script>
 
 <template>
   <div v-if="moves.length > 0" class="flex flex-col gap-1.5" data-testid="lp-moves">
-    <span class="text-[11px] text-muted">Last {{ moves.length === 1 ? 'game' : `${moves.length} games` }}</span>
+    <span class="text-[11px] text-muted">{{ moves.length === 1 ? t('dash.lp.lastOne') : t('dash.lp.lastMany', { count: moves.length }) }}</span>
     <!-- Eight columns: the full strip holds on one line in the profile's narrow aside. -->
     <ol class="grid grid-cols-8 gap-1">
       <li

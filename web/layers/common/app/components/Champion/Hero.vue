@@ -49,16 +49,17 @@ const props = withDefaults(defineProps<{
   trendLoading?: boolean
 }>(), { truemainsOnly: undefined, totalWins: null, patch: null, lowSampleMessage: null, tier: null, trend: undefined })
 
+const { t } = useT()
 const displayName = computed(() => championDisplayName(props.championId, props.championName))
 const positionOption = computed(() => POSITION_BY_VALUE.get(props.position) ?? null)
 const populationLabel = computed(() => {
   if (props.truemainsOnly === undefined) return ''
-  return props.truemainsOnly ? ' played by mains' : ' across all tracked players'
+  return props.truemainsOnly ? t('champion.hero.byMains') : t('champion.hero.allPlayers')
 })
 // A win rate over zero games would be a fabricated 0%, so an empty slice keeps
 // its own line ("No games on this slice") and never reaches this.
 const winRateLabel = computed(() =>
-  props.totalWins == null ? '' : ` · ${formatPercentage(props.totalWins / props.totalGames, 0)} WR`)
+  props.totalWins == null ? '' : t('champion.hero.winRate', { rate: formatPercentage(props.totalWins / props.totalGames, 0) }))
 
 const points = computed(() => props.trend ?? [])
 const currentIndex = computed(() => {
@@ -79,16 +80,16 @@ function move(now: number | null | undefined, before: number | null | undefined,
     good: higherIsGood === null ? null : (delta >= 0) === higherIsGood,
   }
 }
-const hint = computed(() => previous.value ? `Every rank, against patch ${previous.value.patch}` : undefined)
+const hint = computed(() => previous.value ? t('champion.hero.deltaHint', { patch: previous.value.patch }) : undefined)
 
 const tiles = computed(() => {
   const now = current.value
   const before = previous.value
   return [
-    { label: 'Win rate', value: now ? formatPercentage(now.winRate) : '—', delta: move(now?.winRate, before?.winRate, true) },
-    { label: 'Pick rate', value: now ? formatPercentage(now.pickRate) : '—', delta: move(now?.pickRate, before?.pickRate, true) },
-    { label: 'Ban rate', value: formatPercentageOrDash(now?.banRate), delta: move(now?.banRate, before?.banRate, null) },
-    { label: 'Games', value: now ? formatCount(now.games) : '—', delta: null },
+    { label: t('champion.winRate'), value: now ? formatPercentage(now.winRate) : '—', delta: move(now?.winRate, before?.winRate, true) },
+    { label: t('champion.pickRate'), value: now ? formatPercentage(now.pickRate) : '—', delta: move(now?.pickRate, before?.pickRate, true) },
+    { label: t('champion.banRate'), value: formatPercentageOrDash(now?.banRate), delta: move(now?.banRate, before?.banRate, null) },
+    { label: t('champion.games'), value: now ? formatCount(now.games) : '—', delta: null },
   ]
 })
 </script>
@@ -143,8 +144,8 @@ const tiles = computed(() => {
             />
           </UTooltip>
         </slot>
-        <span v-if="totalGames === 0">No games on this slice</span>
-        <span v-else>{{ formatCount(totalGames) }} games{{ populationLabel }}{{ winRateLabel }}</span>
+        <span v-if="totalGames === 0">{{ t('champion.hero.noGames') }}</span>
+        <span v-else>{{ t('champion.hero.games', { count: formatCount(totalGames), population: populationLabel, winRate: winRateLabel }) }}</span>
         <WarningDot v-if="lowSampleMessage" :text="lowSampleMessage" />
       </template>
     </template>
@@ -157,7 +158,7 @@ const tiles = computed(() => {
         class="gap-2 bg-ink-950/60 ring ring-inset ring-white/10 backdrop-blur-md"
       >
         <TierBadge :tier="tier" class="min-w-0!" />
-        <span class="text-[10px] font-medium uppercase tracking-[0.1em] text-muted">Tier</span>
+        <span class="text-[10px] font-medium uppercase tracking-[0.1em] text-muted">{{ t('champion.tier') }}</span>
       </UBadge>
       <slot name="actions" />
     </template>

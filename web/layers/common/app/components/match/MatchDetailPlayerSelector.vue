@@ -4,6 +4,8 @@ import type { MatchDetailParticipant } from '#shared/types/match-detail'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { getPositionIconUrl } from '#shared/utils/ddragon'
 
+const { t } = useT()
+
 // The Build tab's player picker: blue side · vs · red side, one portrait per
 // player badged with their lane; the picked one is ringed, the others dimmed.
 const props = defineProps<{
@@ -37,7 +39,7 @@ const championName = (championId: number) => championDisplayName(championId, cha
           class="relative shrink-0 rounded transition-all"
           :class="p.participantId === selected ? 'ring-2 ring-primary' : 'opacity-60 hover:opacity-100'"
           :title="championName(p.championId)"
-          :aria-label="`Show ${championName(p.championId)} details`"
+          :aria-label="t('match.selector.show', { name: championName(p.championId) })"
           :aria-pressed="p.participantId === selected"
           @click="selected = p.participantId"
         >

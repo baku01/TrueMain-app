@@ -20,14 +20,15 @@ const props = defineProps<{
   banRate: number | null
 }>()
 
+const { t } = useT()
 const positionOption = computed(() => POSITION_BY_VALUE.get(props.position))
 
 // One line per rate, label and value in their own column, so the three numbers
 // read as a small table — same shape as RateBadge's tooltip.
 const stats = computed(() => [
-  { label: 'Win rate', value: formatPercentage(props.winRate), tone: winRateTone(props.winRate) },
-  { label: 'Pick rate', value: formatPercentage(props.pickRate), tone: pickRateTone(props.pickRate) },
-  { label: 'Ban rate', value: formatPercentageOrDash(props.banRate), tone: banRateTone(props.banRate) },
+  { label: t('champion.winRate'), value: formatPercentage(props.winRate), tone: winRateTone(props.winRate) },
+  { label: t('champion.pickRate'), value: formatPercentage(props.pickRate), tone: pickRateTone(props.pickRate) },
+  { label: t('champion.banRate'), value: formatPercentageOrDash(props.banRate), tone: banRateTone(props.banRate) },
 ])
 
 // The tooltip is hover-only, so the link itself has to carry the whole content
@@ -36,12 +37,12 @@ const stats = computed(() => [
 // stat is better left unsaid than read out as punctuation.
 const ariaLabel = computed(() => {
   const parts = [
-    `${formatPercentage(props.winRate, 0)} WR`,
-    `${formatPercentage(props.pickRate, 0)} PR`,
-    ...(props.banRate === null ? [] : [`${formatPercentage(props.banRate, 0)} BR`]),
+    t('champion.chip.wr', { value: formatPercentage(props.winRate, 0) }),
+    t('champion.chip.pr', { value: formatPercentage(props.pickRate, 0) }),
+    ...(props.banRate === null ? [] : [t('champion.chip.br', { value: formatPercentage(props.banRate, 0) })]),
   ]
   const lane = positionOption.value ? `, ${positionOption.value.label}` : ''
-  return `View ${props.name}${lane} (${parts.join(', ')})`
+  return t('champion.chip.view', { name: props.name, lane, stats: parts.join(', ') })
 })
 </script>
 

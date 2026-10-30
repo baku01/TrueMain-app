@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { RegionSlug } from '#shared/types/leaderboard'
 
+const { t } = useT()
+
 // A region's flag at a given width, 3:2. The artwork is the layer's `region`
 // icon collection (`app/assets/icons/region`), the same one the leaderboard's
 // region select passes to its items' native `icon`. Those SVGs are square with
@@ -16,10 +18,10 @@ const w = computed(() => props.width ?? 24)
 const h = computed(() => Math.round(w.value * (16 / 24)))
 const label = computed(() => {
   switch (props.region) {
-    case 'europe': return 'Europe'
-    case 'americas': return 'Americas'
-    case 'korea': return 'Korea'
-    default: return 'Unknown region'
+    case 'europe': return t('leaderboard.region.europe')
+    case 'americas': return t('leaderboard.region.americas')
+    case 'korea': return t('leaderboard.region.korea')
+    default: return t('leaderboard.region.unknown')
   }
 })
 </script>

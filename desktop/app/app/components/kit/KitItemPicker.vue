@@ -11,6 +11,15 @@ import { ITEM_SHOP_CLASSES, kitItemGroups, searchKitItems } from '~/utils/kit-it
  * Support — once those are read (`useItemClasses`). An item that would repeat
  * one already taken is shown, with its card, but cannot be taken.
  */
+const SHOP_CLASS_KEYS: Record<ItemShopClass, string> = {
+  Fighter: 'kit.class.fighter',
+  Marksman: 'kit.class.marksman',
+  Assassin: 'kit.class.assassin',
+  Mage: 'kit.class.mage',
+  Tank: 'kit.class.tank',
+  Support: 'kit.class.support',
+}
+
 const props = withDefaults(defineProps<{
   items: Record<number, StaticItemData>
   /** The groups this slot takes, in picker order. */
@@ -21,11 +30,13 @@ const props = withDefaults(defineProps<{
   /** Each item's shop classes; without them the picker offers no class filter. */
   classes?: ItemClassMap
   title: string
-}>(), { blocked: () => [], blockedNote: 'already on this path', classes: () => ({}) })
+}>(), { blocked: () => [], blockedNote: undefined, classes: () => ({}) })
 
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ pick: [itemId: number] }>()
 
+const { t } = useT()
+const note = computed(() => props.blockedNote ?? t('kit.picker.alreadyOnPath'))
 const query = ref('')
 const shopClass = ref<ItemShopClass | 'all'>('all')
 watch(open, (value) => {
@@ -34,7 +45,7 @@ watch(open, (value) => {
   shopClass.value = 'all'
 })
 
-const classTabs = [{ label: 'All', value: 'all' }, ...ITEM_SHOP_CLASSES]
+const classTabs = computed(() => [{ label: t('kit.picker.all'), value: 'all' }, ...ITEM_SHOP_CLASSES.map(c => ({ ...c, label: t(SHOP_CLASS_KEYS[c.value]) }))])
 const filtersByClass = computed(() => props.groups.includes('legendary') && Object.keys(props.classes).length > 0)
 
 const grouped = computed(() => kitItemGroups(props.items))
@@ -54,7 +65,7 @@ function pick(itemId: number) {
   <UModal v-model:open="open" :title="title" :ui="{ content: 'max-w-xl', body: 'p-0 sm:p-0' }">
     <template #body>
       <div class="space-y-2 border-b border-default p-3">
-        <UInput v-model="query" icon="i-lucide-search" placeholder="Search an item" class="w-full" aria-label="Search an item" />
+        <UInput v-model="query" icon="i-lucide-search" :placeholder="t('kit.picker.search')" class="w-full" :aria-label="t('kit.picker.search')" />
         <UTabs
           v-if="filtersByClass"
           v-model="shopClass"
@@ -63,7 +74,7 @@ function pick(itemId: number) {
           variant="pill"
           color="neutral"
           size="xs"
-          aria-label="Item class"
+          :aria-label="t('kit.picker.itemClass')"
           :ui="{ list: 'ring ring-default', indicator: 'rounded-md bg-accented shadow-none', trigger: 'px-2.5 data-[state=active]:text-highlighted' }"
         />
       </div>
@@ -77,7 +88,7 @@ function pick(itemId: number) {
               type="button"
               class="rounded transition hover:brightness-125 focus-visible:outline-2 focus-visible:outline-primary aria-disabled:cursor-not-allowed aria-disabled:opacity-30 aria-disabled:hover:brightness-100"
               :aria-disabled="blocked.includes(item.id)"
-              :aria-label="blocked.includes(item.id) ? `${item.name}, ${blockedNote}` : item.name"
+              :aria-label="blocked.includes(item.id) ? `${item.name}, ${note}` : item.name"
               @click="pick(item.id)"
             >
               <GameTooltipItemIcon :item="item" :width="36" :height="36" loading="lazy" class="size-9 rounded" />
@@ -85,7 +96,7 @@ function pick(itemId: number) {
           </div>
         </section>
         <p v-if="sections.length === 0" class="py-6 text-center text-sm text-muted">
-          {{ query ? `No item matches “${query}”.` : 'No item in this class.' }}
+          {{ query ? t('kit.picker.noMatch', { query }) : t('kit.picker.noneInClass') }}
         </p>
       </div>
     </template>

@@ -20,8 +20,9 @@ const primaryChosen = computed(() => new Set([page.value.primaryKeystoneId, page
 const secondaryChosen = computed(() => new Set([page.value.secondaryPerk1Id, page.value.secondaryPerk2Id]))
 const shards = computed(() => [page.value.statOffense, page.value.statFlex, page.value.statDefense])
 
-const perkName = (id: number) => props.tree.perks[id]?.name ?? `Rune ${id}`
-const styleName = (id: number) => props.tree.perkStyles[id]?.name ?? `Tree ${id}`
+const { t } = useT()
+const perkName = (id: number) => props.tree.perks[id]?.name ?? t('kit.runes.rune', { id })
+const styleName = (id: number) => props.tree.perkStyles[id]?.name ?? t('kit.runes.tree', { id })
 
 const KEYSTONE = 34
 const PERK = 26
@@ -31,8 +32,8 @@ const SHARD = 18
 
 <template>
   <div class="flex flex-wrap items-start gap-x-8 gap-y-4">
-    <section class="flex flex-col items-center gap-2" aria-label="Primary tree">
-      <div class="flex gap-1" role="group" aria-label="Primary tree">
+    <section class="flex flex-col items-center gap-2" :aria-label="t('kit.runes.primary')">
+      <div class="flex gap-1" role="group" :aria-label="t('kit.runes.primary')">
         <button
           v-for="style in tree.styles"
           :key="style.styleId"
@@ -79,8 +80,8 @@ const SHARD = 18
     </section>
 
     <div class="flex flex-col gap-4">
-      <section class="flex flex-col items-center gap-2" aria-label="Secondary tree">
-        <div class="flex gap-1" role="group" aria-label="Secondary tree">
+      <section class="flex flex-col items-center gap-2" :aria-label="t('kit.runes.secondary')">
+        <div class="flex gap-1" role="group" :aria-label="t('kit.runes.secondary')">
           <button
             v-for="style in secondaryStyles"
             :key="style.styleId"
@@ -112,7 +113,7 @@ const SHARD = 18
         </template>
       </section>
 
-      <section class="flex flex-col items-center gap-1" aria-label="Shards">
+      <section class="flex flex-col items-center gap-1" :aria-label="t('kit.runes.shards')">
         <div v-for="(row, rowIndex) in tree.shardSlots" :key="`shard-${rowIndex}`" class="flex gap-1.5">
           <button
             v-for="id in row"

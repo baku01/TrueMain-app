@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SearchPlayer } from '#shared/types/search'
+import { tr } from '#common/utils/i18n'
 import { getProfileIconUrl } from '#shared/utils/ddragon'
 
 // A known player in the search palette (`AppSearch`, #2018): the face of their
@@ -16,7 +17,7 @@ const props = defineProps<{
 const iconUrl = computed(() => (props.player.profileIconId
   ? getProfileIconUrl(props.player.profileIconId, props.patch)
   : null))
-const accounts = computed(() => `${props.player.accountCount} ${props.player.accountCount === 1 ? 'account' : 'accounts'}`)
+const accounts = computed(() => tr(props.player.accountCount === 1 ? 'search.accounts.one' : 'search.accounts.other', { count: props.player.accountCount }))
 </script>
 
 <template>

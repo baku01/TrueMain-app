@@ -3,6 +3,8 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import type { LibraryFilters, LibraryGrouping, LibraryItem, LibraryKind, LibraryResult } from '~/utils/recording-library'
 import { getQueueLabel } from '#common/utils/queues'
 
+const { t } = useT()
+
 /**
  * The Recordings page's toolbar, the reference's: a search over titles and
  * champions, All / Clips / Full games, a champion, favourites only, and a
@@ -19,20 +21,20 @@ const grouping = defineModel<LibraryGrouping>('grouping', { required: true })
 const { nameOf, portraitOf } = useChampionStatics()
 
 const KINDS: { value: LibraryKind, label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'clips', label: 'Clips' },
-  { value: 'games', label: 'Full games' },
+  { value: 'all', label: t('rec.toolbar.all') },
+  { value: 'clips', label: t('rec.toolbar.clips') },
+  { value: 'games', label: t('rec.toolbar.games') },
 ]
 const GROUPINGS: { value: LibraryGrouping, label: string }[] = [
-  { value: 'day', label: 'Day' },
-  { value: 'game', label: 'Game' },
-  { value: 'champion', label: 'Champion' },
-  { value: 'none', label: 'None' },
+  { value: 'day', label: t('rec.toolbar.day') },
+  { value: 'game', label: t('rec.toolbar.game') },
+  { value: 'champion', label: t('rec.toolbar.champion') },
+  { value: 'none', label: t('rec.toolbar.none') },
 ]
 const RESULTS: { value: LibraryResult, label: string }[] = [
-  { value: 'all', label: 'Any result' },
-  { value: 'win', label: 'Victories' },
-  { value: 'loss', label: 'Defeats' },
+  { value: 'all', label: t('rec.toolbar.anyResult') },
+  { value: 'win', label: t('rec.toolbar.victories') },
+  { value: 'loss', label: t('rec.toolbar.defeats') },
 ]
 
 const set = <K extends keyof LibraryFilters>(key: K, value: LibraryFilters[K]) =>
@@ -66,7 +68,7 @@ function toggleQueue(ids: number[], on: boolean) {
 
 const more = computed<DropdownMenuItem[][]>(() => [
   [
-    { label: 'Queue', type: 'label' },
+    { label: t('rec.toolbar.queue'), type: 'label' },
     ...queues.value.map(queue => ({
       label: queue.label,
       type: 'checkbox' as const,
@@ -76,7 +78,7 @@ const more = computed<DropdownMenuItem[][]>(() => [
     })),
   ],
   [
-    { label: 'Result', type: 'label' },
+    { label: t('rec.toolbar.result'), type: 'label' },
     ...RESULTS.map(result => ({
       label: result.label,
       type: 'checkbox' as const,
@@ -95,7 +97,7 @@ const moreActive = computed(() => filters.value.queues.length + (filters.value.r
     <UInput
       :model-value="filters.search"
       icon="i-lucide-search"
-      placeholder="Search clips"
+      :placeholder="t('rec.toolbar.search')"
       size="sm"
       class="w-44"
       @update:model-value="set('search', String($event))"
@@ -107,11 +109,11 @@ const moreActive = computed(() => filters.value.queues.length + (filters.value.r
       v-model="champion"
       :items="champions"
       value-key="value"
-      placeholder="Champion"
+      :placeholder="t('rec.toolbar.champion')"
       :clear="champion !== undefined"
       size="sm"
       class="w-36"
-      :search-input="{ placeholder: 'Champion…' }"
+      :search-input="{ placeholder: t('rec.toolbar.championSearch') }"
     />
 
     <UButton
@@ -120,15 +122,15 @@ const moreActive = computed(() => filters.value.queues.length + (filters.value.r
       :color="filters.pinnedOnly ? 'primary' : 'neutral'"
       :variant="filters.pinnedOnly ? 'soft' : 'outline'"
       :aria-pressed="filters.pinnedOnly"
-      aria-label="Favourite clips and kept games only"
-      title="Favourite clips and kept games only"
+      :aria-label="t('rec.toolbar.pinned')"
+      :title="t('rec.toolbar.pinned')"
       @click="set('pinnedOnly', !filters.pinnedOnly)"
     />
 
     <UDropdownMenu :items="more" :content="{ align: 'start' }">
       <UButton
         icon="i-lucide-list-filter"
-        :label="moreActive ? `More · ${moreActive}` : 'More'"
+        :label="moreActive ? t('rec.toolbar.moreCount', { count: moreActive }) : t('rec.toolbar.more')"
         size="sm"
         :color="moreActive ? 'primary' : 'neutral'"
         :variant="moreActive ? 'soft' : 'outline'"
@@ -136,6 +138,6 @@ const moreActive = computed(() => filters.value.queues.length + (filters.value.r
     </UDropdownMenu>
 
     <span class="ml-auto shrink-0 text-xs text-muted tabular-nums">{{ shown }}</span>
-    <USelect v-model="grouping" :items="GROUPINGS" value-key="value" size="sm" class="w-28" aria-label="Group by" />
+    <USelect v-model="grouping" :items="GROUPINGS" value-key="value" size="sm" class="w-28" :aria-label="t('rec.toolbar.groupBy')" />
   </div>
 </template>

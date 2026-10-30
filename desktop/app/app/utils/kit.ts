@@ -1,6 +1,7 @@
 import type { Kit, KitNode, KitRunePage, KitStore } from '#shared/types/kit'
 import type { RuneTreeResponse } from '#shared/types/static-data'
 import type { BuildCoreView } from '~/types/build'
+import { tr } from '#common/utils/i18n'
 import { DEFAULT_SPELLS } from '~/utils/kit-items'
 import { runeIssues } from '~/utils/kit-runes'
 import { chainOf, cutAt, kitPaths, maxDepth, MAX_PATH_ITEMS } from '~/utils/kit-tree'
@@ -118,16 +119,16 @@ function repeats(path: number[]): boolean {
  */
 export function kitIssues(kit: Kit, runeTree: RuneTreeResponse | null): string[] {
   const issues: string[] = []
-  if (!kit.name.trim()) issues.push('Name the kit.')
-  if (kit.positions.length === 0) issues.push('Choose at least one position.')
-  if (kit.tree.length === 0) issues.push('Add a first item.')
+  if (!kit.name.trim()) issues.push(tr('kit.issue.name'))
+  if (kit.positions.length === 0) issues.push(tr('kit.issue.position'))
+  if (kit.tree.length === 0) issues.push(tr('kit.issue.firstItem'))
   const paths = kitPaths(kit.tree)
   const slots = kit.boots.length > 0 ? 1 : 0
-  if (paths.some(path => path.length + slots > MAX_PATH_ITEMS)) issues.push(`A path holds at most ${MAX_PATH_ITEMS} items, boots included.`)
-  if (paths.some(repeats)) issues.push('An item appears twice on one path.')
-  if (paths.some(path => path.some(id => kit.boots.includes(id)))) issues.push('The boots go in their own slot, not on a path.')
+  if (paths.some(path => path.length + slots > MAX_PATH_ITEMS)) issues.push(tr('kit.issue.pathMax', { max: MAX_PATH_ITEMS }))
+  if (paths.some(repeats)) issues.push(tr('kit.issue.repeat'))
+  if (paths.some(path => path.some(id => kit.boots.includes(id)))) issues.push(tr('kit.issue.bootsOnPath'))
   const [first, second] = kit.spells
-  if (!first || !second || first === second) issues.push('Choose two different summoner spells.')
+  if (!first || !second || first === second) issues.push(tr('kit.issue.spells'))
   if (runeTree) issues.push(...runeIssues(kit.runes, runeTree))
   return issues
 }

@@ -5,6 +5,8 @@ import { itemSlots } from '#shared/utils/build'
 import type { ItemContextCard } from '#shared/utils/item-context'
 import { resolveItemContext } from '#shared/utils/item-context'
 
+const { t } = useT()
+
 const props = defineProps<{
   boots: BuildItemSet | null
   itemsMap: Record<number, StaticItemData>
@@ -26,7 +28,7 @@ const items = computed(() => itemSlots(props.boots?.itemIds, props.itemsMap))
 <template>
   <div>
     <h2 class="text-sm font-medium text-muted">
-      Boots
+      {{ t('champion.core.boots') }}
     </h2>
     <!-- At least 2 items × 36 px + 1 gap × 4 px = 76 px wide from sm, 36 px tall.
          A build's boots rarely have more than 1 item, but 2 is its realistic
@@ -47,7 +49,7 @@ const items = computed(() => itemSlots(props.boots?.itemIds, props.itemsMap))
         v-if="!items.length"
         class="text-sm text-muted"
       >
-        No data
+        {{ t('common.noData') }}
       </span>
     </div>
   </div>

@@ -1,5 +1,6 @@
 import type { Clip, GameRecording, RecordingLibrary, RecordingResolution } from '~/types/recordings'
 import { formatKda } from '#shared/utils/kda'
+import { getActiveLocale, tr } from '#common/utils/i18n'
 
 /**
  * The Recordings page's list: full games and clips as one kind of card, the
@@ -133,11 +134,11 @@ export function favouriteClips(library: RecordingLibrary | null): Clip[] {
 /** What a card is called: a clip's title, else the game — "Ahri · Victory". */
 export function itemTitle(item: LibraryItem, championName: (id: number) => string): string {
   if (item.title) return item.title
-  if (item.status === 'recording') return 'Recording…'
+  if (item.status === 'recording') return tr('rec.lib.recording')
   // The champion and the result come with the match history; until then the game has no name of its own.
-  const champion = item.championId ? championName(item.championId) : 'Your last game'
+  const champion = item.championId ? championName(item.championId) : tr('rec.lib.lastGame')
   if (item.win === null) return champion
-  return `${champion} · ${item.win ? 'Victory' : 'Defeat'}`
+  return `${champion} · ${item.win ? tr('rec.lib.victory') : tr('rec.lib.defeat')}`
 }
 
 export function filterItems(items: LibraryItem[], filters: LibraryFilters, championName: (id: number) => string): LibraryItem[] {
@@ -165,8 +166,10 @@ export interface LibraryGroup {
   items: LibraryItem[]
 }
 
-const dayFormatter = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
-const yearFormatter = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+/** English keeps its British dates; the other languages read in their own. */
+export const dateLocale = () => (getActiveLocale() === 'en' ? 'en-GB' : getActiveLocale())
+const dayFormatter = () => new Intl.DateTimeFormat(dateLocale(), { weekday: 'long', day: 'numeric', month: 'short' })
+const yearFormatter = () => new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
 
 function localDay(ms: number): string {
   const date = new Date(ms)
@@ -175,11 +178,11 @@ function localDay(ms: number): string {
 
 /** "Today", "Yesterday", "Monday 28 Sept", "3 Mar 2025". */
 export function dayLabel(ms: number, now = Date.now()): string {
-  if (localDay(ms) === localDay(now)) return 'Today'
-  if (localDay(ms) === localDay(now - 86_400_000)) return 'Yesterday'
+  if (localDay(ms) === localDay(now)) return tr('rec.lib.today')
+  if (localDay(ms) === localDay(now - 86_400_000)) return tr('rec.lib.yesterday')
   return new Date(ms).getFullYear() === new Date(now).getFullYear()
-    ? dayFormatter.format(ms)
-    : yearFormatter.format(ms)
+    ? dayFormatter().format(ms)
+    : yearFormatter().format(ms)
 }
 
 /** Cut the (already ordered) list into groups; `none` is one group without a heading. */
@@ -200,12 +203,12 @@ export function groupItems(
     else if (grouping === 'game') {
       key = String(item.gameId)
       // The time tells apart two games of the same champion on the same day.
-      const time = new Date(item.atMs).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+      const time = new Date(item.atMs).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
       label = `${itemTitle({ ...item, title: null }, championName)} · ${dayLabel(item.atMs)} ${time}`
     }
     else {
       key = String(item.championId ?? 'unknown')
-      label = item.championId ? championName(item.championId) : 'Champion not known yet'
+      label = item.championId ? championName(item.championId) : tr('rec.lib.championUnknown')
     }
     const group = groups.get(key) ?? { key, label, items: [] }
     group.items.push(item)
@@ -219,9 +222,9 @@ export function countLabel(items: LibraryItem[]): string {
   const clips = items.filter(item => item.kind === 'clip').length
   const games = items.length - clips
   const parts = []
-  if (clips) parts.push(`${clips} clip${clips === 1 ? '' : 's'}`)
-  if (games) parts.push(`${games} full game${games === 1 ? '' : 's'}`)
-  return parts.join(' · ') || 'Nothing'
+  if (clips) parts.push(tr(clips === 1 ? 'rec.lib.clips.one' : 'rec.lib.clips.other', { count: clips }))
+  if (games) parts.push(tr(games === 1 ? 'rec.lib.games.one' : 'rec.lib.games.other', { count: games }))
+  return parts.join(' · ') || tr('rec.lib.nothing')
 }
 
 /** "2.5 GB", "740 MB". */
@@ -239,7 +242,7 @@ export function recordingKda(item: { kills: number | null, deaths: number | null
 }
 
 export const RESOLUTION_LABELS: Record<RecordingResolution, string> = {
-  'native': 'Native',
+  get 'native'() { return tr('rec.lib.native') },
   '1440p': '1440p',
   '1080p': '1080p',
   '720p': '720p',
@@ -248,5 +251,5 @@ export const RESOLUTION_LABELS: Record<RecordingResolution, string> = {
 /** "Show in Finder" on a Mac, "Show in Explorer" elsewhere. */
 export function revealLabel(): string {
   const platform = typeof navigator === 'undefined' ? '' : navigator.userAgent
-  return /Mac/i.test(platform) ? 'Show in Finder' : 'Show in Explorer'
+  return /Mac/i.test(platform) ? tr('rec.lib.showInFinder') : tr('rec.lib.showInExplorer')
 }

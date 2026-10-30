@@ -11,6 +11,7 @@ import { riotIdLabel, truemainSlugLabel } from '#shared/utils/truemain-path'
  * player — so the banner is the champion they truemain and the history is
  * TrueMain's copy, paged. The main-champions card stays on the site for now.
  */
+const { t } = useT()
 const route = useRoute()
 const nameTag = computed(() => parseRouteParam(route.params.nameTag))
 
@@ -46,8 +47,8 @@ const identity = computed(() => profile.value?.identity ?? { gameName: truemainS
     <UEmpty
       v-if="profileNotFound"
       icon="i-lucide-user-x"
-      title="Player not found"
-      description="TrueMain does not track this Riot ID."
+      :title="t('dash.truemain.notFound')"
+      :description="t('dash.truemain.notTracked')"
       class="py-12"
     />
 
@@ -64,7 +65,7 @@ const identity = computed(() => profile.value?.identity ?? { gameName: truemainS
       :loading="matchesLoading"
     >
       <template #header>
-        <UBreadcrumb :items="[{ label: 'Truemains', to: '/truemains' }, { label: riotIdLabel(identity.gameName, identity.tagLine) }]" />
+        <UBreadcrumb :items="[{ label: t('dash.truemain.crumb'), to: '/truemains' }, { label: riotIdLabel(identity.gameName, identity.tagLine) }]" />
       </template>
 
       <template v-if="profile" #title-actions>
@@ -77,7 +78,7 @@ const identity = computed(() => profile.value?.identity ?? { gameName: truemainS
       </template>
 
       <template #history>
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">Match history</h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">{{ t('dash.truemain.history') }}</h2>
         <MatchHistoryList
           v-model:page="page"
           :matches="matches"

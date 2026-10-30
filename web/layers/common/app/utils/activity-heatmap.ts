@@ -1,3 +1,4 @@
+import { getActiveLocale, tr } from '#common/utils/i18n'
 import type { ActivityBucket, ActivityMode, ActivitySeries } from '#shared/types/activity'
 import { formatPercentage } from '#shared/utils/ddragon'
 
@@ -131,7 +132,7 @@ export function activityBucketLabel(bucket: ActivityBucket, mode: ActivityMode):
   const start = new Date(bucket.startUtc)
 
   if (activityCellsAreGames(mode)) {
-    return start.toLocaleString('en-US', {
+    return start.toLocaleString(getActiveLocale(), {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -140,7 +141,7 @@ export function activityBucketLabel(bucket: ActivityBucket, mode: ActivityMode):
     })
   }
 
-  return start.toLocaleDateString('en-US', {
+  return start.toLocaleDateString(getActiveLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -159,7 +160,7 @@ export function activityBucketLabel(bucket: ActivityBucket, mode: ActivityMode):
  * rate is exactly what the empty state exists to avoid.
  */
 export function activityBucketResult(bucket: ActivityBucket): string {
-  if (bucket.games <= 0 || bucket.winRate === null) return 'No games'
+  if (bucket.games <= 0 || bucket.winRate === null) return tr('profile.activity.noGames')
 
   return `${bucket.wins}/${bucket.games} · ${formatPercentage(bucket.winRate, 0)}`
 }

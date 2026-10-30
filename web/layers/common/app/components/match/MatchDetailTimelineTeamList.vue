@@ -2,6 +2,8 @@
 import type { CurveMetric, TeamCurves } from '#common/utils/timeline-curves'
 import { formatCurveValue } from '#common/utils/timeline-curves'
 
+const { t } = useT()
+
 // One side's end-of-game figures beside the curves (#2102): the team total,
 // then each player's with a bar on the scale of the game's highest. A click
 // pins that player's line (a second click releases it). The viewer's bar takes
@@ -37,7 +39,7 @@ function barTone(self: boolean) {
 <template>
   <div class="flex flex-col gap-0.5">
     <div class="flex items-baseline justify-between gap-2 px-1.5 pb-1 text-xs">
-      <span class="font-semibold" :class="ours ? 'text-ally' : 'text-enemy'">{{ ours ? 'Your team' : 'Enemy team' }}</span>
+      <span class="font-semibold" :class="ours ? 'text-ally' : 'text-enemy'">{{ ours ? t('match.team.yours') : t('match.team.enemy') }}</span>
       <span class="font-semibold tabular-nums text-highlighted">{{ formatCurveValue(team.total, metric) }}</span>
     </div>
     <button
@@ -47,7 +49,7 @@ function barTone(self: boolean) {
       class="flex flex-col gap-1 rounded px-1.5 py-1 text-left transition-colors"
       :class="row.pinned ? 'bg-accented' : 'hover:bg-elevated'"
       :aria-pressed="row.pinned"
-      :aria-label="`${row.pinned ? 'Unpin' : 'Pin'} ${row.name}'s line`"
+      :aria-label="t(row.pinned ? 'match.curves.unpin' : 'match.curves.pin', { name: row.name })"
       @click="emit('pin', row.participantId)"
     >
       <span class="flex items-center gap-2 text-xs">

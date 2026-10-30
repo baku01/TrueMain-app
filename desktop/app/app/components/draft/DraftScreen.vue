@@ -9,13 +9,14 @@ import type { ViewedPick } from '~/composables/useDraftSubject'
  * what the draft is for right now — the picks worth making while ours is
  * open, the build to run once it is locked.
  */
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   draft: DraftState
   /** What the strip says the draft is waiting for. */
   label?: string
-}>(), { label: 'Champion select' })
+}>()
 
 const draft = toRef(props, 'draft')
+const { t } = useT()
 
 // Hover, lock and ban, on the player's click (#1909): one instance for every control under this screen.
 const { turnLabel } = provideChampSelectActions(draft)
@@ -149,7 +150,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
 
 <template>
   <div class="flex h-full flex-col gap-3 px-4 pb-4 pt-3">
-    <DraftTopStrip :ally-bans="draft.allyBans" :enemy-bans="draft.enemyBans" :seconds-left="draft.secondsLeft" :label="turnLabel ?? label">
+    <DraftTopStrip :ally-bans="draft.allyBans" :enemy-bans="draft.enemyBans" :seconds-left="draft.secondsLeft" :label="turnLabel ?? label ?? t('draft.screen.title')">
       <template #action>
         <DraftLockButton />
       </template>
@@ -209,7 +210,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         :kit-id="kitId"
         :champion-id="subject.championId"
         :position="subject.request.position"
-        :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: 'This draft', request: subject.request }"
+        :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
         :kits="kits"
         @update:kit-id="pickKit"
       >
@@ -228,7 +229,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
 
       <div v-else class="surface flex h-full flex-col items-center justify-center gap-2 rounded-xl text-center">
         <UIcon name="i-lucide-scroll-text" class="size-6 text-dimmed" />
-        <p class="text-sm text-muted">The build shows once a champion is picked</p>
+        <p class="text-sm text-muted">{{ t('draft.screen.buildEmpty') }}</p>
       </div>
     </div>
   </div>

@@ -3,6 +3,7 @@
 // truemains profile card (full-size, above the fold) and the rank emblem's
 // tooltip (compact, on hover) — see `ProfileRankedCard.vue` and
 // `RankEmblem.vue`.
+import { tr } from '#common/utils/i18n'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { formatLeaguePoints, formatRank, tierColor } from '#common/utils/tiers'
 
@@ -26,7 +27,7 @@ const tierLabel = computed(() => formatRank(props.tier, props.division))
 
 const recordLabel = computed(() => {
   if (props.wins === null && props.losses === null) return null
-  const record = `${props.wins ?? '?'}W – ${props.losses ?? '?'}L`
+  const record = tr('common.recordWL', { wins: props.wins ?? '?', losses: props.losses ?? '?' })
   const wr = props.winRate === null ? null : formatPercentage(props.winRate, 0)
   return wr ? `${record} (${wr})` : record
 })

@@ -7,6 +7,7 @@ import type {
   RecordingStatus,
   RecordingWinProbability,
 } from '~/types/recordings'
+import { tr } from '#common/utils/i18n'
 import type { Chord, TriggerCheck } from '~/types/overlay'
 
 /**
@@ -24,7 +25,7 @@ export async function recordingCall<T>(command: string, args?: Record<string, un
     const { devRecordingCall } = await import('~/utils/recordings-dev')
     return await devRecordingCall(command, args) as T
   }
-  throw new Error('Recording is only available in the desktop app.')
+  throw new Error(tr('rec.err.desktopOnly'))
 }
 
 /** The shell's `convertFileSrc`, loaded once: a file on disk as a URL the webview may load. */
@@ -164,24 +165,24 @@ export function useRecordings() {
   const getWinProbability = (id: string) =>
     recordingCall<RecordingWinProbability | null>('recording_win_probability', { id }).catch(() => null)
   const setKept = (id: string, kept: boolean) =>
-    mutate<GameRecording>('recording_set_kept', { id, kept }, kept ? 'The game could not be kept' : 'The game could not be released')
+    mutate<GameRecording>('recording_set_kept', { id, kept }, kept ? tr('rec.err.keep') : tr('rec.err.release'))
   const deleteRecording = async (id: string) =>
-    (await mutate<null>('recording_delete', { id }, 'The game could not be deleted')) !== undefined
+    (await mutate<null>('recording_delete', { id }, tr('rec.err.deleteGame'))) !== undefined
   /** `replaces`: a saved clip of the same game this cut adjusts, deleted once the new one is written. */
   const saveClip = (recordingId: string, startMs: number, endMs: number, title: string, replaces?: string) =>
-    mutate<Clip>('clip_save', { recordingId, startMs, endMs, title, replaces: replaces ?? null }, 'The clip could not be saved')
+    mutate<Clip>('clip_save', { recordingId, startMs, endMs, title, replaces: replaces ?? null }, tr('rec.err.saveClip'))
   const checkMarkKey = (chord: Chord) => recordingCall<TriggerCheck>('recording_check_mark_key', { chord })
   const updateClip = (id: string, change: { title?: string, favorite?: boolean }) =>
-    mutate<Clip>('clip_update', { id, ...change }, 'The clip could not be updated')
+    mutate<Clip>('clip_update', { id, ...change }, tr('rec.err.updateClip'))
   const deleteClip = async (id: string) =>
-    (await mutate<null>('clip_delete', { id }, 'The clip could not be deleted')) !== undefined
+    (await mutate<null>('clip_delete', { id }, tr('rec.err.deleteClip'))) !== undefined
 
   async function reveal(path: string) {
     try {
       await recordingCall<null>('reveal_recording_file', { path })
     }
     catch (error) {
-      toast.add({ title: 'The file could not be shown', description: String(error), color: 'error', icon: 'i-lucide-circle-alert' })
+      toast.add({ title: tr('rec.err.reveal'), description: String(error), color: 'error', icon: 'i-lucide-circle-alert' })
     }
   }
 
@@ -200,7 +201,7 @@ export function useRecordings() {
         await Promise.all([refreshLibrary(), refreshStatus()])
       }
       catch (error) {
-        toast.add({ title: 'The settings could not be saved', description: String(error), color: 'error', icon: 'i-lucide-circle-alert' })
+        toast.add({ title: tr('rec.err.settings'), description: String(error), color: 'error', icon: 'i-lucide-circle-alert' })
         if (request === settingsRequest) settings.value = await recordingCall<RecordingSettingsView>('recording_settings').catch(() => settings.value)
       }
     })
@@ -212,7 +213,7 @@ export function useRecordings() {
       status.value = await recordingCall<RecordingStatus>('request_capture_permission')
     }
     catch (error) {
-      toast.add({ title: 'Screen Recording could not be requested', description: String(error), color: 'error', icon: 'i-lucide-circle-alert' })
+      toast.add({ title: tr('rec.err.permission'), description: String(error), color: 'error', icon: 'i-lucide-circle-alert' })
     }
   }
 

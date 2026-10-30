@@ -2,6 +2,7 @@ import type { GamePlayer } from '~/types/game'
 import type { LoadingPlayer, PlayerForm, PositionGames } from '~/types/loading'
 import type { RankedQueue } from '~/types/record'
 import { kdaRatio } from '#shared/utils/kda'
+import { tr } from '#common/utils/i18n'
 
 /**
  * What the Game page says about each player (#1828), read off what the
@@ -164,8 +165,8 @@ export function markOf(marks: TruemainMark[], line: LoadingPlayer | null): Truem
 /** What the mark's tooltip says under its title: only figures the lookup returned. */
 export function markFigures(mark: TruemainMark): string[] {
   const figures: string[] = []
-  if (mark.totalMatches > 0) figures.push(`${mark.championMatches} of their last ${mark.totalMatches} ranked games`)
-  if (mark.isOtp) figures.push('One-trick')
-  figures.push(`Truemain score ${Math.round(mark.dedication)}`)
+  if (mark.totalMatches > 0) figures.push(tr('app.mark.recent', { matches: mark.championMatches, total: mark.totalMatches }))
+  if (mark.isOtp) figures.push(tr('app.mark.otp'))
+  figures.push(tr('app.mark.score', { score: Math.round(mark.dedication) }))
   return figures
 }

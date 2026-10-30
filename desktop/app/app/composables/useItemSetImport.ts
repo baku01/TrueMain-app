@@ -1,5 +1,6 @@
 import type { ChampionItemContextResponse } from '#shared/types/item-context'
 import type { BuildOption } from '~/types/build'
+import { tr } from '#common/utils/i18n'
 import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
 
 /** What the shell answers when it could not read the client's list (`itemsets.rs`). */
@@ -65,8 +66,8 @@ export function useItemSetImport() {
       clearTimeout(doneTimer)
       doneTimer = setTimeout(() => (done.value = false), 2500)
       toast.add({
-        title: 'Items imported',
-        description: insideTauri() ? `The TrueMain item set is in the shop for ${subject.champion}.` : 'Dev server: nothing was sent to a client.',
+        title: tr('kit.import.itemsDone'),
+        description: insideTauri() ? tr('build.items.importedDescription', { champion: subject.champion }) : tr('build.devNothingSent'),
         icon: 'i-lucide-check',
         color: 'success',
       })
@@ -89,28 +90,28 @@ export function itemSetFailureToast(message: string) {
   switch (message) {
     case READ_FAILED:
       return {
-        title: 'Could not read your item sets',
-        description: 'Nothing was written. Try again once the client has finished loading.',
+        title: tr('build.items.readFailed'),
+        description: tr('build.items.readFailedDescription'),
         icon: 'i-lucide-circle-x',
         color: 'error' as const,
       }
     case SETS_CHANGED:
       return {
-        title: 'Check your item sets',
-        description: 'The TrueMain set was written, but your own sets no longer read the same in the client.',
+        title: tr('build.items.setsChanged'),
+        description: tr('build.items.setsChangedDescription'),
         icon: 'i-lucide-triangle-alert',
         color: 'warning' as const,
       }
     case EMPTY_BUILD:
       return {
-        title: 'Nothing to import',
-        description: 'This build has no item to put in a set.',
+        title: tr('build.items.empty'),
+        description: tr('build.items.emptyDescription'),
         icon: 'i-lucide-triangle-alert',
         color: 'warning' as const,
       }
     default:
       return {
-        title: 'Could not import the items',
+        title: tr('build.items.failed'),
         description: message,
         icon: 'i-lucide-circle-x',
         color: 'error' as const,

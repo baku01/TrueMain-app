@@ -6,6 +6,12 @@
 //!
 //! Next to it, "Share Anonymous Usage Data" (#1805), checked by default: the
 //! switch for the usage counts `telemetry.rs` sends, kept across launches.
+//!
+//! The texts follow the language the player chose in the app: the webview
+//! tells the shell at launch and on every change (`set_menu_language`), which
+//! rewrites each item in place. Until it does, they read in English.
+
+use std::sync::Mutex;
 
 use tauri::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, MenuItemKind, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -17,11 +23,69 @@ const CHECK_FOR_UPDATES: &str = "check-for-updates";
 const SHOW: &str = "show";
 const QUIT: &str = "quit";
 const SHARE_USAGE: &str = "share-usage";
-const SHARE_USAGE_LABEL: &str = "Share Anonymous Usage Data";
 /// Listened to by `useAppUpdate` in the webview.
 const CHECK_EVENT: &str = "app://check-for-updates";
 
+/// The texts of the menu and the tray, in one language.
+struct Labels {
+    check_for_updates: &'static str,
+    share_usage: &'static str,
+    open: &'static str,
+    quit: &'static str,
+    tooltip: &'static str,
+}
+
+const ENGLISH: Labels = Labels {
+    check_for_updates: "Check for Updates…",
+    share_usage: "Share Anonymous Usage Data",
+    open: "Open TrueMain",
+    quit: "Quit TrueMain",
+    tooltip: "TrueMain",
+};
+
+const PORTUGUESE: Labels = Labels {
+    check_for_updates: "Verificar atualizações…",
+    share_usage: "Compartilhar dados de uso anônimos",
+    open: "Abrir o TrueMain",
+    quit: "Sair do TrueMain",
+    tooltip: "TrueMain",
+};
+
+/// The texts for a language code of the app (`en`, `pt-BR`); anything else reads in English.
+fn labels(language: &str) -> &'static Labels {
+    if language.eq_ignore_ascii_case("pt-br") {
+        &PORTUGUESE
+    } else {
+        &ENGLISH
+    }
+}
+
+type Relabel = Box<dyn Fn(&Labels) + Send + Sync>;
+
+/// What rewrites the texts of the items built at startup, kept as state for `set_menu_language`.
+#[derive(Default)]
+pub struct MenuTexts(Mutex<Vec<Relabel>>);
+
+impl MenuTexts {
+    fn register(&self, relabel: impl Fn(&Labels) + Send + Sync + 'static) {
+        self.0
+            .lock()
+            .expect("menu texts mutex poisoned")
+            .push(Box::new(relabel));
+    }
+}
+
+/// The player's language, from the webview: the menu and the tray follow it.
+#[tauri::command]
+pub fn set_menu_language(texts: tauri::State<'_, MenuTexts>, language: String) {
+    let labels = labels(&language);
+    for relabel in texts.0.lock().expect("menu texts mutex poisoned").iter() {
+        relabel(labels);
+    }
+}
+
 pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
+    app.manage(MenuTexts::default());
     // Runtime checks rather than `#[cfg]`, so both paths compile, and are
     // checked, on whichever platform builds.
     if cfg!(target_os = "macos") {
@@ -38,13 +102,7 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
 fn app_menu<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     let menu = Menu::default(app.handle())?;
     if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
-        let check = MenuItem::with_id(
-            app,
-            CHECK_FOR_UPDATES,
-            "Check for Updates…",
-            true,
-            None::<&str>,
-        )?;
+        let check = check_for_updates(app)?;
         app_submenu.insert(&check, 1)?;
         app_submenu.insert(&share_usage(app)?, 2)?;
     }
@@ -55,24 +113,22 @@ fn app_menu<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
 /// A tray icon whose menu opens the window, checks for updates, or quits;
 /// a left click opens the window.
 fn tray<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
+    let open_item = MenuItem::with_id(app, SHOW, ENGLISH.open, true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, QUIT, ENGLISH.quit, true, None::<&str>)?;
+    register_text(app, &open_item, |labels| labels.open);
+    register_text(app, &quit_item, |labels| labels.quit);
     let menu = Menu::with_items(
         app,
         &[
-            &MenuItem::with_id(app, SHOW, "Open TrueMain", true, None::<&str>)?,
-            &MenuItem::with_id(
-                app,
-                CHECK_FOR_UPDATES,
-                "Check for Updates…",
-                true,
-                None::<&str>,
-            )?,
+            &open_item,
+            &check_for_updates(app)?,
             &share_usage(app)?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, QUIT, "Quit TrueMain", true, None::<&str>)?,
+            &quit_item,
         ],
     )?;
     let mut tray = TrayIconBuilder::with_id("main")
-        .tooltip("TrueMain")
+        .tooltip(ENGLISH.tooltip)
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
@@ -88,8 +144,35 @@ fn tray<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
-    tray.build(app)?;
+    let tray = tray.build(app)?;
+    if let Some(texts) = app.try_state::<MenuTexts>() {
+        texts.register(move |labels| {
+            let _ = tray.set_tooltip(Some(labels.tooltip));
+        });
+    }
     Ok(())
+}
+
+/// Rewrites `item`'s text with `pick` from the language's labels, whenever the language changes.
+fn register_text<R: Runtime>(app: &App<R>, item: &MenuItem<R>, pick: fn(&Labels) -> &'static str) {
+    if let Some(texts) = app.try_state::<MenuTexts>() {
+        let item = item.clone();
+        texts.register(move |labels| {
+            let _ = item.set_text(pick(labels));
+        });
+    }
+}
+
+fn check_for_updates<R: Runtime>(app: &App<R>) -> tauri::Result<MenuItem<R>> {
+    let item = MenuItem::with_id(
+        app,
+        CHECK_FOR_UPDATES,
+        ENGLISH.check_for_updates,
+        true,
+        None::<&str>,
+    )?;
+    register_text(app, &item, |labels| labels.check_for_updates);
+    Ok(item)
 }
 
 /// Checked when the counts are sent. A click toggles the item's own check
@@ -98,7 +181,21 @@ fn share_usage<R: Runtime>(app: &App<R>) -> tauri::Result<CheckMenuItem<R>> {
     let on = app
         .try_state::<SharedTelemetry>()
         .is_some_and(|telemetry| telemetry.enabled());
-    CheckMenuItem::with_id(app, SHARE_USAGE, SHARE_USAGE_LABEL, true, on, None::<&str>)
+    let item = CheckMenuItem::with_id(
+        app,
+        SHARE_USAGE,
+        ENGLISH.share_usage,
+        true,
+        on,
+        None::<&str>,
+    )?;
+    if let Some(texts) = app.try_state::<MenuTexts>() {
+        let item = item.clone();
+        texts.register(move |labels| {
+            let _ = item.set_text(labels.share_usage);
+        });
+    }
+    Ok(item)
 }
 
 fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {

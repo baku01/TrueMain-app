@@ -2,6 +2,8 @@
 import type { TimelineView } from '~/utils/recording-timeline'
 import { clampView, fullView, isZoomed, MIN_VIEW_SPAN_MS } from '~/utils/recording-timeline'
 
+const { t } = useT()
+
 /**
  * The timeline's zoom bar, after a video editor's: the whole video across, the
  * window the timeline shows as a thumb on it. Dragging the thumb pans, dragging
@@ -78,7 +80,7 @@ const fit = () => emit('update:view', fullView(props.lengthMs))
 
 <template>
   <div class="ml-6 flex items-center gap-1.5">
-    <UButton icon="i-lucide-zoom-out" color="neutral" variant="ghost" size="xs" aria-label="Zoom out" title="Zoom out (−)" :disabled="!zoomed" @click="emit('zoom', -1)" />
+    <UButton icon="i-lucide-zoom-out" color="neutral" variant="ghost" size="xs" :aria-label="t('rec.zoom.out')" :title="t('rec.zoom.outTitle')" :disabled="!zoomed" @click="emit('zoom', -1)" />
     <div
       ref="bar"
       class="relative h-2.5 min-w-0 flex-1 cursor-pointer touch-none rounded-full bg-muted ring-1 ring-default"
@@ -93,7 +95,7 @@ const fit = () => emit('update:view', fullView(props.lengthMs))
         class="absolute inset-y-0 rounded-full bg-white/15 ring-1 ring-white/25 transition-colors hover:bg-white/20"
         :class="drag?.mode === 'pan' ? 'cursor-grabbing bg-white/25' : 'cursor-grab'"
         :style="{ left: `min(${pct(view.startMs)}, calc(100% - ${MIN_THUMB_PX}px))`, width: `max(${MIN_THUMB_PX}px, calc(${pct(view.startMs + view.spanMs)} - ${pct(view.startMs)}))` }"
-        title="Drag to pan, drag an end to zoom, double-click to fit"
+        :title="t('rec.zoom.thumb')"
         @dblclick="fit"
       >
         <!-- Just outside the thumb, so even at its narrowest its body still pans. -->
@@ -101,7 +103,7 @@ const fit = () => emit('update:view', fullView(props.lengthMs))
         <span data-edge="end" class="absolute left-full top-1/2 size-2.5 -translate-x-0.5 -translate-y-1/2 cursor-ew-resize rounded-full bg-ink-200 ring-2 ring-(--ui-bg)" />
       </div>
     </div>
-    <UButton icon="i-lucide-zoom-in" color="neutral" variant="ghost" size="xs" aria-label="Zoom in" title="Zoom in (=)" :disabled="narrowest" @click="emit('zoom', 1)" />
-    <UButton icon="i-lucide-unfold-horizontal" color="neutral" variant="ghost" size="xs" aria-label="Fit the whole video" title="Fit the whole video (\)" :disabled="!zoomed" @click="fit" />
+    <UButton icon="i-lucide-zoom-in" color="neutral" variant="ghost" size="xs" :aria-label="t('rec.zoom.in')" :title="t('rec.zoom.inTitle')" :disabled="narrowest" @click="emit('zoom', 1)" />
+    <UButton icon="i-lucide-unfold-horizontal" color="neutral" variant="ghost" size="xs" :aria-label="t('rec.zoom.fit')" :title="t('rec.zoom.fitTitle')" :disabled="!zoomed" @click="fit" />
   </div>
 </template>

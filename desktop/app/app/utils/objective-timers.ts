@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import type { DrakeElement, NeutralTimers, ObjectiveSpawn } from '~/types/game'
 
 /**
@@ -39,18 +40,21 @@ export function objectiveIcon(key: ObjectiveKey, timers: Pick<NeutralTimers, 'el
 }
 
 const DRAKE_NAMES: Record<DrakeElement, string> = {
-  infernal: 'Infernal',
-  ocean: 'Ocean',
-  mountain: 'Mountain',
-  cloud: 'Cloud',
-  hextech: 'Hextech',
-  chemtech: 'Chemtech',
+  infernal: 'overlay.objectives.infernal',
+  ocean: 'overlay.objectives.ocean',
+  mountain: 'overlay.objectives.mountain',
+  cloud: 'overlay.objectives.cloud',
+  hextech: 'overlay.objectives.hextech',
+  chemtech: 'overlay.objectives.chemtech',
 }
+
+/** A drake's element, named. */
+export const drakeName = (element: DrakeElement): string => tr(DRAKE_NAMES[element])
 
 /** The dragon pit's name: the Elder, the next drake's element, or "Drake" while the API does not name it. */
 export function dragonLabel(timers: Pick<NeutralTimers, 'elder' | 'drake'>): string {
-  if (timers.elder) return 'Elder'
-  return timers.drake ? DRAKE_NAMES[timers.drake] : 'Drake'
+  if (timers.elder) return tr('overlay.objectives.elder')
+  return timers.drake ? drakeName(timers.drake) : tr('overlay.objectives.drake')
 }
 
 export function objectiveStatus(spawn: ObjectiveSpawn, clock: number): ObjectiveStatus {

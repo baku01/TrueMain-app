@@ -29,6 +29,7 @@ const props = withDefaults(defineProps<{
 }>(), { championId: null, tier: null, lane: null, suggested: () => [] })
 
 const { nameOf, portraitOf } = useChampionStatics()
+const { t } = useT()
 
 const ring = computed(() => {
   if (props.dropTarget) return 'ring-2 ring-accented'
@@ -66,13 +67,13 @@ const tierColor = computed(() => {
       />
       <div class="card-floor pointer-events-none absolute inset-0" />
       <TierBadge v-if="tier && !tentative" stacked :tier="tier" class="absolute bottom-2 left-2" />
-      <span v-if="tentative" class="absolute inset-x-0 bottom-2 text-center stat-label text-muted!">Hovering</span>
+      <span v-if="tentative" class="absolute inset-x-0 bottom-2 text-center stat-label text-muted!">{{ t('draft.card.hovering') }}</span>
     </template>
 
     <div v-else class="flex size-full flex-col items-center justify-center">
       <img v-if="lane" :src="getPositionIconUrl(lane)" alt="" class="size-7 opacity-25">
       <div v-if="suggested.length" class="absolute inset-x-0 bottom-2 flex flex-col items-center gap-1">
-        <span class="stat-label text-[9px]!">Suggested</span>
+        <span class="stat-label text-[9px]!">{{ t('draft.card.suggested') }}</span>
         <div class="flex -space-x-1">
           <template v-for="id in suggested.slice(0, 3)" :key="id">
             <img v-if="portraitOf(id)" :src="portraitOf(id)!" :alt="nameOf(id)" class="img-skeleton size-5 rounded ring-1 ring-ink-950">

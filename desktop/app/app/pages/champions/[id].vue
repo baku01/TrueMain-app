@@ -7,6 +7,7 @@ import type { Lane } from '~/types/draft'
  * builds on that lane in the same view the draft opens after a pick. The lanes
  * offered are the ones the site tiers it on, most played first.
  */
+const { t } = useT()
 const route = useRoute()
 const router = useRouter()
 
@@ -36,10 +37,10 @@ const view = computed<'builds' | 'kits'>({
   get: () => (route.query.view === 'kits' ? 'kits' : 'builds'),
   set: value => void router.replace({ query: { ...route.query, view: value === 'kits' ? 'kits' : undefined } }),
 })
-const views = [
-  { label: 'Builds', value: 'builds', icon: 'i-lucide-scroll-text' },
-  { label: 'My kits', value: 'kits', icon: 'i-lucide-swords' },
-]
+const views = computed(() => [
+  { label: t('dash.champion.builds'), value: 'builds', icon: 'i-lucide-scroll-text' },
+  { label: t('dash.champion.kits'), value: 'kits', icon: 'i-lucide-swords' },
+])
 
 // The banner's figures, as on the site: the lane's patch against the one before.
 const { data: trend, pending: trendPending } = useChampionTrend(championId, lane, () => lane.value !== null)
@@ -100,8 +101,8 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
                 color="neutral"
                 variant="ghost"
                 size="xs"
-                aria-label="Matchup"
-                title="Against a champion"
+                :aria-label="t('dash.champion.matchup')"
+                :title="t('dash.champion.against')"
               />
               <UButton
                 v-if="aliasOf(championId)"
@@ -109,8 +110,8 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
                 color="neutral"
                 variant="ghost"
                 size="xs"
-                aria-label="Open on TrueMain"
-                title="Open on TrueMain"
+                :aria-label="t('dash.openOnSite')"
+                :title="t('dash.openOnSite')"
                 @click="openOnSite(`/champions/${aliasOf(championId)!.toLowerCase()}`)"
               />
             </div>

@@ -14,6 +14,8 @@ import {
 import { apexFloorsAt, rankChartYDomain, tierBoundaries, tierZones } from '#common/utils/rank-chart-zones'
 import { tierHex } from '#common/utils/tiers'
 
+const { t } = useT()
+
 // The ranked card's LP curve, in plain SVG on both hosts. The curve is drawn
 // once per tier band and clipped to it, so its colour changes where it crosses
 // a threshold — fixed below Master, the day's Grandmaster / Challenger cutoff
@@ -115,7 +117,7 @@ const hoveredDot = computed(() => {
         :width="width"
         :height="HEIGHT"
         role="img"
-        aria-label="Rank over time"
+        :aria-label="t('profile.rankOverTime')"
         class="overflow-visible"
         @mousemove="hover"
         @mouseleave="hovered = null"

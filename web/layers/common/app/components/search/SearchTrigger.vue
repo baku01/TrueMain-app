@@ -24,6 +24,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{ open: [], clear: [] }>()
+const { t } = useT()
 
 const SIZE_CLASS = {
   sm: 'h-8 gap-2 rounded-md px-2.5 text-sm',
@@ -32,7 +33,7 @@ const SIZE_CLASS = {
 } as const
 
 const ariaLabel = computed(() => (props.activeChampion
-  ? `Filtering by ${props.activeChampion.name} — ${props.label.toLowerCase()}`
+  ? t('search.filteringBy', { name: props.activeChampion.name, label: props.label.toLowerCase() })
   : props.label))
 </script>
 
@@ -80,7 +81,7 @@ const ariaLabel = computed(() => (props.activeChampion
       variant="ghost"
       size="xs"
       class="absolute right-2 top-1/2 -translate-y-1/2"
-      :aria-label="`Clear champion filter (${activeChampion.name})`"
+      :aria-label="t('search.clearFilter', { name: activeChampion.name })"
       @click="emit('clear')"
     />
   </div>

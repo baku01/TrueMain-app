@@ -6,6 +6,8 @@ import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { retiredSampleTooltip } from '#common/utils/retired-sample'
 
+const { t } = useT()
+
 // The champions a player plays, most played first. On a profile each row reads
 // the main analysis (its play rate) and opens how THIS player builds the
 // champion; the app's dashboard passes its own link and fills the `meta` and
@@ -21,7 +23,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   nameTag: '',
   linkTo: undefined,
-  title: 'Main champions',
+  title: undefined,
 })
 
 defineSlots<{
@@ -59,7 +61,7 @@ function championLink(main: ProfileMainChampion): RouteLocationRaw {
 <template>
   <section v-if="mains.length > 0" class="flex flex-col gap-2">
     <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-      {{ title }}
+      {{ title ?? t('profile.mainChampions') }}
     </h2>
     <!-- The surface and the clip used to need separate elements: `glass` mixed
          `backdrop-filter` with `overflow-hidden` into a WebKit bug that bled the

@@ -1,5 +1,6 @@
 import type { Clip } from '~/types/recordings'
 import { getQueueLabel } from '#common/utils/queues'
+import { tr } from '#common/utils/i18n'
 
 /**
  * What a clip's publish dialog hands to YouTube's upload form (#1815): the
@@ -34,12 +35,12 @@ export function clipPublishText(
   const kda = clip.kills !== null && clip.deaths !== null && clip.assists !== null
     ? `${clip.kills}/${clip.deaths}/${clip.assists}`
     : null
-  const result = clip.win === null ? null : clip.win ? 'Victory' : 'Defeat'
+  const result = clip.win === null ? null : clip.win ? tr('rec.lib.victory') : tr('rec.lib.defeat')
   const line = [champion?.name, result, kda, getQueueLabel(clip.queueId)].filter(Boolean).join(' · ')
   const page = champion?.alias ? `${PUBLIC_SITE}/champions/${champion.alias.toLowerCase()}` : PUBLIC_SITE
   const recordedWith = champion?.alias
-    ? `Recorded with TrueMain. ${champion.name} builds, runes and matchups from its one-trick players: ${page}`
-    : `Recorded with TrueMain: ${page}`
+    ? tr('rec.publishText.withChampion', { champion: champion.name, page })
+    : tr('rec.publishText.plain', { page })
 
   return {
     title: youtubeSafe(clip.title).trim().slice(0, YOUTUBE_TITLE_MAX),

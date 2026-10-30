@@ -30,6 +30,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
+const { t } = useT()
+
 interface EloItem {
   label: string
   value: string
@@ -88,7 +90,7 @@ const selectUi = computed(() =>
     :items="items"
     value-key="value"
     label-key="label"
-    aria-label="Rank"
+    :aria-label="t('champion.rank')"
     :size="size"
     :class="size === 'sm' ? 'w-38' : 'w-44'"
     :ui="selectUi"

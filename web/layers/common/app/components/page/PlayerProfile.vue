@@ -8,6 +8,8 @@ import { formTiles, RECENT_GAMES } from '#common/utils/match-form'
 import { formatRank } from '#common/utils/tiers'
 import type { AccountIdentity } from '#common/components/Account.vue'
 
+const { t } = useT()
+
 /**
  * A player's profile, one page on both apps: the site's `/truemains/{nameTag}`
  * and, in the desktop app, the dashboard (the player in the client) and any
@@ -55,7 +57,7 @@ const props = withDefaults(defineProps<{
 })
 
 const tiles = computed(() => formTiles(props.matches, props.formReference))
-const hint = computed(() => `Last ${RECENT_GAMES} games against the average over ${props.matches.length}`)
+const hint = computed(() => t('pages.profile.hint', { recent: RECENT_GAMES, count: props.matches.length }))
 
 const rankLabel = computed(() => {
   const ranked = props.ranked
@@ -103,11 +105,11 @@ const rankLabel = computed(() => {
               />
               <span class="font-semibold text-highlighted">{{ rankLabel }}</span>
             </template>
-            <span v-else-if="level !== null">Level {{ level }}</span>
+            <span v-else-if="level !== null">{{ t('pages.profile.level', { level }) }}</span>
             <template v-if="truemain">
               <span class="text-dimmed">·</span>
               <span class="flex items-center gap-1.5">
-                Truemain
+                {{ t('pages.profile.truemain') }}
                 <SkeletonImage
                   :src="truemain.iconUrl"
                   :alt="truemain.name"
@@ -129,7 +131,7 @@ const rankLabel = computed(() => {
                   class="size-4"
                 />
                 {{ persona.displayName }}
-                <span class="font-normal text-muted">· all accounts</span>
+                <span class="font-normal text-muted">· {{ t('pages.profile.allAccounts') }}</span>
               </ULink>
             </template>
           </template>

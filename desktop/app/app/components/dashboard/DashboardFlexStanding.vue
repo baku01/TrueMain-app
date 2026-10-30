@@ -7,13 +7,14 @@ import { formatLeaguePoints, formatRank, tierColor } from '#common/utils/tiers'
 // block: crest, rank and LP, record. Placements read as such; a player who has
 // not played Flex this season sees nothing.
 const props = defineProps<{ queue: RankedQueue | null }>()
+const { t } = useT()
 
 const ranked = computed(() => Boolean(props.queue?.tier) && props.queue?.tier !== 'NONE')
 const played = computed(() => (props.queue ? props.queue.wins + props.queue.losses : 0))
 const record = computed(() => {
   const queue = props.queue
   if (!queue || played.value === 0) return null
-  return `${queue.wins}W ${queue.losses}L · ${formatPercentage(queue.wins / played.value, 0)}`
+  return `${t('dash.record', { wins: queue.wins, losses: queue.losses })} · ${formatPercentage(queue.wins / played.value, 0)}`
 })
 </script>
 
@@ -31,7 +32,7 @@ const record = computed(() => {
         {{ formatRank(queue.tier, queue.division) }}
         <span class="text-default">· {{ formatLeaguePoints(queue.leaguePoints) }}</span>
       </span>
-      <span v-else class="text-muted">Placements · {{ played }} played</span>
+      <span v-else class="text-muted">{{ t('dash.flex.placements', { played }) }}</span>
     </span>
     <span v-if="ranked && record" class="ml-auto whitespace-nowrap text-muted tabular-nums">{{ record }}</span>
   </div>

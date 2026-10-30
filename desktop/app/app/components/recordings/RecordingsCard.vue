@@ -5,6 +5,8 @@ import { itemTitle, recordingKda, revealLabel } from '~/utils/recording-library'
 import { clipOrigin } from '~/utils/auto-clips'
 import { getQueueLabel } from '#common/utils/queues'
 
+const { t } = useT()
+
 /**
  * One card of the Recordings page, laid out as the reference's: the picture,
  * then the champion, the kind and the title, then the game's line — K / D / A,
@@ -32,7 +34,7 @@ const clip = computed(() => (isClip.value ? library.value?.clips.find(entry => e
 /** Marked with the mark key (#2079), clipped automatically (#1766) or cut by hand; a full game's film. */
 const origin = computed(() => {
   if (clip.value) return clipOrigin(clip.value)
-  return isClip.value ? { icon: 'i-lucide-scissors', label: 'Clip' } : { icon: 'i-lucide-film', label: 'Full game' }
+  return isClip.value ? { icon: 'i-lucide-scissors', label: t('rec.origin.clip') } : { icon: 'i-lucide-film', label: t('rec.card.fullGame') }
 })
 
 function togglePin() {
@@ -44,26 +46,26 @@ function togglePin() {
 function youtubeMenu(): DropdownMenuItem[] {
   const { videoOnDisk, youtubeUrl, id } = props.item
   return [
-    ...(videoOnDisk ? [{ label: 'Publish on YouTube', icon: 'i-lucide-youtube', onSelect: () => (publishing.value = true) }] : []),
-    ...(youtubeUrl ? [{ label: 'Watch on YouTube', icon: 'i-lucide-external-link', onSelect: () => void openVideo(id) }] : []),
-    ...(youtubeUrl && videoOnDisk ? [{ label: 'Remove from this PC', icon: 'i-lucide-hard-drive-download', onSelect: () => (freeing.value = true) }] : []),
+    ...(videoOnDisk ? [{ label: t('rec.publish.action'), icon: 'i-lucide-youtube', onSelect: () => (publishing.value = true) }] : []),
+    ...(youtubeUrl ? [{ label: t('rec.watchYoutube'), icon: 'i-lucide-external-link', onSelect: () => void openVideo(id) }] : []),
+    ...(youtubeUrl && videoOnDisk ? [{ label: t('rec.removeFromPc'), icon: 'i-lucide-hard-drive-download', onSelect: () => (freeing.value = true) }] : []),
   ]
 }
 
 const menu = computed<DropdownMenuItem[][]>(() => [
   [
     isClip.value
-      ? { label: props.item.pinned ? 'Remove from favourites' : 'Add to favourites', icon: 'i-lucide-star', onSelect: togglePin }
-      : { label: props.item.pinned ? 'Stop keeping' : 'Keep full game', icon: 'i-lucide-pin', onSelect: togglePin },
+      ? { label: props.item.pinned ? t('rec.favourite.remove') : t('rec.favourite.add'), icon: 'i-lucide-star', onSelect: togglePin }
+      : { label: props.item.pinned ? t('rec.card.stopKeeping') : t('rec.card.keepGame'), icon: 'i-lucide-pin', onSelect: togglePin },
     ...(props.item.videoOnDisk ? [{ label: revealLabel(), icon: 'i-lucide-folder-open', onSelect: () => void reveal(props.item.videoPath) }] : []),
   ],
   ...(isClip.value ? [youtubeMenu()] : []),
-  [{ label: isClip.value ? 'Delete clip' : 'Delete full game', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => (confirming.value = true) }],
+  [{ label: isClip.value ? t('rec.deleteClip') : t('rec.deleteGame'), icon: 'i-lucide-trash-2', color: 'error', onSelect: () => (confirming.value = true) }],
 ])
 
 const confirmText = computed(() => isClip.value
-  ? { title: 'Delete this clip?', description: props.item.videoOnDisk ? `"${title.value}" is removed from your disk.` : `"${title.value}" leaves your recordings; the video stays on YouTube.`, label: 'Delete clip' }
-  : { title: 'Delete this full game?', description: 'The game\'s video is removed from your disk. Clips you saved from it stay.', label: 'Delete full game' })
+  ? { title: t('rec.confirmClip.title'), description: props.item.videoOnDisk ? t('rec.confirmClip.onDisk', { title: title.value }) : t('rec.confirmClip.youtubeOnly', { title: title.value }), label: t('rec.deleteClip') }
+  : { title: t('rec.card.confirmGame.title'), description: t('rec.card.confirmGame.description'), label: t('rec.deleteGame') })
 
 async function remove() {
   if (isClip.value) await deleteClip(props.item.id)
@@ -85,14 +87,14 @@ async function remove() {
             :title="origin.label"
           />
           <p class="truncate text-[13px] font-semibold text-highlighted" :title="title">{{ title }}</p>
-          <UIcon v-if="item.youtubeUrl && item.videoOnDisk" name="i-lucide-youtube" class="ml-auto size-3.5 shrink-0 text-muted" title="Published on YouTube" />
+          <UIcon v-if="item.youtubeUrl && item.videoOnDisk" name="i-lucide-youtube" class="ml-auto size-3.5 shrink-0 text-muted" :title="t('rec.card.published')" />
         </div>
         <p class="flex items-baseline gap-1.5 truncate text-[11px] tabular-nums">
           <template v-if="kda">
             <span class="font-medium text-default">{{ kda.line }}</span>
             <span class="text-muted">{{ kda.ratio }}</span>
           </template>
-          <span v-else-if="item.status === 'processing'" class="text-dimmed">Waiting for the match history</span>
+          <span v-else-if="item.status === 'processing'" class="text-dimmed">{{ t('rec.card.waitingHistory') }}</span>
           <span class="truncate text-dimmed">{{ getQueueLabel(item.queueId) }}</span>
         </p>
       </div>
@@ -105,7 +107,7 @@ async function remove() {
         variant="solid"
         size="xs"
         class="absolute right-1.5 top-1.5 bg-black/70 text-white opacity-0 hover:bg-black/85 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-        aria-label="More actions"
+        :aria-label="t('rec.card.more')"
       />
     </UDropdownMenu>
 

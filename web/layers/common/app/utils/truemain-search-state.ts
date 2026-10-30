@@ -1,4 +1,5 @@
 import type { SearchResult } from '#shared/types/search'
+import { tr } from '#common/utils/i18n'
 import { SEARCH_MIN_LENGTH } from '#common/composables/useTruemainSearch'
 
 // The truemain group of the search palette (`AppSearch`), classified once and
@@ -34,12 +35,12 @@ export function truemainSearchState({ term, tooShort, status, results }: Truemai
 }
 
 export const TRUEMAIN_SEARCH_MESSAGES = {
-  tooShort: `Type at least ${SEARCH_MIN_LENGTH} characters to search truemains.`,
-  searching: 'Searching truemains…',
-  empty: 'No truemain matches that name.',
+  get tooShort() { return tr('search.state.tooShort', { min: SEARCH_MIN_LENGTH }) },
+  get searching() { return tr('search.state.searching') },
+  get empty() { return tr('search.state.empty') },
   /** When the results are narrowed to one champion's mains. */
-  emptyOnChampion: 'No truemain of this champion matches that name.',
-} as const
+  get emptyOnChampion() { return tr('search.state.emptyOnChampion') },
+}
 
 /**
  * What a screen reader hears for a state. `failed` is the fetch error in the
@@ -54,6 +55,6 @@ export function truemainSearchAnnouncement(state: TruemainSearchState, failed: s
     case 'refetching': return TRUEMAIN_SEARCH_MESSAGES.searching
     case 'error': return failed
     case 'empty': return empty
-    case 'results': return `${state.results.length} truemain${state.results.length > 1 ? 's' : ''} found.`
+    case 'results': return tr(state.results.length > 1 ? 'search.state.foundMany' : 'search.state.foundOne', { count: state.results.length })
   }
 }

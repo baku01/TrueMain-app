@@ -12,6 +12,7 @@ import type { NavigationMenuItem } from '@nuxt/ui'
  * icons, their words in the tooltip.
  */
 const route = useRoute()
+const { t } = useLocale()
 const narrow = useNarrowWindow()
 const { screen } = useLcuState()
 const { status: recording } = useRecordings()
@@ -20,11 +21,11 @@ const { readyVersion: updateVersion, installing: updating, stalled: updateStalle
 
 const isActive = (prefix: string) => route.path === prefix || route.path.startsWith(`${prefix}/`)
 
-const LIVE = { label: 'Live', color: 'primary', variant: 'subtle', size: 'sm' } as const
-const REC = { label: 'Rec', color: 'error', variant: 'subtle', size: 'sm' } as const
+const LIVE = computed(() => ({ label: t('badge.live'), color: 'primary', variant: 'subtle', size: 'sm' }) as const)
+const REC = computed(() => ({ label: t('badge.rec'), color: 'error', variant: 'subtle', size: 'sm' }) as const)
 
 /** An entry lit by `badge`: the badge itself in full, a dot on the icon in the rail. */
-function lit(label: string, badge: typeof LIVE | typeof REC, on: boolean): Partial<NavigationMenuItem> {
+function lit(label: string, badge: typeof LIVE.value | typeof REC.value, on: boolean): Partial<NavigationMenuItem> {
   if (!on) return {}
   if (!narrow.value) return { badge }
   return { chip: { color: badge.color }, tooltip: { text: `${label} · ${badge.label}` } }
@@ -32,44 +33,44 @@ function lit(label: string, badge: typeof LIVE | typeof REC, on: boolean): Parti
 
 const items = computed<NavigationMenuItem[][]>(() => [
   [
-    { label: 'TrueMain', type: 'label' },
-    { label: 'Dashboard', icon: 'i-lucide-house', to: '/', active: route.path === '/' },
-    { label: 'Champions', icon: 'i-lucide-swords', to: '/champions', active: isActive('/champions') },
-    { label: 'Tier list', icon: 'i-lucide-trending-up', to: '/tierlist', active: isActive('/tierlist') },
-    { label: 'Matchup', icon: 'i-lucide-wand-sparkles', to: '/matchup', active: isActive('/matchup') },
-    { label: 'Truemains', icon: 'i-lucide-trophy', to: '/truemains', active: isActive('/truemains') },
-    { label: 'My kits', icon: 'i-lucide-backpack', to: '/kits', active: isActive('/kits') },
-    { label: 'Favorites', icon: 'i-lucide-star', to: '/favorites', active: isActive('/favorites') },
+    { label: t('nav.truemain'), type: 'label' },
+    { label: t('nav.dashboard'), icon: 'i-lucide-house', to: '/', active: route.path === '/' },
+    { label: t('nav.champions'), icon: 'i-lucide-swords', to: '/champions', active: isActive('/champions') },
+    { label: t('nav.tierlist'), icon: 'i-lucide-trending-up', to: '/tierlist', active: isActive('/tierlist') },
+    { label: t('nav.matchup'), icon: 'i-lucide-wand-sparkles', to: '/matchup', active: isActive('/matchup') },
+    { label: t('nav.truemains'), icon: 'i-lucide-trophy', to: '/truemains', active: isActive('/truemains') },
+    { label: t('nav.kits'), icon: 'i-lucide-backpack', to: '/kits', active: isActive('/kits') },
+    { label: t('nav.favorites'), icon: 'i-lucide-star', to: '/favorites', active: isActive('/favorites') },
   ],
   [
-    { label: 'In game', type: 'label' },
+    { label: t('nav.inGame'), type: 'label' },
     {
-      label: 'Champ select',
+      label: t('nav.champSelect'),
       icon: 'i-lucide-sparkles',
       to: '/draft',
       active: isActive('/draft'),
       // Lit while the client is in champion select, wherever the player is;
       // the rest of the time the page is a draft to play by hand.
-      ...lit('Champ select', LIVE, screen.value === 'draft'),
+      ...lit(t('nav.champSelect'), LIVE.value, screen.value === 'draft'),
     },
     {
-      label: 'Game',
+      label: t('nav.game'),
       icon: 'i-lucide-crosshair',
       to: '/game',
       active: isActive('/game'),
       // Lit while a game runs, wherever the player is.
-      ...lit('Game', LIVE, screen.value === 'in-game'),
+      ...lit(t('nav.game'), LIVE.value, screen.value === 'in-game'),
     },
-    { label: 'Overlay', icon: 'i-lucide-layers', to: '/overlay', active: route.path === '/overlay' },
+    { label: t('nav.overlay'), icon: 'i-lucide-layers', to: '/overlay', active: route.path === '/overlay' },
     // Only once the shell has answered for recording: a build without it has no page to open.
     ...(recording.value
       ? [{
-          label: 'Recordings',
+          label: t('nav.recordings'),
           icon: 'i-lucide-clapperboard',
           to: '/recordings',
           active: isActive('/recordings'),
           // Lit while a game is being recorded, wherever the player is.
-          ...lit('Recordings', REC, recording.value.recordingGameId !== null),
+          ...lit(t('nav.recordings'), REC.value, recording.value.recordingGameId !== null),
         }]
       : []),
   ],
@@ -86,28 +87,28 @@ onMounted(async () => {
 <template>
   <aside class="flex h-full flex-col">
     <div v-if="narrow" class="flex flex-col items-center gap-3 pb-4 pt-5">
-      <NuxtLink to="/" aria-label="Dashboard">
+      <NuxtLink to="/" :aria-label="t('nav.dashboard')">
         <AppMark class="size-7" />
       </NuxtLink>
-      <UTooltip v-if="updateVersion" :text="`Update to v${updateVersion}`">
+      <UTooltip v-if="updateVersion" :text="t('sidebar.update', { version: updateVersion })">
         <UButton
           icon="i-lucide-download"
           size="xs"
           variant="soft"
-          :aria-label="`Update to v${updateVersion}`"
+          :aria-label="t('sidebar.update', { version: updateVersion })"
           :loading="updating && !updateStalled"
           @click="restartToUpdate"
         />
       </UTooltip>
     </div>
     <div v-else class="flex flex-col items-start px-5 pb-6 pt-5">
-      <NuxtLink to="/" aria-label="Dashboard">
+      <NuxtLink to="/" :aria-label="t('nav.dashboard')">
         <AppWordmark class="text-xl" />
       </NuxtLink>
-      <span class="ml-7 stat-label">{{ version ? `App v${version}` : 'Companion' }}</span>
+      <span class="ml-7 stat-label">{{ version ? t('sidebar.appVersion', { version }) : t('sidebar.companion') }}</span>
       <UButton
         v-if="updateVersion"
-        :label="`Update to v${updateVersion}`"
+        :label="t('sidebar.update', { version: updateVersion })"
         icon="i-lucide-download"
         size="xs"
         variant="soft"

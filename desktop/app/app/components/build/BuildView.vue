@@ -35,6 +35,7 @@ const props = defineProps<{
 const kitId = defineModel<string | null>('kitId', { default: null })
 const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) ?? null)
 
+const { t } = useT()
 const { response, pending: lanePending } = useChampionBuilds(toRef(props, 'championId'), toRef(props, 'position'))
 const { items, summoners, runeTree, pending: staticPending, loadChampion, championStatic } = useStaticData()
 const { patch } = useChampionStatics()
@@ -105,9 +106,9 @@ const itemSetSubject = computed(() => {
 const waiting = computed(() => !shown.value && (onMain.value ? mainPending.value || mainDraft.value === undefined : lanePending.value || props.draft?.pending))
 const emptyMessage = computed(() => {
   if (onMain.value && main.value) {
-    return mainFailed.value ? `${main.value.identity.gameName}'s build could not be loaded` : `No build of ${main.value.identity.gameName} on this champion yet`
+    return mainFailed.value ? t('build.view.mainFailed', { name: main.value.identity.gameName }) : t('build.view.mainNone', { name: main.value.identity.gameName })
   }
-  return 'No build for this pick yet'
+  return t('build.view.none')
 })
 </script>
 
@@ -132,7 +133,7 @@ const emptyMessage = computed(() => {
           @update:model-value="selected = $event; kitId = null"
         />
         <section v-if="kits?.length">
-          <h3 class="px-2 pb-1 stat-label">Your kits</h3>
+          <h3 class="px-2 pb-1 stat-label">{{ t('kit.list.label') }}</h3>
           <KitList v-model="kitId" :kits="kits" />
         </section>
         <BuildMains :champion-id="championId" :position="position" :selected-name-tag="onMain && !kitShown ? mainNameTag : null" @select="kitId = null; selectMain($event)" />
@@ -162,7 +163,7 @@ const emptyMessage = computed(() => {
         :summoners-map="summoners"
         :summoners-pending="staticPending"
         :rune-tree="runeTree"
-        :no-runes-message="shown.key === 'draft' ? 'No rune data in the sampled games.' : null"
+        :no-runes-message="shown.key === 'draft' ? t('build.view.noRunes') : null"
         :champion-name="championStatic(championId)?.championName || null"
       />
       <BuildTreeBlock :build="shown" :items="items" :item-set-subject="itemSetSubject" />
@@ -170,7 +171,7 @@ const emptyMessage = computed(() => {
 
     <div v-else class="flex flex-col items-center justify-center gap-2 p-8 text-center">
       <UIcon :name="waiting ? 'i-lucide-loader-circle' : 'i-lucide-scroll-text'" class="size-6 text-dimmed" />
-      <p class="text-sm text-muted">{{ waiting ? 'Reading the build…' : emptyMessage }}</p>
+      <p class="text-sm text-muted">{{ waiting ? t('build.view.reading') : emptyMessage }}</p>
       <p v-if="draft?.error && !waiting" class="max-w-xs text-xs text-dimmed">{{ draft.error }}</p>
     </div>
   </div>

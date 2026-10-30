@@ -5,6 +5,8 @@ import type { MomentCast } from '~/utils/recording-moments'
 import { momentStart } from '~/utils/recording-moments'
 import { stepRate } from '~/utils/recording-timeline'
 
+const { t } = useT()
+
 /**
  * A recording's video with the app's own controls and the timeline under it —
  * the recap of a full game (`editable`: ranges are cut on the timeline, I and O
@@ -188,7 +190,7 @@ defineExpose({ seek, playRange, jumpTo, currentMs })
           />
           <div v-else class="flex size-full flex-col items-center justify-center gap-2 px-8 text-center">
             <UIcon name="i-lucide-video-off" class="size-8 text-ink-600" />
-            <p class="text-sm text-muted">The video cannot be played.</p>
+            <p class="text-sm text-muted">{{ t('rec.player.failed') }}</p>
             <p v-if="devHint" class="text-xs text-dimmed">In <code>npm run dev</code>, set <code>TRUEMAIN_DEV_RECORDING</code> to a local MP4.</p>
           </div>
         </div>

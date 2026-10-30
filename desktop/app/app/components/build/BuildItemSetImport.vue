@@ -10,11 +10,12 @@ const props = defineProps<{
   subject: ItemSetSubject
 }>()
 
+const { t } = useT()
 const { available, pending, done, importItemSet } = useItemSetImport()
 </script>
 
 <template>
-  <UTooltip v-if="available" :text="done ? 'Imported' : 'Import items into the client'" :content="{ side: 'left' }">
+  <UTooltip v-if="available" :text="done ? t('build.imported') : t('build.importItems')" :content="{ side: 'left' }">
     <UButton
       size="xs"
       color="neutral"
@@ -22,7 +23,7 @@ const { available, pending, done, importItemSet } = useItemSetImport()
       square
       :icon="done ? 'i-lucide-check' : 'i-lucide-download'"
       :loading="pending"
-      aria-label="Import items into the client"
+      :aria-label="t('build.importItems')"
       class="text-dimmed hover:text-highlighted"
       @click="importItemSet(props.subject)"
     />

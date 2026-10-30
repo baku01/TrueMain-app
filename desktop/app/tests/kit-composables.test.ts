@@ -3,6 +3,7 @@ import { computed, ref, watch, type Ref } from 'vue'
 import type { KitStore } from '#shared/types/kit'
 import type { GameState } from '~/types/game'
 import { item, kit } from './kit-fixtures'
+import { appDictionaries } from './i18n-setup'
 
 /**
  * The kit composables against stand-ins for Nuxt's auto-imports and the shell:
@@ -26,8 +27,10 @@ const lcu = ref({ connected: true, phase: 'ChampSelect' })
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.resetModules()
+  // A reset gives the next import a fresh i18n module, which knows only the layer's messages.
+  ;(await import('#common/utils/i18n')).registerMessages(appDictionaries)
   states = new Map()
   toasts = []
   tauri = false

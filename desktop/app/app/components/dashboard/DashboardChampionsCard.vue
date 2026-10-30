@@ -19,6 +19,8 @@ const props = defineProps<{
 }>()
 
 const SHOWN = 5
+const { t } = useT()
+const gamesLabel = (count: number) => t(count === 1 ? 'dash.games.one' : 'dash.games.other', { count })
 
 const linesById = computed(() => new Map(props.lines.map(line => [line.championId, line])))
 
@@ -48,16 +50,16 @@ const winRate = (line: ChampionLine) => line.wins / line.games
 </script>
 
 <template>
-  <ProfileMainChampions :mains="mains" :champions="champions" :link-to="linkTo" title="Champions">
+  <ProfileMainChampions :mains="mains" :champions="champions" :link-to="linkTo" :title="t('dash.champions.title')">
     <template #meta="{ main }">
-      {{ main.games }} game{{ main.games === 1 ? '' : 's' }} · {{ formatKdaRatio(kdaRatio(lineOf(main))) }} KDA
+      {{ t('dash.champions.meta', { games: gamesLabel(main.games), kda: formatKdaRatio(kdaRatio(lineOf(main))) }) }}
     </template>
     <template #value="{ main }">
       <p class="text-right leading-tight" :class="winRateTone(winRate(lineOf(main)))">
         {{ formatPercentage(winRate(lineOf(main)), 0) }}
       </p>
       <p class="text-right text-[10px] font-normal leading-tight text-dimmed">
-        {{ lineOf(main).wins }}W {{ main.games - lineOf(main).wins }}L
+        {{ t('dash.record', { wins: lineOf(main).wins, losses: main.games - lineOf(main).wins }) }}
       </p>
     </template>
   </ProfileMainChampions>

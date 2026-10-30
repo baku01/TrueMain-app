@@ -15,10 +15,11 @@ const props = defineProps<{ panel: OverlayPanel, trigger: PanelTrigger, chord: C
 const emit = defineEmits<{ change: [trigger: PanelTrigger] }>()
 
 type Kind = PanelTrigger['kind']
+const { t } = useT()
 const KINDS: { value: Kind, label: string }[] = [
-  { value: 'always', label: 'Always' },
-  { value: 'whileHeld', label: 'While held' },
-  { value: 'toggle', label: 'Toggle' },
+  { value: 'always', label: t('overlay.trigger.always') },
+  { value: 'whileHeld', label: t('overlay.trigger.whileHeld') },
+  { value: 'toggle', label: t('overlay.trigger.toggle') },
 ]
 
 const { check } = useGameOverlay()
@@ -101,7 +102,7 @@ function keydown(event: KeyboardEvent) {
   const chord = chordOf(event, tab)
   stop()
   if (!isKnownKey(event.code)) {
-    refusal.value = 'This key cannot be part of a shortcut.'
+    refusal.value = t('overlay.trigger.badKey')
     attempt.value = null
     return
   }
@@ -124,9 +125,9 @@ function setStartShown(shown: boolean) {
 }
 
 const label = computed(() => {
-  if (listening.value) return 'Press the keys…'
-  if (refusal.value) return attempt.value ?? 'Record a shortcut'
-  return props.chord?.label ?? 'Record a shortcut'
+  if (listening.value) return t('overlay.trigger.listening')
+  if (refusal.value) return attempt.value ?? t('overlay.trigger.record')
+  return props.chord?.label ?? t('overlay.trigger.record')
 })
 </script>
 
@@ -143,8 +144,8 @@ const label = computed(() => {
         type="button"
         class="min-w-0 flex-1 truncate rounded-md bg-elevated px-2 py-1 text-left font-mono text-xs ring-1 transition"
         :class="[listening ? 'text-primary ring-primary' : 'text-highlighted ring-default hover:ring-primary/60', refusal && !listening && 'ring-error/60']"
-        :aria-label="`${OVERLAY_PANEL_INFO[panel].label} shortcut: ${label}. Click, then press the keys.`"
-        :title="listening ? 'Esc to cancel' : 'Click, then press the keys'"
+        :aria-label="t('overlay.trigger.fieldLabel', { panel: OVERLAY_PANEL_INFO[panel].label, label })"
+        :title="listening ? t('overlay.trigger.cancelHint') : t('overlay.trigger.clickHint')"
         @click="record"
         @blur="stop"
         @keydown="keydown"
@@ -157,8 +158,8 @@ const label = computed(() => {
         size="xs"
         color="neutral"
         variant="ghost"
-        :aria-label="`Clear the ${OVERLAY_PANEL_INFO[panel].label} shortcut`"
-        title="Clear: always shown"
+        :aria-label="t('overlay.trigger.clearLabel', { panel: OVERLAY_PANEL_INFO[panel].label })"
+        :title="t('overlay.trigger.clearTitle')"
         @click="submit({ kind: 'always' })"
       />
     </div>
@@ -166,7 +167,7 @@ const label = computed(() => {
       v-if="kind === 'toggle' && trigger.kind === 'toggle'"
       size="xs"
       :model-value="trigger.startShown"
-      label="Shown when a game starts"
+      :label="t('overlay.trigger.startShown')"
       @update:model-value="setStartShown"
     />
     <p v-if="refusal" class="text-xs text-error">{{ refusal }}</p>

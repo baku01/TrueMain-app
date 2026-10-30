@@ -16,6 +16,7 @@ defineProps<{
 const emit = defineEmits<{ back: [] }>()
 
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 </script>
 
 <template>
@@ -31,7 +32,7 @@ const { nameOf } = useChampionStatics()
         class="size-4 shrink-0"
       >
       <span class="flex-1" />
-      <UButton v-if="canGoBack" size="xs" color="neutral" variant="ghost" icon="i-lucide-arrow-left" aria-label="Back" @click="emit('back')" />
+      <UButton v-if="canGoBack" size="xs" color="neutral" variant="ghost" icon="i-lucide-arrow-left" :aria-label="t('draft.build.back')" @click="emit('back')" />
     </div>
   </div>
 </template>

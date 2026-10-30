@@ -2,6 +2,8 @@
 import type { Moment } from '~/types/recordings'
 import { formatClock, momentLabel, momentTone } from '~/utils/recording-moments'
 
+const { t } = useT()
+
 /** The game's moments as a list to jump through; the one the playhead last passed is marked. */
 const props = defineProps<{ moments: Moment[], currentMs: number }>()
 const emit = defineEmits<{ jump: [moment: Moment] }>()
@@ -18,7 +20,7 @@ const lastPassed = computed(() => {
 
 <template>
   <p v-if="!sorted.length" class="px-1 py-6 text-center text-xs text-muted">
-    No moments for this game: its clock could not be tied to the video.
+    {{ t('rec.moments.empty') }}
   </p>
   <ul v-else class="flex flex-col">
     <li v-for="(moment, index) in sorted" :key="index">

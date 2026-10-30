@@ -1,6 +1,7 @@
 import type { RankHistoryEntry } from '#shared/types/rank-history'
 import type { PlayerGame } from '~/types/record'
 import { lpDeltaOf } from '~/utils/lp-history'
+import { tr } from '#common/utils/i18n'
 
 /**
  * The player's session so far: the games they started since local midnight,
@@ -68,7 +69,7 @@ export function todayOf(
 /** The qualifier on a partial LP sum — some of the day's Solo/Duo games unmeasured — or null. */
 export function partialLpNote(summary: DaySummary | null): string | null {
   if (!summary || summary.lp === null || summary.lpGames === summary.soloGames) return null
-  return `Measured on ${summary.lpGames} of today's ${summary.soloGames} Solo/Duo games.`
+  return tr('dash.today.partial', { measured: summary.lpGames, solo: summary.soloGames })
 }
 
 /** A time played as `1h 52m`, `38m`, or `<1m`. */

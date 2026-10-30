@@ -2,6 +2,8 @@
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { championLoadingUrlFromIcon, getPositionIconUrl } from '#shared/utils/ddragon'
 
+const { t } = useT()
+
 /**
  * One pick of the matchup board, drawn the way the desktop app's champion
  * select draws it (`DraftCard`): the champion's tall loading art, its floor
@@ -39,8 +41,8 @@ const ring = computed(() => {
 })
 
 const placeholder = computed(() => {
-  if (props.mark === 'you') return 'You'
-  if (props.mark === 'opponent') return 'Opponent'
+  if (props.mark === 'you') return t('builder.card.you')
+  if (props.mark === 'opponent') return t('builder.card.opponent')
   return null
 })
 </script>
@@ -50,7 +52,7 @@ const placeholder = computed(() => {
     type="button"
     class="group relative block aspect-[308/560] w-full cursor-pointer overflow-hidden rounded-lg bg-elevated outline-none transition-[box-shadow,filter] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-primary"
     :class="ring"
-    :aria-label="champion ? `${label} — ${champion.name}` : `${label} — pick a champion`"
+    :aria-label="champion ? t('builder.card.named', { label, name: champion.name }) : t('builder.card.empty', { label })"
     :title="champion?.name"
     @click="$emit('click')"
   >

@@ -3,6 +3,8 @@ import type { ChampionResponse } from '#shared/types/champions'
 import { indexItemContext } from '#shared/utils/item-context'
 import { isLoadingStatus } from '#common/utils/async-data'
 
+const { t } = useT()
+
 /**
  * Baseline build fallback of the composition builder: when the requested
  * matchup has never been recorded, this renders the same top build the
@@ -46,7 +48,7 @@ const { data: champion, status, error } = useLazyAsyncData<ChampionResponse | nu
 )
 
 const cardTitle = computed(() =>
-  props.championName ? `${props.championName}'s standard build` : 'Standard build')
+  props.championName ? t('builder.fallback.titleNamed', { name: props.championName }) : t('builder.fallback.title'))
 
 const build = computed(() => champion.value?.builds[0] ?? null)
 
@@ -89,7 +91,7 @@ const itemContextIndex = computed(() => indexItemContext(itemContext.value?.item
     <FetchErrorAlert
       v-else-if="error"
       :error="error"
-      title="Failed to load the standard build"
+      :title="t('builder.fallback.error')"
     />
     <!-- The core block and the build tree, not the champion page's whole build
          panel. This page is read to answer "what do I build into this
@@ -132,8 +134,8 @@ const itemContextIndex = computed(() => indexItemContext(itemContext.value?.item
       icon="i-lucide-hammer"
     >
       <template #description>
-        <span class="block font-medium text-highlighted">No build data yet</span>
-        We hold no recorded games for this champion at this position.
+        <span class="block font-medium text-highlighted">{{ t('builder.fallback.emptyTitle') }}</span>
+        {{ t('builder.fallback.emptyBody') }}
       </template>
     </UEmpty>
   </SectionCard>

@@ -7,6 +7,7 @@ import type { MatchDetailResponse } from '#shared/types/match-detail'
 import { formatPointDelta } from '#shared/utils/deltas'
 import { buildWinProbability } from './win-probability-timeline'
 import { formatDuration } from './relativeTime'
+import { tr } from './i18n'
 
 /**
  * How the post-game curve's turning points read (#1911), shared by the desktop
@@ -45,34 +46,40 @@ export function formatGameClock(ms: number): string {
   return formatDuration(ms / 1000)
 }
 
-const LANES: Record<string, string> = { TOP_LANE: 'top', MID_LANE: 'mid', BOT_LANE: 'bot' }
+const LANES: Record<string, string> = { TOP_LANE: 'match.swing.lane.top', MID_LANE: 'match.swing.lane.mid', BOT_LANE: 'match.swing.lane.bot' }
 const TOWERS: Record<string, string> = {
-  OUTER_TURRET: 'outer turret',
-  INNER_TURRET: 'inner turret',
-  BASE_TURRET: 'inhibitor turret',
-  NEXUS_TURRET: 'Nexus turret',
+  OUTER_TURRET: 'match.swing.tower.outer',
+  INNER_TURRET: 'match.swing.tower.inner',
+  BASE_TURRET: 'match.swing.tower.base',
+  NEXUS_TURRET: 'match.swing.tower.nexus',
 }
 const DRAKES: Record<string, string> = {
-  AIR_DRAGON: 'Cloud Drake',
-  CHEMTECH_DRAGON: 'Chemtech Drake',
-  EARTH_DRAGON: 'Mountain Drake',
-  MOUNTAIN_DRAGON: 'Mountain Drake',
-  FIRE_DRAGON: 'Infernal Drake',
-  HEXTECH_DRAGON: 'Hextech Drake',
-  WATER_DRAGON: 'Ocean Drake',
-  ELDER_DRAGON: 'Elder Drake',
+  AIR_DRAGON: 'match.swing.drake.air',
+  CHEMTECH_DRAGON: 'match.swing.drake.chemtech',
+  EARTH_DRAGON: 'match.swing.drake.mountain',
+  MOUNTAIN_DRAGON: 'match.swing.drake.mountain',
+  FIRE_DRAGON: 'match.swing.drake.fire',
+  HEXTECH_DRAGON: 'match.swing.drake.hextech',
+  WATER_DRAGON: 'match.swing.drake.water',
+  ELDER_DRAGON: 'match.swing.drake.elder',
 }
 const MONSTERS: Record<string, string> = {
-  BARON_NASHOR: 'Baron',
-  RIFTHERALD: 'Rift Herald',
-  HORDE: 'Voidgrubs',
-  ATAKHAN: 'Atakhan',
+  BARON_NASHOR: 'match.swing.monster.baron',
+  RIFTHERALD: 'match.swing.monster.herald',
+  HORDE: 'match.swing.monster.grubs',
+  ATAKHAN: 'match.swing.monster.atakhan',
+}
+
+/** `name` from the viewer's side: "Your Baron", "Enemy Voidgrubs". */
+export function sideLabel(ours: boolean, name: string): string {
+  return tr(ours ? 'match.side.yours' : 'match.side.enemy', { name })
 }
 
 /** An epic monster's name, as a player says it. */
 export function monsterLabel(monsterType: string, monsterSubType: string | null): string {
-  if (monsterType === 'DRAGON') return (monsterSubType && DRAKES[monsterSubType]) || 'Drake'
-  return MONSTERS[monsterType] ?? monsterType
+  if (monsterType === 'DRAGON') return tr((monsterSubType && DRAKES[monsterSubType]) || 'match.swing.drake.plain')
+  const key = MONSTERS[monsterType]
+  return key ? tr(key) : monsterType
 }
 
 /**
@@ -83,15 +90,18 @@ export function structureLabel(
   kind: 'turret' | 'inhibitor',
   building: { ours: boolean, lane: string | null, towerType: string | null },
 ): string {
-  const verb = building.ours ? 'Took' : 'Lost'
-  const lane = building.lane ? LANES[building.lane] ?? null : null
+  const verb = building.ours ? 'took' : 'lost'
+  const laneKey = building.lane ? LANES[building.lane] ?? null : null
+  const lane = laneKey ? tr(laneKey) : null
   if (kind === 'inhibitor') {
-    const inhibitor = lane ? lane + ' inhibitor' : 'inhibitor'
-    return `${verb} the ${inhibitor}`
+    return lane
+      ? tr(`match.swing.${verb}.inhibitorLane`, { lane })
+      : tr(`match.swing.${verb}.inhibitor`)
   }
-  const tower = (building.towerType && TOWERS[building.towerType]) || 'turret'
-  const where = lane ? ', ' + lane : ''
-  return `${verb} the ${tower}${where}`
+  const tower = tr((building.towerType && TOWERS[building.towerType]) || 'match.swing.tower.plain')
+  return lane
+    ? tr(`match.swing.${verb}.towerLane`, { tower, lane })
+    : tr(`match.swing.${verb}.tower`, { tower })
 }
 
 export interface SwingContext {
@@ -115,12 +125,16 @@ export interface DescribedSwing {
 /** A turning point in words, from the viewer's side. */
 export function describeSwing(swing: WinProbabilitySwing, context: SwingContext): DescribedSwing {
   const ours = swing.teamId === context.perspectiveTeamId
-  const side = ours ? 'Your' : 'Enemy'
+  const sided = (name: string) => sideLabel(ours, name)
   let label: string
   switch (swing.kind) {
     case 'kill': {
-      const assists = swing.assists > 0 ? ` (+${swing.assists} assist${swing.assists > 1 ? 's' : ''})` : ''
-      label = `${side} ${context.championName(swing.killerId)} killed ${context.championName(swing.victimId)}${assists}`
+      const assists = swing.assists > 0 ? tr(swing.assists > 1 ? 'match.swing.assists.other' : 'match.swing.assists.one', { count: swing.assists }) : ''
+      label = tr(ours ? 'match.swing.kill.yours' : 'match.swing.kill.enemy', {
+        killer: context.championName(swing.killerId),
+        victim: context.championName(swing.victimId),
+        assists,
+      })
       break
     }
     case 'turret':
@@ -128,13 +142,13 @@ export function describeSwing(swing: WinProbabilitySwing, context: SwingContext)
       label = structureLabel(swing.kind, { ours, lane: swing.lane, towerType: swing.towerType })
       break
     case 'dragon':
-      label = `${side} ${monsterLabel('DRAGON', swing.monsterSubType)}`
+      label = sided(monsterLabel('DRAGON', swing.monsterSubType))
       break
     case 'elder':
-      label = `${side} Elder Drake`
+      label = sided(monsterLabel('DRAGON', 'ELDER_DRAGON'))
       break
     case 'baron':
-      label = `${side} Baron`
+      label = sided(monsterLabel('BARON_NASHOR', null))
       break
   }
   return {
@@ -147,6 +161,5 @@ export function describeSwing(swing: WinProbabilitySwing, context: SwingContext)
 
 /** An epic monster in words, from the viewer's side: "Enemy Voidgrubs". */
 export function describeObjective(objective: WinProbabilityObjective, perspectiveTeamId: number): string {
-  const side = objective.teamId === perspectiveTeamId ? 'Your' : 'Enemy'
-  return `${side} ${monsterLabel(objective.monsterType, objective.monsterSubType)}`
+  return sideLabel(objective.teamId === perspectiveTeamId, monsterLabel(objective.monsterType, objective.monsterSubType))
 }

@@ -5,6 +5,8 @@ import { itemSlots } from '#shared/utils/build'
 import type { ItemContextCard } from '#shared/utils/item-context'
 import { resolveItemContext } from '#shared/utils/item-context'
 
+const { t } = useT()
+
 const props = defineProps<{
   starter: BuildItemSet | null
   itemsMap: Record<number, StaticItemData>
@@ -26,7 +28,7 @@ const items = computed(() => itemSlots(props.starter?.itemIds, props.itemsMap))
 <template>
   <div>
     <h2 class="text-sm font-medium text-muted">
-      Starter
+      {{ t('champion.core.starter') }}
     </h2>
     <!-- Fixed from sm: 3 items × 36 px + 2 gaps × 4 px = 116 px
          (--width-starter-items in theme.css), 36 px tall. Width is capped at
@@ -47,7 +49,7 @@ const items = computed(() => itemSlots(props.starter?.itemIds, props.itemsMap))
         v-if="!items.length"
         class="text-sm text-muted"
       >
-        No data
+        {{ t('common.noData') }}
       </span>
     </div>
   </div>

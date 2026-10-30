@@ -2,6 +2,8 @@
 import type { MatchDetailParticipant } from '#shared/types/match-detail'
 import { ordinal } from '#common/utils/ordinal'
 
+const { t } = useT()
+
 // A scoreboard player's performance score (#639) and placement. The score,
 // placement and accolades come from the API, or on the desktop app from its own
 // port of the model for a game only the client has (#2075) — nothing is
@@ -28,7 +30,7 @@ const pillClass = computed(() => {
 <template>
   <div class="flex w-[3.25rem] shrink-0 flex-col items-end gap-0.5">
     <template v-if="participant.placement > 0">
-      <UTooltip :text="`Performance score ${participant.performanceScore}/100`">
+      <UTooltip :text="t('match.scoreboard.score', { score: participant.performanceScore })">
         <span
           class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-bold leading-none tabular-nums ring-1"
           :class="pillClass"

@@ -9,6 +9,8 @@ import type { LaneLine } from '~/utils/player-form'
 import { winRateTone } from '#common/utils/rate-tone'
 
 const props = defineProps<{ lanes: LaneLine[] }>()
+const { t } = useT()
+const gamesLabel = (count: number) => t(count === 1 ? 'dash.games.one' : 'dash.games.other', { count })
 
 const winsByPosition = computed(() => new Map(props.lanes.map(lane => [lane.position, lane.wins])))
 
@@ -21,14 +23,14 @@ const winRate = (role: ProfilePositionStat) => (winsByPosition.value.get(role.po
 </script>
 
 <template>
-  <ProfilePositionBreakdown :positions="positions" title="Roles">
+  <ProfilePositionBreakdown :positions="positions" :title="t('dash.roles.title')">
     <template #games="{ role }">
-      {{ role.games }} game{{ role.games === 1 ? '' : 's' }} ·
+      {{ gamesLabel(role.games) }} ·
       <span
         class="font-semibold"
         :class="winRateTone(winRate(role))"
-        :title="`${winsByPosition.get(role.position) ?? 0}W ${role.games - (winsByPosition.get(role.position) ?? 0)}L`"
-      >{{ formatPercentage(winRate(role), 0) }} WR</span>
+        :title="t('dash.record', { wins: winsByPosition.get(role.position) ?? 0, losses: role.games - (winsByPosition.get(role.position) ?? 0) })"
+      >{{ t('dash.roles.winRate', { rate: formatPercentage(winRate(role), 0) }) }}</span>
     </template>
   </ProfilePositionBreakdown>
 </template>

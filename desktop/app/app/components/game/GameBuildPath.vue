@@ -9,11 +9,12 @@ import type { BuildPath } from '~/utils/build-path'
  * under its small icon. Under the next item on the game page's panel and on
  * the overlay, both from `useNextItemPanel`.
  */
+const { t } = useT()
 withDefaults(defineProps<{ path: BuildPath, statics: Record<number, StaticItemData>, size?: number }>(), { size: 24 })
 </script>
 
 <template>
-  <ol v-if="path.entries.length" class="flex flex-wrap items-start gap-1.5" aria-label="Build path">
+  <ol v-if="path.entries.length" class="flex flex-wrap items-start gap-1.5" :aria-label="t('game.buildPath')">
     <li v-for="(entry, index) in path.entries" :key="`${entry.itemId}-${index}`">
       <div
         v-if="entry.parts.length"

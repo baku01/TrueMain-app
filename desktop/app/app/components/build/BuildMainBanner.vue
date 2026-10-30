@@ -12,7 +12,10 @@ defineProps<{
   scope: string | null
 }>()
 
+const { t } = useT()
 const { patch } = useChampionStatics()
+/** The title around the name, in the language's word order: the name is drawn between the two halves. */
+const [titleBefore, titleAfter] = t('build.main.title', { name: '\u0001' }).split('\u0001')
 </script>
 
 <template>
@@ -25,16 +28,17 @@ const { patch } = useChampionStatics()
       class="size-7 shrink-0 rounded-md"
     />
     <p class="min-w-0 flex-1 truncate text-[13px] leading-tight">
+      <span v-if="titleBefore" class="text-muted">{{ titleBefore }}</span>
       <span class="font-semibold text-highlighted">{{ identity.gameName }}</span>
-      <span class="text-muted">'s build</span>
-      <span class="ml-2 text-[11px] tabular-nums text-dimmed">{{ formatCount(games) }} games{{ scope ? ` · ${scope}` : '' }}</span>
+      <span v-if="titleAfter" class="text-muted">{{ titleAfter }}</span>
+      <span class="ml-2 text-[11px] tabular-nums text-dimmed">{{ t('build.games', { count: formatCount(games) }) }}{{ scope ? ` · ${scope}` : '' }}</span>
     </p>
     <UButton
       size="xs"
       color="neutral"
       variant="ghost"
       trailing-icon="i-lucide-external-link"
-      label="Profile"
+      :label="t('build.main.profile')"
       @click="openOnSite(`/truemains/${encodeURIComponent(nameTag)}`)"
     />
   </div>

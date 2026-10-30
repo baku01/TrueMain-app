@@ -1,9 +1,19 @@
-// Single shared instance of Intl.RelativeTimeFormat — recreating it on each
-// row is measurable on a long match-history feed. `en` is the only locale we
-// surface today; expose `formatRelativeTime` with an optional locale arg if
-// we ever localize.
+import { getActiveLocale } from '#common/utils/i18n'
 
-const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+// One shared Intl.RelativeTimeFormat per language — recreating it on each row
+// is measurable on a long match-history feed. The site is English only; the
+// desktop app switches language by reloading, so the active one never changes
+// under a cached formatter.
+const formatters = new Map<string, Intl.RelativeTimeFormat>()
+
+function formatterFor(locale: string) {
+  let formatter = formatters.get(locale)
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+    formatters.set(locale, formatter)
+  }
+  return formatter
+}
 
 const SECOND = 1000
 const MINUTE = 60 * SECOND
@@ -24,6 +34,7 @@ export function formatRelativeTime(isoTimestamp: string, now: Date = new Date())
     return ''
   }
 
+  const formatter = formatterFor(getActiveLocale() === 'pt-BR' ? 'pt-BR' : 'en')
   const diffMs = then - now.getTime()
   const absDiff = Math.abs(diffMs)
   const sign = Math.sign(diffMs) as -1 | 0 | 1

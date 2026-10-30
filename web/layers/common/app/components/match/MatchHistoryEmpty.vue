@@ -5,6 +5,8 @@
   (`own`) rather than about a tracked player.
 -->
 <script setup lang="ts">
+const { t } = useT()
+
 const props = defineProps<{
   /**
    * The player wasn't found at all (404 from the backend) rather than just
@@ -23,18 +25,18 @@ const props = defineProps<{
 }>()
 
 const state = computed(() => {
-  if (props.notFound) return { icon: 'i-lucide-user-round-search', title: 'Player not found', description: null }
+  if (props.notFound) return { icon: 'i-lucide-user-round-search', title: t('match.empty.notFound'), description: null }
   if (props.filtered) {
     return {
       icon: 'i-lucide-filter-x',
-      title: 'No games for these filters',
-      description: props.own ? 'None of your latest games match them.' : 'No tracked games for the selected filters — try clearing them.',
+      title: t('match.empty.filteredTitle'),
+      description: props.own ? t('match.empty.filteredOwn') : t('match.empty.filtered'),
     }
   }
   return {
     icon: 'i-lucide-swords',
-    title: 'No games yet',
-    description: props.own ? 'Your next game shows up here.' : 'Their tracked match history is empty. Play a ranked game and check back later.',
+    title: t('match.empty.noGames'),
+    description: props.own ? t('match.empty.noGamesOwn') : t('match.empty.noGamesTracked'),
   }
 })
 </script>
@@ -46,7 +48,7 @@ const state = computed(() => {
         {{ state.description }}
       </template>
       <template v-else>
-        Check the spelling — the Riot ID should be <code class="whitespace-nowrap">GameName-TagLine</code>.
+        {{ t('match.empty.spellingBefore') }} <code class="whitespace-nowrap">GameName-TagLine</code>{{ t('match.empty.spellingAfter') }}
       </template>
     </template>
   </UEmpty>

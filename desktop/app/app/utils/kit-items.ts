@@ -1,4 +1,5 @@
 import type { StaticItemData } from '#shared/types/static-data'
+import { tr } from '#common/utils/i18n'
 
 /**
  * What a kit can hold (#2185): the patch's Summoner's Rift shop, grouped the
@@ -8,10 +9,10 @@ import type { StaticItemData } from '#shared/types/static-data'
 export type KitItemGroup = 'legendary' | 'boots' | 'component' | 'starter'
 
 export const KIT_ITEM_GROUPS: { group: KitItemGroup, label: string }[] = [
-  { group: 'legendary', label: 'Legendary' },
-  { group: 'boots', label: 'Boots' },
-  { group: 'component', label: 'Components' },
-  { group: 'starter', label: 'Starter' },
+  { group: 'legendary', label: 'kit.group.legendary' },
+  { group: 'boots', label: 'kit.group.boots' },
+  { group: 'component', label: 'kit.group.components' },
+  { group: 'starter', label: 'kit.group.starter' },
 ]
 
 /** The in-game shop's classes, in its filter's order (the API's `/items/classes`). */
@@ -106,7 +107,7 @@ export function searchKitItems(
     .filter(({ group }) => only.includes(group))
     .map(({ group, label }) => ({
       group,
-      label,
+      label: tr(label),
       items: [...groups]
         .filter(([, g]) => g === group)
         .map(([id]) => items[id]!)

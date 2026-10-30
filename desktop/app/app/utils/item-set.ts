@@ -1,6 +1,7 @@
 import type { ChampionItemContextItem } from '#shared/types/item-context'
 import type { Kit } from '#shared/types/kit'
 import type { BuildCoreView, BuildTreeNode } from '~/types/build'
+import { tr } from '#common/utils/i18n'
 import { kitPaths } from '~/utils/kit-tree'
 
 /**
@@ -86,13 +87,13 @@ export function kitItemSetBlocks(kit: Kit, name: (itemId: number) => string, kno
   const keep = (ids: number[]) => ids.filter(known)
   const paths = kitPaths(kit.tree).map(keep).filter(path => path.length > 0)
   const titleOf = (path: number[], index: number) => {
-    if (paths.length === 1) return 'Core'
-    const label = index === 0 ? 'Core' : `Path ${index + 1}`
+    if (paths.length === 1) return tr('kit.itemSet.core')
+    const label = index === 0 ? tr('kit.itemSet.core') : tr('kit.itemSet.path', { n: index + 1 })
     return `${label} · ${name(path.at(-1)!)}`
   }
   return [
-    { title: 'Starter', items: keep(kit.starter) },
-    { title: 'Boots', items: keep(kit.boots) },
+    { title: tr('kit.itemSet.starter'), items: keep(kit.starter) },
+    { title: tr('kit.itemSet.boots'), items: keep(kit.boots) },
     ...paths.map((path, index) => ({ title: titleOf(path, index), items: path })),
   ].filter(block => block.items.length > 0)
 }

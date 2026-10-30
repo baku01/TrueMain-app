@@ -3,6 +3,8 @@ import type { LeaderboardTopChampion } from '#shared/types/leaderboard'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import type { LeaderboardMainBuild } from '#common/composables/useLeaderboardChampions'
 
+const { t } = useT()
+
 // A truemain's champions column: the signature champion's build cluster (icon,
 // play rate, keystone, first item) in a fixed 9rem slot, and the two sub-mains
 // from @5xl. With `portrait`, a narrow table shows the signature champion's
@@ -27,7 +29,7 @@ defineProps<{
         :name="main.name"
         :icon-url="main.iconUrl"
         :name-tag="nameTag"
-        :title="`${main.name} · ${main.champion.games} games`"
+        :title="t('leaderboard.championTitle', { name: main.name, games: main.champion.games })"
         class="size-7 @4xl:hidden"
       />
       <!-- 9rem: 30px icon + 40px play rate + two 22px build icons + the three

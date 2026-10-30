@@ -2,6 +2,8 @@
 import type { RegionSlug } from '#shared/types/leaderboard'
 import type { ChampionPosition } from '#common/utils/positions'
 
+const { t } = useT()
+
 // Position anchors the left edge and region the right edge; the OTP toggle
 // sits in a `flex-1 justify-center` middle group so it's centered in the gap
 // between the two rather than crowding next to the position picker. The order
@@ -34,10 +36,10 @@ interface RegionItem {
 // layer's `region` icon collection through the items' native `icon`, so
 // Nuxt UI sizes them to the label's line height in the trigger and rows.
 const REGION_OPTIONS: RegionItem[] = [
-  { label: 'All regions', value: null, icon: 'i-lucide-globe' },
-  { label: 'Europe', value: 'europe', icon: 'i-region-europe' },
-  { label: 'Americas', value: 'americas', icon: 'i-region-americas' },
-  { label: 'Korea', value: 'korea', icon: 'i-region-korea' },
+  { label: t('leaderboard.region.all'), value: null, icon: 'i-lucide-globe' },
+  { label: t('leaderboard.region.europe'), value: 'europe', icon: 'i-region-europe' },
+  { label: t('leaderboard.region.americas'), value: 'americas', icon: 'i-region-americas' },
+  { label: t('leaderboard.region.korea'), value: 'korea', icon: 'i-region-korea' },
 ]
 
 const selectedRegion = computed<RegionItem>(() =>
@@ -69,10 +71,10 @@ function onRegionChange(item: RegionItem | undefined) {
         size="sm"
         icon="i-lucide-user-check"
         :aria-pressed="otpOnly"
-        title="Show only one-trick ponies (≥85% on a single champion)"
+        :title="t('leaderboard.otpTitle')"
         @click="emit('update:otpOnly', !otpOnly)"
       >
-        OTP only
+        {{ t('leaderboard.otpOnly') }}
       </UButton>
     </div>
 

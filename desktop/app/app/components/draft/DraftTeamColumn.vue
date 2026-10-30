@@ -21,6 +21,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ view: [championId: number], swap: [from: Lane, to: Lane], reset: [] }>()
+const { t } = useT()
 </script>
 
 <template>
@@ -42,7 +43,7 @@ const emit = defineEmits<{ view: [championId: number], swap: [from: Lane, to: La
         color="neutral"
         variant="ghost"
         icon="i-lucide-rotate-ccw"
-        label="Reset lanes"
+        :label="t('draft.team.resetLanes')"
         class="absolute -bottom-1.5 right-0"
         @click="emit('reset')"
       />

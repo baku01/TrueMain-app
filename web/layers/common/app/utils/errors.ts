@@ -1,3 +1,5 @@
+import { tr } from '#common/utils/i18n'
+
 /**
  * HTTP status carried by an ofetch failure, or `undefined` for a non-fetch
  * throw (network drop, abort, programmer error). ofetch raises a `FetchError`
@@ -20,22 +22,22 @@ export function fetchErrorStatus(error: unknown): number | undefined {
  */
 export function describeHttpStatus(status: number | undefined): string {
   if (status === 429) {
-    return 'Too many requests — please wait a moment and try again.'
+    return tr('common.error.tooMany')
   }
   if (status !== undefined && status >= 500) {
-    return 'The server ran into a problem. Please try again shortly.'
+    return tr('common.error.server')
   }
   // Before the generic 4xx line: a 404 is the one client error where "please
   // try again" is actively wrong, and it is what `error.vue` shows most often
   // (a typo'd champion slug, a dead shared link).
   if (status === 404) {
-    return "We couldn't find what you were looking for."
+    return tr('common.error.notFound')
   }
   if (status !== undefined && status >= 400) {
-    return 'That request could not be completed. Please try again.'
+    return tr('common.error.request')
   }
   // No status: the request never reached (or never heard back from) the server.
-  return 'Could not reach the server. Check your connection and try again.'
+  return tr('common.error.network')
 }
 
 /**
@@ -52,5 +54,5 @@ export function describeFetchError(error: unknown): string {
  * stayed on screen (#1668): why it failed, and what the reader is looking at.
  */
 export function describeStaleFetchError(error: unknown): string {
-  return `${describeFetchError(error)} The previous results are still shown.`
+  return `${describeFetchError(error)} ${tr('common.error.stale')}`
 }

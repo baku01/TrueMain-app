@@ -27,11 +27,12 @@ const props = withDefaults(defineProps<{
   championLabel: '',
 })
 
+const { t } = useT()
 const { isFavorite, toggle, atLimit } = useFavoriteTruemains()
 const { isFavoriteChampion, championsFull, toggleChampion } = useFavoriteChampions()
 
 const nameTag = computed(() => favoriteNameTag(props.gameName, props.tagLine))
-const subject = computed(() => props.champion ? (props.championLabel || 'this champion') : nameTag.value)
+const subject = computed(() => props.champion ? (props.championLabel || t('favorites.thisChampion')) : nameTag.value)
 
 /**
  * Hydration guard, scoped to this component instance.
@@ -73,11 +74,11 @@ const isFull = computed(() => mounted.value && !active.value
 const title = computed(() => {
   if (isFull.value) {
     const limit = props.champion ? FAVORITE_CHAMPIONS_LIMIT : FAVORITES_LIMIT
-    return `Favorites are full (${limit}) — remove one first`
+    return t('favorites.full', { limit })
   }
   // A player is followed; a champion is starred.
-  if (props.champion) return active.value ? `Remove ${subject.value} from favorites` : `Add ${subject.value} to favorites`
-  return active.value ? `Unfollow ${subject.value}` : `Follow ${subject.value}`
+  if (props.champion) return active.value ? t('favorites.removeChampion', { subject: subject.value }) : t('favorites.addChampion', { subject: subject.value })
+  return active.value ? t('favorites.unfollow', { subject: subject.value }) : t('favorites.follow', { subject: subject.value })
 })
 
 function onClick() {

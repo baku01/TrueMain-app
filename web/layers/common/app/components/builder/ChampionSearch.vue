@@ -2,6 +2,8 @@
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 
+const { t } = useT()
+
 /**
  * The champion search every slot of the matchup board opens: a champion-only
  * command palette (the same search interaction as `AppSearch`, minus the
@@ -48,12 +50,12 @@ const groups = computed<CommandPaletteGroup<SlotItem>[]>(() => {
   if (props.championId !== null) {
     list.push({
       id: 'clear',
-      label: 'Current',
+      label: t('builder.search.current'),
       ignoreFilter: true,
-      items: [{ label: 'Clear', icon: 'i-lucide-x', onSelect: () => select(null) }],
+      items: [{ label: t('builder.search.clear'), icon: 'i-lucide-x', onSelect: () => select(null) }],
     })
   }
-  list.push({ id: 'champions', label: 'Champions', items: championItems.value })
+  list.push({ id: 'champions', label: t('builder.search.champions'), items: championItems.value })
   return list
 })
 
@@ -72,7 +74,7 @@ watch(open, (isOpen) => {
   <UModal
     v-model:open="open"
     :title="title"
-    description="Search the champion roster"
+    :description="t('builder.search.description')"
     :ui="{ content: 'sm:max-w-lg' }"
   >
     <template #content>
@@ -82,7 +84,7 @@ watch(open, (isOpen) => {
       <LazyUCommandPalette
         v-model:search-term="term"
         :groups="groups"
-        placeholder="Search a champion…"
+        :placeholder="t('builder.search.placeholder')"
         icon="i-lucide-search"
         class="h-96"
         :close="{ onClick: () => { open = false } }"

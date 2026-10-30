@@ -3,6 +3,8 @@ import type { Chord, ChordView } from '~/types/overlay'
 import type { MarkLength } from '~/types/recordings'
 import { chordOf, isKnownKey, isModifier } from '~/utils/overlay-keys'
 
+const { t } = useT()
+
 /**
  * The mark key (#2079): while a game records, a press keeps the 30 seconds,
  * the minute or the two minutes before it as a clip (#1767), which the
@@ -18,12 +20,12 @@ const emit = defineEmits<{ change: [markKey: Chord | null], length: [length: Mar
 /** ⌥⇧0 / Alt+Shift+0: the shell's `DEFAULT_MARK_KEY`, offered when marking is turned back on. */
 const DEFAULT_MARK_KEY: Chord = { alt: true, shift: true, ctrl: false, meta: false, tab: false, key: 'Digit0' }
 const LENGTHS: { value: MarkLength, label: string }[] = [
-  { value: 30, label: '30 s' },
-  { value: 60, label: '1 min' },
-  { value: 120, label: '2 min' },
+  { value: 30, label: t('rec.mark.len30') },
+  { value: 60, label: t('rec.mark.len60') },
+  { value: 120, label: t('rec.mark.len120') },
 ]
 /** "30 seconds", "minute", "2 minutes", as the description reads. */
-const kept = computed(() => ({ 30: 'the 30 seconds', 60: 'the minute', 120: 'the 2 minutes' })[props.length])
+const kept = computed(() => ({ 30: t('rec.mark.kept30'), 60: t('rec.mark.kept60'), 120: t('rec.mark.kept120') })[props.length])
 
 const { checkMarkKey } = useRecordings()
 
@@ -82,7 +84,7 @@ function keydown(event: KeyboardEvent) {
   const chord = chordOf(event, tab)
   stop()
   if (!isKnownKey(event.code)) {
-    refusal.value = 'This key cannot be part of a shortcut.'
+    refusal.value = t('rec.mark.badKey')
     attempt.value = null
     return
   }
@@ -94,9 +96,9 @@ function keyup(event: KeyboardEvent) {
 }
 
 const label = computed(() => {
-  if (listening.value) return 'Press the keys…'
-  if (refusal.value) return attempt.value ?? 'Record a shortcut'
-  return props.chord?.label ?? 'Record a shortcut'
+  if (listening.value) return t('rec.mark.press')
+  if (refusal.value) return attempt.value ?? t('rec.mark.record')
+  return props.chord?.label ?? t('rec.mark.record')
 })
 </script>
 
@@ -104,8 +106,8 @@ const label = computed(() => {
   <section class="flex flex-col gap-2">
     <USwitch
       :model-value="markKey !== null"
-      label="Mark key"
-      :description="`While a game records, press it to keep ${kept} before as a clip.`"
+      :label="t('rec.mark.title')"
+      :description="t('rec.mark.description', { kept })"
       @update:model-value="toggle"
     />
     <div v-if="markKey" class="flex items-center gap-1">
@@ -114,8 +116,8 @@ const label = computed(() => {
         type="button"
         class="min-w-0 flex-1 truncate rounded-md bg-elevated px-2 py-1 text-left font-mono text-xs ring-1 transition"
         :class="[listening ? 'text-primary ring-primary' : 'text-highlighted ring-default hover:ring-primary/60', refusal && !listening && 'ring-error/60']"
-        :aria-label="`Mark key: ${label}. Click, then press the keys.`"
-        :title="listening ? 'Esc to cancel' : 'Click, then press the keys'"
+        :aria-label="t('rec.mark.aria', { label })"
+        :title="listening ? t('rec.mark.escCancel') : t('rec.mark.clickPress')"
         @click="record"
         @blur="stop"
         @keydown="keydown"
@@ -128,7 +130,7 @@ const label = computed(() => {
       v-if="markKey"
       :model-value="length"
       :items="LENGTHS"
-      aria-label="How much a press keeps"
+      :aria-label="t('rec.mark.howMuch')"
       @update:model-value="emit('length', $event)"
     />
     <p v-if="refusal" class="text-xs text-error">{{ refusal }}</p>
@@ -137,8 +139,7 @@ const label = computed(() => {
       <span>{{ chord.warning }}</span>
     </p>
     <p v-if="markKey" class="text-xs text-muted">
-      Read from the keyboard while League is in front, never taken from it. A note over the game says each press was kept.
-      Each mark is saved like a clip you cut once the game ends, and you can move its ends in the game's recap.
+      {{ t('rec.mark.note') }}
     </p>
   </section>
 </template>

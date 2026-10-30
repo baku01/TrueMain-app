@@ -1,5 +1,6 @@
 import type { Update } from '@tauri-apps/plugin-updater'
 import type { Screen } from '~/types/lcu'
+import { tr } from '#common/utils/i18n'
 
 /**
  * The app updates itself. Each build asks its own site's update feed
@@ -77,7 +78,7 @@ export function useAppUpdate() {
       stalled.value = false
       installing.value = false
       toast.remove('app-update')
-      toast.add({ title: 'The update could not be installed', description: 'It will be offered again at the next launch.', color: 'error', icon: 'i-lucide-circle-alert' })
+      toast.add({ title: tr('app.update.failedTitle'), description: tr('app.update.failedBody'), color: 'error', icon: 'i-lucide-circle-alert' })
     }
   }
 
@@ -104,10 +105,10 @@ export function useAppUpdate() {
   function stall(version: string) {
     stalled.value = true
     say({
-      title: `Updating TrueMain to ${version} is taking longer than expected`,
-      description: 'Restart now to finish. If the update was not applied, it is offered again at the next launch.',
+      title: tr('app.update.stalledTitle', { version }),
+      description: tr('app.update.stalledBody'),
       icon: 'i-lucide-hourglass',
-      actions: [{ label: 'Restart now', onClick: () => void relaunchNow() }],
+      actions: [{ label: tr('app.update.restartNow'), onClick: () => void relaunchNow() }],
     })
   }
 
@@ -117,7 +118,7 @@ export function useAppUpdate() {
       await relaunch()
     }
     catch {
-      say({ title: 'TrueMain could not restart', description: 'Quit and reopen the app to finish the update.', icon: 'i-lucide-circle-alert', color: 'error' })
+      say({ title: tr('app.update.restartFailed'), description: tr('app.update.restartFailedBody'), icon: 'i-lucide-circle-alert', color: 'error' })
     }
   }
 
@@ -159,10 +160,10 @@ export function useAppUpdate() {
       return
     }
     say({
-      title: `TrueMain ${update.version} is ready`,
-      description: 'Restart to update now, or it installs at the next launch. Your settings and favorites stay.',
+      title: tr('app.update.readyTitle', { version: update.version }),
+      description: tr('app.update.readyBody'),
       icon: 'i-lucide-download',
-      actions: [{ label: 'Restart now', onClick: () => void restart() }],
+      actions: [{ label: tr('app.update.restartNow'), onClick: () => void restart() }],
     })
   }
 
@@ -184,21 +185,21 @@ export function useAppUpdate() {
     }
     if (checking) return
     checking = true
-    if (manual) say({ title: 'Checking for updates…', icon: 'i-lucide-refresh-cw' })
+    if (manual) say({ title: tr('app.update.checking'), icon: 'i-lucide-refresh-cw' })
     try {
       const { check: checkForUpdate } = await import('@tauri-apps/plugin-updater')
       const update = await checkForUpdate()
       if (!update) {
         if (manual) {
           const { getVersion } = await import('@tauri-apps/api/app')
-          say({ title: 'TrueMain is up to date', description: `You have the latest version, ${await getVersion()}.`, icon: 'i-lucide-circle-check', color: 'success', duration: 5000 })
+          say({ title: tr('app.update.upToDate'), description: tr('app.update.upToDateBody', { version: await getVersion() }), icon: 'i-lucide-circle-check', color: 'success', duration: 5000 })
         }
         return
       }
-      if (manual) say({ title: `Downloading TrueMain ${update.version}…`, icon: 'i-lucide-download' })
+      if (manual) say({ title: tr('app.update.downloading', { version: update.version }), icon: 'i-lucide-download' })
       await update.download()
       if (trigger === 'launch' && await idle()) {
-        say({ title: `Updating TrueMain to ${update.version}`, description: 'The app restarts in a moment.', icon: 'i-lucide-download' })
+        say({ title: tr('app.update.updating', { version: update.version }), description: tr('app.update.updatingBody'), icon: 'i-lucide-download' })
         await install(update)
         return
       }
@@ -207,7 +208,7 @@ export function useAppUpdate() {
     }
     catch {
       // Offline, the feed down, no release yet: the app runs as it is — and says so only when asked.
-      if (manual) say({ title: 'Could not check for updates', description: 'Check your connection and try again.', icon: 'i-lucide-circle-alert', color: 'error', duration: 5000 })
+      if (manual) say({ title: tr('app.update.checkFailed'), description: tr('app.update.checkFailedBody'), icon: 'i-lucide-circle-alert', color: 'error', duration: 5000 })
     }
     finally {
       checking = false

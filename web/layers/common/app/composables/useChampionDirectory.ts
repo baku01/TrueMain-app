@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import type { ChampionDirectoryResponse } from '#shared/types/champion-directory'
 import type { ChampionSummaryResponse } from '#shared/types/champions'
 import { DEFAULT_DIRECTORY_ORDER, type DirectoryOrder } from '#common/utils/table-sorting'
@@ -70,7 +71,7 @@ export function useChampionDirectory(options: UseChampionDirectoryOptions) {
   // load is the page's inline alert.
   const actionToast = useActionToast()
   const { data, error, staleError } = useRefetchFallback(directoryFetch, {
-    onStaleFailure: failure => actionToast.failure('Could not update the champion list', describeStaleFetchError(failure)),
+    onStaleFailure: failure => actionToast.failure(tr('pages.championList.updateFailed'), describeStaleFetchError(failure)),
   })
 
   const rows = computed<ChampionSummaryResponse[]>(() => data.value?.rows ?? [])

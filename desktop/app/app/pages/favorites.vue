@@ -6,10 +6,11 @@ import { favouriteClips } from '~/utils/recording-library'
 
 const { library } = useRecordings()
 const clipCount = computed(() => favouriteClips(library.value).length)
+const { t } = useT()
 </script>
 
 <template>
-  <SharedPage eyebrow="Truemains" title="Favorites">
+  <SharedPage :eyebrow="t('app.page.truemains')" :title="t('app.page.favorites')">
     <PageFavorites :extra-count="clipCount">
       <template #extra>
         <FavoritesClips />

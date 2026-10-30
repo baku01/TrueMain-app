@@ -3,6 +3,8 @@ import type { CompositionLane } from '#shared/types/composition'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { POSITION_OPTIONS, type ChampionPosition } from '#common/utils/positions'
 
+const { t } = useT()
+
 /**
  * The matchup page's draft, laid out like the desktop app's champion select
  * (`DraftScreen`): each team's five picks as tall cards over their lanes, the
@@ -68,14 +70,14 @@ function cardsOf(side: Side): Card[] {
     const lane = option.label.toLowerCase()
     if (matchup) {
       return side === 'ally'
-        ? { position: option.value, lane: option.value, label: `Your champion, ${lane}`, championId: props.playedChampionId, mark: 'you' as const, target: { kind: 'played' } as const }
-        : { position: option.value, lane: option.value, label: `Role opponent, ${lane}`, championId: props.opponentChampionId, mark: 'opponent' as const, target: { kind: 'opponent' } as const }
+        ? { position: option.value, lane: option.value, label: t('builder.draft.yourChampion', { lane }), championId: props.playedChampionId, mark: 'you' as const, target: { kind: 'played' } as const }
+        : { position: option.value, lane: option.value, label: t('builder.draft.roleOpponent', { lane }), championId: props.opponentChampionId, mark: 'opponent' as const, target: { kind: 'opponent' } as const }
     }
     const slots = side === 'ally' ? props.allySlots : props.enemySlots
     return {
       position: option.value,
       lane: option.value,
-      label: `${side === 'ally' ? 'Ally' : 'Enemy'} ${lane}`,
+      label: t(side === 'ally' ? 'builder.draft.ally' : 'builder.draft.enemy', { lane }),
       championId: slots[option.value],
       mark: null,
       target: { kind: side, position: option.value },
@@ -84,8 +86,8 @@ function cardsOf(side: Side): Card[] {
 }
 
 const teams = computed(() => [
-  { side: 'ally' as const, title: 'Your team', cards: cardsOf('ally') },
-  { side: 'enemy' as const, title: 'Enemy team', cards: cardsOf('enemy') },
+  { side: 'ally' as const, title: t('builder.draft.yourTeam'), cards: cardsOf('ally') },
+  { side: 'enemy' as const, title: t('builder.draft.enemyTeam'), cards: cardsOf('enemy') },
 ])
 
 // ─── The champion search ───────────────────────────────────────────────────
@@ -95,10 +97,10 @@ const target = ref<Target>({ kind: 'played' })
 
 const searchTitle = computed(() => {
   const current = target.value
-  if (current.kind === 'played') return 'Choose your champion'
-  if (current.kind === 'opponent') return 'Choose the role opponent'
+  if (current.kind === 'played') return t('builder.draft.chooseYours')
+  if (current.kind === 'opponent') return t('builder.draft.chooseOpponent')
   const lane = POSITION_OPTIONS.find(option => option.value === current.position)?.label.toLowerCase() ?? ''
-  return `Choose the ${current.kind === 'ally' ? 'ally' : 'enemy'} ${lane}`
+  return t(current.kind === 'ally' ? 'builder.draft.chooseAlly' : 'builder.draft.chooseEnemy', { lane })
 })
 
 const targetChampionId = computed(() => {
@@ -139,7 +141,7 @@ function select(championId: number | null) {
 <template>
   <section
     class="grid gap-x-4 gap-y-6 lg:grid-cols-[minmax(0,1fr)_12rem_minmax(0,1fr)]"
-    aria-label="Draft"
+    :aria-label="t('builder.draft.label')"
   >
     <template
       v-for="(team, index) in teams"
@@ -174,7 +176,7 @@ function select(championId: number | null) {
             icon="i-lucide-eraser"
             @click="$emit('clear')"
           >
-            Clear draft
+            {{ t('builder.draft.clear') }}
           </UButton>
         </div>
         <ul class="grid grid-cols-5 gap-1.5">

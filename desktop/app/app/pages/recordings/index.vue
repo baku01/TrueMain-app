@@ -2,6 +2,8 @@
 import type { LibraryFilters, LibraryGrouping, RecordingsEmptyReason } from '~/utils/recording-library'
 import { EMPTY_FILTERS, countLabel, filterItems, formatBytes, groupItems, libraryItems } from '~/utils/recording-library'
 
+const { t } = useT()
+
 /**
  * Recordings (#1755): the full games and clips on this machine, laid out as
  * the reference (DPM's recordings page) in the site's materials — a header with
@@ -41,9 +43,9 @@ const clipCount = computed(() => library.value?.clips.length ?? 0)
 
 const gameFilterLabel = computed(() => {
   const item = all.value.find(entry => entry.gameId === filters.value.gameId)
-  if (!item) return 'One game'
-  const champion = item.championId ? nameOf(item.championId) : 'Game'
-  return item.win === null ? champion : `${champion} · ${item.win ? 'Victory' : 'Defeat'}`
+  if (!item) return t('rec.page.oneGame')
+  const champion = item.championId ? nameOf(item.championId) : t('rec.card.game')
+  return item.win === null ? champion : `${champion} · ${item.win ? t('rec.lib.victory') : t('rec.lib.defeat')}`
 })
 
 function clearFilters() {
@@ -73,18 +75,18 @@ const notice = computed(() => {
   <div class="flex h-full flex-col gap-4 overflow-y-auto p-5">
     <div class="flex items-center gap-3">
       <UIcon name="i-lucide-clapperboard" class="size-6 text-primary" />
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">Recordings</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('rec.page.title') }}</h1>
 
       <div class="ml-auto flex items-center gap-4 text-xs">
         <span v-if="status?.recordingGameId" class="flex items-center gap-1.5 font-medium text-highlighted">
           <span class="size-1.5 animate-tm-pulse rounded-full bg-red-500" />
-          Recording
+          {{ t('rec.thumb.recording') }}
         </span>
         <span class="flex items-center gap-1.5 text-muted">
           <UIcon name="i-lucide-scissors" class="size-3.5 text-primary" />
-          <span class="stat-value text-default">{{ clipCount }}</span> clip{{ clipCount === 1 ? '' : 's' }}
+          <span class="stat-value text-default">{{ clipCount }}</span> {{ t(clipCount === 1 ? 'rec.page.clip.one' : 'rec.page.clip.other') }}
         </span>
-        <span v-if="library" class="tabular-nums text-muted" title="Space used by recordings over the disk budget">
+        <span v-if="library" class="tabular-nums text-muted" :title="t('rec.page.space')">
           <span class="stat-value text-default">{{ formatBytes(library.usedBytes) }}</span> / {{ formatBytes(library.budgetBytes) }}
         </span>
         <UButton
@@ -92,8 +94,8 @@ const notice = computed(() => {
           color="neutral"
           variant="ghost"
           size="sm"
-          aria-label="Recording settings"
-          title="Recording settings"
+          :aria-label="t('rec.page.settings')"
+          :title="t('rec.page.settings')"
           :disabled="!settings"
           @click="settingsOpen = true"
         />
@@ -106,9 +108,9 @@ const notice = computed(() => {
       variant="subtle"
       class="shrink-0"
       icon="i-lucide-shield-alert"
-      :title="notice === 'permission' ? 'Games are not being recorded: Screen Recording is not allowed' : 'Games are not being recorded'"
+      :title="notice === 'permission' ? t('rec.page.noticePermission') : t('rec.page.notice')"
       :description="status?.message ?? undefined"
-      :actions="notice === 'permission' ? [{ label: 'Allow', color: 'warning', variant: 'outline', onClick: () => void requestPermission() }] : []"
+      :actions="notice === 'permission' ? [{ label: t('rec.page.allow'), color: 'warning', variant: 'outline', onClick: () => void requestPermission() }] : []"
     />
 
     <template v-if="all.length">
@@ -116,8 +118,8 @@ const notice = computed(() => {
 
       <div v-if="filters.gameId !== null" class="-mt-1">
         <UBadge color="primary" variant="subtle" size="md" class="gap-1.5">
-          Recorded from {{ gameFilterLabel }}
-          <UButton icon="i-lucide-x" size="xs" variant="link" color="primary" class="p-0" aria-label="Show every game" @click="clearFilters" />
+          {{ t('rec.page.recordedFrom', { game: gameFilterLabel }) }}
+          <UButton icon="i-lucide-x" size="xs" variant="link" color="primary" class="p-0" :aria-label="t('rec.page.showAll')" @click="clearFilters" />
         </UBadge>
       </div>
     </template>

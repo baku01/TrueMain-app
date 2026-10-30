@@ -9,12 +9,13 @@ import type { PathTile } from '~/utils/build-path'
  */
 const props = withDefaults(defineProps<{ tile: PathTile, statics: Record<number, StaticItemData>, size?: number }>(), { size: 24 })
 
+const { t } = useT()
 const label = computed(() => {
-  const name = props.statics[props.tile.itemId]?.name ?? `Item ${props.tile.itemId}`
+  const name = props.statics[props.tile.itemId]?.name ?? t('game.itemFallback', { id: props.tile.itemId })
   switch (props.tile.state) {
-    case 'owned': return `${name}: held`
-    case 'buy': return props.tile.approx ? `${name}: about enough gold to buy now` : `${name}: buy now`
-    default: return `${name}: later`
+    case 'owned': return t('game.tile.held', { name })
+    case 'buy': return t(props.tile.approx ? 'game.tile.buyApprox' : 'game.tile.buy', { name })
+    default: return t('game.tile.later', { name })
   }
 })
 </script>

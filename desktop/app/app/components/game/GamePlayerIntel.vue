@@ -34,6 +34,7 @@ const props = withDefaults(defineProps<{
   mirrored?: boolean
 }>(), { mirrored: false })
 
+const { t } = useT()
 const { nameOf } = useChampionStatics()
 /** The true-main mark (#1910), from the lookup the page asked. */
 const markOf = useTruemainMarkOf()
@@ -55,10 +56,10 @@ const rank = computed(() => props.line?.rank ?? null)
 const ranked = computed(() => (rank.value && isRanked(rank.value) ? rank.value : null))
 const rankTitle = computed(() => {
   const queue = rank.value
-  if (!queue) return 'Unranked this season'
+  if (!queue) return t('game.intel.unrankedSeason')
   const record = seasonWinRate(queue)
-  const which = queue.queueType === 'RANKED_FLEX_SR' ? 'Ranked Flex' : 'Ranked Solo/Duo'
-  return record === null ? which : `${which} · ${queue.wins}W ${queue.losses}L · ${formatPercentage(record, 0)} this season`
+  const which = queue.queueType === 'RANKED_FLEX_SR' ? t('game.intel.flex') : t('game.intel.solo')
+  return record === null ? which : t('game.intel.rankRecord', { queue: which, wins: queue.wins, losses: queue.losses, rate: formatPercentage(record, 0) })
 })
 
 // ─── Role, champion, streak ─────────────────────────────────────────────────
@@ -72,20 +73,20 @@ const fitTitle = computed(() => {
   const value = fit.value
   if (!value) return ''
   const here = positionLabel(value.position, { short: true }) ?? value.position
-  const games = `${value.games} of their last ${value.roleGames} role-assigned games in ${here}`
-  if (value.kind === 'main') return `Plays ${here} most · ${games}`
+  const games = t('game.intel.roleGames', { games: value.games, roleGames: value.roleGames, here })
+  if (value.kind === 'main') return t('game.intel.playsMost', { here, games })
   const usual = lane(value.usual)
-  return usual ? `Usually ${positionLabel(usual, { short: true })} · ${games}` : games
+  return usual ? t('game.intel.usually', { usual: positionLabel(usual, { short: true }) ?? '', games }) : games
 })
 
 const champion = computed(() => (form.value ? championRecord(form.value) : null))
-const championName = computed(() => (props.championId === null ? 'this champion' : nameOf(props.championId)))
+const championName = computed(() => (props.championId === null ? t('game.intel.thisChampion') : nameOf(props.championId)))
 const championTitle = computed(() => {
   const record = champion.value
   if (!form.value) return ''
-  if (!record) return `No game on ${championName.value} in their last ${form.value.games}`
-  const line = `${record.kills.toFixed(1)} / ${record.deaths.toFixed(1)} / ${record.assists.toFixed(1)} on average`
-  return `${record.games} of their last ${form.value.games} games on ${championName.value} · ${line}`
+  if (!record) return t('game.intel.noGameOn', { champion: championName.value, games: form.value.games })
+  const line = t('game.intel.average', { kills: record.kills.toFixed(1), deaths: record.deaths.toFixed(1), assists: record.assists.toFixed(1) })
+  return t('game.intel.championGames', { games: record.games, total: form.value.games, champion: championName.value, line })
 })
 
 const streak = computed(() => (form.value ? streakOf(form.value) : null))
@@ -99,7 +100,7 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
       <p class="flex max-w-full items-baseline gap-1.5 truncate text-[13px]" :class="mirrored && 'flex-row-reverse'" :title="riotId">
         <template v-if="line?.anonymous">
           <UIcon name="i-lucide-eye-off" class="size-3 shrink-0 self-center text-dimmed" />
-          <span class="text-muted">Anonymous</span>
+          <span class="text-muted">{{ t('game.intel.anonymous') }}</span>
         </template>
         <template v-else>
           <span class="truncate font-medium text-highlighted">{{ name }}<span v-if="tag" class="font-normal text-dimmed">#{{ tag }}</span></span>
@@ -114,11 +115,11 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
             {{ formatRank(ranked.tier, ranked.division) }}
           </span>
           <span class="text-[11px] tabular-nums text-dimmed">{{ formatLeaguePoints(ranked.leaguePoints) }}</span>
-          <span v-if="ranked.queueType === 'RANKED_FLEX_SR'" class="rounded-sm px-1 text-[9px] font-semibold uppercase tracking-wide text-dimmed ring-1 ring-default" title="No Solo/Duo standing: their Flex one">Flex</span>
+          <span v-if="ranked.queueType === 'RANKED_FLEX_SR'" class="rounded-sm px-1 text-[9px] font-semibold uppercase tracking-wide text-dimmed ring-1 ring-default" :title="t('game.intel.flexTitle')">{{ t('game.intel.flexBadge') }}</span>
         </template>
-        <span v-else-if="rank" class="text-[11px] text-muted" :title="rankTitle">Placements · {{ rank.wins + rank.losses }} played</span>
+        <span v-else-if="rank" class="text-[11px] text-muted" :title="rankTitle">{{ t('game.intel.placements', { played: rank.wins + rank.losses }) }}</span>
         <USkeleton v-else-if="rankPending" class="h-3 w-20" />
-        <span v-else-if="line?.rankRead" class="text-[11px] text-dimmed">Unranked</span>
+        <span v-else-if="line?.rankRead" class="text-[11px] text-dimmed">{{ t('game.intel.unranked') }}</span>
       </div>
 
       <div v-if="fit || streak" class="flex flex-wrap items-center gap-1" :class="mirrored && 'flex-row-reverse'">
@@ -130,19 +131,19 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
         >
           <UIcon v-if="fit.kind === 'autofill'" name="i-lucide-shuffle" class="size-3" />
           <img v-else-if="lane(fit.position)" :src="getPositionIconUrl(fit.position)" alt="" class="size-3 opacity-80">
-          {{ fit.kind === 'main' ? 'Main role' : fit.kind === 'secondary' ? 'Secondary role' : 'Autofill' }}
+          {{ fit.kind === 'main' ? t('game.intel.mainRole') : fit.kind === 'secondary' ? t('game.intel.secondaryRole') : t('game.intel.autofill') }}
           <template v-if="fit.kind === 'autofill' && lane(fit.usual)">
-            <span class="font-normal opacity-70">· {{ positionLabel(lane(fit.usual)!, { short: true }) }} main</span>
+            <span class="font-normal opacity-70">{{ t('game.intel.usualMain', { role: positionLabel(lane(fit.usual)!, { short: true }) ?? '' }) }}</span>
           </template>
         </span>
         <span
           v-if="streak"
           class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1"
           :class="streak.wins ? 'bg-data-good/10 text-data-good ring-data-good/30' : 'bg-elevated/60 text-muted ring-default'"
-          :title="streak.wins ? `Won their last ${streak.games} games` : `Lost their last ${streak.games} games`"
+          :title="t(streak.wins ? 'game.intel.wonTitle' : 'game.intel.lostTitle', { games: streak.games })"
         >
           <UIcon :name="streak.wins ? 'i-lucide-flame' : 'i-lucide-trending-down'" class="size-3" />
-          {{ streak.wins ? 'Won' : 'Lost' }} {{ streak.games }} in a row
+          {{ t(streak.wins ? 'game.intel.wonRow' : 'game.intel.lostRow', { games: streak.games }) }}
         </span>
       </div>
     </div>
@@ -152,21 +153,21 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
       <template v-if="form">
         <div v-if="champion" class="flex items-baseline gap-1.5 tabular-nums" :class="mirrored && 'flex-row-reverse'" :title="championTitle">
           <span class="text-[13px] font-semibold" :class="champion.winRate >= 0.5 ? 'text-data-good' : 'text-data-bad'">{{ formatPercentage(champion.winRate, 0) }}</span>
-          <span class="text-[11px] text-muted">{{ champion.games }} {{ champion.games === 1 ? 'game' : 'games' }}</span>
+          <span class="text-[11px] text-muted">{{ champion.games === 1 ? t('game.intel.games.one', { count: champion.games }) : t('game.intel.games.other', { count: champion.games }) }}</span>
         </div>
         <span
           v-else
           class="inline-flex items-center gap-1 rounded-md bg-elevated/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted ring-1 ring-default"
           :title="championTitle"
         >
-          <UIcon name="i-lucide-sparkles" class="size-3" />First time
+          <UIcon name="i-lucide-sparkles" class="size-3" />{{ t('game.intel.firstTime') }}
         </span>
         <p v-if="champion" class="text-[11px] tabular-nums text-dimmed" :title="championTitle">
-          <span :class="champion.kda >= GOOD_KDA ? 'text-data-good' : 'text-muted'">{{ formatKdaRatio(champion.kda) }}</span> KDA
+          <span :class="champion.kda >= GOOD_KDA ? 'text-data-good' : 'text-muted'">{{ formatKdaRatio(champion.kda) }}</span> {{ t('game.intel.kda') }}
         </p>
         <div v-if="form.recent.length" class="flex items-center gap-1.5" :class="mirrored && 'flex-row-reverse'">
           <LoadingRecent :games="form.recent" />
-          <span v-if="recentRate !== null" class="text-[10px] tabular-nums text-dimmed" :title="`${formatPercentage(recentRate, 0)} of their last ${form.recent.length} games won`">{{ formatPercentage(recentRate, 0) }}</span>
+          <span v-if="recentRate !== null" class="text-[10px] tabular-nums text-dimmed" :title="t('game.intel.recentWon', { rate: formatPercentage(recentRate, 0), games: form.recent.length })">{{ formatPercentage(recentRate, 0) }}</span>
         </div>
       </template>
       <template v-else-if="pending">
@@ -174,7 +175,7 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
         <USkeleton class="h-2.5 w-10" />
         <USkeleton class="h-4 w-20" />
       </template>
-      <span v-else-if="line?.failed" class="text-[11px] text-dimmed">History unavailable</span>
+      <span v-else-if="line?.failed" class="text-[11px] text-dimmed">{{ t('game.intel.historyUnavailable') }}</span>
     </div>
   </div>
 </template>

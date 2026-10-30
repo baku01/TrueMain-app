@@ -1,3 +1,4 @@
+import { ddragonLocale, getActiveLocale } from '#common/utils/i18n'
 import type { Ref } from 'vue'
 import { championDisplayName } from '#shared/utils/champion-name'
 
@@ -37,7 +38,7 @@ export function useChampionStatics() {
       if (!latest) return
 
       const payload = await $fetch<{ data: Record<string, { key: string, id: string, name: string }> }>(
-        `https://ddragon.leagueoflegends.com/cdn/${latest}/data/en_GB/champion.json`,
+        `https://ddragon.leagueoflegends.com/cdn/${latest}/data/${ddragonLocale(getActiveLocale())}/champion.json`,
       )
 
       const next = new Map<number, Champion>()

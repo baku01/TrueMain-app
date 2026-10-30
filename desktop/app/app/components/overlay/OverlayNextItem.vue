@@ -16,6 +16,7 @@ const props = defineProps<{ game: GameState }>()
 const { statics, order, top, remaining, path, state, name, starter, starterGold, fromKit } = useNextItemPanel(toRef(props, 'game'))
 
 /** The gold still to earn before it can be bought; 0 once the gold in hand covers it. */
+const { t } = useT()
 const missing = computed(() => Math.max(0, remaining.value - props.game.gold))
 
 /** The basket's face: its first item that is not a potion. */
@@ -27,19 +28,19 @@ const starterItem = computed(() => {
 
 const message = computed(() => {
   switch (state.value) {
-    case 'unmeasured': return 'No measured build on this lane yet'
-    case 'complete': return 'Build complete'
-    case 'offline': return 'TrueMain is unreachable'
+    case 'unmeasured': return t('overlay.nextItem.unmeasured')
+    case 'complete': return t('overlay.nextItem.complete')
+    case 'offline': return t('overlay.nextItem.offline')
     default: return null
   }
 })
 </script>
 
 <template>
-  <OverlayNextItemCard v-if="starter" label="Starter" :item="starterItem" :name="basketName(starter.itemIds, name)" :missing="Math.max(0, starterGold - game.gold)" />
+  <OverlayNextItemCard v-if="starter" :label="t('overlay.nextItem.starter')" :item="starterItem" :name="basketName(starter.itemIds, name)" :missing="Math.max(0, starterGold - game.gold)" />
   <div v-else-if="state === 'ready' && top" class="space-y-1.5">
     <!-- The player's active kit (#2185) answers under its own label: its next step, not the mains'. -->
-    <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :label="fromKit ? 'Your kit' : 'Next item'" />
+    <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :label="fromKit ? t('overlay.nextItem.kit') : t('overlay.nextItem.title')" />
     <GameBuildPath v-if="path" :path="path" :statics="statics" :size="20" />
     <!-- The route needs no rule above it: the path's prices already end it. -->
     <GameBuildOrder :steps="order" :statics="statics" :size="18" />
@@ -48,7 +49,7 @@ const message = computed(() => {
     <USkeleton v-if="!message" class="size-9 shrink-0 rounded-md" />
     <AppMark v-else class="size-4 shrink-0" />
     <div class="min-w-0 flex-1">
-      <p class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">Next item</p>
+      <p class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">{{ t('overlay.nextItem.title') }}</p>
       <USkeleton v-if="!message" class="mt-1 h-3 w-28" />
       <p v-else class="text-[11px] text-muted">{{ message }}</p>
     </div>

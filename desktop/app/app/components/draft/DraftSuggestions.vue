@@ -35,6 +35,7 @@ const myPool = defineModel<boolean>('myPool', { default: true })
 const emit = defineEmits<{ preview: [championId: number] }>()
 
 const { nameOf, champions } = useChampionStatics()
+const { t } = useT()
 const { writable } = useChampSelectActions()
 const { entryOf, status: tierListStatus } = useTierList()
 const { profileOf } = useDamageProfiles()
@@ -71,9 +72,9 @@ const shown = computed(() => {
 const targetLabel = computed(() => {
   const target = props.target
   if (props.mode !== 'ban' || !target) return null
-  if (target.kind === 'pick' && target.championIds[0]) return `Protecting your ${nameOf(target.championIds[0])}`
-  if (target.kind === 'pool') return 'Threats to your pool'
-  return 'Most banned on this lane'
+  if (target.kind === 'pick' && target.championIds[0]) return t('draft.sugg.protectingPick', { name: nameOf(target.championIds[0]) })
+  if (target.kind === 'pool') return t('draft.sugg.threatsPool')
+  return t('draft.sugg.mostBanned')
 })
 
 /**
@@ -99,14 +100,14 @@ const focused = computed(() => hovered.value ?? shown.value[0]?.championId ?? nu
  * that missed (#1783).
  */
 const empty = computed(() => {
-  if (props.error) return { icon: 'i-lucide-wifi-off', text: props.mode === 'ban' ? 'Could not rank the bans' : 'Could not rank the picks' }
-  if (tierListStatus.value === 'error') return { icon: 'i-lucide-wifi-off', text: 'The tier list did not load — retrying' }
-  if (tierListStatus.value !== 'ready') return { icon: 'i-lucide-loader-circle', text: 'Loading the tier list…' }
-  if (props.pending) return { icon: 'i-lucide-loader-circle', text: props.mode === 'ban' ? 'Ranking the bans for this draft…' : 'Ranking the picks for this draft…' }
-  if (props.mode === 'ban') return { icon: 'i-lucide-search-x', text: 'No ban to suggest for this draft' }
-  if (search.value.trim()) return { icon: 'i-lucide-search-x', text: 'No champion matches' }
-  if (myPool.value && props.hasPool) return { icon: 'i-lucide-search-x', text: 'None of your champions is played on this lane' }
-  return { icon: 'i-lucide-search-x', text: 'No champion to rank on this lane' }
+  if (props.error) return { icon: 'i-lucide-wifi-off', text: props.mode === 'ban' ? t('draft.sugg.rankBansFailed') : t('draft.sugg.rankPicksFailed') }
+  if (tierListStatus.value === 'error') return { icon: 'i-lucide-wifi-off', text: t('draft.sugg.tierListFailed') }
+  if (tierListStatus.value !== 'ready') return { icon: 'i-lucide-loader-circle', text: t('draft.sugg.tierListLoading') }
+  if (props.pending) return { icon: 'i-lucide-loader-circle', text: props.mode === 'ban' ? t('draft.sugg.rankingBans') : t('draft.sugg.rankingPicks') }
+  if (props.mode === 'ban') return { icon: 'i-lucide-search-x', text: t('draft.sugg.noBan') }
+  if (search.value.trim()) return { icon: 'i-lucide-search-x', text: t('draft.sugg.noMatch') }
+  if (myPool.value && props.hasPool) return { icon: 'i-lucide-search-x', text: t('draft.sugg.noPoolOnLane') }
+  return { icon: 'i-lucide-search-x', text: t('draft.sugg.noneOnLane') }
 })
 
 /** The podium: the best card full height, each next one a step lower, down to a floor. */
@@ -116,24 +117,24 @@ const heightOf = (index: number) => Math.max(0.78, 1 - index * 0.035)
 <template>
   <section class="flex h-full min-h-0 flex-col gap-3">
     <header class="flex items-center gap-4">
-      <h2 class="text-base font-semibold text-highlighted">{{ mode === 'ban' ? 'Your ban' : 'Your pick' }}</h2>
-      <UTooltip v-if="targetLabel" text="Never a champion an ally is hovering or has locked">
+      <h2 class="text-base font-semibold text-highlighted">{{ mode === 'ban' ? t('draft.sugg.yourBan') : t('draft.sugg.yourPick') }}</h2>
+      <UTooltip v-if="targetLabel" :text="t('draft.sugg.neverAlly')">
         <span class="text-xs text-muted">{{ targetLabel }}</span>
       </UTooltip>
       <UIcon v-if="pending" name="i-lucide-loader-circle" class="size-4 text-dimmed" />
 
       <div class="ml-auto flex items-center gap-3">
-        <UTooltip v-if="mode === 'pick'" :text="hasPool ? 'Your ten most-played champions on this lane' : 'Needs the League client: your champions come from it'">
+        <UTooltip v-if="mode === 'pick'" :text="hasPool ? t('draft.sugg.poolTen') : t('draft.sugg.poolNeedsClient')">
           <USwitch
             :model-value="myPool && hasPool"
-            label="My pool"
+            :label="t('draft.sugg.myPool')"
             size="sm"
             :disabled="!hasPool"
             :ui="{ label: 'stat-label' }"
             @update:model-value="myPool = $event"
           />
         </UTooltip>
-        <UInput v-model="search" icon="i-lucide-search" placeholder="Search a champion" size="sm" class="w-48" />
+        <UInput v-model="search" icon="i-lucide-search" :placeholder="t('draft.sugg.search')" size="sm" class="w-48" />
       </div>
     </header>
 
@@ -161,7 +162,7 @@ const heightOf = (index: number) => Math.max(0.78, 1 - index * 0.035)
           <button
             type="button"
             class="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            :aria-label="`Build for ${nameOf(item.championId)}`"
+            :aria-label="t('draft.sugg.buildFor', { name: nameOf(item.championId) })"
             @focus="hovered = item.championId"
             @click="emit('preview', item.championId)"
           />
@@ -172,7 +173,7 @@ const heightOf = (index: number) => Math.max(0.78, 1 - index * 0.035)
       </div>
 
       <div v-if="others.length" class="flex h-full shrink-0 flex-col justify-end gap-1.5">
-        <span class="stat-label px-1">Not ranked for this draft</span>
+        <span class="stat-label px-1">{{ t('draft.sugg.notRanked') }}</span>
         <div class="grid grid-flow-col grid-rows-3 gap-1.5">
           <div v-for="champion in others" :key="champion.id" class="flex w-44 items-center gap-2 rounded-lg bg-elevated p-1.5 ring-1 ring-default">
             <ChampionPortrait :champion-id="champion.id" size="sm" class="size-8! rounded-md!" />

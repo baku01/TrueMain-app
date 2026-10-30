@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import type { TruemainDedication, TruemainScorePartKey } from '#shared/types/dedication'
 import { formatCompactCount } from '#shared/utils/counts'
 import { formatPercentage } from '#shared/utils/ddragon'
@@ -9,7 +10,7 @@ import { formatPercentage } from '#shared/utils/ddragon'
 // docs/dedication-score.md.
 
 /** The metric's name wherever a reader sees it. */
-export const TRUEMAIN_SCORE_LABEL = 'Truemain score'
+export const truemainScoreLabel = () => tr('dedication.scoreLabel')
 
 /** One part of the score, ready to render: the fact behind it and what it added. */
 export interface TruemainScorePartView {
@@ -44,30 +45,30 @@ export function dedicationVerdict(dedication: TruemainDedication): 'OTP' | 'Main
 /** Days-since-last-played phrased for a human; null when mastery has not been read yet. */
 export function formatDedicationLastPlayed(days: number | null): string | null {
   if (days === null) return null
-  if (days <= 0) return 'Last played today'
-  if (days === 1) return 'Last played yesterday'
-  return `Last played ${days} days ago`
+  if (days <= 0) return tr('dedication.lastToday')
+  if (days === 1) return tr('dedication.lastYesterday')
+  return tr('dedication.lastDays', { days })
 }
 
-const NOT_CHECKED = 'not checked yet'
+const notChecked = () => tr('dedication.notChecked')
 
 function masteryPointsDetail(points: number | null): string {
-  if (points === null) return NOT_CHECKED
-  if (points === 0) return 'no mastery'
-  return `${formatCompactCount(points)} points`
+  if (points === null) return notChecked()
+  if (points === 0) return tr('dedication.noMastery')
+  return tr('dedication.points', { points: formatCompactCount(points) })
 }
 
 function masteryRankDetail(dedication: TruemainDedication): string {
-  if (dedication.masteryPoints === null) return NOT_CHECKED
-  if (dedication.masteryRank === null) return 'no mastery'
-  if (dedication.masteryRank === 1) return 'their most-played ever'
-  return `#${dedication.masteryRank} in their mastery`
+  if (dedication.masteryPoints === null) return notChecked()
+  if (dedication.masteryRank === null) return tr('dedication.noMastery')
+  if (dedication.masteryRank === 1) return tr('dedication.mostPlayed')
+  return tr('dedication.masteryRankDetail', { rank: dedication.masteryRank })
 }
 
 function partDetail(key: TruemainScorePartKey, dedication: TruemainDedication): string {
   switch (key) {
     case 'playRate':
-      return `${formatPercentage(dedication.playRate, 0)} of last ${dedication.recentGames} ranked`
+      return tr('dedication.playRateDetail', { rate: formatPercentage(dedication.playRate, 0), games: dedication.recentGames })
     case 'mastery':
       return masteryPointsDetail(dedication.masteryPoints)
     case 'masteryRank':
@@ -76,9 +77,9 @@ function partDetail(key: TruemainScorePartKey, dedication: TruemainDedication): 
 }
 
 const PART_LABELS: Record<TruemainScorePartKey, string> = {
-  playRate: 'Play rate',
-  mastery: 'Mastery',
-  masteryRank: 'Mastery rank',
+  playRate: 'dedication.part.playRate',
+  mastery: 'dedication.part.mastery',
+  masteryRank: 'dedication.part.masteryRank',
 }
 
 /**
@@ -110,7 +111,7 @@ export function dedicationParts(dedication: TruemainDedication): TruemainScorePa
 
   return dedication.parts.map((part, index) => ({
     key: part.key,
-    label: PART_LABELS[part.key],
+    label: tr(PART_LABELS[part.key]),
     detail: partDetail(part.key, dedication),
     points: points[index]!,
     maxPoints: Math.round(part.maxPoints),

@@ -1,4 +1,5 @@
 import { getPositionIconUrl } from '#shared/utils/ddragon'
+import { tr } from '#common/utils/i18n'
 
 /** The five positions, in lane order (top → support): every list of them reads in this order. */
 export const POSITIONS = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] as const
@@ -25,11 +26,11 @@ export interface PositionOption {
 }
 
 export const POSITION_OPTIONS: PositionOption[] = [
-  { label: 'Top', shortLabel: 'Top', value: 'TOP', iconUrl: getPositionIconUrl('TOP') },
-  { label: 'Jungle', shortLabel: 'Jungle', value: 'JUNGLE', iconUrl: getPositionIconUrl('JUNGLE') },
-  { label: 'Middle', shortLabel: 'Mid', value: 'MIDDLE', iconUrl: getPositionIconUrl('MIDDLE') },
-  { label: 'Bottom', shortLabel: 'Bot', value: 'BOTTOM', iconUrl: getPositionIconUrl('BOTTOM') },
-  { label: 'Support', shortLabel: 'Support', value: 'UTILITY', iconUrl: getPositionIconUrl('UTILITY') },
+  { get label() { return tr('common.role.top') }, get shortLabel() { return tr('common.role.topShort') }, value: 'TOP', iconUrl: getPositionIconUrl('TOP') },
+  { get label() { return tr('common.role.jungle') }, get shortLabel() { return tr('common.role.jungleShort') }, value: 'JUNGLE', iconUrl: getPositionIconUrl('JUNGLE') },
+  { get label() { return tr('common.role.middle') }, get shortLabel() { return tr('common.role.middleShort') }, value: 'MIDDLE', iconUrl: getPositionIconUrl('MIDDLE') },
+  { get label() { return tr('common.role.bottom') }, get shortLabel() { return tr('common.role.bottomShort') }, value: 'BOTTOM', iconUrl: getPositionIconUrl('BOTTOM') },
+  { get label() { return tr('common.role.support') }, get shortLabel() { return tr('common.role.supportShort') }, value: 'UTILITY', iconUrl: getPositionIconUrl('UTILITY') },
 ]
 
 /**

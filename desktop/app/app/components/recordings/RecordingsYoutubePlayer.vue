@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Clip } from '~/types/recordings'
 
+const { t } = useT()
+
 /**
  * A published clip whose file left this PC, played from YouTube (#2005). The
  * frame is the shell's loopback page (`recording/embed.rs`) — YouTube's player
@@ -29,7 +31,7 @@ const poster = computed(() => fileSrc(props.clip.thumbnailPath))
       <iframe
         v-if="src"
         :src="src"
-        title="The clip on YouTube"
+        :title="t('rec.yt.title')"
         class="size-full border-0"
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowfullscreen
@@ -38,7 +40,7 @@ const poster = computed(() => fileSrc(props.clip.thumbnailPath))
         <img v-if="poster" :src="poster" alt="" class="size-full object-cover opacity-40">
         <UButton
           icon="i-lucide-youtube"
-          label="Watch on YouTube"
+            :label="t('rec.watchYoutube')"
           class="absolute left-1/2 top-1/2 -translate-1/2"
           @click="openVideo(clip.id)"
         />
@@ -46,8 +48,8 @@ const poster = computed(() => fileSrc(props.clip.thumbnailPath))
     </div>
     <div class="flex items-center gap-2 text-xs text-muted">
       <UIcon name="i-lucide-youtube" class="size-3.5 shrink-0" />
-      <span class="flex-1">Played from YouTube: this clip's video is no longer on this PC. A private video only plays on YouTube.</span>
-      <UButton icon="i-lucide-external-link" label="Watch on YouTube" color="neutral" variant="outline" size="xs" @click="openVideo(clip.id)" />
+      <span class="flex-1">{{ t('rec.yt.note') }}</span>
+      <UButton icon="i-lucide-external-link" :label="t('rec.watchYoutube')" color="neutral" variant="outline" size="xs" @click="openVideo(clip.id)" />
     </div>
   </div>
 </template>

@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import type { StaticSummonerSpellData } from '#shared/types/static-data'
 import { parseSummonerSpell } from '#shared/utils/tooltip-parser'
 
+const { t } = useT()
+
 const props = defineProps<{
   spell: StaticSummonerSpellData
 }>()
@@ -33,7 +35,7 @@ const parsed = computed(() => props.spell.description ? parseSummonerSpell(props
         v-if="spell.cooldown"
         class="text-xs"
       >
-        <span class="text-muted">Cooldown:</span>
+        <span class="text-muted">{{ t('tooltip.cooldown') }}</span>
         <span class="text-stat-speed font-semibold"> {{ spell.cooldown }}s</span>
       </div>
     </div>

@@ -49,6 +49,7 @@ watch(() => props.championId, async (id) => {
   }
 }, { immediate: true })
 
+const { t } = useT()
 const { runeTree, items } = useStaticData()
 const { patch } = useChampionStatics()
 const { perk, item } = useBuildResolvers(runeTree, items)
@@ -137,12 +138,12 @@ const rows = computed<MainRow[] | null>(() => {
 
 <template>
   <div class="flex flex-col gap-0.5">
-    <h3 class="px-2 pb-1 stat-label">Truemains</h3>
+    <h3 class="px-2 pb-1 stat-label">{{ t('build.mains.title') }}</h3>
     <AppSearch
       scope="players"
       :mains-of="championId"
       size="sm"
-      placeholder="Search a truemain…"
+      :placeholder="t('build.mains.search')"
       class="mb-1 px-1"
       @select-truemain="pickSearched"
     />
@@ -154,8 +155,8 @@ const rows = computed<MainRow[] | null>(() => {
         <USkeleton class="ml-auto h-4 w-12" />
       </div>
     </template>
-    <p v-else-if="failed && !rows?.length" class="px-2 text-xs text-muted">The truemains could not be loaded</p>
-    <UEmpty v-else-if="rows && rows.length === 0" size="sm" icon="i-lucide-trophy" description="No tracked truemains on this champion yet." />
+    <p v-else-if="failed && !rows?.length" class="px-2 text-xs text-muted">{{ t('build.mains.failed') }}</p>
+    <UEmpty v-else-if="rows && rows.length === 0" size="sm" icon="i-lucide-trophy" :description="t('build.mains.empty')" />
 
     <template v-else>
       <div
@@ -168,14 +169,14 @@ const rows = computed<MainRow[] | null>(() => {
         <!-- The row's control: an overlay above the identity, as on the site's sidebar row. -->
         <button
           type="button"
-          :aria-label="`Build of ${riotIdLabel(row.identity.gameName, row.identity.tagLine)}`"
+          :aria-label="t('build.mains.buildOf', { name: riotIdLabel(row.identity.gameName, row.identity.tagLine) })"
           :aria-pressed="selectedNameTag === row.nameTag"
           class="absolute inset-0 z-[1] rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           @click="emit('select', row)"
         />
         <Account :identity="row.identity" :region="row.region" :patch="patch || null" size="md" :to="false" class="flex-1">
           <template v-if="row.followed" #subline>
-            <UIcon mode="svg" name="i-lucide-star" class="size-3 shrink-0 text-primary [&_path]:fill-current" aria-label="Followed" />
+            <UIcon mode="svg" name="i-lucide-star" class="size-3 shrink-0 text-primary [&_path]:fill-current" :aria-label="t('build.mains.followed')" />
           </template>
         </Account>
         <div class="relative z-10 flex shrink-0 items-center gap-0.5">

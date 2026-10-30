@@ -4,6 +4,7 @@ import { formatPercentage, getPositionIconUrl } from '#shared/utils/ddragon'
 import { formatCount } from '#shared/utils/counts'
 import { championDisplayName } from '#shared/utils/champion-name'
 import { formatKdaRatio } from '#shared/utils/kda'
+import { tr } from '#common/utils/i18n'
 import { POSITION_BY_VALUE } from '#common/utils/positions'
 
 // What a truemains leaderboard row shows beside the player, derived once for
@@ -40,7 +41,7 @@ export function leaderboardLanes(positions: LeaderboardPositions | null): Leader
     .map((position, index) => ({
       position,
       iconUrl: getPositionIconUrl(position),
-      title: `${index === 0 ? 'Primary' : 'Secondary'}: ${POSITION_BY_VALUE.get(position)?.label ?? position}`,
+      title: tr(index === 0 ? 'leaderboard.lanePrimary' : 'leaderboard.laneSecondary', { lane: POSITION_BY_VALUE.get(position)?.label ?? position }),
       primary: index === 0,
     }))
 }

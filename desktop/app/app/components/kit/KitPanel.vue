@@ -14,6 +14,7 @@ import { defaultRunePage } from '~/utils/kit-runes'
  */
 const props = defineProps<{ championId: number, position: string }>()
 
+const { t } = useT()
 const { kitsFor, save } = useKits()
 const { response, pending: buildsPending } = useChampionBuilds(toRef(props, 'championId'), toRef(props, 'position'))
 const { runeTree } = useStaticData()
@@ -40,14 +41,14 @@ const canCreate = computed(() => runeTree.value !== null && !buildsPending.value
 
 function create() {
   const core = response.value?.builds[0]?.core ?? null
-  const name = freeName(`My ${lane.value || 'kit'}`, kits.value.map(kit => kit.name))
+  const name = freeName(lane.value ? t('kit.new.defaultName', { lanes: lane.value }) : t('kit.new.defaultNameBare'), kits.value.map(kit => kit.name))
   const kit = kitFromBuild({ championId: props.championId, positions: [props.position], name }, core, runeTree.value ? defaultRunePage(runeTree.value) : null)
   if (kit) editing.value = kit
 }
 
 async function saveEdited(kit: Kit) {
   saving.value = true
-  const saved = await run(() => save(kit), 'Could not save the kit')
+  const saved = await run(() => save(kit), t('kit.error.save'))
   if (saved) {
     // Taken off this lane, it goes back to the lane's list as it is.
     selected.value = kit.positions.includes(props.position) ? kit.id : selected.value
@@ -62,12 +63,12 @@ async function saveEdited(kit: Kit) {
   <div class="surface grid h-full min-h-0 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
     <aside class="flex min-h-0 flex-col border-r border-default bg-muted/50">
       <div class="flex items-center justify-between gap-2 border-b border-default px-3 py-2.5">
-        <span class="text-sm font-semibold text-highlighted">Your kits{{ lane ? ` · ${lane}` : '' }}</span>
-        <UButton label="New kit" icon="i-lucide-plus" size="xs" color="neutral" variant="soft" :disabled="!canCreate || editing !== null" @click="create" />
+        <span class="text-sm font-semibold text-highlighted">{{ t('kit.list.label') }}{{ lane ? ` · ${lane}` : '' }}</span>
+        <UButton :label="t('kit.new.button')" icon="i-lucide-plus" size="xs" color="neutral" variant="soft" :disabled="!canCreate || editing !== null" @click="create" />
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto p-2">
         <KitList v-if="kits.length" v-model="selected" :kits="kits" />
-        <p v-else class="px-2 py-1 text-xs text-dimmed">No kit on this lane yet. A new kit starts from TrueMain's build here.</p>
+        <p v-else class="px-2 py-1 text-xs text-dimmed">{{ t('kit.panel.none') }}</p>
       </div>
     </aside>
 
@@ -83,8 +84,8 @@ async function saveEdited(kit: Kit) {
 
       <div v-else class="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
         <UIcon name="i-lucide-swords" class="size-6 text-dimmed" />
-        <p class="text-sm text-muted">Your own build: an item tree, a rune page and two spells</p>
-        <p class="max-w-xs text-xs text-dimmed">Champion select offers it beside TrueMain's builds; picked there, the overlay follows its items.</p>
+        <p class="text-sm text-muted">{{ t('kit.panel.empty') }}</p>
+        <p class="max-w-xs text-xs text-dimmed">{{ t('kit.empty.hint') }}</p>
       </div>
     </div>
   </div>

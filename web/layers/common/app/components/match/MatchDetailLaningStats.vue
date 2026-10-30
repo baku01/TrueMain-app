@@ -2,6 +2,8 @@
 import type { MatchDetailParticipant } from '#shared/types/match-detail'
 import type { MatchDetailStat } from './MatchDetailStatGrid.vue'
 
+const { t } = useT()
+
 // The selected player's lane at 15 minutes against the opposing position.
 const props = defineProps<{
   participant: MatchDetailParticipant
@@ -27,12 +29,12 @@ const stats = computed<MatchDetailStat[] | null>(() => {
   // data axis with the three diffs beside it, not in the result colours.
   const levelTwo = props.participant.firstToLevelTwo
   return [
-    diff(laning.csDiff, 'cs diff'),
-    diff(laning.goldDiff, 'gold diff'),
-    diff(laning.xpDiff, 'xp diff'),
+    diff(laning.csDiff, t('match.laning.csDiff')),
+    diff(laning.goldDiff, t('match.laning.goldDiff')),
+    diff(laning.xpDiff, t('match.laning.xpDiff')),
     {
-      value: levelTwo === null ? '—' : levelTwo ? 'Yes' : 'No',
-      label: 'first lvl 2',
+      value: levelTwo === null ? '—' : levelTwo ? t('match.laning.yes') : t('match.laning.no'),
+      label: t('match.laning.firstLevelTwo'),
       tone: levelTwo ? 'text-data-good' : 'text-muted',
     },
   ]
@@ -40,8 +42,8 @@ const stats = computed<MatchDetailStat[] | null>(() => {
 </script>
 
 <template>
-  <MatchDetailCard title="Laning phase (at 15)" icon="i-lucide-swords">
+  <MatchDetailCard :title="t('match.laning.title')" icon="i-lucide-swords">
     <MatchDetailStatGrid v-if="stats" :stats="stats" />
-    <p v-else class="text-[11px] text-muted">No laning data for this game.</p>
+    <p v-else class="text-[11px] text-muted">{{ t('match.laning.empty') }}</p>
   </MatchDetailCard>
 </template>

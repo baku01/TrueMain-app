@@ -2,6 +2,8 @@
 import type { MatchSummarySelf } from '#shared/types/matches'
 import { ordinal } from '#common/utils/ordinal'
 
+const { t } = useT()
+
 // Performance score (#918) of a match-history row, in the right-edge slot it
 // shares with the MVP/ACE accolade derived from it: a crowned game shows the
 // crown (`gold`) or the ACE rosette (`primary`, as in the scoreboard) with the
@@ -20,7 +22,7 @@ const accolade = computed(() => {
 })
 
 const perfTooltip = computed(() => {
-  const detail = `Performance score ${perfScore.value}/100 — ${ordinal(props.self.placement)} of 10 in this game`
+  const detail = t('match.row.performance', { score: perfScore.value, placement: ordinal(props.self.placement) })
   return accolade.value ? `${accolade.value} · ${detail}` : detail
 })
 
@@ -42,13 +44,13 @@ const perfColor = computed(() => {
         :name="self.isMvp ? 'i-lucide-crown' : 'i-lucide-award'"
         class="size-5 drop-shadow"
         :class="self.isMvp ? 'text-gold' : 'text-primary'"
-        :aria-label="`${accolade}, performance score ${perfScore}`"
+        :aria-label="t('match.row.accoladeScore', { accolade, score: perfScore })"
       />
       <span
         v-else
         class="text-sm font-bold tabular-nums"
         :class="perfColor"
-        :aria-label="`Performance score ${perfScore}`"
+        :aria-label="t('match.row.score', { score: perfScore })"
       >
         {{ perfScore }}
       </span>

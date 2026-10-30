@@ -31,6 +31,7 @@ const emit = defineEmits<{
   'update:positions': [value: ChampionPosition[]]
 }>()
 
+const { t } = useT()
 const multiple = computed(() => props.positions !== null)
 const isOn = (value: ChampionPosition | null) =>
   multiple.value ? value !== null && props.positions!.includes(value) : props.position === value
@@ -62,13 +63,13 @@ function select(value: ChampionPosition | null) {
       :variant="position === null ? 'soft' : 'ghost'"
       color="neutral"
       square
-      aria-label="All positions"
+      :aria-label="t('common.allPositions')"
       @click="select(null)"
     >
       <SkeletonImage
         :src="FILL_ICON_URL"
         transparent
-        alt="All positions"
+        :alt="t('common.allPositions')"
         :width="18"
         :height="18"
         class="size-[18px]"

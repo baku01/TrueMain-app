@@ -11,6 +11,8 @@ import {
   activityMaxGames,
 } from '#common/utils/activity-heatmap'
 
+const { t } = useT()
+
 /**
  * dpm.lol-style activity grid under the LP curve (#927, reshaped in #1473).
  *
@@ -67,10 +69,10 @@ const props = withDefaults(defineProps<{
  * instead of interrupting it between week and month.
  */
 const MODES: { key: ActivityMode, label: string }[] = [
-  { key: 'day', label: 'Day' },
-  { key: 'week', label: 'Week' },
-  { key: 'month', label: 'Month' },
-  { key: 'patch', label: 'Patch' },
+  { key: 'day', label: t('profile.activity.day') },
+  { key: 'week', label: t('profile.activity.week') },
+  { key: 'month', label: t('profile.activity.month') },
+  { key: 'patch', label: t('profile.activity.patch') },
 ]
 
 // Patch is the default: it is the widest window the retained data can back, and
@@ -116,9 +118,9 @@ const summary = computed(() => {
   // the same way rather than in two different notations one card apart.
   return {
     rate: current.winRate === null ? null : formatPercentage(current.winRate, 0),
-    record: `${current.wins}W – ${current.games - current.wins}L`,
+    record: t('common.recordWL', { wins: current.wins, losses: current.games - current.wins }),
     // Singular matters here now that the day window routinely holds one game.
-    games: `${current.games} ${current.games === 1 ? 'game' : 'games'}`,
+    games: t(current.games === 1 ? 'profile.activity.game' : 'profile.activity.games', { count: current.games }),
   }
 })
 
@@ -129,7 +131,7 @@ const isEmpty = computed(() => cells.value.length === 0)
   <section class="flex flex-col gap-2">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-        Activity
+        {{ t('profile.activity.title') }}
       </h2>
       <ProfileActivityModeSwitch
         :model-value="mode"
@@ -142,14 +144,14 @@ const isEmpty = computed(() => cells.value.length === 0)
       <USkeleton v-if="loading" class="h-24 w-full rounded-md" />
 
       <p v-else-if="!data" class="py-2 text-sm text-muted">
-        Activity is unavailable right now.
+        {{ t('profile.activity.unavailable') }}
       </p>
 
       <!-- The only window that can come back with nothing is the day one: a rest
            day has no games to draw, and there is no such thing as an idle game.
            The calendar windows always carry their days. -->
       <p v-else-if="isEmpty" class="py-2 text-sm text-muted">
-        {{ mode === 'day' ? 'No games today.' : 'Nothing to plot for this view.' }}
+        {{ mode === 'day' ? t('profile.activity.noGamesToday') : t('profile.activity.nothingToPlot') }}
       </p>
 
       <template v-else>
@@ -164,7 +166,7 @@ const isEmpty = computed(() => cells.value.length === 0)
           <span class="text-xs text-muted">{{ summary.record }} · {{ summary.games }}</span>
         </p>
         <p v-else class="text-xs text-muted">
-          No games in this view.
+          {{ t('profile.activity.noGamesView') }}
         </p>
 
         <ProfileActivityGrid

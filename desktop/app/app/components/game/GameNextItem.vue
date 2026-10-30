@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { GameState } from '~/types/game'
 import { ITEM_CONTEXT_TONE_CLASS } from '#shared/utils/item-context'
+import { aroundParam } from '~/utils/split-param'
 
 /**
  * What to complete next (#1751): the item the champion's mains take from
@@ -16,6 +17,11 @@ import { ITEM_CONTEXT_TONE_CLASS } from '#shared/utils/item-context'
  */
 const props = defineProps<{ game: GameState }>()
 
+const { t } = useT()
+const [beforeShort, afterShort] = aroundParam('game.next.goldShort', 'gold')
+const [beforeComplete, afterComplete] = aroundParam('game.next.goldToComplete', 'gold')
+const games = (count: number) => (count === 1 ? t('game.next.starterGames.one', { count }) : t('game.next.starterGames.other', { count }))
+const stepGames = (count: number) => (count === 1 ? t('game.next.stepGames.one', { count }) : t('game.next.stepGames.other', { count }))
 const { answer, pending, statics, build, order, top, runnersUp, boots, why, remaining, path, state, name, percent, reason, affordable, starter, starterGold, kit, fromKit, kitDone } = useNextItemPanel(toRef(props, 'game'))
 </script>
 
@@ -23,7 +29,7 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
   <section class="surface grid grid-cols-[minmax(0,1fr)_auto] gap-6 rounded-xl px-4 py-3">
     <div class="min-w-0">
       <div v-if="starter" class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-default pb-3">
-        <span class="stat-label">Starter</span>
+        <span class="stat-label">{{ t('game.next.starter') }}</span>
         <div class="flex gap-1.5">
           <GameTooltipItemIcon
             v-for="(itemId, index) in starter.itemIds"
@@ -34,17 +40,17 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
             class="size-[30px] rounded ring-1 ring-primary/60"
           />
         </div>
-        <span v-if="affordable(starterGold)" class="text-xs text-stat-gold">Can buy now</span>
-        <span v-else class="text-xs tabular-nums text-muted"><span class="text-stat-gold">{{ starterGold - game.gold }}</span> gold short</span>
-        <span v-if="!kit" class="text-xs tabular-nums text-dimmed" :title="`${starter.games} games`">{{ percent(starter.pickRate) }} of games</span>
+        <span v-if="affordable(starterGold)" class="text-xs text-stat-gold">{{ t('game.next.canBuy') }}</span>
+        <span v-else class="text-xs tabular-nums text-muted">{{ beforeShort }}<span class="text-stat-gold">{{ starterGold - game.gold }}</span>{{ afterShort }}</span>
+        <span v-if="!kit" class="text-xs tabular-nums text-dimmed" :title="games(starter.games)">{{ t('game.next.starterShare', { share: percent(starter.pickRate) }) }}</span>
       </div>
 
       <div class="mb-2 flex items-center gap-2">
-        <span class="stat-label">Next item</span>
+        <span class="stat-label">{{ t('game.next.title') }}</span>
         <!-- The player's active kit (#2185): its own next step, or the mains' once it has none left. -->
-        <span v-if="fromKit" class="flex min-w-0 items-center gap-1 text-xs text-muted"><UIcon name="i-lucide-swords" class="size-3.5 shrink-0 text-primary" /><span class="truncate">Your kit: {{ kit?.name }}</span></span>
-        <span v-else-if="kitDone" class="text-xs text-dimmed">Your kit is complete — the mains' next item</span>
-        <span v-if="build && !build.onTree" class="text-xs text-dimmed" title="Your build left the path the mains take; this continues from your latest item they build.">off the mains' path</span>
+        <span v-if="fromKit" class="flex min-w-0 items-center gap-1 text-xs text-muted"><UIcon name="i-lucide-swords" class="size-3.5 shrink-0 text-primary" /><span class="truncate">{{ t('game.next.kit', { name: kit?.name ?? '' }) }}</span></span>
+        <span v-else-if="kitDone" class="text-xs text-dimmed">{{ t('game.next.kitDone') }}</span>
+        <span v-if="build && !build.onTree" class="text-xs text-dimmed" :title="t('game.next.offPathTitle')">{{ t('game.next.offPath') }}</span>
         <UIcon v-if="pending && answer" name="i-lucide-loader-circle" class="size-3.5 animate-spin text-dimmed" />
       </div>
 
@@ -55,7 +61,7 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
           <div class="min-w-0 flex-1 space-y-1.5">
             <div class="flex items-baseline gap-2">
               <span class="truncate text-base font-semibold text-highlighted">{{ name(top.itemId) }}</span>
-              <span v-if="!fromKit" class="text-xs tabular-nums text-muted" :title="`${top.games} games of the mains on this step`">{{ percent(top.share) }} of mains</span>
+              <span v-if="!fromKit" class="text-xs tabular-nums text-muted" :title="stepGames(top.games)">{{ t('game.next.mainsShare', { share: percent(top.share) }) }}</span>
             </div>
             <p v-if="why" class="text-sm text-muted">
               <template v-for="(token, index) in why" :key="index">
@@ -65,16 +71,16 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
 
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
               <span v-if="remaining > 0" class="text-xs tabular-nums text-muted">
-                <span class="text-stat-gold">{{ remaining }}</span> gold to complete
+                {{ beforeComplete }}<span class="text-stat-gold">{{ remaining }}</span>{{ afterComplete }}
               </span>
-              <span v-else class="text-xs text-stat-gold">Ready to complete</span>
-              <span v-if="path && path.entries.length && !path.measured" class="text-xs text-dimmed" title="Too few of the mains' games show which component they buy first: these follow the recipe.">in recipe order</span>
+              <span v-else class="text-xs text-stat-gold">{{ t('game.next.ready') }}</span>
+              <span v-if="path && path.entries.length && !path.measured" class="text-xs text-dimmed" :title="t('game.next.recipeOrderTitle')">{{ t('game.next.recipeOrder') }}</span>
             </div>
             <GameBuildPath v-if="path" :path="path" :statics="statics" class="pt-1" />
           </div>
 
           <div v-if="runnersUp.length" class="flex shrink-0 flex-col items-end gap-1.5 border-l border-default pl-3">
-            <span class="stat-label">Or</span>
+            <span class="stat-label">{{ t('game.next.or') }}</span>
             <div class="flex gap-1.5">
               <div v-for="candidate in runnersUp" :key="candidate.itemId" class="flex flex-col items-center gap-0.5">
                 <GameTooltipItemIcon :item="statics[candidate.itemId] ?? null" :width="30" :height="30" class="size-[30px] rounded" />
@@ -87,9 +93,9 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
         <GameBuildOrder :steps="order" :statics="statics" class="mt-3 border-t border-default pt-3" />
       </template>
 
-      <p v-else-if="state === 'unmeasured'" class="text-sm text-muted">No measured builds for this champion on this lane yet.</p>
-      <p v-else-if="state === 'complete'" class="text-sm text-muted">The mains' build is complete.</p>
-      <p v-else-if="state === 'offline'" class="text-sm text-muted">Cannot reach TrueMain right now.</p>
+      <p v-else-if="state === 'unmeasured'" class="text-sm text-muted">{{ t('game.next.unmeasured') }}</p>
+      <p v-else-if="state === 'complete'" class="text-sm text-muted">{{ t('game.next.complete') }}</p>
+      <p v-else-if="state === 'offline'" class="text-sm text-muted">{{ t('game.next.offline') }}</p>
       <div v-else class="flex items-center gap-3">
         <USkeleton class="size-13 rounded-lg" />
         <div class="space-y-1.5">
@@ -100,7 +106,7 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
     </div>
 
     <div v-if="boots.length" class="flex flex-col gap-2 border-l border-default pl-4">
-      <span class="stat-label">Boots</span>
+      <span class="stat-label">{{ t('game.next.boots') }}</span>
       <div class="flex gap-2">
         <div v-for="(candidate, index) in boots" :key="candidate.itemId" class="flex flex-col items-center gap-0.5">
           <GameTooltipItemIcon

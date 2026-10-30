@@ -2,6 +2,8 @@
 import type { BuildSkillOrder } from '#shared/types/champions'
 import type { ChampionStaticData } from '#shared/types/static-data'
 
+const { t } = useT()
+
 const props = defineProps<{
   skillOrder: BuildSkillOrder | null
   championStatic: ChampionStaticData
@@ -22,7 +24,7 @@ function spellByKey(key: string) {
 <template>
   <div>
     <h2 class="text-sm font-medium text-muted">
-      Skill order
+      {{ t('champion.core.skillOrder') }}
     </h2>
     <!-- The aggregate only carries the max-priority of the three basic spells
          (which of Q/W/E to level first), so `sequence` is at most 3 keys — never
@@ -60,7 +62,7 @@ function spellByKey(key: string) {
         v-else
         class="text-sm text-muted"
       >
-        No data
+        {{ t('common.noData') }}
       </span>
     </div>
   </div>

@@ -13,6 +13,7 @@ import { formatRelativeTime } from '#common/utils/relativeTime'
 const props = defineProps<{ games: RecentGame[] }>()
 
 const { portraitOf, nameOf } = useChampionStatics()
+const { t } = useT()
 
 const bars = computed(() => [...props.games].reverse())
 
@@ -23,14 +24,14 @@ const lane = (game: RecentGame) => (game.position && isChampionPosition(game.pos
 </script>
 
 <template>
-  <div class="flex h-4 shrink-0 items-stretch" :aria-label="`Last ${games.length} games`">
+  <div class="flex h-4 shrink-0 items-stretch" :aria-label="t('dash.loading.lastGames', { count: games.length })">
     <UTooltip
       v-for="(game, index) in bars"
       :key="index"
       :delay-duration="0"
       :ui="{ content: 'p-0 h-auto max-w-none bg-transparent ring-0 shadow-none text-default' }"
     >
-      <span class="flex px-px" :aria-label="game.win ? 'Victory' : 'Defeat'">
+      <span class="flex px-px" :aria-label="game.win ? t('dash.result.victory') : t('dash.result.defeat')">
         <span class="w-1 rounded-full" :class="game.win ? 'bg-sky-400' : 'bg-red-400'" />
       </span>
       <template #content>
@@ -46,7 +47,7 @@ const lane = (game: RecentGame) => (game.position && isChampionPosition(game.pos
               <p class="flex items-center gap-1.5 text-sm font-semibold text-highlighted">
                 {{ nameOf(game.championId) }}
                 <span class="text-xs font-medium" :class="game.win ? 'text-sky-300' : 'text-red-400'">
-                  {{ game.win ? 'Victory' : 'Defeat' }}
+                  {{ game.win ? t('dash.result.victory') : t('dash.result.defeat') }}
                 </span>
               </p>
               <p class="mt-0.5 flex items-center gap-1.5 text-xs tabular-nums text-muted">

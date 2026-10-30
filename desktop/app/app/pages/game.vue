@@ -20,35 +20,38 @@ const edges = useLaneEdges(() => loading.value.players)
 /** Which players are true mains of their champion (#1910), for the board and the Game page. */
 useTruemainMarks(loading)
 const { view: overlay } = useGameOverlay()
+const { t } = useT()
 
 const overlayStatus = computed(() => {
   const view = overlay.value
   if (!view) return null
-  if (!view.supported) return 'The in-game overlay works on macOS and Windows.'
-  if (!view.settings.enabled) return 'The in-game overlay is off.'
+  if (!view.supported) return t('game.overlay.unsupported')
+  if (!view.settings.enabled) return t('game.overlay.off')
   // Each panel on a chord, as the player brings it up (#1915).
   const keys = OVERLAY_PANELS.flatMap((panel) => {
     const panelSettings = view.settings[PANEL_KEY[panel]]
     const chord = view.chords[panel]
     if (!panelSettings.enabled || !chord || panelSettings.trigger.kind === 'always') return []
-    const how = panelSettings.trigger.kind === 'toggle' ? 'toggles' : 'shows'
-    return [`${chord.label} ${how} ${OVERLAY_PANEL_INFO[panel].label.toLowerCase()}`]
+    const how = panelSettings.trigger.kind === 'toggle' ? 'game.overlay.chordToggles' : 'game.overlay.chordShows'
+    return [t(how, { chord: chord.label, panel: OVERLAY_PANEL_INFO[panel].label.toLowerCase() })]
   })
-  return `The overlay shows over your game${keys.length ? `; ${keys.join(', ')}` : ''}. ${view.shortcut} hides it.`
+  return keys.length
+    ? t('game.overlay.statusKeys', { keys: keys.join(', '), shortcut: view.shortcut })
+    : t('game.overlay.status', { shortcut: view.shortcut })
 })
 
 const waiting = computed(() => {
   if (screen.value === 'in-game') {
     return {
-      title: 'Loading into the game',
-      body: 'The board fills in as soon as the game has loaded.',
+      title: t('game.waiting.loading.title'),
+      body: t('game.waiting.loading.body'),
     }
   }
   return {
-    title: 'Not in a game',
+    title: t('game.waiting.none.title'),
     body: state.value.connected
-      ? 'This page opens on its own when your next game starts.'
-      : 'Start League of Legends: this page follows you into your next game on its own.',
+      ? t('game.waiting.none.connected')
+      : t('game.waiting.none.disconnected'),
   }
 })
 </script>
@@ -57,7 +60,7 @@ const waiting = computed(() => {
   <div class="h-full">
     <GameScreen v-if="screen === 'in-game' && game" :game="game" :synced-at="syncedAt" :lines="loading.players">
       <template #actions>
-        <UButton icon="i-lucide-layers" color="neutral" variant="ghost" size="sm" to="/overlay" aria-label="Overlay settings" title="Overlay settings" />
+        <UButton icon="i-lucide-layers" color="neutral" variant="ghost" size="sm" to="/overlay" :aria-label="t('game.overlay.settings')" :title="t('game.overlay.settings')" />
       </template>
     </GameScreen>
 
@@ -75,7 +78,7 @@ const waiting = computed(() => {
       <div v-if="overlayStatus" class="relative mt-4 flex items-center gap-3 rounded-lg bg-elevated/60 py-1.5 pl-3 pr-1.5 ring-1 ring-default">
         <UIcon name="i-lucide-layers" class="size-4 text-primary" />
         <span class="text-xs text-muted">{{ overlayStatus }}</span>
-        <UButton label="Customize" color="neutral" variant="ghost" size="xs" to="/overlay" />
+        <UButton :label="t('game.overlay.customize')" color="neutral" variant="ghost" size="xs" to="/overlay" />
       </div>
     </div>
   </div>

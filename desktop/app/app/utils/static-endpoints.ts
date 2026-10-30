@@ -1,6 +1,7 @@
 import type { ChampionStaticData, ChampionStaticListItem } from '#shared/types/static-data'
 import { isLiveChampionId } from '#shared/utils/ddragon'
 import type { ChampionDetailResponse, ItemListResponse, SummonerListResponse } from '~/utils/static-data'
+import { ddragonLocale, getActiveLocale } from '#common/utils/i18n'
 import { DDRAGON, fetchRuneTree, toChampionStatic, toItemsMap, toSummonersMap } from '~/utils/static-data'
 
 /**
@@ -36,15 +37,18 @@ interface ChampionListResponse {
 
 const championLists = new Map<string, Promise<ChampionListResponse>>()
 
+const dataLocale = () => ddragonLocale(getActiveLocale())
+
 /** One version's `champion.json`, fetched once per launch: the list and the per-champion lookups share it. */
 function loadChampionList(version: string): Promise<ChampionListResponse> {
-  let list = championLists.get(version)
+  const key = `${version}:${dataLocale()}`
+  let list = championLists.get(key)
   if (!list) {
-    list = $fetch<ChampionListResponse>(`${DDRAGON}/${version}/data/en_US/champion.json`).catch((error: unknown) => {
-      championLists.delete(version)
+    list = $fetch<ChampionListResponse>(`${DDRAGON}/${version}/data/${dataLocale()}/champion.json`).catch((error: unknown) => {
+      championLists.delete(key)
       throw error
     })
-    championLists.set(version, list)
+    championLists.set(key, list)
   }
   return list
 }
@@ -68,18 +72,18 @@ async function championStatic(championId: number, patch: unknown): Promise<Champ
   const version = await resolveVersion(patch)
   const entry = Object.values((await loadChampionList(version)).data).find(champion => Number(champion.key) === championId)
   if (!entry) return NO_CHAMPION_STATIC
-  const detail = await $fetch<ChampionDetailResponse>(`${DDRAGON}/${version}/data/en_US/champion/${entry.id}.json`)
+  const detail = await $fetch<ChampionDetailResponse>(`${DDRAGON}/${version}/data/${dataLocale()}/champion/${entry.id}.json`)
   return toChampionStatic(detail, entry.id, entry.name, version)
 }
 
 async function itemMap(patch: unknown) {
   const version = await resolveVersion(patch)
-  return toItemsMap(await $fetch<ItemListResponse>(`${DDRAGON}/${version}/data/en_US/item.json`), version)
+  return toItemsMap(await $fetch<ItemListResponse>(`${DDRAGON}/${version}/data/${dataLocale()}/item.json`), version)
 }
 
 async function summonerMap(patch: unknown) {
   const version = await resolveVersion(patch)
-  return toSummonersMap(await $fetch<SummonerListResponse>(`${DDRAGON}/${version}/data/en_US/summoner.json`), version)
+  return toSummonersMap(await $fetch<SummonerListResponse>(`${DDRAGON}/${version}/data/${dataLocale()}/summoner.json`), version)
 }
 
 export async function answerStaticEndpoint(path: string, query: Record<string, unknown>): Promise<unknown> {

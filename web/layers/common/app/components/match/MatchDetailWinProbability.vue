@@ -12,6 +12,8 @@ import {
 } from '#common/utils/win-probability-swing'
 import { minuteTicks } from '#common/utils/timeline-curves'
 
+const { t } = useT()
+
 /**
  * A finished game's win-probability curve and the moments that swung it
  * (#1911), read for `perspectiveTeamId`. What happened is read on the curve
@@ -90,17 +92,17 @@ function onMove(event: PointerEvent) {
   hoverMs.value = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)) * width.value
 }
 
-const summary = computed(() => `Win probability over the game, ending at ${final.value} for your side`)
+const summary = computed(() => t('match.winProb.summary', { final: final.value }))
 </script>
 
 <template>
   <section class="surface flex flex-col gap-4 rounded-md p-3">
     <header class="flex items-baseline justify-between gap-3">
       <h3 class="text-xs font-semibold uppercase tracking-wider text-muted">
-        Win probability
+        {{ t('match.winProb.title') }}
       </h3>
       <span class="hidden text-xs text-dimmed @md:inline">
-        Model on lane leads and objectives
+        {{ t('match.winProb.model') }}
       </span>
     </header>
 

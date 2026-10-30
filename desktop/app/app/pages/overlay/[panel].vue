@@ -31,14 +31,19 @@ const panel = computed<OverlayPanel>(() => {
   return (OVERLAY_PANELS as string[]).includes(slug) ? slug as OverlayPanel : 'next-item'
 })
 
-const PLACEHOLDERS: Record<OverlayPanel, string> = {
-  'next-item': 'Your build path shows here during a game.',
-  'win-probability': 'The win probability shows here during a game.',
-  'item-value': 'Each team\'s item gold shows here during a game.',
-  'stats': 'Your CS and gold per minute show here during a game.',
-  'objectives': 'The objectives\' timers show here during a game.',
-  'lane-gold': '',
+const PLACEHOLDERS: Record<OverlayPanel, string | null> = {
+  'next-item': 'overlay.placeholder.nextItem',
+  'win-probability': 'overlay.placeholder.winProbability',
+  'item-value': 'overlay.placeholder.itemValue',
+  'stats': 'overlay.placeholder.stats',
+  'objectives': 'overlay.placeholder.objectives',
+  'lane-gold': null,
 }
+const { t } = useT()
+const placeholder = computed(() => {
+  const key = PLACEHOLDERS[panel.value]
+  return key ? t(key) : ''
+})
 
 const { game, syncedAt } = useLiveGame()
 const { view, fit } = useGameOverlay()
@@ -89,7 +94,7 @@ watch(scale, measure)
 // page fill the theme pins on `html` goes, inline so it wins.
 const fill = computed(() => (plates.value ? 'overflow-hidden bg-transparent' : 'overflow-hidden bg-default'))
 useHead({
-  title: 'TrueMain overlay',
+  title: t('overlay.windowTitle'),
   htmlAttrs: { class: fill, style: computed(() => (plates.value ? 'background-color: transparent' : undefined)) },
   bodyAttrs: { class: fill },
 })
@@ -101,8 +106,8 @@ useHead({
       <OverlayLaneGold v-if="playing || preview" :game="playing ?? sample" />
       <!-- In the preview, marked but not draggable: it goes where the scoreboard is. -->
       <span v-if="preview" class="pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ring-primary/70" />
-      <span v-if="preview" class="pointer-events-none absolute inset-x-0 top-1 mx-auto flex w-fit items-center gap-0.5 rounded bg-primary px-1 py-0.5 text-[10px] font-semibold whitespace-nowrap text-inverted" title="On the scoreboard">
-        <UIcon name="i-lucide-rows-3" class="size-2.5" />{{ chord ?? 'Sample' }}
+      <span v-if="preview" class="pointer-events-none absolute inset-x-0 top-1 mx-auto flex w-fit items-center gap-0.5 rounded bg-primary px-1 py-0.5 text-[10px] font-semibold whitespace-nowrap text-inverted" :title="t('overlay.badge.onScoreboard')">
+        <UIcon name="i-lucide-rows-3" class="size-2.5" />{{ chord ?? t('overlay.badge.sample') }}
       </span>
     </div>
   </div>
@@ -118,7 +123,7 @@ useHead({
       <OverlayPanelSample v-else-if="preview" :panel="panel" />
       <div v-else class="flex items-center gap-2.5">
         <AppMark class="size-4 shrink-0" />
-        <p class="text-[11px] leading-snug text-muted">{{ PLACEHOLDERS[panel] }}</p>
+        <p class="text-[11px] leading-snug text-muted">{{ placeholder }}</p>
       </div>
 
       <!--
@@ -129,7 +134,7 @@ useHead({
       <div v-if="preview" data-tauri-drag-region class="group absolute inset-0 cursor-grab ring-2 ring-inset ring-primary/70">
         <span class="pointer-events-none absolute right-1 bottom-1 flex transition-opacity group-hover:opacity-0 items-center gap-1 rounded bg-primary px-1 py-0.5 text-[10px] font-semibold text-inverted">
           <UIcon name="i-lucide-move" class="size-2.5" />
-          {{ isSample ? 'Sample · drag' : 'Drag' }}<template v-if="chord"> · {{ chord }}</template>
+          {{ isSample ? t('overlay.badge.sampleDrag') : t('overlay.badge.drag') }}<template v-if="chord"> · {{ chord }}</template>
         </span>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { CompositionBuildRequest, CompositionBuildResponse, CompositionSlotInput } from '#shared/types/composition'
 import { describeStaleFetchError } from '#common/utils/errors'
+import { tr } from '#common/utils/i18n'
 import { POSITION_OPTIONS, type ChampionPosition } from '#common/utils/positions'
 
 type DraftSlots = Record<ChampionPosition, number | null>
@@ -70,7 +71,7 @@ export function useMatchupRecommendation(draft: {
     error: responseError,
   }, {
     scope: matchupScope,
-    onStaleFailure: failure => actionToast.failure('Could not update the recommendation', describeStaleFetchError(failure)),
+    onStaleFailure: failure => actionToast.failure(tr('builder.rec.updateFailed'), describeStaleFetchError(failure)),
   })
   const recommendation = computed(() => shownAnswer.value?.recommendation ?? null)
 

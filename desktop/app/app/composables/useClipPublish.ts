@@ -1,4 +1,8 @@
 import type { Clip } from '~/types/recordings'
+import { tr } from '#common/utils/i18n'
+
+const COPIED = { title: 'rec.copied.title', description: 'rec.copied.description', tags: 'rec.copied.tags' } as const
+const COPY_FAILED = { title: 'rec.copyFailed.title', description: 'rec.copyFailed.description', tags: 'rec.copyFailed.tags' } as const
 
 /**
  * Publishing a clip on YouTube through YouTube's own upload page (#1815): the
@@ -20,7 +24,7 @@ export function useClipPublish() {
       await recordingCall<null>('open_youtube_upload')
     }
     catch (error) {
-      failed('YouTube could not be opened', error)
+      failed(tr('rec.err.openYoutube'), error)
     }
   }
 
@@ -29,7 +33,7 @@ export function useClipPublish() {
       await recordingCall<null>('clip_open_youtube', { id })
     }
     catch (error) {
-      failed('The video could not be opened', error)
+      failed(tr('rec.err.openVideo'), error)
     }
   }
 
@@ -39,7 +43,7 @@ export function useClipPublish() {
       await recordingCall<null>('clip_start_drag', { id })
     }
     catch (error) {
-      failed('The clip could not be dragged', error)
+      failed(tr('rec.err.drag'), error)
     }
   }
 
@@ -69,7 +73,7 @@ export function useClipPublish() {
       return true
     }
     catch (error) {
-      failed('The video could not be removed', error)
+      failed(tr('rec.err.removeVideo'), error)
       return false
     }
   }
@@ -77,13 +81,13 @@ export function useClipPublish() {
   /** The page that plays a clip from YouTube (`recording/embed.rs`), or `null` when there is none. */
   const embedUrl = (id: string) => recordingCall<string>('clip_youtube_embed', { id }).catch(() => null)
 
-  async function copy(text: string, what: string) {
+  async function copy(text: string, what: 'title' | 'description' | 'tags') {
     try {
       await navigator.clipboard.writeText(text)
-      toast.add({ title: `${what} copied`, icon: 'i-lucide-check', duration: 1_500 })
+      toast.add({ title: tr(COPIED[what]), icon: 'i-lucide-check', duration: 1_500 })
     }
     catch (error) {
-      failed(`${what} could not be copied`, error)
+      failed(tr(COPY_FAILED[what]), error)
     }
   }
 

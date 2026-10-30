@@ -8,6 +8,7 @@
  * the field folds into its icon; the shortcut stays.
  */
 const open = ref(false)
+const { t } = useLocale()
 
 defineShortcuts({
   meta_k: () => (open.value = !open.value),
@@ -18,17 +19,19 @@ defineShortcuts({
   <header class="@container flex items-center px-4">
     <button
       type="button"
-      aria-label="Search a champion"
+      :aria-label="t('topbar.searchLabel')"
       class="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border border-default bg-elevated px-3 text-sm text-dimmed transition-colors hover:border-accented hover:text-muted @max-sm:ml-auto @max-sm:mr-0 @max-sm:w-8 @max-sm:justify-center @max-sm:px-0"
       @click="open = true"
     >
       <UIcon name="i-lucide-search" class="size-4 shrink-0" />
-      <span class="@max-sm:hidden">Search a champion…</span>
+      <span class="@max-sm:hidden">{{ t('topbar.searchPlaceholder') }}</span>
       <span class="ml-auto flex items-center gap-0.5 @max-sm:hidden">
         <UKbd value="meta" size="sm" />
         <UKbd value="K" size="sm" />
       </span>
     </button>
+
+    <LanguageSwitcher class="ml-2 shrink-0" />
 
     <ChampionSearch v-model:open="open" />
   </header>

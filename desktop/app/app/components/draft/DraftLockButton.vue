@@ -7,6 +7,7 @@
  * the client's rule, which the hint under it leaves to the client.
  */
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 const { writable, kind, hovered, canLock, pending, allyHovering, allyName, lock } = useChampSelectActions()
 
 const shown = computed(() => writable.value && kind.value === 'pick')
@@ -15,9 +16,9 @@ const ally = computed(() => (hovered.value === null ? null : allyHovering(hovere
 const confirming = ref(false)
 
 const reason = computed(() => {
-  if (hovered.value === null) return 'Hover a champion first: the lock commits what the client shows hovered'
-  if (!canLock.value) return 'Your pick turn has not started'
-  return 'TrueMain never locks for you: when the timer runs out, what happens to your hover is the client\'s rule'
+  if (hovered.value === null) return t('draft.lock.hoverFirst')
+  if (!canLock.value) return t('draft.lock.notStarted')
+  return t('draft.lock.never')
 })
 
 function act() {
@@ -43,7 +44,7 @@ function onOpen(open: boolean) {
         <UButton
           size="sm"
           :icon="busy ? 'i-lucide-loader-circle' : 'i-lucide-lock'"
-          :label="hovered !== null ? `Lock in ${nameOf(hovered)}` : 'Lock in'"
+          :label="hovered !== null ? t('draft.lock.labelChampion', { name: nameOf(hovered) }) : t('draft.lock.label')"
           :disabled="!canLock || busy"
           :class="!canLock && 'pointer-events-none'"
           :ui="{ leadingIcon: busy ? 'animate-spin' : undefined }"
@@ -51,10 +52,10 @@ function onOpen(open: boolean) {
 
         <template #content>
           <div v-if="ally && hovered !== null" class="flex max-w-60 flex-col gap-2.5 p-3">
-            <p class="text-sm text-highlighted">{{ nameOf(hovered) }} is {{ allyName(ally) }}'s pick intent. Lock it in anyway?</p>
+            <p class="text-sm text-highlighted">{{ t('draft.lock.confirm', { name: nameOf(hovered), ally: allyName(ally) }) }}</p>
             <div class="flex justify-end gap-2">
-              <UButton size="xs" color="neutral" variant="ghost" label="Cancel" @click="confirming = false" />
-              <UButton size="xs" label="Lock in" @click="act" />
+              <UButton size="xs" color="neutral" variant="ghost" :label="t('draft.action.cancel')" @click="confirming = false" />
+              <UButton size="xs" :label="t('draft.lock.label')" @click="act" />
             </div>
           </div>
         </template>

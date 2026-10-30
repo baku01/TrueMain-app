@@ -1,5 +1,6 @@
 import type { KitRunePage } from '#shared/types/kit'
 import type { RuneTreeResponse, RuneTreeStyle } from '#shared/types/static-data'
+import { tr } from '#common/utils/i18n'
 
 /**
  * A kit's rune page (#2185), edited the way the client edits one: a tree
@@ -101,18 +102,18 @@ export function runeIssues(page: KitRunePage, tree: RuneTreeResponse): string[] 
   const primary = styleOf(tree, page.primaryStyleId)
   const secondary = styleOf(tree, page.secondaryStyleId)
   const issues: string[] = []
-  if (!primary) return ['Choose a primary rune tree.']
-  if (!primary.keystones.includes(page.primaryKeystoneId)) issues.push('The keystone must belong to the primary tree.')
+  if (!primary) return [tr('kit.runeIssue.primaryTree')]
+  if (!primary.keystones.includes(page.primaryKeystoneId)) issues.push(tr('kit.runeIssue.keystone'))
   const primaryPerks = [page.primaryPerk1Id, page.primaryPerk2Id, page.primaryPerk3Id]
-  if (primaryPerks.some((perkId, row) => !primary.subRows[row]?.includes(perkId))) issues.push('Choose one rune on each row of the primary tree.')
+  if (primaryPerks.some((perkId, row) => !primary.subRows[row]?.includes(perkId))) issues.push(tr('kit.runeIssue.primaryRows'))
   if (!secondary || secondary.styleId === primary.styleId) {
-    issues.push('Choose a secondary tree other than the primary one.')
+    issues.push(tr('kit.runeIssue.secondaryTree'))
   }
   else {
     const rows = [page.secondaryPerk1Id, page.secondaryPerk2Id].map(perkId => rowOf(secondary, perkId))
-    if (rows.includes(-1) || rows[0] === rows[1]) issues.push('Choose two secondary runes on two different rows.')
+    if (rows.includes(-1) || rows[0] === rows[1]) issues.push(tr('kit.runeIssue.secondaryRows'))
   }
   const shards = [page.statOffense, page.statFlex, page.statDefense]
-  if (shards.some((perkId, row) => !tree.shardSlots[row]?.includes(perkId))) issues.push('Choose a shard on each row.')
+  if (shards.some((perkId, row) => !tree.shardSlots[row]?.includes(perkId))) issues.push(tr('kit.runeIssue.shards'))
   return issues
 }

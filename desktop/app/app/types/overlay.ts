@@ -1,3 +1,5 @@
+import { tr } from '#common/utils/i18n'
+
 /** Mirrors `OverlayPanel` in `crates/shell-state/src/overlay.rs`: one window each. */
 export type OverlayPanel = 'next-item' | 'win-probability' | 'item-value' | 'stats' | 'objectives' | 'lane-gold'
 export const OVERLAY_PANELS: OverlayPanel[] = ['next-item', 'win-probability', 'stats', 'objectives', 'item-value', 'lane-gold']
@@ -5,15 +7,21 @@ export const OVERLAY_PANELS: OverlayPanel[] = ['next-item', 'win-probability', '
 /** Mirrors `OverlayPanel::on_scoreboard`: placed on the game's scoreboard, never dragged. */
 export const onScoreboard = (panel: OverlayPanel) => panel === 'lane-gold'
 
-/** What each panel is called and shows, for the player choosing them. */
-export const OVERLAY_PANEL_INFO: Record<OverlayPanel, { label: string, description: string }> = {
-  'next-item': { label: 'Build path', description: 'The next item, the gold it still needs, and its components in the order the mains buy them.' },
-  'win-probability': { label: 'Win probability', description: 'Each side\'s chance to win, from the item-gold gap and the map. The whole game.' },
-  'stats': { label: 'Your pace', description: 'CS and gold per minute, beside the median of games at your Solo/Duo tier. Gold reads a little low: used potions and sell-back losses are invisible to the game.' },
-  'item-value': { label: 'Item value', description: 'What each team\'s items are worth, and each lane\'s gap. While TAB is held by default.' },
-  'objectives': { label: 'Objectives', description: 'When the dragon, the Voidgrubs, the Rift Herald and Baron are next up, and the drakes each team holds. From the game clock and the kills the game announces.' },
-  'lane-gold': { label: 'Lane gold', description: 'Each lane\'s item-gold gap on a plate down the middle of the game\'s scoreboard, on its row. While TAB is held by default.' },
+/** The dictionary keys of what each panel is called and shows (`i18n/overlay.ts`). */
+const PANEL_TEXT: Record<OverlayPanel, { label: string, description: string }> = {
+  'next-item': { label: 'overlay.panel.nextItem.label', description: 'overlay.panel.nextItem.description' },
+  'win-probability': { label: 'overlay.panel.winProbability.label', description: 'overlay.panel.winProbability.description' },
+  'stats': { label: 'overlay.panel.stats.label', description: 'overlay.panel.stats.description' },
+  'item-value': { label: 'overlay.panel.itemValue.label', description: 'overlay.panel.itemValue.description' },
+  'objectives': { label: 'overlay.panel.objectives.label', description: 'overlay.panel.objectives.description' },
+  'lane-gold': { label: 'overlay.panel.laneGold.label', description: 'overlay.panel.laneGold.description' },
 }
+
+/** What each panel is called and shows, for the player choosing them, in the active language. */
+export const OVERLAY_PANEL_INFO = Object.fromEntries(OVERLAY_PANELS.map(panel => [panel, {
+  get label() { return tr(PANEL_TEXT[panel].label) },
+  get description() { return tr(PANEL_TEXT[panel].description) },
+}])) as Record<OverlayPanel, { label: string, description: string }>
 
 export type OverlayShow = 'always' | 'whileDead'
 export type OverlayAnchor = 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center-right'

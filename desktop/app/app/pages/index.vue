@@ -16,6 +16,7 @@ import { dailyStandings, latestLpMoves } from '~/utils/lp-history'
  * the client knows every player, TrueMain only the true mains (#1682). With no
  * client there is nothing personal to show, so the patch's best picks stand in.
  */
+const { t } = useT()
 const { state } = useLcuState()
 const { record, games: loadedGames, rankHistory, status, refresh, hasOlder, loadingOlder, loadOlder } = usePlayerRecord()
 const championsById = useStaticChampionsById()
@@ -37,7 +38,6 @@ const rankCurve = computed(() => dailyStandings(rankHistory.value))
 const apexCutoffs = useApexCutoffs(() => record.value?.platformId)
 const nameTag = computed(() => state.value.riotId?.replace('#', '-') ?? '')
 const historyGames = computed(() => gamesIn(loadedGames.value, filter.value))
-const filterLabel = computed(() => QUEUE_FILTERS.find(option => option.value === filter.value)?.label ?? 'All')
 const activity = computed(() => activityFromGames(loadedGames.value))
 
 const today = useToday(historyGames, loadedGames, rankHistory)
@@ -48,7 +48,7 @@ const mainRole = computed(() => mainLane(games.value))
 const { reference: formReference } = useFormBenchmark(mainRole, computed(() => ranked.value?.tier ?? null))
 
 const identity = computed(() => ({
-  gameName: state.value.riotId?.split('#')[0] ?? 'Logging in…',
+  gameName: state.value.riotId?.split('#')[0] ?? t('app.loggingIn'),
   tagLine: state.value.riotId?.split('#')[1] ?? null,
   profileIconId: state.value.profileIconId,
   platformId: record.value?.platformId ?? null,
@@ -63,7 +63,14 @@ const splashUrl = computed(() => {
   return skinId ? splashOfSkin(alias, skinId % 1000) : splashOfAlias(alias)
 })
 
-const queueTabs = QUEUE_FILTERS.map(option => ({ label: option.label, value: option.value }))
+const QUEUE_LABELS = {
+  all: 'dash.queue.all',
+  solo: 'dash.queue.solo',
+  flex: 'dash.queue.flex',
+  normal: 'dash.queue.normal',
+  aram: 'dash.queue.aram',
+} as const satisfies Record<QueueFilter, string>
+const queueTabs = computed(() => QUEUE_FILTERS.map(option => ({ label: t(QUEUE_LABELS[option.value]), value: option.value })))
 
 onMounted(() => refresh())
 watch(() => state.value.riotId, () => refresh())
@@ -92,7 +99,7 @@ watch(() => state.value.phase, (next, previous) => {
         <template #header>
           <div class="flex items-center gap-3">
             <UIcon name="i-lucide-house" class="size-6 text-primary" />
-            <h1 class="text-2xl font-semibold tracking-tight text-highlighted">Dashboard</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('dash.title') }}</h1>
             <div class="ml-auto flex items-center gap-2">
               <UTabs
                 v-model="filter"
@@ -109,7 +116,7 @@ watch(() => state.value.phase, (next, previous) => {
                 variant="ghost"
                 size="sm"
                 :loading="status === 'pending'"
-                aria-label="Read your games again"
+                :aria-label="t('dash.refresh')"
                 @click="refresh(true)"
               />
             </div>
@@ -119,9 +126,9 @@ watch(() => state.value.phase, (next, previous) => {
             color="neutral"
             variant="subtle"
             icon="i-lucide-circle-alert"
-            title="Your client did not share your match history"
-            description="It sometimes needs a moment after logging in."
-            :actions="[{ label: 'Try again', color: 'neutral', variant: 'outline', onClick: () => refresh(true) }]"
+            :title="t('dash.error.title')"
+            :description="t('dash.error.body')"
+            :actions="[{ label: t('dash.error.retry'), color: 'neutral', variant: 'outline', onClick: () => refresh(true) }]"
           />
         </template>
 
@@ -130,7 +137,7 @@ watch(() => state.value.phase, (next, previous) => {
             :games="historyGames"
             :all-games="loadedGames"
             :rank-history="rankHistory"
-            :queue="filterLabel"
+            :queue="filter"
             :pending="pending"
             :has-older="hasOlder"
             :loading-older="loadingOlder"
@@ -181,14 +188,14 @@ watch(() => state.value.phase, (next, previous) => {
               <span class="absolute inline-flex size-full animate-tm-pulse rounded-full bg-primary" />
               <span class="relative inline-flex size-2 rounded-full bg-primary/80" />
             </span>
-            <span class="eyebrow">{{ state.connected ? 'Client found' : 'Companion' }}</span>
+            <span class="eyebrow">{{ state.connected ? t('dash.eyebrow.found') : t('dash.eyebrow.companion') }}</span>
           </span>
           <h1 class="text-4xl font-semibold tracking-tight text-balance text-highlighted">
-            <template v-if="state.connected">Logging <span class="text-primary">in</span>…</template>
-            <template v-else>Waiting for <span class="text-primary">your client</span>.</template>
+            <template v-if="state.connected">{{ t('dash.loggingIn.lead') }} <span class="text-primary">{{ t('dash.loggingIn.accent') }}</span>…</template>
+            <template v-else>{{ t('dash.waiting.lead') }} <span class="text-primary">{{ t('dash.waiting.accent') }}</span>.</template>
           </h1>
           <p class="text-sm text-muted">
-            Start League of Legends: your profile opens here, and the app follows you into champion select.
+            {{ t('dash.waiting.body') }}
           </p>
         </div>
       </section>

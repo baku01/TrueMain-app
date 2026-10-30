@@ -16,6 +16,7 @@ import { addChild, blockedItems, maxDepth, removeSubtree, replaceItem, swapNodes
 const props = defineProps<{ kit: Kit, saving?: boolean }>()
 const emit = defineEmits<{ save: [kit: Kit], cancel: [] }>()
 
+const { t } = useT()
 const { items, summoners, runeTree } = useStaticData()
 const { classes: itemClasses } = useItemClasses()
 
@@ -47,9 +48,9 @@ const pickerGroups = computed<KitItemGroup[]>(() => {
 })
 const pickerTitle = computed(() => {
   switch (target.value?.kind) {
-    case 'starter': return 'Starter item'
-    case 'boots': return 'Boots'
-    default: return target.value?.mode === 'replace' ? 'Replace the item' : 'Add an item'
+    case 'starter': return t('kit.editor.starterItem')
+    case 'boots': return t('kit.editor.boots')
+    default: return target.value?.mode === 'replace' ? t('kit.editor.replaceItem') : t('kit.editor.addItem')
   }
 })
 const blocked = computed(() => {
@@ -86,52 +87,52 @@ const removeBoots = (index: number) => (draft.value = withBoots(draft.value, dra
 <template>
   <div class="space-y-5">
     <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
-      <UFormField label="Name">
-        <UInput v-model="draft.name" :maxlength="KIT_NAME_MAX" placeholder="Into tanks" class="w-72" />
+      <UFormField :label="t('kit.field.name')">
+        <UInput v-model="draft.name" :maxlength="KIT_NAME_MAX" :placeholder="t('kit.editor.namePlaceholder')" class="w-72" />
       </UFormField>
-      <UFormField label="Positions">
+      <UFormField :label="t('kit.field.positions')">
         <RolePicker :positions="draft.positions as ChampionPosition[]" @update:positions="draft.positions = $event" />
       </UFormField>
     </div>
 
     <div class="flex flex-wrap items-start gap-x-8 gap-y-4">
       <div>
-        <p class="stat-label mb-2">Summoners</p>
+        <p class="stat-label mb-2">{{ t('kit.editor.summoners') }}</p>
         <KitSpells v-model="draft.spells" :summoners="summoners" />
       </div>
 
       <div>
-        <p class="stat-label mb-2">Starter</p>
-        <KitItemSlots :item-ids="draft.starter" :items="items" :max="STARTER_MAX" add-label="Add a starter item" @pick="index => (target = { kind: 'starter', index })" @remove="removeStarter" />
+        <p class="stat-label mb-2">{{ t('kit.editor.starter') }}</p>
+        <KitItemSlots :item-ids="draft.starter" :items="items" :max="STARTER_MAX" :add-label="t('kit.editor.addStarter')" @pick="index => (target = { kind: 'starter', index })" @remove="removeStarter" />
       </div>
 
       <div>
-        <p class="stat-label mb-2">Boots</p>
-        <KitItemSlots :item-ids="draft.boots" :items="items" :max="KIT_BOOTS_MAX" add-label="Add boots" @pick="index => (target = { kind: 'boots', index })" @remove="removeBoots" />
+        <p class="stat-label mb-2">{{ t('kit.editor.bootsLabel') }}</p>
+        <KitItemSlots :item-ids="draft.boots" :items="items" :max="KIT_BOOTS_MAX" :add-label="t('kit.editor.addBoots')" @pick="index => (target = { kind: 'boots', index })" @remove="removeBoots" />
       </div>
     </div>
 
     <div>
-      <p class="stat-label mb-2">Runes</p>
+      <p class="stat-label mb-2">{{ t('kit.editor.runes') }}</p>
       <KitRunePage v-if="runeTree" v-model="draft.runes" :tree="runeTree" />
       <USkeleton v-else class="h-40 w-72" />
     </div>
 
     <div>
-      <p class="stat-label mb-2">Items</p>
+      <p class="stat-label mb-2">{{ t('kit.editor.items') }}</p>
       <KitTree :tree="draft.tree" :items="items" :boots="draft.boots" editable @pick="target = { kind: 'tree', ...$event }" @remove="removeNode" @swap="swap" />
     </div>
 
     <div class="flex items-center justify-end gap-2 border-t border-default pt-3">
-      <UButton label="Cancel" color="neutral" variant="ghost" @click="emit('cancel')" />
+      <UButton :label="t('kit.action.cancel')" color="neutral" variant="ghost" @click="emit('cancel')" />
       <!-- What keeps the kit from being saved, on the button it disables. The
            tooltip hangs on a wrapper: a disabled button takes no pointer. -->
       <UTooltip :disabled="!issues.length" :content="{ side: 'top', align: 'end' }">
         <span class="inline-flex" :tabindex="issues.length ? 0 : undefined">
-          <UButton label="Save" icon="i-lucide-check" :disabled="issues.length > 0" :loading="saving" @click="emit('save', draft)" />
+          <UButton :label="t('kit.action.save')" icon="i-lucide-check" :disabled="issues.length > 0" :loading="saving" @click="emit('save', draft)" />
         </span>
         <template #content>
-          <ul class="space-y-1 text-xs" aria-label="Before saving">
+          <ul class="space-y-1 text-xs" :aria-label="t('kit.editor.beforeSaving')">
             <li v-for="issue in issues" :key="issue" class="flex items-center gap-1.5">
               <UIcon name="i-lucide-triangle-alert" class="size-3.5 shrink-0 text-warning" />{{ issue }}
             </li>
@@ -140,6 +141,6 @@ const removeBoots = (index: number) => (draft.value = withBoots(draft.value, dra
       </UTooltip>
     </div>
 
-    <KitItemPicker v-model:open="pickerOpen" :items="items" :groups="pickerGroups" :blocked="blocked" :blocked-note="target?.kind === 'boots' ? 'already chosen' : 'already on this path'" :classes="itemClasses" :title="pickerTitle" @pick="picked" />
+    <KitItemPicker v-model:open="pickerOpen" :items="items" :groups="pickerGroups" :blocked="blocked" :blocked-note="target?.kind === 'boots' ? t('kit.picker.alreadyChosen') : t('kit.picker.alreadyOnPath')" :classes="itemClasses" :title="pickerTitle" @pick="picked" />
   </div>
 </template>

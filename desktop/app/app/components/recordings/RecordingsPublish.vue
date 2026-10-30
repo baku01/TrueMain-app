@@ -2,6 +2,8 @@
 import type { Clip } from '~/types/recordings'
 import { clipPublishText } from '~/utils/clip-publish'
 
+const { t } = useT()
+
 /**
  * "Publish on YouTube" (#1815): YouTube's own upload page does the upload, in
  * the player's browser and under their channel. The dialog walks the four
@@ -60,29 +62,29 @@ async function forgetLink() {
 <template>
   <UModal
     v-model:open="open"
-    title="Publish on YouTube"
-    description="YouTube uploads it from your browser, to the channel you are signed in with. Choose Unlisted or Public: TrueMain then checks the video and can play it here."
+    :title="t('rec.publish.action')"
+    :description="t('rec.publish.description')"
     :ui="{ content: 'max-w-xl', footer: 'justify-end' }"
   >
     <template #body>
       <ol class="flex flex-col gap-5">
         <li class="flex flex-col gap-2">
-          <p class="step">Open YouTube's upload page</p>
-          <UButton icon="i-lucide-youtube" label="Open YouTube" class="self-start" @click="openUpload" />
+          <p class="step">{{ t('rec.publish.step1') }}</p>
+          <UButton icon="i-lucide-youtube" :label="t('rec.publish.openYoutube')" class="self-start" @click="openUpload" />
         </li>
 
         <li class="flex flex-col gap-2">
-          <p class="step">Drag the clip onto it</p>
+          <p class="step">{{ t('rec.publish.step2') }}</p>
           <RecordingsPublishClipCard :clip="clip" :thumbnail="thumbnail" @thumbnail-error="thumbnailFailed = true" />
         </li>
 
         <li class="flex flex-col gap-2">
-          <p class="step">Paste the details</p>
+          <p class="step">{{ t('rec.publish.step3') }}</p>
           <RecordingsPublishDetails v-model:description="description" v-model:tags="tags" :title="title" />
         </li>
 
         <li class="flex flex-col gap-2">
-          <p class="step">Once it is up, paste its link</p>
+          <p class="step">{{ t('rec.publish.step4') }}</p>
           <RecordingsPublishLink
             v-model:link="link"
             :clip="clip"
@@ -97,7 +99,7 @@ async function forgetLink() {
     </template>
 
     <template #footer>
-      <UButton label="Close" color="neutral" variant="ghost" @click="open = false" />
+      <UButton :label="t('rec.close')" color="neutral" variant="ghost" @click="open = false" />
     </template>
   </UModal>
 

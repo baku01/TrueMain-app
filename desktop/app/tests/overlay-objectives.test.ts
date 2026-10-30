@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { tr } from '#common/utils/i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { DrakeElement, GameState, NeutralTimers } from '../app/types/game'
@@ -41,6 +42,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
   for (const [name, value] of Object.entries({ ref, computed, onMounted, onBeforeUnmount })) vi.stubGlobal(name, value)
+  vi.stubGlobal('useT', () => ({ t: tr }))
 })
 
 afterEach(() => {

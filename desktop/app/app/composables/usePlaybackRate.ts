@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import { formatRate, PLAYBACK_RATES } from '~/utils/recording-timeline'
 
 /**
@@ -21,7 +22,7 @@ export function usePlaybackRate(video: Ref<HTMLVideoElement | null>, onSet: () =
   }
 
   const rateItems = computed(() => [...PLAYBACK_RATES].reverse().map(value => ({
-    label: value === 1 ? 'Normal' : formatRate(value),
+    label: value === 1 ? tr('rec.rate.normal') : formatRate(value),
     type: 'checkbox' as const,
     checked: rate.value === value,
     onUpdateChecked: () => setRate(value),

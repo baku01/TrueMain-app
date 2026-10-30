@@ -1,4 +1,5 @@
 import type { Kit } from '#shared/types/kit'
+import { tr } from '#common/utils/i18n'
 import { itemSetFailureToast } from '~/composables/useItemSetImport'
 import { kitItemSetBlocks } from '~/utils/item-set'
 
@@ -23,20 +24,20 @@ export function useKitImport() {
   /** Spells can only be written while a champion select runs. */
   const inChampSelect = computed(() => state.value.connected && state.value.phase === 'ChampSelect')
 
-  const dev = () => (insideTauri() ? null : 'Dev server: nothing was sent to a client.')
+  const dev = () => (insideTauri() ? null : tr('build.devNothingSent'))
 
   async function importItems(kit: Kit, champion: string) {
     if (pending.value) return
     pending.value = 'items'
     try {
-      const name = (itemId: number) => items.value[itemId]?.name ?? `Item ${itemId}`
+      const name = (itemId: number) => items.value[itemId]?.name ?? tr('kit.slots.item', { id: itemId })
       const blocks = kitItemSetBlocks(kit, name, itemId => itemId in items.value)
       if (blocks.length === 0) throw new Error('empty-build')
       if (insideTauri()) {
         const { invoke } = await import('@tauri-apps/api/core')
         await invoke('import_kit_item_set', { championId: kit.championId, champion, blocks })
       }
-      toast.add({ title: 'Items imported', description: dev() ?? `Your kit is the TrueMain item set for ${champion}.`, icon: 'i-lucide-check', color: 'success' })
+      toast.add({ title: tr('kit.import.itemsDone'), description: dev() ?? tr('kit.import.itemsDoneDescription', { champion }), icon: 'i-lucide-check', color: 'success' })
     }
     catch (error) {
       toast.add(itemSetFailureToast(error instanceof Error ? error.message : String(error)))
@@ -54,13 +55,13 @@ export function useKitImport() {
         const { invoke } = await import('@tauri-apps/api/core')
         await invoke('champ_select_spells', { spell1Id: kit.spells[0], spell2Id: kit.spells[1] })
       }
-      toast.add({ title: 'Spells set', description: dev() ?? 'Your kit\'s summoner spells are set in champion select.', icon: 'i-lucide-check', color: 'success' })
+      toast.add({ title: tr('kit.import.spellsDone'), description: dev() ?? tr('kit.import.spellsDoneDescription'), icon: 'i-lucide-check', color: 'success' })
     }
     catch (error) {
       const message = String(error)
       toast.add(message === NOT_IN_CHAMP_SELECT
-        ? { title: 'Not in champion select', description: 'Spells can be set once a champion select runs. Nothing was sent.', icon: 'i-lucide-triangle-alert', color: 'warning' }
-        : { title: 'Could not set the spells', description: message, icon: 'i-lucide-circle-x', color: 'error' })
+        ? { title: tr('kit.import.notInChampSelect'), description: tr('kit.import.notInChampSelectDescription'), icon: 'i-lucide-triangle-alert', color: 'warning' }
+        : { title: tr('kit.import.spellsFailed'), description: message, icon: 'i-lucide-circle-x', color: 'error' })
     }
     finally {
       pending.value = null

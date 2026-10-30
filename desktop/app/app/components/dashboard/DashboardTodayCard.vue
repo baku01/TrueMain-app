@@ -10,6 +10,7 @@ import { formatPlayTime, partialLpNote } from '~/utils/today'
 
 const props = defineProps<{ summary: DaySummary | null }>()
 
+const { t } = useT()
 const partial = computed(() => partialLpNote(props.summary))
 </script>
 
@@ -17,21 +18,21 @@ const partial = computed(() => partialLpNote(props.summary))
   <section v-if="summary" class="flex flex-col gap-2 surface rounded-lg px-4 py-3">
     <div class="flex items-baseline justify-between gap-2">
       <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-        Today
+        {{ t('dash.today.title') }}
       </h2>
       <span class="text-xs tabular-nums text-muted">
-        {{ summary.games }} game{{ summary.games === 1 ? '' : 's' }} · {{ formatPlayTime(summary.seconds) }}
+        {{ t(summary.games === 1 ? 'dash.games.one' : 'dash.games.other', { count: summary.games }) }} · {{ formatPlayTime(summary.seconds) }}
       </span>
     </div>
 
     <div class="flex items-baseline justify-between gap-2 tabular-nums">
       <p class="text-lg font-semibold leading-none text-highlighted">
-        {{ summary.wins }}W – {{ summary.losses }}L
+        {{ t('dash.recordDash', { wins: summary.wins, losses: summary.losses }) }}
       </p>
       <p
         v-if="summary.lp !== null"
         class="flex items-center gap-1.5 text-sm font-semibold text-default"
-        :aria-label="`${summary.lp >= 0 ? 'Gained' : 'Lost'} ${Math.abs(summary.lp)} LP today`"
+        :aria-label="t(summary.lp >= 0 ? 'dash.today.gained' : 'dash.today.lost', { lp: Math.abs(summary.lp) })"
       >
         <WarningDot v-if="partial" :text="partial" />
         <UIcon

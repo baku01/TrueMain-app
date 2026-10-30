@@ -1,4 +1,5 @@
 import type { WinProbabilityTimeline } from '#shared/types/win-probability'
+import { tr } from './i18n'
 import { objectiveMarkers, type ObjectiveMarker } from './timeline-objectives'
 
 /**
@@ -75,7 +76,7 @@ export type AxisRow =
 
 /** A kill closer than this to the same killer's previous one extends their multi-kill, as the game counts it. */
 const MULTI_KILL_MS = 10_000
-const MULTI_KILLS = ['Kill', 'Double kill', 'Triple kill', 'Quadra kill', 'Pentakill']
+const MULTI_KILLS = ['match.kills.single', 'match.kills.double', 'match.kills.triple', 'match.kills.quadra', 'match.kills.penta']
 
 /** A cluster's events as its tooltip lists them, in time order. */
 export function axisRows(cluster: AxisCluster): AxisRow[] {
@@ -89,11 +90,11 @@ export function axisRows(cluster: AxisCluster): AxisRow[] {
     const run = event.killerId === null ? undefined : lastKill.get(event.killerId)
     if (run && event.ms - run.ms <= MULTI_KILL_MS) {
       run.row.victimIds.push(event.victimId)
-      run.row.label = MULTI_KILLS[Math.min(run.row.victimIds.length, MULTI_KILLS.length) - 1]!
+      run.row.label = tr(MULTI_KILLS[Math.min(run.row.victimIds.length, MULTI_KILLS.length) - 1]!)
       run.ms = event.ms
       continue
     }
-    const row = { type: 'kill' as const, ms: event.ms, ours: event.ours, killerId: event.killerId, victimIds: [event.victimId], label: event.killerId === null ? 'Executed' : 'Kill' }
+    const row = { type: 'kill' as const, ms: event.ms, ours: event.ours, killerId: event.killerId, victimIds: [event.victimId], label: tr(event.killerId === null ? 'match.kills.executed' : 'match.kills.single') }
     rows.push(row)
     if (event.killerId !== null) lastKill.set(event.killerId, { row, ms: event.ms })
   }

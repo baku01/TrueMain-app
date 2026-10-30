@@ -1,6 +1,7 @@
 import type { ProfileIdentity } from '#shared/types/profile'
 import type { BuildOption, CompositionBuildRequest } from '~/types/build'
 import { positionLabel } from '#common/utils/positions'
+import { tr } from '#common/utils/i18n'
 
 /**
  * A true main's own build on the champion, for `BuildView`: the main clicked in
@@ -78,12 +79,12 @@ export function useMainBuildOption(options: {
 
   /** Where their build was read: this draft, or a patch and a lane when it is not the one asked for. */
   const mainScope = computed(() => {
-    if (mainDraft.value) return 'against this draft'
+    if (mainDraft.value) return tr('build.main.againstDraft')
     const answer = mainAnswer.value
     if (!answer) return null
     const lane = answer.position && answer.position !== position.value ? positionLabel(answer.position, { short: true }) ?? answer.position : null
-    const elsewhere = draftRequest.value ? 'no game against this draft' : null
-    return [answer.patch ? `Patch ${answer.patch}` : null, lane ? `on ${lane}` : null, elsewhere].filter(Boolean).join(' · ')
+    const elsewhere = draftRequest.value ? tr('build.main.noGameAgainstDraft') : null
+    return [answer.patch ? tr('build.main.patch', { patch: answer.patch }) : null, lane ? tr('build.main.onLane', { lane }) : null, elsewhere].filter(Boolean).join(' · ')
   })
 
   return { mainNameTag, onMain, selectMain, mainPending, mainFailed, mainDraft, mainOption, mainScope }

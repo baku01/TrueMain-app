@@ -3,6 +3,8 @@ import type { LibraryItem } from '~/utils/recording-library'
 import { formatRelativeTime } from '#common/utils/relativeTime'
 import { formatClock } from '~/utils/recording-moments'
 
+const { t } = useT()
+
 /**
  * A card's 16:9 picture: the recording's thumbnail, else the champion's splash
  * dimmed (a game still recording has neither, and the shell may not have cut
@@ -47,11 +49,11 @@ const ago = computed(() => formatRelativeTime(new Date(props.item.atMs).toISOStr
     >
       <template v-if="item.status === 'recording'">
         <span class="size-1.5 animate-tm-pulse rounded-full bg-red-500" />
-        Recording
+        {{ t('rec.thumb.recording') }}
       </template>
       <template v-else>
         <UIcon name="i-lucide-loader-circle" class="size-3" />
-        Finalising
+        {{ t('rec.thumb.finalising') }}
       </template>
     </span>
 
@@ -62,10 +64,10 @@ const ago = computed(() => formatRelativeTime(new Date(props.item.atMs).toISOStr
     <span
       v-if="!item.videoOnDisk"
       class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-highlighted"
-      title="Its video is no longer on this PC: it plays from YouTube"
+      :title="t('rec.thumb.youtubeTitle')"
     >
       <UIcon name="i-lucide-youtube" class="size-3" />
-      On YouTube
+      {{ t('rec.thumb.onYoutube') }}
     </span>
 
     <div class="absolute bottom-1.5 right-1.5 flex items-center gap-1 text-[11px] font-medium tabular-nums">

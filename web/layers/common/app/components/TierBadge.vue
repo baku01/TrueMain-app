@@ -29,6 +29,7 @@ const TIER_CLASS: Record<string, string> = {
   D: 'text-tier-d',
 }
 
+const { t } = useT()
 const normalized = computed(() => props.tier?.toUpperCase() ?? '')
 const isKnown = computed(() => normalized.value in TIER_CLASS)
 // Unknown / empty tiers (e.g. a row that predates tiering) stay a muted dash
@@ -36,7 +37,7 @@ const isKnown = computed(() => normalized.value in TIER_CLASS)
 // as a measured one.
 const colorClass = computed(() => TIER_CLASS[normalized.value] ?? 'text-muted')
 const label = computed(() => (isKnown.value ? normalized.value : '–'))
-const ariaLabel = computed(() => (isKnown.value ? `Tier ${normalized.value}` : 'Tier unknown'))
+const ariaLabel = computed(() => (isKnown.value ? tr('common.tierLetter', { tier: normalized.value }) : tr('common.tierUnknown')))
 </script>
 
 <template>
@@ -47,7 +48,7 @@ const ariaLabel = computed(() => (isKnown.value ? `Tier ${normalized.value}` : '
     :aria-label="ariaLabel"
   >
     <span class="font-mono text-[22px] font-bold tracking-tight drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)]">{{ label }}</span>
-    <span class="mt-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-default/80">tier</span>
+    <span class="mt-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-default/80">{{ t('common.tier') }}</span>
   </span>
   <span
     v-else

@@ -9,6 +9,8 @@ import { resolveWinProbability } from '#common/utils/win-probability-swing'
 import { hasTimelineCurves } from '#common/utils/timeline-curves'
 import { MATCH_DETAIL_SOURCE } from '#common/utils/match-detail-source'
 
+const { t } = useT()
+
 /**
  * Inline match-detail body rendered inside an expanded match row, on the site's
  * profile and the desktop dashboard alike. Reads the game through the page's
@@ -58,10 +60,10 @@ const curvesTimeline = computed(() => {
 })
 
 const tabItems = computed(() => [
-  { value: 'general', label: 'Overview', slot: 'general' as const },
-  ...(winProbability.value || curvesTimeline.value ? [{ value: 'timeline', label: 'Timeline', slot: 'timeline' as const }] : []),
-  { value: 'details', label: 'Build', slot: 'details' as const },
-  { value: 'runes', label: 'Runes', slot: 'runes' as const },
+  { value: 'general', label: t('match.panel.overview'), slot: 'general' as const },
+  ...(winProbability.value || curvesTimeline.value ? [{ value: 'timeline', label: t('match.panel.timeline'), slot: 'timeline' as const }] : []),
+  { value: 'details', label: t('match.panel.build'), slot: 'details' as const },
+  { value: 'runes', label: t('match.panel.runes'), slot: 'runes' as const },
 ])
 </script>
 
@@ -84,7 +86,7 @@ const tabItems = computed(() => [
       v-else-if="notFound || !detail"
       size="sm"
       icon="i-lucide-file-question"
-      description="Match details unavailable."
+      :description="t('match.panel.unavailable')"
     />
 
     <!-- Full-width pills, one per tab: the dashboard's segmented control. -->

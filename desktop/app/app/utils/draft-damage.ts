@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import type { DamageProfile, TeamDamage } from '~/utils/damage-profile'
 import { BUILT_AXES } from '~/utils/built-reasons'
 import { teamDamage } from '~/utils/damage-profile'
@@ -72,8 +73,8 @@ export function damageNote(allies: (DamageProfile | null)[], candidate: DamagePr
   const { allyMagicShareLow: low, allyMagicShareHigh: high } = DAMAGE_THRESHOLDS
   const teamBand = band(team.magicShare, low, high)
   const pickBand = band(candidate.magicShare, low, high)
-  if (teamBand === 'Low' && pickBand === 'High') return { adds: 'magic', text: 'Adds magic damage — your team is mostly physical' }
-  if (teamBand === 'High' && pickBand === 'Low') return { adds: 'physical', text: 'Adds physical damage — your team is mostly magic' }
+  if (teamBand === 'Low' && pickBand === 'High') return { adds: 'magic', text: tr('draft.damage.noteMagic') }
+  if (teamBand === 'High' && pickBand === 'Low') return { adds: 'physical', text: tr('draft.damage.notePhysical') }
   return null
 }
 

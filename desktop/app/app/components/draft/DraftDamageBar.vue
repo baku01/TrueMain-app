@@ -23,6 +23,7 @@ const props = defineProps<{
 
 const { profileOf } = useDamageProfiles()
 const { nameOf } = useChampionStatics()
+const { t } = useT()
 
 const rows = computed(() => props.picks.map(pick => ({ ...pick, profile: profileOf(pick.championId, pick.position) })))
 const preview = computed(() => rows.value.find(row => row.preview) ?? null)
@@ -56,17 +57,28 @@ const tick = computed(() => (preview.value && isUsable(withoutPreview.value) ? `
 
 const percent = (share: number | null) => formatPercentageOrDash(share, 0)
 
+const UNMEASURED_CLASS = {
+  physical: 'draft.damage.unmeasuredPhysical',
+  magic: 'draft.damage.unmeasuredMagic',
+  mixed: 'draft.damage.unmeasuredMixed',
+} as const
+
 /** A pick's line in the hover: its split, or why it has none. */
 function detail(profile: DamageProfile | null) {
-  if (!profile) return 'unmeasured'
-  if (profile.source === 'fallback') return profile.damageClass ? `unmeasured · ${profile.damageClass}` : 'unmeasured'
+  if (!profile) return t('draft.damage.unmeasured')
+  if (profile.source === 'fallback') return profile.damageClass ? t(UNMEASURED_CLASS[profile.damageClass]) : t('draft.damage.unmeasured')
   return null
 }
 
+const sideLabel = computed(() => (props.team === 'ally' ? t('draft.damage.yourTeam') : t('draft.damage.enemyTeam')))
+
 const label = computed(() => {
-  const side = props.team === 'ally' ? 'Your team' : 'Enemy team'
-  if (!lead.value) return `${side}: damage mix not known yet`
-  return `${side}: ${percent(lead.value.share)} ${lead.value.kind} damage`
+  const side = sideLabel.value
+  if (!lead.value) return t('draft.damage.unknown', { side })
+  const share = percent(lead.value.share)
+  if (lead.value.kind === 'physical') return t('draft.damage.labelPhysical', { side, share })
+  if (lead.value.kind === 'magic') return t('draft.damage.labelMagic', { side, share })
+  return t('draft.damage.labelTrue', { side, share })
 })
 </script>
 
@@ -86,21 +98,21 @@ const label = computed(() => {
         <div v-if="tick" class="absolute inset-y-0 w-px bg-ink-950" :style="{ left: tick }" />
       </div>
       <span v-if="lead" class="shrink-0 text-xs tabular-nums text-muted">
-        {{ percent(lead.share) }} <span :class="TEXT[lead.kind]">{{ lead.kind === 'true' ? 'true' : lead.kind === 'physical' ? 'AD' : 'AP' }}</span>
+        {{ percent(lead.share) }} <span :class="TEXT[lead.kind]">{{ lead.kind === 'true' ? t('draft.damage.unitTrue') : lead.kind === 'physical' ? t('draft.damage.unitAd') : t('draft.damage.unitAp') }}</span>
       </span>
       <span v-else-if="rows.length" class="shrink-0 text-xs text-dimmed">–</span>
     </div>
 
     <template #content>
       <div class="w-72 space-y-1.5 p-2.5">
-        <p class="stat-label">{{ team === 'ally' ? 'Your team' : 'Enemy team' }} · damage</p>
-        <p v-if="!rows.length" class="text-xs text-muted">No pick locked yet.</p>
+        <p class="stat-label">{{ t('draft.damage.heading', { side: sideLabel }) }}</p>
+        <p v-if="!rows.length" class="text-xs text-muted">{{ t('draft.damage.noPick') }}</p>
         <div v-for="row in rows" :key="row.championId" class="flex items-center gap-2" :class="row.preview && 'opacity-70'">
           <ChampionPortrait :champion-id="row.championId" size="sm" class="size-6! shrink-0 rounded!" />
           <span class="min-w-0 flex-1 truncate text-xs text-highlighted">
             {{ nameOf(row.championId) }}
-            <span v-if="row.preview" class="text-dimmed">· your pick</span>
-            <UBadge v-if="row.profile?.flexDamage" color="neutral" variant="soft" size="sm" class="ml-1 px-1 py-0 text-[10px]" title="Built both ways: this is the blend of its AD and AP games">AD/AP</UBadge>
+            <span v-if="row.preview" class="text-dimmed">{{ t('draft.damage.yourPick') }}</span>
+            <UBadge v-if="row.profile?.flexDamage" color="neutral" variant="soft" size="sm" class="ml-1 px-1 py-0 text-[10px]" :title="t('draft.damage.flexTitle')">AD/AP</UBadge>
           </span>
           <span v-if="detail(row.profile)" class="shrink-0 text-[11px] text-dimmed">{{ detail(row.profile) }}</span>
           <span v-else class="shrink-0 text-[11px] tabular-nums">
@@ -113,8 +125,8 @@ const label = computed(() => {
             </template>
           </span>
         </div>
-        <p v-if="rows.length && !usable" class="pt-1 text-[11px] text-dimmed">{{ (mix?.unmeasured ?? 0) >= 2 ? 'Two picks are not measured: no team figure.' : 'No measured pick yet.' }}</p>
-        <p class="pt-1 text-[11px] text-dimmed">Physical / magic / true, each pick weighted by the damage it deals. High-elo games.</p>
+        <p v-if="rows.length && !usable" class="pt-1 text-[11px] text-dimmed">{{ (mix?.unmeasured ?? 0) >= 2 ? t('draft.damage.twoUnmeasured') : t('draft.damage.noneMeasured') }}</p>
+        <p class="pt-1 text-[11px] text-dimmed">{{ t('draft.damage.legend') }}</p>
       </div>
     </template>
   </UPopover>

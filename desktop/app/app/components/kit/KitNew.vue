@@ -15,6 +15,7 @@ import { defaultRunePage } from '~/utils/kit-runes'
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ create: [kit: Kit] }>()
 
+const { t } = useT()
 const championsById = useStaticChampionsById()
 const champions = computed(() => [...championsById.value.values()])
 const { store } = useKits()
@@ -38,7 +39,7 @@ function create() {
   const lanes = positions.value.map(position => positionLabel(position, { short: true })).join(' · ')
   const taken = store.value.kits.filter(kit => kit.championId === id).map(kit => kit.name)
   const kit = kitFromBuild(
-    { championId: id, positions: [...positions.value], name: freeName(`My ${lanes}`, taken) },
+    { championId: id, positions: [...positions.value], name: freeName(t('kit.new.defaultName', { lanes }), taken) },
     response.value?.builds[0]?.core ?? null,
     runeTree.value ? defaultRunePage(runeTree.value) : null,
   )
@@ -49,21 +50,21 @@ function create() {
 </script>
 
 <template>
-  <UModal v-model:open="open" title="New kit" description="It starts from TrueMain's build on the first position; you edit it from there.">
+  <UModal v-model:open="open" :title="t('kit.new.button')" :description="t('kit.new.description')">
     <template #body>
       <div class="space-y-4">
-        <UFormField label="Champion">
-          <ChampionPicker v-model:champion-id="championId" :champions="champions" placeholder="Search a champion" trigger-class="w-64" :clearable="false" />
+        <UFormField :label="t('kit.new.champion')">
+          <ChampionPicker v-model:champion-id="championId" :champions="champions" :placeholder="t('kit.new.searchChampion')" trigger-class="w-64" :clearable="false" />
         </UFormField>
-        <UFormField label="Positions" description="The kit is offered on each of them.">
+        <UFormField :label="t('kit.field.positions')" :description="t('kit.new.positionsHint')">
           <RolePicker v-model:positions="positions" />
         </UFormField>
       </div>
     </template>
     <template #footer>
       <div class="flex w-full justify-end gap-2">
-        <UButton label="Cancel" color="neutral" variant="ghost" @click="open = false" />
-        <UButton label="Create" icon="i-lucide-plus" :disabled="!ready" :loading="pending && championId !== null && positions.length > 0" @click="create" />
+        <UButton :label="t('kit.action.cancel')" color="neutral" variant="ghost" @click="open = false" />
+        <UButton :label="t('kit.new.create')" icon="i-lucide-plus" :disabled="!ready" :loading="pending && championId !== null && positions.length > 0" @click="create" />
       </div>
     </template>
   </UModal>

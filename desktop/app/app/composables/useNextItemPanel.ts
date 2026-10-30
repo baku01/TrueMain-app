@@ -3,7 +3,8 @@ import type { ChampionItemContextAxis } from '#shared/types/item-context'
 import type { GameState } from '~/types/game'
 import type { NextItemCandidate, NextItemReason } from '~/utils/next-item'
 import { formatPercentage } from '#shared/utils/ddragon'
-import { itemContextAxisPhrase } from '#shared/utils/item-context'
+import { tr } from '#common/utils/i18n'
+import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
 import { buildPath } from '~/utils/build-path'
 import { builtAxisPhrase } from '~/utils/built-reasons'
 import { goldToComplete, starterCost } from '~/utils/next-item'
@@ -51,7 +52,7 @@ export function useNextItemPanel(game: Ref<GameState>) {
   const boots = computed(() => (order.value.some(step => step.isBoots) ? [] : answer.value?.boots?.candidates.slice(0, 3) ?? []))
   const starter = computed(() => (kit.value ? kitStarter.value : mainsStarter.value))
 
-  const name = (itemId: number) => statics.value[itemId]?.name ?? `Item ${itemId}`
+  const name = (itemId: number) => statics.value[itemId]?.name ?? tr('kit.slots.item', { id: itemId })
   const percent = (share: number) => formatPercentage(share, 0)
 
   /**
@@ -62,7 +63,7 @@ export function useNextItemPanel(game: Ref<GameState>) {
   function reason(candidate: NextItemCandidate | null) {
     const strongest: NextItemReason | undefined = candidate?.reasons[0]
     if (!strongest) return null
-    return itemContextAxisPhrase({ axis: strongest.axis, bucket: strongest.bucket } as ChampionItemContextAxis)
+    return localizedAxisPhrase({ axis: strongest.axis, bucket: strongest.bucket } as ChampionItemContextAxis)
       ?? builtAxisPhrase(strongest.axis, strongest.bucket)
   }
   const why = computed(() => reason(top.value))

@@ -4,6 +4,8 @@ import { indexItemContext } from '#shared/utils/item-context'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import { isLoadingStatus } from '#common/utils/async-data'
 
+const { t } = useT()
+
 /**
  * Full composition recommendation (#563): the same core panels the champion page
  * renders (spells, starter, skill order, boots, core path, runes) plus the pruned
@@ -72,11 +74,11 @@ const itemContextIndex = computed(() => indexItemContext(itemContext.value?.item
 // build into this opponent", not "what does this champion build".
 const headline = computed(() => {
   if (!props.championName) {
-    return 'Recommended build'
+    return t('builder.panel.headline')
   }
   return props.opponentName
-    ? `Recommended build for ${props.championName} vs ${props.opponentName}`
-    : `Recommended build for ${props.championName}`
+    ? t('builder.panel.headlineVs', { champion: props.championName, opponent: props.opponentName })
+    : t('builder.panel.headlineFor', { champion: props.championName })
 })
 
 const draftRequested = computed(() => confidence.value.maxPossibleScore > 0)
@@ -88,10 +90,10 @@ const lowSimilarity = computed(() =>
 // just the fact, no advisory tail (the numbers strip already qualifies it).
 const lowDataMessage = computed(() => {
   if (lowSample.value) {
-    return `Only ${confidence.value.sampleSize} similar game${confidence.value.sampleSize === 1 ? '' : 's'}`
+    return t(confidence.value.sampleSize === 1 ? 'builder.panel.onlyOne' : 'builder.panel.onlyMany', { count: confidence.value.sampleSize })
   }
   if (lowSimilarity.value) {
-    return 'Few games resemble this draft'
+    return t('builder.panel.fewSimilar')
   }
   return null
 })
@@ -155,7 +157,7 @@ const gamesDrawerOpen = computed({
         :summoners-pending="isLoadingStatus(summonersStatus)"
         :rune-tree="runeTree"
         :item-context="itemContextIndex"
-        no-runes-message="No rune data in the sampled games."
+        :no-runes-message="t('builder.panel.noRunes')"
       />
 
       <!-- Build tree — same component as the champion page, recomputed from the

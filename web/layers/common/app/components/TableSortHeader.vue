@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ sort: [] }>()
 
+const { t } = useT()
 const sorted = computed(() => props.column.getIsSorted())
 
 const icon = computed(() => {
@@ -40,7 +41,7 @@ const JUSTIFY = { start: 'justify-start', center: 'justify-center', end: 'justif
       variant="ghost"
       size="xs"
       :trailing-icon="icon"
-      :aria-label="`Sort by ${title ?? label}`"
+      :aria-label="t('common.sortBy', { column: title ?? label })"
       :title="title"
       class="-mx-1 gap-0.5 px-1 py-1 text-[10px] font-medium uppercase leading-[1.2] tracking-[0.12em]"
       :class="sorted ? 'text-highlighted' : 'text-dimmed hover:text-default'"

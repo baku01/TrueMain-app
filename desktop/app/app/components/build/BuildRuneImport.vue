@@ -11,11 +11,12 @@ const props = defineProps<{
   champion: string
 }>()
 
+const { t } = useT()
 const { available, pending, done, importRunes } = useRuneImport()
 </script>
 
 <template>
-  <UTooltip v-if="available" :text="done ? 'Imported' : 'Import runes into the client'" :content="{ side: 'left' }">
+  <UTooltip v-if="available" :text="done ? t('build.imported') : t('build.importRunes')" :content="{ side: 'left' }">
     <UButton
       size="xs"
       color="neutral"
@@ -23,7 +24,7 @@ const { available, pending, done, importRunes } = useRuneImport()
       square
       :icon="done ? 'i-lucide-check' : 'i-lucide-download'"
       :loading="pending"
-      aria-label="Import runes into the client"
+      :aria-label="t('build.importRunes')"
       class="text-dimmed hover:text-highlighted"
       @click="importRunes(props.page, props.champion)"
     />

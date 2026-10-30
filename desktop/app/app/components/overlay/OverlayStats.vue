@@ -16,6 +16,7 @@ import { formatTierName } from '#common/utils/tiers'
  * Our gold reads a little under gold earned (consumables used and sell-back
  * losses are invisible to the API), so the gold arrow leans low, never high.
  */
+const { t } = useT()
 const props = defineProps<{ game: GameState, reference?: PaceReference | null }>()
 
 const samples = computed(() => props.game.pace.samples)
@@ -104,7 +105,7 @@ const gradient = `pace-${useId()}`
       {{ tier }} {{ comparisons.cs.median }}
     </span>
     <div class="flex flex-col border-t border-default pt-2">
-      <span class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">Gold/min</span>
+      <span class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">{{ t('overlay.stats.goldPerMinute') }}</span>
       <span class="stat-value text-xl leading-none tabular-nums text-stat-gold">{{ last ? goldPerMinute : '–' }}</span>
       <span v-if="tier && comparisons.gold" class="mt-1 flex items-center gap-1 whitespace-nowrap text-[10px] leading-none tabular-nums text-muted">
         <UIcon :name="comparisons.gold.icon" :class="['size-2.5 shrink-0', comparisons.gold.tone]" />

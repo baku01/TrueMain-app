@@ -4,6 +4,8 @@ import type { RecapCurvePoint, RecapTurningPoint } from '~/utils/recording-win-p
 import { formatGameClock, formatSwingPoints } from '#common/utils/win-probability-swing'
 import { curveAt } from '~/utils/recording-win-probability'
 
+const { t } = useT()
+
 /**
  * The recap timeline's win-probability lane (#1911): the player's side's
  * chance across the video, the half above even tinted in the ally's blue and
@@ -71,7 +73,7 @@ const dots = computed(() => [...props.turningPoints]
       :class="point.delta >= 0 ? 'bg-ally' : 'bg-enemy'"
       :style="{ left: pct(point.videoMs), top: `${top}px` }"
       :title="`${point.label} · ${formatSwingPoints(point.delta)} · ${formatGameClock(point.gameMs)}`"
-      :aria-label="`${point.label}, ${formatSwingPoints(point.delta)} points, at ${formatGameClock(point.gameMs)} of the game`"
+      :aria-label="t('rec.timeline.swingAria', { label: point.label, delta: formatSwingPoints(point.delta), time: formatGameClock(point.gameMs) })"
       @pointerdown.stop
       @click="emit('jump', point)"
     />

@@ -5,6 +5,8 @@ import { itemSlots } from '#shared/utils/build'
 import type { ItemContextCard } from '#shared/utils/item-context'
 import { resolveItemContext } from '#shared/utils/item-context'
 
+const { t } = useT()
+
 const props = defineProps<{
   path: BuildItemPath | null
   itemsMap: Record<number, StaticItemData>
@@ -36,7 +38,7 @@ function contextFor(itemId: number, index: number): ItemContextCard | undefined 
        its parent's A2 area. -->
   <div class="flex flex-col items-center">
     <h2 class="text-sm font-medium text-muted">
-      Build path
+      {{ t('champion.core.buildPath') }}
     </h2>
     <div class="mt-2 flex h-9 items-center justify-center gap-1 overflow-hidden sm:w-build-path">
       <template
@@ -63,7 +65,7 @@ function contextFor(itemId: number, index: number): ItemContextCard | undefined 
         v-if="!items.length"
         class="text-sm text-muted"
       >
-        No data
+        {{ t('common.noData') }}
       </span>
     </div>
   </div>

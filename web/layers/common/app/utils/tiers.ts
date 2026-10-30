@@ -1,3 +1,4 @@
+import { tr } from '#common/utils/i18n'
 import { formatCount } from '#shared/utils/counts'
 import { ELO_TIERS } from '#common/utils/elo-brackets'
 
@@ -103,7 +104,22 @@ export function isApexTier(tier: string | null | undefined): boolean {
  * API spell tiers in capitals; every label on screen is title case, the way
  * the client itself prints a rank.
  */
+const TIER_NAME_KEYS: Record<string, string> = {
+  IRON: 'common.tier.iron',
+  BRONZE: 'common.tier.bronze',
+  SILVER: 'common.tier.silver',
+  GOLD: 'common.tier.gold',
+  PLATINUM: 'common.tier.platinum',
+  EMERALD: 'common.tier.emerald',
+  DIAMOND: 'common.tier.diamond',
+  MASTER: 'common.tier.master',
+  GRANDMASTER: 'common.tier.grandmaster',
+  CHALLENGER: 'common.tier.challenger',
+}
+
 export function formatTierName(tier: string): string {
+  const key = TIER_NAME_KEYS[tier.toUpperCase()]
+  if (key) return tr(key)
   return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase()
 }
 
