@@ -23,6 +23,7 @@ const global = {
     ChampionPicker: { props: ['championId', 'champions'], emits: ['update:championId'], template: '<button class="champion" :data-count="champions.length" @click="$emit(\'update:championId\', 103)" />' },
     RolePicker: { props: ['positions'], emits: ['update:positions'], template: '<button class="roles" @click="$emit(\'update:positions\', [\'TOP\', \'MIDDLE\'])" />' },
     UFormField: { template: '<label><slot /></label>' },
+    EmptyState: { props: ['title', 'description'], template: '<div class="empty"><p>{{ title }}</p><p>{{ description }}</p><slot /></div>' },
     UButton: { props: ['label', 'disabled', 'loading'], emits: ['click'], template: '<button class="u-button" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>' },
     UBadge: { props: ['label'], template: '<span class="badge">{{ label }}</span>' },
     UIcon: true,
@@ -89,7 +90,7 @@ describe('My kits', () => {
 
   it('makes a kit for the champion and positions picked, from TrueMain\'s build on the first', async () => {
     const wrapper = mount(KitsPage, { global })
-    expect(wrapper.text()).toContain('Your own builds')
+    expect(wrapper.text()).toContain('Your own build')
     await wrapper.findAll('.u-button').find(button => button.text() === 'New kit')!.trigger('click')
 
     const create = () => wrapper.findAll('.modal .u-button').find(button => button.text() === 'Create')!

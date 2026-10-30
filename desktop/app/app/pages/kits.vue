@@ -47,7 +47,7 @@ async function saveEdited(kit: Kit) {
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4 p-5">
     <div class="flex items-center gap-3">
-      <UIcon name="i-lucide-backpack" class="size-6 text-primary" />
+      <UIcon name="i-ph-backpack-light" class="size-6 text-primary" />
       <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('kit.page.title') }}</h1>
       <UButton class="ml-auto" :label="t('kit.new.button')" icon="i-lucide-plus" size="sm" :disabled="editing !== null" @click="creating = true" />
     </div>
@@ -74,12 +74,9 @@ async function saveEdited(kit: Kit) {
       </div>
     </div>
 
-    <div v-else class="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-      <UIcon name="i-lucide-backpack" class="size-6 text-dimmed" />
-      <p class="text-sm text-muted">{{ t('kit.page.empty') }}</p>
-      <p class="max-w-sm text-xs text-dimmed">{{ t('kit.empty.hint') }}</p>
-      <UButton class="mt-2" :label="t('kit.new.button')" icon="i-lucide-plus" size="sm" @click="creating = true" />
-    </div>
+    <EmptyState v-else icon="i-ph-backpack-light" :title="t('kit.page.empty')" :description="t('kit.empty.hint')">
+      <UButton :label="t('kit.new.button')" icon="i-lucide-plus" @click="creating = true" />
+    </EmptyState>
 
     <KitNew v-model:open="creating" @create="kit => (editing = kit)" />
   </div>

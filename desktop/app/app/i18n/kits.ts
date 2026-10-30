@@ -5,8 +5,8 @@ export default {
   'en': {
     'kit.page.champion': 'Champion {id}',
     'kit.page.title': 'My kits',
-    'kit.page.empty': 'Your own builds: an item tree, a rune page and two spells, for a champion on the positions you pick',
-    'kit.empty.hint': 'Champion select offers it beside TrueMain\'s builds; picked there, the overlay follows its items.',
+    'kit.page.empty': 'No kit yet',
+    'kit.empty.hint': 'Your own build — an item tree, a rune page and two spells — for a champion on the positions you pick. Champion select offers it beside TrueMain\'s builds; picked there, the overlay follows its items.',
     'kit.new.button': 'New kit',
     'kit.new.defaultName': 'My {lanes}',
     'kit.new.defaultNameBare': 'My kit',
@@ -165,8 +165,8 @@ export default {
   'pt-BR': {
     'kit.page.champion': 'Campeão {id}',
     'kit.page.title': 'Meus kits',
-    'kit.page.empty': 'Suas próprias builds: uma árvore de itens, uma página de runas e dois feitiços, para um campeão nas posições que você escolher',
-    'kit.empty.hint': 'A seleção de campeões a oferece ao lado das builds do TrueMain; escolhida lá, o overlay acompanha os itens dela.',
+    'kit.page.empty': 'Nenhum kit ainda',
+    'kit.empty.hint': 'Sua própria build — uma árvore de itens, uma página de runas e dois feitiços — para um campeão nas posições que você escolher. A seleção de campeões a oferece ao lado das builds do TrueMain; escolhida lá, o overlay acompanha os itens dela.',
     'kit.new.button': 'Novo kit',
     'kit.new.defaultName': 'Meu {lanes}',
     'kit.new.defaultNameBare': 'Meu kit',
