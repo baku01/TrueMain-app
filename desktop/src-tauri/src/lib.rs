@@ -12,6 +12,7 @@ mod itemsets;
 mod kits;
 mod loading;
 mod menu;
+mod news;
 mod overlay;
 mod record;
 mod recording;
@@ -407,7 +408,9 @@ pub fn run() {
             champselect::champ_select_choices,
             champselect::champ_select_spells,
             telemetry::telemetry_page,
-            menu::set_menu_language
+            menu::set_menu_language,
+            news::riot_patch_notes_page,
+            news::open_patch_note
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.

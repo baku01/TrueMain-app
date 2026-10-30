@@ -4,9 +4,75 @@
 /* The site's design system — palette, data axis, elevation ladder, utilities. */
 @import "../../../../../web/layers/common/app/assets/css/theme.css";
 
-/* The companion app is dark-only, like the site: it sits next to a game. */
+/*
+ * The app's accent is blue. The site's palette names its accent `rosegold`, and
+ * every use of it — the primary colour, the focus rings, the glows — reads
+ * that ramp through its variables, so the app repoints the ramp rather than
+ * every use (the site, which shares the layer, keeps its own).
+ */
+:root {
+  --color-rosegold-50: #eff6ff;
+  --color-rosegold-100: #dbeafe;
+  --color-rosegold-200: #bfdbfe;
+  --color-rosegold-300: #93c5fd;
+  --color-rosegold-400: #60a5fa;
+  --color-rosegold-500: #3b82f6;
+  --color-rosegold-600: #2563eb;
+  --color-rosegold-700: #1d4ed8;
+  --color-rosegold-800: #1e40af;
+  --color-rosegold-900: #1e3a8a;
+  --color-rosegold-950: #172554;
+  /* The data axis and the top tier were the same rose; they follow the accent. */
+  --color-data-good: #60a5fa;
+  --color-data-good-dim: #7f9cc4;
+  --color-tier-s: #60a5fa;
+}
+
+/*
+ * Dark by default — the app sits next to a game — and light when the player
+ * chooses it (`ThemeToggle`, kept by the colour-mode module). The layer's
+ * elevation ladder is written for dark; light restates its four steps, and
+ * `:root:not(.dark)` out-specifies the layer's `:root` block whatever the
+ * source order.
+ */
 :root {
   color-scheme: dark;
+}
+
+:root:not(.dark) {
+  color-scheme: light;
+  --ui-bg: #f4f6fa;
+  --ui-bg-muted: #eaedf3;
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-accented: #e0e5ee;
+  --ui-bg-surface: color-mix(in oklch, #ffffff 75%, transparent);
+  --ui-border: #d8dde7;
+  --ui-border-accented: #c2c9d8;
+  /* The stat colours are tuned to read on a dark page; on a light one they are pulled toward black. */
+  --color-stat-health: color-mix(in oklch, #24a564 62%, black);
+  --color-stat-armor: color-mix(in oklch, #f3c057 62%, black);
+  --color-stat-mr: color-mix(in oklch, #54e6ff 62%, black);
+  --color-stat-tenacity: color-mix(in oklch, #8c72ff 62%, black);
+  --color-stat-hsp: color-mix(in oklch, #6be695 62%, black);
+  --color-stat-heal-reduction: color-mix(in oklch, #8d5874 62%, black);
+  --color-stat-mana: color-mix(in oklch, #00a6ed 62%, black);
+  --color-stat-haste: color-mix(in oklch, #ede2cf 22%, black);
+  --color-stat-speed: color-mix(in oklch, #ffffff 22%, black);
+  --color-stat-ad: color-mix(in oklch, #f19425 62%, black);
+  --color-stat-lethality: color-mix(in oklch, #f65e57 62%, black);
+  --color-stat-crit: color-mix(in oklch, #ee2a00 62%, black);
+  --color-stat-as: color-mix(in oklch, #ffe991 22%, black);
+  --color-stat-ap: color-mix(in oklch, #7e78ff 62%, black);
+  --color-stat-magicpen: color-mix(in oklch, #cc6efc 62%, black);
+  --color-stat-vamp: color-mix(in oklch, #d70045 62%, black);
+  --color-stat-true: color-mix(in oklch, #f5f5f5 22%, black);
+  --color-stat-adaptive: color-mix(in oklch, #48c4b7 62%, black);
+  --color-stat-status: color-mix(in oklch, #9366a9 62%, black);
+  --color-stat-stealth: color-mix(in oklch, #b472a6 62%, black);
+  --color-stat-shield: color-mix(in oklch, #e0c56e 62%, black);
+  --color-stat-gold: color-mix(in oklch, #c8aa6e 62%, black);
+  --color-stat-passive: color-mix(in oklch, #ffffff 22%, black);
+  --color-stat-active: color-mix(in oklch, #f3c057 62%, black);
 }
 
 /*

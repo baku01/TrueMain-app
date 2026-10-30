@@ -4,6 +4,9 @@ import { OVERLAY_PANELS, onScoreboard } from '~/types/overlay'
 import { PANEL_WIDTHS } from '~/utils/overlay-layout'
 import { sampleGame } from '~/utils/overlay-sample'
 
+// The panels are drawn over the game: always dark, whatever the window chose.
+definePageMeta({ colorMode: 'dark' })
+
 /**
  * One panel of the in-game overlay (#1795) — `next-item`, `win-probability`,
  * `stats`, `objectives` (#2078), `item-value` or `lane-gold` (#2186) — loaded by that panel's own window (`src-tauri/src/overlay`),

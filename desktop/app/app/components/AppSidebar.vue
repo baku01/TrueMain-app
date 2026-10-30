@@ -7,13 +7,14 @@ import type { NavigationMenuItem } from '@nuxt/ui'
  * the player at the foot. The gameflow phase still opens those two on its own
  * (`app.vue`); this is how the player gets everywhere else.
  *
- * In a narrow window (`useNarrowWindow`) it folds into a rail of icons: each
+ * In a narrow window (`useNarrowWindow`), or when the player folds it from the
+ * top bar (`useSidebar`), it becomes a rail of icons: each
  * entry's name in a tooltip, and the "Live" / "Rec" badges as dots on their
  * icons, their words in the tooltip.
  */
 const route = useRoute()
 const { t } = useLocale()
-const narrow = useNarrowWindow()
+const { collapsed: narrow } = useSidebar()
 const { screen } = useLcuState()
 const { status: recording } = useRecordings()
 // A downloaded update stays one click away after its toast is gone.
@@ -34,19 +35,21 @@ function lit(label: string, badge: typeof LIVE.value | typeof REC.value, on: boo
 const items = computed<NavigationMenuItem[][]>(() => [
   [
     { label: t('nav.truemain'), type: 'label' },
-    { label: t('nav.dashboard'), icon: 'i-lucide-house', to: '/', active: route.path === '/' },
-    { label: t('nav.champions'), icon: 'i-lucide-swords', to: '/champions', active: isActive('/champions') },
-    { label: t('nav.tierlist'), icon: 'i-lucide-trending-up', to: '/tierlist', active: isActive('/tierlist') },
-    { label: t('nav.matchup'), icon: 'i-lucide-wand-sparkles', to: '/matchup', active: isActive('/matchup') },
-    { label: t('nav.truemains'), icon: 'i-lucide-trophy', to: '/truemains', active: isActive('/truemains') },
-    { label: t('nav.kits'), icon: 'i-lucide-backpack', to: '/kits', active: isActive('/kits') },
-    { label: t('nav.favorites'), icon: 'i-lucide-star', to: '/favorites', active: isActive('/favorites') },
+    { label: t('nav.dashboard'), icon: 'i-game-icons-castle', to: '/', active: route.path === '/' },
+    { label: t('nav.champions'), icon: 'i-game-icons-crossed-swords', to: '/champions', active: isActive('/champions') },
+    { label: t('nav.tierlist'), icon: 'i-game-icons-podium', to: '/tierlist', active: isActive('/tierlist') },
+    { label: t('nav.matchup'), icon: 'i-game-icons-sword-clash', to: '/matchup', active: isActive('/matchup') },
+    { label: t('nav.truemains'), icon: 'i-game-icons-crown', to: '/truemains', active: isActive('/truemains') },
+    { label: t('nav.kits'), icon: 'i-game-icons-backpack', to: '/kits', active: isActive('/kits') },
+    { label: t('nav.items'), icon: 'i-game-icons-spell-book', to: '/items', active: isActive('/items') },
+    { label: t('nav.patchnotes'), icon: 'i-game-icons-scroll-unfurled', to: '/patchnotes', active: isActive('/patchnotes') },
+    { label: t('nav.favorites'), icon: 'i-game-icons-round-star', to: '/favorites', active: isActive('/favorites') },
   ],
   [
     { label: t('nav.inGame'), type: 'label' },
     {
       label: t('nav.champSelect'),
-      icon: 'i-lucide-sparkles',
+      icon: 'i-game-icons-three-friends',
       to: '/draft',
       active: isActive('/draft'),
       // Lit while the client is in champion select, wherever the player is;
@@ -55,18 +58,18 @@ const items = computed<NavigationMenuItem[][]>(() => [
     },
     {
       label: t('nav.game'),
-      icon: 'i-lucide-crosshair',
+      icon: 'i-game-icons-crosshair',
       to: '/game',
       active: isActive('/game'),
       // Lit while a game runs, wherever the player is.
       ...lit(t('nav.game'), LIVE.value, screen.value === 'in-game'),
     },
-    { label: t('nav.overlay'), icon: 'i-lucide-layers', to: '/overlay', active: route.path === '/overlay' },
+    { label: t('nav.overlay'), icon: 'i-game-icons-radar-sweep', to: '/overlay', active: route.path === '/overlay' },
     // Only once the shell has answered for recording: a build without it has no page to open.
     ...(recording.value
       ? [{
           label: t('nav.recordings'),
-          icon: 'i-lucide-clapperboard',
+          icon: 'i-game-icons-video-camera',
           to: '/recordings',
           active: isActive('/recordings'),
           // Lit while a game is being recorded, wherever the player is.
@@ -128,8 +131,8 @@ onMounted(async () => {
       :class="narrow ? 'px-2' : 'px-3'"
       :ui="{
         label: 'mt-3 px-2.5 pb-1.5 stat-label text-[10px]!',
-        link: 'px-2.5 py-2 text-[13px] text-muted hover:text-highlighted data-active:text-highlighted',
-        linkLeadingIcon: 'size-[18px]',
+        link: ['py-2 text-[13px] text-muted hover:text-highlighted data-active:text-highlighted', narrow ? 'justify-center px-0' : 'px-2.5'],
+        linkLeadingIcon: 'size-5 transition-colors group-data-[active]:text-primary',
         separator: narrow ? 'my-2' : 'hidden',
       }"
     />

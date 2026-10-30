@@ -10,6 +10,9 @@
  * built asks for the press that built it (`overlay_confirmation`), emitted
  * before it listened. In a browser-only `npm run dev`, a sample line shows.
  */
+// The panel is drawn over the game: always dark, whatever the window chose.
+definePageMeta({ colorMode: 'dark' })
+
 const { t } = useT()
 
 const text = ref<string | null>(null)

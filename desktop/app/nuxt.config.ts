@@ -33,6 +33,8 @@ export default defineNuxtConfig({
   // which serves the recordings fixtures' video.
   ssr: false,
   modules: ['@nuxt/ui', '@nuxt/eslint'],
+  // Dark until the player picks light (`ThemeToggle`); the layer pins dark with no way out.
+  colorMode: { preference: 'dark', fallback: 'dark', storageKey: 'truemain-color-mode' },
   css: ['~/assets/css/main.css'],
   devServer: { port: 3003 },
   // Tauri serves the bundle from a custom protocol; hashed asset names at the
@@ -52,7 +54,11 @@ export default defineNuxtConfig({
     // `npm run dev` in a browser has no Rust to proxy API calls through, so the
     // dev server does it instead, against the same site's entry point. Dev
     // only: a static build has no server, and the packaged app asks Rust.
-    devProxy: { '/api': { target: `${siteUrl}/api`, changeOrigin: true } },
+    devProxy: {
+      '/api': { target: `${siteUrl}/api`, changeOrigin: true },
+      // Riot's patch notes, which the shell fetches in the app (`src-tauri/src/news.rs`) and the site gives no CORS header for.
+      '/__riot': { target: 'https://www.leagueoflegends.com', changeOrigin: true },
+    },
   },
   // Where `openOnSite` sends a browser-only `npm run dev`; inside the shell the
   // URL is Rust's to build.

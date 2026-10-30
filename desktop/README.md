@@ -598,3 +598,9 @@ action taken on the player's behalf — no auto-accept, no instalock. Riot state
 that apps on the LCU and in-game APIs are expected to keep working under
 Vanguard; memory reading is what it blocks. Writing a rune page on an explicit
 click is #1678, and is gated on the DevRel confirmation in #1680.
+
+## Credits
+
+- Menu icons: [Game Icons](https://game-icons.net) (`@iconify-json/game-icons`), licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) — authors credited at <https://github.com/game-icons/icons>.
+- Interface icons: [Lucide](https://lucide.dev), ISC.
+- Champion, item and rune names and art: Riot Games' Data Dragon and Community Dragon. TrueMain isn't endorsed by Riot Games.

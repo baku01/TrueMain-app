@@ -35,7 +35,7 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
         <ChampionArt :champion-id="column.lead.championId" kind="loading" fade="y" position="50% 18%" class="transition-transform duration-300 group-hover:scale-[1.03]" />
         <span class="relative flex w-fit items-center gap-1.5 rounded-full bg-ink-950/70 py-0.5 pr-2 pl-1 ring-1 ring-white/10 backdrop-blur-sm">
           <img :src="getPositionIconUrl(column.lane)" alt="" class="size-4">
-          <span class="text-[11px] font-semibold uppercase tracking-wide text-default">{{ column.label }}</span>
+          <span class="text-[11px] font-semibold uppercase tracking-wide text-white">{{ column.label }}</span>
         </span>
         <span class="relative flex items-end justify-between gap-2">
           <span class="min-w-0 leading-tight">

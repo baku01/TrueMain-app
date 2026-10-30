@@ -7,3 +7,5 @@ registerMessages(appDictionaries)
 
 // Nuxt auto-imports `useT`; the bare suite has no Nuxt, so components that use it find it here.
 ;(globalThis as Record<string, unknown>).useT = () => ({ t: tr })
+// Nuxt compiles `definePageMeta` away; the bare suite mounts pages that call it.
+;(globalThis as Record<string, unknown>).definePageMeta = () => {}

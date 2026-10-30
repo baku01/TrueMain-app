@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { screen, ready } = useLcuState()
-const narrowWindow = useNarrowWindow()
+const { collapsed: sidebarCollapsed } = useSidebar()
 const router = useRouter()
 const route = useRoute()
 
@@ -36,11 +36,6 @@ onMounted(() => {
   if (!overlay) watchForUpdates()
 })
 
-// The scenario picker exists only for `npm run dev` in a browser: inside Tauri
-// the state comes from the client, and in a production build `import.meta.dev`
-// is false so the component and its fixtures are dropped from the bundle.
-const showScenarioPicker = computed(() => import.meta.dev && !insideTauri() && !standalone.value)
-
 /**
  * The gameflow phase still drives the screen (`AppState::screen()` in Rust is
  * the rule): entering champion select opens the draft on its own, and leaving
@@ -73,7 +68,7 @@ watch(screen, (next, previous) => {
     <NuxtPage v-if="standalone" />
     <div v-else class="flex h-screen overflow-hidden bg-default text-default">
       <AppLoadingBar />
-      <AppSidebar class="shrink-0" :class="narrowWindow ? 'w-16' : 'w-[200px]'" />
+      <AppSidebar class="shrink-0 transition-[width] duration-200 motion-reduce:transition-none" :class="sidebarCollapsed ? 'w-16' : 'w-[200px]'" />
 
       <div class="flex min-w-0 flex-1 flex-col">
         <AppTopbar class="h-12 shrink-0" />
@@ -89,8 +84,6 @@ watch(screen, (next, previous) => {
           <NuxtPage v-else />
         </main>
       </div>
-
-      <DevScenarioPicker v-if="showScenarioPicker" />
     </div>
   </UApp>
 </template>
