@@ -1,6 +1,10 @@
 import type { KeyCheck, KeyStatus } from '~/utils/riot-key'
+import { tr } from '#common/utils/i18n'
 
 const PLATFORM_KEY = 'truemain-riot-platform'
+
+/** Longer than Riot's own deadline (10 s) and the keychain's usual answer: past it the page says so instead of spinning on. */
+const CALL_TIMEOUT_MS = 25_000
 
 /**
  * The player's Riot API key. The shell keeps it in the system's credential
@@ -31,7 +35,16 @@ export function useRiotKey() {
   async function call<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
     if (standIn) return await fake(command, args) as T
     const { invoke } = await import('@tauri-apps/api/core')
-    return await invoke<T>(command, args)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(tr('riotkey.timeout'))), CALL_TIMEOUT_MS)
+    })
+    try {
+      return await Promise.race([invoke<T>(command, args), timeout])
+    }
+    finally {
+      clearTimeout(timer)
+    }
   }
 
   async function fake(command: string, args: Record<string, unknown>): Promise<unknown> {

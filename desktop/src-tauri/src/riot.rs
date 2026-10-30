@@ -215,9 +215,16 @@ fn delete_saved() -> Result<(), String> {
 }
 
 /// Whether a key is saved, and its masked form. No network.
+///
+/// The system's credential store can block (an access prompt, a locked
+/// keychain), so it is read off the main thread, where a synchronous command
+/// would run and freeze the window with it.
 #[tauri::command]
-pub fn riot_key_status() -> KeyStatus {
-    let key = read_saved();
+pub async fn riot_key_status() -> KeyStatus {
+    let key = tokio::task::spawn_blocking(read_saved)
+        .await
+        .ok()
+        .flatten();
     KeyStatus {
         saved: key.is_some(),
         masked: key.as_deref().map(mask),
@@ -243,15 +250,20 @@ pub async fn riot_key_save(key: String, platform: String) -> Result<KeyCheck, St
         result.state,
         CheckState::Valid | CheckState::RateLimited | CheckState::Offline
     ) {
-        write_saved(&key)?;
+        let to_write = key.clone();
+        tokio::task::spawn_blocking(move || write_saved(&to_write))
+            .await
+            .map_err(|error| error.to_string())??;
     }
     Ok(result)
 }
 
 /// Forgets the saved key.
 #[tauri::command]
-pub fn riot_key_clear() -> Result<(), String> {
-    delete_saved()
+pub async fn riot_key_clear() -> Result<(), String> {
+    tokio::task::spawn_blocking(delete_saved)
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 /// One participant's purchases and skill points in a game, from Riot's match timeline.
