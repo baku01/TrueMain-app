@@ -180,12 +180,12 @@ fn entry() -> Result<keyring::Entry, String> {
 }
 
 #[cfg(any(target_os = "macos", windows))]
-fn read_saved() -> Option<String> {
+pub(crate) fn read_saved() -> Option<String> {
     entry().ok()?.get_password().ok()
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]
-fn read_saved() -> Option<String> {
+pub(crate) fn read_saved() -> Option<String> {
     None
 }
 

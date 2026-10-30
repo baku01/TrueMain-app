@@ -8,6 +8,8 @@
 mod api;
 mod champselect;
 mod game;
+mod highelo;
+mod highelo_data;
 mod itemsets;
 mod kits;
 mod loading;
