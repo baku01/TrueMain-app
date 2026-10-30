@@ -3,10 +3,10 @@ import type { KeyCheckState } from '~/utils/riot-key'
 import { PLATFORMS, keyKind, perMinute, sustainedPerMinute, windowLabel } from '~/utils/riot-key'
 
 /**
- * Settings — for now, the player's Riot API key: typed here, kept by the shell
- * in the system's credential store, checked against Riot, and the limits Riot
- * answers with shown as what the key may do. Nothing in the app spends the key
- * yet, so there are no calls to count beyond the check itself.
+ * Settings — the player's Riot API key: typed here, kept by the shell in the
+ * system's credential store, checked against Riot, and the limits Riot answers
+ * with shown as what the key may do. Then hardware acceleration
+ * (`SettingsGraphics`).
  */
 const { t } = useT()
 const { status, check, busy, error, platform, standIn, rememberPlatform, load, save, verify, clear } = useRiotKey()
@@ -146,6 +146,8 @@ const usedPercent = (used: number | null, limit: number) => (used === null ? 0 :
           </div>
         </template>
       </section>
+
+      <SettingsGraphics />
     </div>
   </SharedPage>
 </template>

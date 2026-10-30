@@ -8,6 +8,7 @@
 mod api;
 mod champselect;
 mod game;
+mod graphics;
 mod highelo;
 mod highelo_data;
 mod itemsets;
@@ -324,6 +325,10 @@ pub fn run() {
     let shared: SharedState = Arc::new(Mutex::new(AppState::default()));
     let client = SharedClient::default();
 
+    let context = tauri::generate_context!();
+    // Before the builder: WebView2's switches must be set before the first webview exists.
+    let graphics = graphics::Graphics::load_before_webviews(&context.config().identifier);
+
     let builder = tauri::Builder::default();
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
@@ -341,6 +346,7 @@ pub fn run() {
         .manage(GameCache::default())
         .manage(SharedGame::default())
         .manage(loading::SharedLoading::default())
+        .manage(graphics)
         .register_asynchronous_uri_scheme_protocol(
             recording::files::SCHEME,
             |context, request, responder| {
@@ -412,6 +418,8 @@ pub fn run() {
             champselect::champ_select_spells,
             telemetry::telemetry_page,
             menu::set_menu_language,
+            graphics::graphics_settings,
+            graphics::set_graphics_settings,
             news::riot_patch_notes_page,
             news::open_patch_note,
             riot::riot_key_status,
@@ -449,7 +457,7 @@ pub fn run() {
             tauri::async_runtime::spawn(supervisor::run(handle, shared, client));
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("failed to start the TrueMain companion app")
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {

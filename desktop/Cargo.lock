@@ -4692,6 +4692,7 @@ name = "truemain-desktop"
 version = "0.1.0"
 dependencies = [
  "capture-helper",
+ "dirs 6.0.0",
  "drag",
  "game-recording",
  "keyring",
