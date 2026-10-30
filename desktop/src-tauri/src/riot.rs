@@ -53,6 +53,7 @@ pub enum CheckState {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KeyCheck {
     pub state: CheckState,
     pub status: Option<u16>,
@@ -404,6 +405,24 @@ pub async fn riot_match_events(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The page reads `appLimits`, `methodLimits` and `retryAfter`: a snake_case answer left it with `undefined.length` and the save button spinning.
+    #[test]
+    fn a_key_check_reaches_the_page_in_camel_case() {
+        let check = KeyCheck {
+            state: CheckState::RateLimited,
+            status: Some(429),
+            platform: "br1".to_string(),
+            app_limits: vec![Window { seconds: 1, limit: 20, used: Some(1) }],
+            method_limits: Vec::new(),
+            retry_after: Some(3),
+        };
+        let json = serde_json::to_value(&check).unwrap();
+        assert_eq!(json["state"], "rate-limited");
+        assert_eq!(json["appLimits"][0]["limit"], 20);
+        assert!(json["methodLimits"].is_array());
+        assert_eq!(json["retryAfter"], 3);
+    }
 
     /// Against the real API: `RIOT_KEY=RGAPI-… cargo test --lib live_key_check -- --ignored --nocapture`.
     #[tokio::test]
