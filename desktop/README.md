@@ -1,3 +1,59 @@
+# TrueMain App — o companheiro desktop
+
+> **Fork de [ilyanfraimbault/TrueMain](https://github.com/ilyanfraimbault/TrueMain)**, de Ilyan Fraimbault. O app desktop, a ideia e a licença (PolyForm Noncommercial 1.0.0) vêm do projeto original; este fork, mantido por [baku01](https://github.com/baku01), traz o app em **português do Brasil**, uma nova identidade visual com tema escuro e claro, e abas novas. A visão geral do repositório está no [README da raiz](../README.md).
+
+## Visão geral
+
+Um app leve (Tauri v2 + Nuxt 4) que lê o cliente do League of Legends **somente para leitura**, acompanha a seleção de campeões e a partida, e mostra estatísticas, builds, runas e notas de atualização.
+
+<p align="center">
+  <img src="../docs/screenshots/champion.png" alt="Página de um campeão: runas, sequência de itens em árvore e ordem de habilidades" width="900">
+</p>
+
+| | |
+|---|---|
+| ![Painel](../docs/screenshots/dashboard.png)<br>**Painel:** perfil, histórico de partidas e evolução de PDL | ![Tier list](../docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas |
+| ![Classes](../docs/screenshots/classes.png)<br>**Classes:** campeões por classe e subclasse, com o papel de cada uma | ![Itens](../docs/screenshots/items.png)<br>**Itens:** descrição e receita em árvore |
+| ![Runas](../docs/screenshots/runes.png)<br>**Runas:** as árvores e a descrição colorida | ![Notas da atualização](../docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas |
+| ![Seleção de campeões](../docs/screenshots/draft.png)<br>**Seleção de campeões:** picks e a build contra o draft | ![Partida](../docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e overlay |
+
+As capturas foram feitas no navegador (`npm run dev`), e as telas de painel, seleção de campeões e partida usam cenários de simulação do projeto (contas e partidas fictícias). O app também tem **tema claro**, alternado pelo botão da barra superior:
+
+<p align="center">
+  <img src="../docs/screenshots/light.png" alt="Página de um campeão no tema claro" width="900">
+</p>
+
+## Novidades deste fork
+
+- **Idioma:** português do Brasil e inglês, escolhidos na barra superior. Os textos de itens, campeões, runas e feitiços vêm do Data Dragon e do Community Dragon no idioma escolhido, e a troca recarrega a janela. O menu nativo e a bandeja seguem o idioma. As mensagens ficam em dicionários por área (`app/i18n/` aqui e `web/layers/common/app/i18n/` na camada compartilhada), e o teste `tests/i18n-messages.test.ts` falha se faltar uma chave em um idioma.
+- **Visual:** azul-marinho, tema escuro e claro, ícones Phosphor, medalhas de tier, ícone do app novo e menu lateral retrátil (⌘B).
+- **Abas novas:**
+  - **Itens e runas** com a receita em árvore e a descrição colorida;
+  - **Classes**, com as classes e subclasses (um retrato da wiki do League, guardado no app) e uma explicação de cada papel. Atiradores não têm subclasse oficial, então seguem a convenção da comunidade e a tela avisa;
+  - **Notas da atualização**, lidas de leagueoflegends.com pelo Rust (o site não permite leitura direta), com seletor de patch, busca e atualização automática;
+  - **ProBuild**, descrito abaixo.
+- **Página do campeão:** reorganizada em cartões, com a **ordem de habilidades nível a nível**. Essa grade é **derivada** da prioridade de evolução, porque a API do TrueMain não traz o que foi aprendido em cada nível, e a tela diz isso.
+- **Configurações:** onde você cola a **chave da API da Riot**. Ela fica no chaveiro do sistema (Keychain ou Credential Manager), nunca no navegador do app. O app a verifica com uma chamada à Riot e mostra os **limites de requisições** que a Riot informa.
+- **Partidas lidas do cliente:** o histórico do cliente não traz compras nem pontos de habilidade. Com a chave salva, o app os busca na timeline da Riot.
+- **ProBuild:** uma coleta **automática** das partidas dos melhores jogadores do servidor (Desafiante e Grão-Mestre). O app anda pelo ranking, lê as partidas recentes de cada um e guarda as builds dos 10 jogadores de cada partida. A página conta, para o campeão escolhido, a escolha e a vitória de cada pedra-chave, página de runas, item e par de feitiços. Roda sozinha com o app aberto, no ritmo da sua chave, e continua de onde parou. Ainda não coleta a ordem de compra.
+
+## Rodando
+
+```bash
+cd desktop/app
+npm ci
+npm run dev            # a interface no navegador, com cenários de simulação
+npm run tauri dev      # o app de verdade, com o cliente do League aberto
+npm run test && npm run lint && npm run typecheck
+cd ../src-tauri && cargo test --lib
+```
+
+Testes que gastam a chave da Riot ficam ignorados por padrão: `RIOT_KEY=RGAPI-… cargo test --lib live_ -- --ignored --nocapture`.
+
+---
+
+# Documentação técnica (herdada do projeto original, em inglês)
+
 # TrueMain desktop companion
 
 A companion app for the draft phase. It reads the running League client through
