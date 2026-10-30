@@ -19,6 +19,7 @@
 //! desktop in CI, a stand-in window in the game's place.
 
 use shell_state::overlay::Rect;
+use tauri::window::Color;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use windows::Win32::Foundation::{CloseHandle, COLORREF, HWND, RECT};
 use windows::Win32::Graphics::Dwm::{
@@ -87,7 +88,7 @@ fn build_now(
     opacity: f64,
     see_through: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()))
+    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()))
         // Named after its panel, for the smoke test and any window inspector.
         .title(format!("TrueMain {label}"))
         .inner_size(super::INITIAL_SIZE.0, super::INITIAL_SIZE.1)
@@ -99,8 +100,14 @@ fn build_now(
         .skip_taskbar(true)
         .focused(false)
         .focusable(false)
-        .visible(false)
-        .build()?;
+        .visible(false);
+    // An opaque panel is the page's own dark: WebView2 paints white where the
+    // window has grown past what the page has drawn yet, as a panel resizes to
+    // its content.
+    if !see_through {
+        builder = builder.background_color(Color(8, 12, 20, 255));
+    }
+    let window = builder.build()?;
     let hwnd = window.hwnd()?;
     set_styles(
         hwnd,

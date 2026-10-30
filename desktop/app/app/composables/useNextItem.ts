@@ -5,6 +5,8 @@ import { nextItemRequest, nextItemSignature, noteNewItems } from '~/utils/next-i
 
 /** A purchase often lands as several readings (component, then the combine); wait for the inventory to settle. */
 const SETTLE_MS = 600
+/** A failed read is asked again after these waits, then left until the next change: the game moving is otherwise the only trigger. */
+const RETRY_MS = [2000, 5000, 15000]
 
 /**
  * The next item to complete in the running game (#1751), from the mains'
@@ -13,7 +15,8 @@ const SETTLE_MS = 600
  * Asked again whenever an item changes hands anywhere on the board — never on
  * a timer: the answer depends on our build and on what the game looks like,
  * and nothing else moves it. A request still out when the next one is due is
- * dropped rather than waited for.
+ * dropped rather than waited for. A read that failed is retried a few times,
+ * so one dropped request does not leave the panel offline until the next purchase.
  */
 export function useNextItem(game: Ref<GameState | null>) {
   const { champions } = useChampionStatics()
@@ -56,6 +59,8 @@ export function useNextItem(game: Ref<GameState | null>) {
   let settle: ReturnType<typeof setTimeout> | undefined
   let controller: AbortController | undefined
 
+  let retries = 0
+
   async function ask() {
     const current = game.value
     const request = current ? nextItemRequest(current, order.value, championIdOf) : null
@@ -77,10 +82,17 @@ export function useNextItem(game: Ref<GameState | null>) {
       if (mine !== generation) return
       answer.value = response
       failed.value = false
+      retries = 0
     }
-    catch {
+    catch (error) {
       if (mine !== generation) return
       failed.value = true
+      console.warn('next-item read failed', error)
+      const wait = RETRY_MS[retries++]
+      if (wait !== undefined) {
+        clearTimeout(settle)
+        settle = setTimeout(ask, wait)
+      }
     }
     finally {
       if (mine === generation) pending.value = false
@@ -92,6 +104,7 @@ export function useNextItem(game: Ref<GameState | null>) {
     (signature, previous) => {
       if (!signature || signature === previous) return
       clearTimeout(settle)
+      retries = 0
       settle = setTimeout(ask, previous ? SETTLE_MS : 0)
     },
     { immediate: true },
