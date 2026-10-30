@@ -1,4 +1,4 @@
-import type { MatchDetailResponse } from '#shared/types/match-detail'
+import type { MatchDetailItemEvent, MatchDetailResponse, MatchDetailSkillEvent } from '#shared/types/match-detail'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import type { WinProbabilityTimeline } from '#shared/types/win-probability'
 import { gradeDetail } from '~/utils/match-summary'
@@ -66,6 +66,39 @@ async function readTruemainDetail(nameTag: string, platformId: string | null, ma
   }
 }
 
+interface RiotEvents {
+  participantId: number
+  itemEvents: MatchDetailItemEvent[]
+  skillEvents: MatchDetailSkillEvent[]
+}
+
+/**
+ * A game the client read has no purchases and no skill points — its timeline
+ * lists neither — so with a Riot key saved they are asked of Riot's own match
+ * timeline and put on each participant. Nothing changes without a key, or when
+ * Riot has no timeline for the game: the panel then says there is no build data.
+ */
+async function withRiotEvents(detail: MatchDetailResponse, platformId: string | null, matchId: string): Promise<MatchDetailResponse> {
+  const missing = detail.participants.some(participant => !participant.itemEvents?.length && !participant.skillEvents?.length)
+  if (!missing || !platformId || !insideTauri()) return detail
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    const events = await invoke<RiotEvents[]>('riot_match_events', { platformId, gameId: Number(matchId) })
+    const byParticipant = new Map(events.map(entry => [entry.participantId, entry]))
+    return {
+      ...detail,
+      participants: detail.participants.map((participant) => {
+        const found = byParticipant.get(participant.participantId)
+        return found ? { ...participant, itemEvents: found.itemEvents, skillEvents: found.skillEvents } : participant
+      }),
+    }
+  }
+  catch {
+    // No key, a game Riot no longer keeps, or Riot unreachable.
+    return detail
+  }
+}
+
 async function readClientDetail(matchId: string): Promise<MatchDetailResponse | null> {
   if (insideTauri()) {
     const { invoke } = await import('@tauri-apps/api/core')
@@ -111,7 +144,8 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
       if (truemain) matchDetails.set(id, truemain)
       // The client's fallback is cached by the shell; TrueMain is asked again
       // next time, since it may have ingested the game since.
-      data.value = truemain ?? await readClientDetail(id)
+      const read = truemain ?? await readClientDetail(id)
+      data.value = read ? await withRiotEvents(read, record.value?.platformId ?? null, id) : null
     }
     catch {
       data.value = null
