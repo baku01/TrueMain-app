@@ -6,6 +6,6 @@ const { t } = useT()
 
 <template>
   <SharedPage :eyebrow="t('app.page.meta')" :title="t('app.page.tierlist')">
-    <PageTierList />
+    <PageTierList class="tier-minimal" />
   </SharedPage>
 </template>

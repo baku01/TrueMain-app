@@ -50,7 +50,7 @@ const updatedLabel = computed(() => (updatedAt.value ? new Intl.DateTimeFormat(g
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-5">
     <div class="flex shrink-0 flex-wrap items-center gap-3">
-      <UIcon name="i-game-icons-scroll-unfurled" class="size-6 text-primary" />
+      <UIcon name="i-ph-scroll-light" class="size-6 text-primary" />
       <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('patchnotes.title') }}</h1>
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <span v-if="updatedLabel" class="text-xs text-muted">{{ t('patchnotes.updated', { time: updatedLabel }) }}</span>

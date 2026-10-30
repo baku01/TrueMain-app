@@ -15,7 +15,7 @@ const tab = computed({
   set: value => router.replace({ query: value === 'runes' ? { tab: 'runes' } : {} }),
 })
 const tabs = computed(() => [
-  { label: t('items.tab.items'), value: 'items', icon: 'i-game-icons-spell-book' },
+  { label: t('items.tab.items'), value: 'items', icon: 'i-ph-flask-light' },
   { label: t('items.tab.runes'), value: 'runes', icon: 'i-lucide-sparkles' },
 ])
 </script>
@@ -23,7 +23,7 @@ const tabs = computed(() => [
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4 p-5">
     <div class="flex flex-wrap items-center gap-3">
-      <UIcon name="i-game-icons-spell-book" class="size-6 text-primary" />
+      <UIcon name="i-ph-flask-light" class="size-6 text-primary" />
       <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('items.page.title') }}</h1>
       <UTabs
         v-model="tab"

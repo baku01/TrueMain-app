@@ -144,3 +144,25 @@
   scrollbar-width: thin;
   scrollbar-color: var(--ui-border-accented) transparent;
 }
+
+/*
+ * The tier list's groups, stripped to the essentials: no card around a tier,
+ * just its letter, its count and a hairline over the champions. Scoped to the
+ * app's tier list page (`tier-minimal`); the shared page keeps its cards on
+ * the site.
+ */
+.tier-minimal section.surface {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  --tw-divide-y-reverse: 0;
+  margin-top: 1.25rem;
+}
+.tier-minimal section.surface > [data-slot='header'] {
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid var(--ui-border);
+}
+.tier-minimal section.surface > [data-slot='body'] {
+  padding: 0.875rem 0 0;
+}

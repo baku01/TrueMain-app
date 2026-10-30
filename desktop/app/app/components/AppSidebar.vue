@@ -35,21 +35,21 @@ function lit(label: string, badge: typeof LIVE.value | typeof REC.value, on: boo
 const items = computed<NavigationMenuItem[][]>(() => [
   [
     { label: t('nav.truemain'), type: 'label' },
-    { label: t('nav.dashboard'), icon: 'i-game-icons-castle', to: '/', active: route.path === '/' },
-    { label: t('nav.champions'), icon: 'i-game-icons-crossed-swords', to: '/champions', active: isActive('/champions') },
-    { label: t('nav.tierlist'), icon: 'i-game-icons-podium', to: '/tierlist', active: isActive('/tierlist') },
-    { label: t('nav.matchup'), icon: 'i-game-icons-sword-clash', to: '/matchup', active: isActive('/matchup') },
-    { label: t('nav.truemains'), icon: 'i-game-icons-crown', to: '/truemains', active: isActive('/truemains') },
-    { label: t('nav.kits'), icon: 'i-game-icons-backpack', to: '/kits', active: isActive('/kits') },
-    { label: t('nav.items'), icon: 'i-game-icons-spell-book', to: '/items', active: isActive('/items') },
-    { label: t('nav.patchnotes'), icon: 'i-game-icons-scroll-unfurled', to: '/patchnotes', active: isActive('/patchnotes') },
-    { label: t('nav.favorites'), icon: 'i-game-icons-round-star', to: '/favorites', active: isActive('/favorites') },
+    { label: t('nav.dashboard'), icon: 'i-ph-castle-turret-light', to: '/', active: route.path === '/' },
+    { label: t('nav.champions'), icon: 'i-ph-sword-light', to: '/champions', active: isActive('/champions') },
+    { label: t('nav.tierlist'), icon: 'i-ph-ranking-light', to: '/tierlist', active: isActive('/tierlist') },
+    { label: t('nav.matchup'), icon: 'i-ph-scales-light', to: '/matchup', active: isActive('/matchup') },
+    { label: t('nav.truemains'), icon: 'i-ph-crown-simple-light', to: '/truemains', active: isActive('/truemains') },
+    { label: t('nav.kits'), icon: 'i-ph-backpack-light', to: '/kits', active: isActive('/kits') },
+    { label: t('nav.items'), icon: 'i-ph-flask-light', to: '/items', active: isActive('/items') },
+    { label: t('nav.patchnotes'), icon: 'i-ph-scroll-light', to: '/patchnotes', active: isActive('/patchnotes') },
+    { label: t('nav.favorites'), icon: 'i-ph-star-four-light', to: '/favorites', active: isActive('/favorites') },
   ],
   [
     { label: t('nav.inGame'), type: 'label' },
     {
       label: t('nav.champSelect'),
-      icon: 'i-game-icons-three-friends',
+      icon: 'i-ph-users-three-light',
       to: '/draft',
       active: isActive('/draft'),
       // Lit while the client is in champion select, wherever the player is;
@@ -58,18 +58,18 @@ const items = computed<NavigationMenuItem[][]>(() => [
     },
     {
       label: t('nav.game'),
-      icon: 'i-game-icons-crosshair',
+      icon: 'i-ph-crosshair-simple-light',
       to: '/game',
       active: isActive('/game'),
       // Lit while a game runs, wherever the player is.
       ...lit(t('nav.game'), LIVE.value, screen.value === 'in-game'),
     },
-    { label: t('nav.overlay'), icon: 'i-game-icons-radar-sweep', to: '/overlay', active: route.path === '/overlay' },
+    { label: t('nav.overlay'), icon: 'i-ph-eye-light', to: '/overlay', active: route.path === '/overlay' },
     // Only once the shell has answered for recording: a build without it has no page to open.
     ...(recording.value
       ? [{
           label: t('nav.recordings'),
-          icon: 'i-game-icons-video-camera',
+          icon: 'i-ph-film-reel-light',
           to: '/recordings',
           active: isActive('/recordings'),
           // Lit while a game is being recorded, wherever the player is.

@@ -601,6 +601,6 @@ click is #1678, and is gated on the DevRel confirmation in #1680.
 
 ## Credits
 
-- Menu icons: [Game Icons](https://game-icons.net) (`@iconify-json/game-icons`), licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) — authors credited at <https://github.com/game-icons/icons>.
+- Menu icons: [Phosphor Icons](https://phosphoricons.com) (`@iconify-json/ph`), MIT.
 - Interface icons: [Lucide](https://lucide.dev), ISC.
 - Champion, item and rune names and art: Riot Games' Data Dragon and Community Dragon. TrueMain isn't endorsed by Riot Games.
