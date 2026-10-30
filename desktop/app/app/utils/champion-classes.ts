@@ -152,8 +152,7 @@ const SUBCLASSES: Record<number, string> = {
   143: 'catcher', // Zyra
   145: 'marksman', // Kai'Sa
   147: 'burst,enchanter', // Seraphine
-  150: 'specialist', // Gnar
-  150: 'vanguard', // Mega Gnar
+  150: 'specialist,vanguard', // Gnar (Mini Gnar, Mega Gnar)
   154: 'vanguard', // Zac
   157: 'skirmisher', // Yasuo
   161: 'artillery', // Vel'Koz
@@ -173,7 +172,6 @@ const SUBCLASSES: Record<number, string> = {
   236: 'marksman', // Lucian
   238: 'assassin', // Zed
   240: 'skirmisher', // Kled
-  240: 'skirmisher', // Kled & Skaarl
   245: 'assassin', // Ekko
   246: 'assassin', // Qiyana
   254: 'diver', // Vi
