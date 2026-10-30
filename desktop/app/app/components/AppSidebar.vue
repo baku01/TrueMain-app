@@ -37,6 +37,7 @@ const items = computed<NavigationMenuItem[][]>(() => [
     { label: t('nav.truemain'), type: 'label' },
     { label: t('nav.dashboard'), icon: 'i-ph-castle-turret-light', to: '/', active: route.path === '/' },
     { label: t('nav.champions'), icon: 'i-ph-sword-light', to: '/champions', active: isActive('/champions') },
+    { label: t('nav.classes'), icon: 'i-ph-tree-structure-light', to: '/classes', active: isActive('/classes') },
     { label: t('nav.tierlist'), icon: 'i-ph-ranking-light', to: '/tierlist', active: isActive('/tierlist') },
     { label: t('nav.matchup'), icon: 'i-ph-scales-light', to: '/matchup', active: isActive('/matchup') },
     { label: t('nav.truemains'), icon: 'i-ph-crown-simple-light', to: '/truemains', active: isActive('/truemains') },
