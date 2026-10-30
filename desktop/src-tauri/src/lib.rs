@@ -16,6 +16,7 @@ mod news;
 mod overlay;
 mod record;
 mod recording;
+mod riot;
 mod runes;
 #[cfg(debug_assertions)]
 mod sim;
@@ -410,7 +411,11 @@ pub fn run() {
             telemetry::telemetry_page,
             menu::set_menu_language,
             news::riot_patch_notes_page,
-            news::open_patch_note
+            news::open_patch_note,
+            riot::riot_key_status,
+            riot::riot_key_check,
+            riot::riot_key_save,
+            riot::riot_key_clear
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.
