@@ -87,24 +87,24 @@ const updatedLabel = computed(() => (updatedAt.value ? new Intl.DateTimeFormat(g
 
     <template v-else>
       <header class="relative shrink-0 overflow-hidden rounded-xl border border-default bg-default">
-        <!-- The banner sits on the right, whole in height and fading into the card on its left, so the art is seen and the text reads on a plain ground. -->
+        <!-- The art on the right, whole in height and anchored to the top, where the subject's face is, fading into the card on its left. The text and the button sit on the plain side, never over the picture. -->
         <img
           v-if="selected.imageUrl"
           :src="selected.imageUrl"
           alt=""
-          class="absolute inset-y-0 right-0 h-full w-3/5 object-cover object-[75%_30%] [mask-image:linear-gradient(to_right,transparent,black_45%)]"
+          class="absolute inset-y-0 right-0 h-full w-[55%] object-cover object-[60%_0%] [mask-image:linear-gradient(to_right,transparent,black_40%)]"
         >
-        <div class="relative flex min-h-52 flex-wrap items-end gap-4 p-6">
-          <div class="min-w-0 max-w-[44%] flex-1">
+        <div class="relative flex min-h-60 flex-col justify-end gap-4 p-6">
+          <div class="min-w-0 max-w-[42%]">
             <div class="flex flex-wrap items-center gap-2">
               <UBadge :label="selected.version" color="primary" variant="subtle" size="sm" />
               <UBadge v-if="isLatest" :label="t('patchnotes.latest')" color="neutral" variant="subtle" size="sm" />
               <span class="text-xs text-muted">{{ formatDate(selected.publishedAt) }}</span>
             </div>
             <h2 class="mt-2 text-xl font-semibold tracking-tight text-highlighted">{{ selected.title }}</h2>
-            <p v-if="selected.description" class="mt-1 max-w-3xl text-sm text-muted">{{ selected.description }}</p>
+            <p v-if="selected.description" class="mt-1 text-sm text-muted">{{ selected.description }}</p>
           </div>
-          <UButton :label="t('patchnotes.openOnSite')" icon="i-lucide-external-link" color="neutral" variant="soft" size="sm" @click="openOnSite(selected)" />
+          <UButton class="w-fit" :label="t('patchnotes.openOnSite')" icon="i-lucide-external-link" color="neutral" variant="soft" size="sm" @click="openOnSite(selected)" />
         </div>
       </header>
 
