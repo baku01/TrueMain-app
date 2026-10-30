@@ -5,9 +5,7 @@
 
 Um **companheiro para League of Legends**, em português do Brasil: lê o cliente do jogo no seu computador, acompanha a seleção de campeões e a partida, e mostra builds, runas, ordem de habilidades, confrontos e notas de atualização, tudo num app leve (Tauri + Nuxt), com tema escuro e claro.
 
-<p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="Painel do app com o perfil, o histórico e a evolução de PDL" width="900">
-</p>
+![Painel do app com o perfil, o histórico e a evolução de PDL](docs/screenshots/dashboard.png)
 
 ## Capturas de tela
 
@@ -15,16 +13,14 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com os 
 
 | | |
 |---|---|
-| **Campeão:** runas, itens, feitiços e a sequência de itens em árvore, mais a ordem de habilidades nível a nível<br><img src="docs/screenshots/champion.png" alt="Página de um campeão com as runas, a árvore de itens e a ordem de habilidades"> | **Tier list:** os campeões por tier, em medalhas S, A, B, C e D<br><img src="docs/screenshots/tierlist.png" alt="Tier list em grupos de tier"> |
-| **Classes:** todos os campeões por classe e subclasse, com uma explicação do papel de cada uma<br><img src="docs/screenshots/classes.png" alt="Página de classes e subclasses"> | **Itens:** todos os itens, com descrição e receita em árvore<br><img src="docs/screenshots/items.png" alt="Lista de itens com a receita do item escolhido"> |
-| **Runas:** as cinco árvores, com a descrição colorida de cada runa<br><img src="docs/screenshots/runes.png" alt="Runas por árvore e a descrição da escolhida"> | **Notas da atualização:** as notas da Riot, patch a patch, atualizadas sozinhas<br><img src="docs/screenshots/patchnotes.png" alt="Notas da atualização 26.21"> |
-| **Seleção de campeões:** picks recomendados e a build contra o draft<br><img src="docs/screenshots/draft.png" alt="Seleção de campeões com recomendações"> | **Partida:** o placar das duas equipes, o próximo item e o que cada jogador vem fazendo<br><img src="docs/screenshots/ingame.png" alt="Página da partida em andamento"> |
+| ![Página de um campeão com as runas, a árvore de itens e a ordem de habilidades](docs/screenshots/champion.png)<br>**Campeão:** runas, itens, feitiços e a sequência de itens em árvore, mais a ordem de habilidades nível a nível | ![Tier list em grupos de tier](docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas S, A, B, C e D |
+| ![Página de classes e subclasses](docs/screenshots/classes.png)<br>**Classes:** todos os campeões por classe e subclasse, com uma explicação do papel de cada uma | ![Lista de itens com a receita do item escolhido](docs/screenshots/items.png)<br>**Itens:** todos os itens, com descrição e receita em árvore |
+| ![Runas por árvore e a descrição da escolhida](docs/screenshots/runes.png)<br>**Runas:** as cinco árvores, com a descrição colorida de cada runa | ![Notas da atualização 26.21](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** as notas da Riot, patch a patch, atualizadas sozinhas |
+| ![Seleção de campeões com recomendações](docs/screenshots/draft.png)<br>**Seleção de campeões:** picks recomendados e a build contra o draft | ![Página da partida em andamento](docs/screenshots/ingame.png)<br>**Partida:** o placar das duas equipes, o próximo item e o que cada jogador vem fazendo |
 
 **Tema claro:** o app tem tema escuro (o padrão) e claro, alternados pelo botão da barra superior.
 
-<p align="center">
-  <img src="docs/screenshots/light.png" alt="Página de um campeão no tema claro" width="900">
-</p>
+![Página de um campeão no tema claro](docs/screenshots/light.png)
 
 ## O que o app faz
 

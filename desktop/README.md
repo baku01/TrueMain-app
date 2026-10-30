@@ -6,9 +6,7 @@
 
 Um app leve (Tauri v2 + Nuxt 4) que lê o cliente do League of Legends **somente para leitura**, acompanha a seleção de campeões e a partida, e mostra estatísticas, builds, runas e notas de atualização.
 
-<p align="center">
-  <img src="../docs/screenshots/champion.png" alt="Página de um campeão: runas, sequência de itens em árvore e ordem de habilidades" width="900">
-</p>
+![Página de um campeão: runas, sequência de itens em árvore e ordem de habilidades](../docs/screenshots/champion.png)
 
 | | |
 |---|---|
@@ -19,9 +17,7 @@ Um app leve (Tauri v2 + Nuxt 4) que lê o cliente do League of Legends **somente
 
 As capturas foram feitas no navegador (`npm run dev`), e as telas de painel, seleção de campeões e partida usam cenários de simulação do projeto (contas e partidas fictícias). O app também tem **tema claro**, alternado pelo botão da barra superior:
 
-<p align="center">
-  <img src="../docs/screenshots/light.png" alt="Página de um campeão no tema claro" width="900">
-</p>
+![Página de um campeão no tema claro](../docs/screenshots/light.png)
 
 ## Novidades deste fork
 
