@@ -125,6 +125,10 @@ impl Collector {
             .unwrap_or_else(|_| std::env::temp_dir().join("truemain"))
             .join("highelo")
             .join("rows.jsonl");
+        Self::at(path)
+    }
+
+    fn at(path: PathBuf) -> Self {
         let (rows, seen) = load(&path);
         let progress = Progress {
             rows_stored: rows.len() as u32,
@@ -327,6 +331,11 @@ async fn ladder(
 
 async fn run(app: AppHandle, key: String, plan: Plan) {
     let collector = app.state::<Arc<Collector>>().inner().clone();
+    collect(&collector, key, plan).await;
+}
+
+/// One run: the walk, and what it ended as.
+async fn collect(collector: &Collector, key: String, plan: Plan) {
     let Some(region) = region_of(&plan.platform) else {
         collector.update(|p| {
             p.running = false;
@@ -344,7 +353,7 @@ async fn run(app: AppHandle, key: String, plan: Plan) {
             .expect("failed to build the HTTP client"),
         gaps: HashMap::new(),
     };
-    let outcome = walk(&mut riot, &collector, &plan, region).await;
+    let outcome = walk(&mut riot, collector, &plan, region).await;
     collector.update(|p| {
         p.running = false;
         match outcome {
@@ -495,6 +504,33 @@ pub fn highelo_clear(collector: State<'_, Arc<Collector>>) -> Result<(), String>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Against the real API: `RIOT_KEY=RGAPI-… cargo test --lib live_collection -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore = "spends the Riot key"]
+    async fn live_collection() {
+        let key = std::env::var("RIOT_KEY").expect("RIOT_KEY");
+        let path = std::env::temp_dir().join("truemain-highelo-live.jsonl");
+        let _ = std::fs::remove_file(&path);
+        let collector = Collector::at(path.clone());
+        let plan = Plan {
+            platform: "br1".to_string(),
+            tiers: Tiers::Challenger,
+            players: 3,
+            games_per_player: 4,
+        };
+        collect(&collector, key, plan).await;
+        let progress = collector.progress.lock().unwrap().clone();
+        println!("{progress:?}");
+        assert_eq!(progress.phase, "done", "{:?}", progress.error);
+        let rows = collector.rows.lock().unwrap();
+        assert!(!rows.is_empty(), "no rows stored");
+        let champion = rows[0].c;
+        let stats = champion_stats(&rows, champion, None, None);
+        println!("champion {champion}: {stats:#?}");
+        assert!(stats.games > 0);
+        let _ = std::fs::remove_file(path);
+    }
 
     #[test]
     fn a_platform_goes_to_its_regional_host() {
