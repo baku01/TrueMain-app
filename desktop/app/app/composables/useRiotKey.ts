@@ -3,8 +3,8 @@ import { tr } from '#common/utils/i18n'
 
 const PLATFORM_KEY = 'truemain-riot-platform'
 
-/** Longer than Riot's own deadline (10 s) and the keychain's usual answer: past it the page says so instead of spinning on. */
-const CALL_TIMEOUT_MS = 25_000
+/** Longer than Riot's own deadline (10 s) and the keychain's first answer in a process (5 to 16 s measured): past it the page says so instead of spinning on. */
+const CALL_TIMEOUT_MS = 60_000
 
 /**
  * The player's Riot API key. The shell keeps it in the system's credential
