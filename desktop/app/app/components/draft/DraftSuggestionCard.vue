@@ -69,7 +69,7 @@ const why = computed(() => {
     </p>
 
     <div
-      class="relative w-full overflow-hidden rounded-lg bg-elevated transition-[box-shadow]"
+      class="on-art relative w-full overflow-hidden rounded-lg bg-elevated transition-[box-shadow]"
       :class="focused ? 'ring-2 ring-primary shadow-[0_0_24px_-8px_var(--color-rosegold-400)]' : 'ring-1 ring-white/5'"
       :style="{ height: `${Math.round(height * 100)}%` }"
     >

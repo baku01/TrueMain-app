@@ -7,6 +7,10 @@
  *
  * The host resolves `splashUrl` (the site through its image proxy, the app
  * straight from Data Dragon), so this component never asks which app it runs in.
+ *
+ * `on-art` marks the band as dark whatever the theme: the site is dark-only and
+ * ignores it, the desktop app's light theme reads it to keep the text over the
+ * splash light (`desktop/app/app/assets/css/main.css`).
  */
 withDefaults(defineProps<{
   splashUrl?: string | null
@@ -16,7 +20,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <section class="relative overflow-hidden rounded-lg border border-default bg-ink-950">
+  <section class="on-art relative overflow-hidden rounded-lg border border-default bg-ink-950">
     <img
       v-if="splashUrl"
       :src="splashUrl"

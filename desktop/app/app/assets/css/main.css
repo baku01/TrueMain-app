@@ -66,7 +66,7 @@
   --ui-bg-muted: #eaedf3;
   --ui-bg-elevated: #ffffff;
   --ui-bg-accented: #e0e5ee;
-  --ui-bg-surface: color-mix(in oklch, #ffffff 75%, transparent);
+  --ui-bg-surface: color-mix(in oklch, #ffffff 90%, transparent);
   --ui-border: #d8dde7;
   --ui-border-accented: #c2c9d8;
   /* The data axis and the tier colours, deeper so they read on white. */
@@ -102,6 +102,58 @@
   --color-stat-gold: color-mix(in oklch, #c8aa6e 62%, black);
   --color-stat-passive: color-mix(in oklch, #ffffff 22%, black);
   --color-stat-active: color-mix(in oklch, #f3c057 62%, black);
+  /*
+   * Text one ramp step darker than Nuxt UI's light defaults: on white, `ink-400`
+   * dimmed text (game counts, stat labels, placeholders) sat near 3:1 and the
+   * small type it carries washed out. Dimmed is `ink-500` (about 4.9:1 on white).
+   */
+  --ui-text-dimmed: var(--color-ink-500);
+  --ui-text-muted: var(--color-ink-600);
+  --ui-text-toned: var(--color-ink-700);
+  --ui-text: var(--color-ink-800);
+  --ui-text-highlighted: var(--color-ink-900);
+  /* The keycap edge: a lit top on white is invisible, so the bottom shade carries it. */
+  --shadow-key: inset 0 1px 0 0 rgb(255 255 255 / 0.7), inset 0 -1px 0 0 rgb(17 24 39 / 0.08);
+  /* A day without games in the activity grid: a pale grey well, not a dark tile. */
+  --activity-empty-fill: #dfe4ec;
+  /* What a skeleton pulses with, one step above the card (the layer's is `ink-700`, a dark block on white). */
+  --skeleton-fill: var(--color-ink-200);
+}
+
+/*
+ * The `surface` material on a light page. Its hairline is white at 5%, which
+ * vanishes on white, and the elevation that carries depth on dark does not
+ * exist on light: cards sat flat on the pane with no edge at all. A real border
+ * and a soft, short shadow give them one. `:where` keeps the selector at the
+ * utility's own weight, so local overrides (`.tier-minimal`) still win.
+ */
+:where(:root:not(.dark)) .surface {
+  border-color: var(--ui-border);
+  box-shadow: 0 1px 2px rgb(17 24 39 / 0.04), 0 1px 3px rgb(17 24 39 / 0.04);
+}
+
+:where(:root:not(.dark)) .surface-hover:hover,
+:where(:root:not(.dark)) .surface-hover:focus-visible {
+  box-shadow: 0 2px 8px -2px rgb(17 24 39 / 0.08);
+}
+
+/* Skeletons: `ui.skeleton.base` and `img-skeleton` both paint `ink-700`, a near-black block on a light page. */
+:root:not(.dark) .animate-pulse.bg-ink-700,
+:root:not(.dark) .img-skeleton {
+  background-color: var(--skeleton-fill);
+}
+
+:root:not(.dark) .img-skeleton {
+  animation-name: tm-skeleton-light;
+}
+
+@keyframes tm-skeleton-light {
+  50% { background-color: color-mix(in oklab, var(--skeleton-fill) 50%, transparent); }
+}
+
+/* An unpicked rune at 30% is barely there on white; 45% keeps it legible while the pick still leads. */
+:root:not(.dark) .deselected {
+  opacity: 0.45;
 }
 
 /*
@@ -208,15 +260,62 @@
 }
 
 /*
- * The champion banner is always dark art (its gradient is ink-950), so on the light theme the text over it takes the
- * dark theme's tones: the subtree redefines the text tokens the banner's children read.
+ * Champion art is always dark (the banners' and cards' scrims are ink-950), so
+ * on the light theme whatever sits over it takes the dark theme's tones: the
+ * subtree redefines the tokens its children read — text, the elevation ladder
+ * (a role picker or a stat tile over the art stays dark), borders, and the data
+ * and tier colours light deepens for white. `on-art` goes on the banner
+ * (`PageHero`, `ChampionHero`) and on a draft card with a champion in it.
  */
 :root:not(.dark) .on-art {
+  color-scheme: dark;
   --ui-text-highlighted: #ffffff;
   --ui-text: #e8eef9;
   --ui-text-toned: #d1d9e6;
   --ui-text-muted: #aeb9cc;
   --ui-text-dimmed: #8693ab;
-  --ui-border: #2d3a4f;
+  --ui-bg: #080c14;
+  --ui-bg-muted: #0d121c;
   --ui-bg-elevated: #131a27;
+  --ui-bg-accented: #1b2434;
+  --ui-bg-surface: color-mix(in oklch, #0d121c 70%, transparent);
+  --ui-border: #1c2535;
+  --ui-border-accented: #2d3a4f;
+  --shadow-key: inset 0 1px 0 0 rgb(255 255 255 / 0.05), inset 0 -1px 0 0 rgb(0 0 0 / 0.2);
+  --skeleton-fill: var(--color-ink-700);
+  --color-data-good: #52a8ff;
+  --color-data-good-dim: #7f9cc4;
+  --color-tier-s: #52a8ff;
+  --color-tier-a: #e2b95c;
+  --color-tier-b: #b9c2cd;
+  --color-tier-c: #b3763f;
+  --color-tier-d: #837a7c;
+  --color-stat-mr: #54e6ff;
+  --color-stat-ad: #f19425;
+}
+
+/* Over art the flat tier mark keeps its dark-theme light edge: the dark one the light page swaps in would sink into the art. */
+:root:not(.dark) .on-art .tier-flat {
+  color: var(--light);
+  border-color: color-mix(in oklch, var(--light) 55%, transparent);
+  background: color-mix(in oklch, var(--light) 10%, transparent);
+}
+
+/* A surface over art stays the dark pane it is on the dark theme. */
+:where(:root:not(.dark)) .on-art .surface {
+  border-color: color-mix(in oklch, white 5%, transparent);
+  box-shadow: none;
+}
+
+/*
+ * The content pane's top edge. On dark, a faint warm hairline catches the light;
+ * on light that hairline read as a beige stain, so the pane gets a white lip and
+ * a soft shade from the top bar instead.
+ */
+.pane-edge {
+  box-shadow: inset 0 1px 0 0 rgb(200 170 110 / 0.28);
+}
+
+:root:not(.dark) .pane-edge {
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.9), inset 0 8px 12px -10px rgb(17 24 39 / 0.08);
 }

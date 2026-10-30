@@ -47,7 +47,7 @@ const tierColor = computed(() => {
 <template>
   <div
     class="relative size-full overflow-hidden rounded-lg bg-elevated transition-[box-shadow,opacity]"
-    :class="ring"
+    :class="[ring, championId && 'on-art']"
     :style="{ '--tier': tierColor }"
     :title="championId ? nameOf(championId) : undefined"
   >

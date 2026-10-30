@@ -37,8 +37,12 @@ export interface ActivityCell {
  * *absence of hue* that marks it. Painted clearly above the card surface, too:
  * an idle day that fades into the background reads as a hole in the grid, and a
  * grid with holes in it has no shape to compare against.
+ *
+ * Read through `--activity-empty-fill` with this grey as the fallback: the site
+ * never sets the variable, the desktop app's light theme does (a dark tile is
+ * a hole on a white card).
  */
-export const ACTIVITY_EMPTY_FILL = '#33333b'
+export const ACTIVITY_EMPTY_FILL = 'var(--activity-empty-fill, #33333b)'
 
 /**
  * The one ramp the grid draws, ordered by step — `ACTIVITY_RAMP[0]` is the
