@@ -1,0 +1,126 @@
+name: Desktop build
+
+on:
+  push:
+    branches-ignore: [develop, master]
+    paths: ["desktop/**", "web/layers/common/**", "web/shared/**", "!**/*.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            runner: macos-15
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg
+            bundle: desktop/target/universal-apple-darwin/release/bundle
+            flavor: '{"bundle":{"createUpdaterArtifacts":false}}'
+          - name: Windows
+            runner: windows-2025
+            rust-targets: ""
+            args: --bundles nsis
+            bundle: desktop/target/release/bundle
+            flavor: '{"bundle":{"createUpdaterArtifacts":false,"externalBin":["binaries/truemain-capture"]}}'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/app/package-lock.json
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: stable
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          workspaces: desktop
+      - run: npm ci
+        working-directory: desktop/app
+      - name: Build the capture helper
+        if: matrix.name == 'macOS'
+        run: |
+          swift build -c release --arch arm64 --arch x86_64 --package-path desktop/capture/macos
+          bin="$(swift build -c release --arch arm64 --arch x86_64 --package-path desktop/capture/macos --show-bin-path)"
+          mkdir -p desktop/src-tauri/binaries
+          cp "$bin/truemain-capture" desktop/src-tauri/binaries/truemain-capture
+          codesign --force --sign - desktop/src-tauri/binaries/truemain-capture
+          lipo -archs desktop/src-tauri/binaries/truemain-capture
+      - name: Build the capture helper
+        if: matrix.name == 'Windows'
+        shell: bash
+        run: |
+          cargo build --release --manifest-path desktop/Cargo.toml -p truemain-capture
+          mkdir -p desktop/src-tauri/binaries
+          cp desktop/target/release/truemain-capture.exe desktop/src-tauri/binaries/truemain-capture-x86_64-pc-windows-msvc.exe
+      - name: Build the app
+        shell: bash
+        env:
+          FLAVOR: ${{ matrix.flavor }}
+        run: |
+          echo "$FLAVOR" > desktop/flavor.json
+          cd desktop/app
+          npm run tauri -- build ${{ matrix.args }} --config flavor.json
+      - name: Collect the installer
+        shell: bash
+        env:
+          BUNDLE: ${{ matrix.bundle }}
+        run: |
+          mkdir -p dist
+          if [ "${{ matrix.name }}" = "macOS" ]; then
+            app=$(ls -d "$BUNDLE"/macos/*.app)
+            test -x "$app/Contents/MacOS/truemain-capture"
+            codesign --verify --deep --strict "$app"
+            cp "$BUNDLE"/dmg/*.dmg dist/TrueMain-macOS.dmg
+          else
+            test -f desktop/target/release/truemain-capture.exe
+            cp "$BUNDLE"/nsis/*-setup.exe dist/TrueMain-Windows-setup.exe
+          fi
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: truemain-${{ matrix.name }}-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish the downloads
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: truemain-*
+          path: dist
+          merge-multiple: true
+      - name: Replace the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la dist
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest dist/TrueMain-macOS.dmg dist/TrueMain-Windows-setup.exe \
+            --target "$GITHUB_SHA" \
+            --title "TrueMain App — build mais recente" \
+            --latest \
+            --notes "Build automático do commit $GITHUB_SHA na branch main. Os instaladores não são assinados: no macOS, rode \`xattr -cr /Applications/TrueMain.app\` depois de copiar o app; no Windows, o SmartScreen pede para confirmar ('Mais informações' → 'Executar assim mesmo')."

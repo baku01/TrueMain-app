@@ -43,7 +43,7 @@ Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
 - **Chave da API da Riot** em Configurações: guardada no chaveiro do sistema, verificada na hora, com os limites de requisições da chave.
 - **ProBuild:** uma coleta automática das partidas dos melhores jogadores (Desafiante e Grão-Mestre) para mostrar as builds e runas de cada campeão com as taxas de vitória. Veja a seção abaixo.
 - **Ordem de compra e de habilidades** de partidas lidas do cliente, buscadas na timeline da Riot com a sua chave.
-- **Infraestrutura:** os workflows do projeto original (CI, deploy em servidor próprio, SonarQube, etc.) foram removidos. Resta só o **build para macOS** (`.github/workflows/desktop-macos.yml`).
+- **Infraestrutura:** os workflows do projeto original (CI, deploy em servidor próprio, SonarQube, etc.) foram removidos. Resta só o **build do app para macOS e Windows** (`.github/workflows/desktop-build.yml`).
 
 ## ProBuild: builds de quem joga no topo
 
@@ -53,6 +53,17 @@ A API da Riot não permite perguntar "as partidas do Ezreal no Desafiante". O ap
 - Precisa de uma **chave da API da Riot** (gere uma em [developer.riotgames.com](https://developer.riotgames.com); a de desenvolvimento vale 24 horas).
 - Com a chave pessoal (100 requisições a cada 2 minutos), uma rodada completa leva horas. Os melhores jogadores vêm primeiro, então os primeiros números aparecem em minutos.
 - **Limites:** a ordem de compra dos itens ainda não é coletada (exigiria a timeline de cada partida), e menos de 30 partidas de um campeão dão porcentagens pouco confiáveis, o que a tela avisa.
+
+## Baixar
+
+Os instaladores mais recentes, gerados pelo GitHub Actions a partir da branch `main`:
+
+| Sistema | Download |
+|---|---|
+| **macOS** (Apple Silicon e Intel) | [TrueMain-macOS.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS.dmg) |
+| **Windows** (64 bits) | [TrueMain-Windows-setup.exe](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-Windows-setup.exe) |
+
+Todas as versões: [Releases](https://github.com/baku01/TrueMain-app/releases). Os instaladores **não são assinados**: no **macOS**, depois de copiar o app para Aplicativos, rode `xattr -cr /Applications/TrueMain.app`; no **Windows**, o SmartScreen avisa de "editor desconhecido" (clique em *Mais informações* e *Executar assim mesmo*).
 
 ## Como rodar
 
@@ -77,9 +88,7 @@ cd ../src-tauri && cargo test --lib
 
 O app lê as estatísticas de campeões da **API do TrueMain** (`https://truemain.lol`, o servidor do projeto original). Para apontar para outro servidor, defina `TRUEMAIN_SITE_URL` (veja [`desktop/README.md`](desktop/README.md)).
 
-Para gerar o instalador: `npm run tauri build` dentro de `desktop/app`. O GitHub Actions gera o `.dmg` do macOS (`.github/workflows/desktop-macos.yml`) a cada push que mexa no app, e guarda o instalador por 14 dias.
-
-**Ao abrir o `.dmg` no Mac,** o sistema pode avisar que o app "está danificado": ele é assinado só de forma *ad-hoc*. Resolva com `xattr -cr /Applications/TrueMain.app`.
+Para gerar o instalador: `npm run tauri build` dentro de `desktop/app`. O GitHub Actions gera os instaladores (`.github/workflows/desktop-build.yml`) a cada push que mexa no app.
 
 ## De onde vêm os dados
 
