@@ -20,7 +20,7 @@
     "@tauri-apps/plugin-process": "~2.4.0",
     "@tauri-apps/plugin-shell": "~2.3.0",
     "@tauri-apps/plugin-updater": "~2.13.0",
-    "nuxt": "^4.5.2",
+    "nuxt": "^4.6.2",
     "vue": "^3.5.43"
   },
   "devDependencies": {
@@ -33,7 +33,7 @@
     "@vue/test-utils": "^2.5.1",
     "eslint": "^10.12.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^21.0.4",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3",
