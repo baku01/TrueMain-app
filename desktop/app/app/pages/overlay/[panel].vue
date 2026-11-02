@@ -115,18 +115,23 @@ useHead({
     </div>
   </div>
   <div v-else class="origin-top-left" :style="{ transform: `scale(${scale})` }">
-    <div ref="content" class="relative px-3 py-2.5 text-default" :style="{ width: `${PANEL_WIDTHS[panel]}px` }">
-      <template v-if="playing">
-        <OverlayNextItem v-if="panel === 'next-item'" :game="playing" />
-        <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="playing" :synced-at="syncedAt" />
-        <OverlayStats v-else-if="panel === 'stats'" :game="playing" :reference="paceReference" />
-        <OverlayObjectives v-else-if="panel === 'objectives'" :game="playing" :synced-at="syncedAt" />
-        <OverlayItemValue v-else :game="playing" :lanes="!settings?.laneGold.enabled" />
-      </template>
-      <OverlayPanelSample v-else-if="preview" :panel="panel" />
-      <div v-else class="flex items-center gap-2.5">
-        <AppMark class="size-4 shrink-0" />
-        <p class="text-[11px] leading-snug text-muted">{{ placeholder }}</p>
+    <div ref="content" class="relative isolate px-3 py-2.5 text-default" :style="{ width: `${PANEL_WIDTHS[panel]}px` }">
+      <!-- The pane's material, under the content and exactly the window's size: the content box is the window. -->
+      <span class="overlay-pane pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
+      <!-- Keyed on what is shown, so a panel that starts reading a game arrives rather than snapping in. -->
+      <div :key="playing ? 'live' : preview ? 'sample' : 'idle'" class="animate-overlay-in">
+        <template v-if="playing">
+          <OverlayNextItem v-if="panel === 'next-item'" :game="playing" />
+          <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="playing" :synced-at="syncedAt" />
+          <OverlayStats v-else-if="panel === 'stats'" :game="playing" :reference="paceReference" />
+          <OverlayObjectives v-else-if="panel === 'objectives'" :game="playing" :synced-at="syncedAt" />
+          <OverlayItemValue v-else :game="playing" :lanes="!settings?.laneGold.enabled" />
+        </template>
+        <OverlayPanelSample v-else-if="preview" :panel="panel" />
+        <div v-else class="flex items-center gap-2.5">
+          <AppMark class="size-4 shrink-0 motion-safe:animate-tm-pulse" />
+          <p class="text-[11px] leading-snug text-muted">{{ placeholder }}</p>
+        </div>
       </div>
 
       <!--

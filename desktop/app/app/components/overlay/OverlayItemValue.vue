@@ -30,6 +30,12 @@ const total = (ours: boolean) => props.game.players
   .reduce((sum, player) => sum + value(player), 0)
 
 const teams = computed(() => ({ ours: total(true), theirs: total(false) }))
+/** Our share of all the item gold on the map, for the split bar; even before anyone has bought. */
+const share = computed(() => {
+  const all = teams.value.ours + teams.value.theirs
+  return all > 0 ? Math.round((teams.value.ours / all) * 100) : 50
+})
+const { t } = useT()
 const rows = computed(() => laneRows(props.game).map(({ ally, enemy }) => ({
   ally,
   enemy,
@@ -43,10 +49,20 @@ const number = formatCount
 
 <template>
   <div class="flex flex-col gap-2">
+    <p class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-dimmed">
+      <AppMark class="size-2.5" />
+      {{ t('overlay.panel.itemValue.label') }}
+    </p>
     <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
       <span class="stat-value justify-self-end text-lg leading-none tabular-nums text-ally">{{ number(teams.ours) }}</span>
       <OverlayGoldGap :ours="teams.ours" :theirs="teams.theirs" large />
       <span class="stat-value text-lg leading-none tabular-nums text-enemy">{{ number(teams.theirs) }}</span>
+    </div>
+    <!-- Each side's share of the item gold on the map, meeting where it stands: the same bar as the win probability's. -->
+    <div class="relative flex h-1 overflow-hidden rounded-full bg-elevated ring-1 ring-inset ring-white/5" aria-hidden="true">
+      <span class="bg-linear-to-r from-ally/60 to-ally transition-[width] duration-700 ease-[var(--tm-ease)]" :style="{ width: `${share}%` }" />
+      <span class="w-px bg-white/70" />
+      <span class="flex-1 bg-linear-to-r from-enemy to-enemy/60" />
     </div>
 
     <ul v-if="lanes" class="flex flex-col gap-1 border-t border-default pt-2">

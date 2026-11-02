@@ -25,6 +25,8 @@ onBeforeUnmount(() => clearInterval(ticking))
 const clock = computed(() => props.game.gameTime + Math.max(0, now.value - props.syncedAt) / 1000)
 
 const ours = computed(() => Math.round(winProbability(props.game, clock.value) * 100))
+/** The side ahead reads at full strength, the other steps back; an even game keeps both. */
+const leading = computed(() => (ours.value > 50 ? 'ours' : ours.value < 50 ? 'theirs' : null))
 </script>
 
 <template>
@@ -34,12 +36,27 @@ const ours = computed(() => Math.round(winProbability(props.game, clock.value) *
       {{ t('overlay.panel.winProbability.label') }}
     </p>
     <div class="flex items-end justify-between gap-3">
-      <span class="stat-value text-2xl leading-none tabular-nums text-ally">{{ ours }}<span class="text-sm">%</span></span>
-      <span class="stat-value text-2xl leading-none tabular-nums text-enemy">{{ 100 - ours }}<span class="text-sm">%</span></span>
+      <span
+        class="stat-value text-2xl leading-none tabular-nums text-ally transition-opacity duration-500"
+        :class="leading === 'theirs' ? 'opacity-55' : 'drop-shadow-[0_0_8px_color-mix(in_oklch,var(--color-ally)_45%,transparent)]'"
+      >{{ ours }}<span class="text-sm">%</span></span>
+      <span
+        class="stat-value text-2xl leading-none tabular-nums text-enemy transition-opacity duration-500"
+        :class="leading === 'ours' ? 'opacity-55' : 'drop-shadow-[0_0_8px_color-mix(in_oklch,var(--color-enemy)_45%,transparent)]'"
+      >{{ 100 - ours }}<span class="text-sm">%</span></span>
     </div>
-    <div class="flex h-1 overflow-hidden rounded-full bg-elevated">
-      <span class="bg-ally/80 transition-[width] duration-700" :style="{ width: `${ours}%` }" />
-      <span class="flex-1 bg-enemy/80" />
+    <!--
+      One bar, both sides meeting where the odds stand. The even line is a notch
+      standing just past the bar's edges rather than a cut through it: drawn
+      inside, it split the leading side's colour in two and read as a glitch.
+    -->
+    <div class="relative">
+      <div class="flex h-1.5 overflow-hidden rounded-full bg-elevated ring-1 ring-inset ring-white/5">
+        <span class="bg-linear-to-r from-ally/60 to-ally transition-[width] duration-700 ease-[var(--tm-ease)]" :style="{ width: `${ours}%` }" />
+        <span class="w-px bg-white/70" />
+        <span class="flex-1 bg-linear-to-r from-enemy to-enemy/60" />
+      </div>
+      <span class="pointer-events-none absolute -inset-y-0.5 left-1/2 w-px -translate-x-1/2 rounded-full bg-white/30" aria-hidden="true" />
     </div>
   </div>
 </template>

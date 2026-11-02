@@ -51,10 +51,10 @@ const message = computed(() => {
 </script>
 
 <template>
-  <OverlayNextItemCard v-if="starter" :label="t('overlay.nextItem.starter')" :item="starterItem" :name="basketName(starter.itemIds, name)" :missing="Math.max(0, starterGold - game.gold)" />
+  <OverlayNextItemCard v-if="starter" :label="t('overlay.nextItem.starter')" :item="starterItem" :name="basketName(starter.itemIds, name)" :missing="Math.max(0, starterGold - game.gold)" :total="starterGold" />
   <div v-else-if="state === 'ready' && top" class="space-y-1.5">
     <!-- The player's active kit (#2185) answers under its own label: its next step, not the mains'. -->
-    <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :label="fromKit ? t('overlay.nextItem.kit') : bootsDue ? t('overlay.nextItem.boots') : t('overlay.nextItem.title')" />
+    <OverlayNextItemCard :item="statics[top.itemId] ?? null" :name="name(top.itemId)" :missing="missing" :total="remaining" :label="fromKit ? t('overlay.nextItem.kit') : bootsDue ? t('overlay.nextItem.boots') : t('overlay.nextItem.title')" />
     <!-- What to buy first, said once and large: the rest of the path is the context around it. -->
     <div
       v-if="nextComponent"

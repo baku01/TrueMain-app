@@ -75,7 +75,7 @@ const soon = (status: PillStatus) => status.kind === 'countdown' && status.secon
         :data-objective="pill.key"
         :data-status="pill.status.kind"
         class="flex h-6 w-16 items-center justify-center gap-1 rounded-full ring-1 ring-inset"
-        :class="PILL[pill.status.kind]"
+        :class="[PILL[pill.status.kind], pill.status.kind === 'countdown' && soon(pill.status) && 'animate-overlay-soon']"
       >
         <img
           :src="pill.icon"
