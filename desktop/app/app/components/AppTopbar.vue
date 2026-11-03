@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The bar across the window's top: the wordmark and the app's version, a
+ * The bar across the window's top: the wordmark, a
  * champion and player search (⌘K) in the middle, and on the right the theme
  * and language buttons and the player. Settings sit at the foot of the rail
  * (`AppNav`), which is how the app is navigated. No back/forward arrows and no
@@ -17,13 +17,6 @@ const { readyVersion: updateVersion, installing: updating, stalled: updateStalle
 defineShortcuts({
   meta_k: () => (open.value = !open.value),
 })
-
-const version = ref<string | null>(null)
-onMounted(async () => {
-  if (!insideTauri()) return
-  const { getVersion } = await import('@tauri-apps/api/app')
-  version.value = await getVersion()
-})
 </script>
 
 <template>
@@ -32,7 +25,6 @@ onMounted(async () => {
       <NuxtLink to="/" :aria-label="t('nav.dashboard')" class="shrink-0">
         <AppWordmark class="text-lg" />
       </NuxtLink>
-      <span data-tauri-drag-region class="translate-y-px truncate text-[11px] font-bold text-dimmed @max-2xl:hidden">{{ version ? t('sidebar.appVersion', { version }) : t('sidebar.companion') }}</span>
       <UButton
         v-if="updateVersion"
         :label="t('sidebar.update', { version: updateVersion })"
