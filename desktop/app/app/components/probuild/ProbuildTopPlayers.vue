@@ -62,6 +62,6 @@ async function pick(player: TopPlayer) {
       <USkeleton v-for="row in 4" :key="row" class="h-11 w-full" />
     </div>
     <p v-else-if="!players.length" class="text-sm text-dimmed" :class="compact ? 'px-2' : ''">{{ t('analytics.notFromSource', { source }) }}</p>
-    <div v-else :class="compact ? '' : '@container'"><AnalyticsPlayers :players="compact ? players.slice(0, 10) : players" :selectable="selectable" :pending="pending" :missing="missing" @select="pick" /></div>
+    <div v-else :class="compact ? 'min-w-0' : '@container'"><AnalyticsPlayers :players="compact ? players.slice(0, 10) : players" :compact="compact" :selectable="selectable" :pending="pending" :missing="missing" @select="pick" /></div>
   </section>
 </template>

@@ -9,33 +9,34 @@ import { formatPercentage } from '#shared/utils/ddragon'
  * last game on the champion (`pending` names the row being read, `missing` the
  * rows that had none).
  */
-defineProps<{ players: TopPlayer[], selectable?: boolean, pending?: string | null, missing?: ReadonlySet<string> }>()
+/** `compact`: the champion page's narrow side list — tighter rows, smaller picture. */
+defineProps<{ players: TopPlayer[], selectable?: boolean, pending?: string | null, missing?: ReadonlySet<string>, compact?: boolean }>()
 const emit = defineEmits<{ select: [player: TopPlayer] }>()
 const { t } = useT()
 </script>
 
 <template>
-  <ol class="grid gap-1.5 @3xl:grid-cols-2">
+  <ol class="grid min-w-0 grid-cols-1 gap-1.5 @3xl:grid-cols-2">
     <li
       v-for="(player, index) in players.slice(0, 16)"
       :key="`${player.name}-${index}`"
-      class="flex items-center gap-3 rounded-lg bg-accented/20 px-3 py-2"
-      :class="selectable ? 'transition-colors hover:bg-accented/60' : ''"
+      class="flex min-w-0 items-center rounded-lg bg-accented/20"
+      :class="[compact ? 'gap-2 px-2 py-1.5' : 'gap-3 px-3 py-2', selectable ? 'cursor-default transition-colors hover:bg-accented/60' : '']"
       :role="selectable ? 'button' : undefined"
       :tabindex="selectable ? 0 : undefined"
       @click="selectable && emit('select', player)"
       @keydown.enter="selectable && emit('select', player)"
     >
-      <span class="w-5 text-right text-xs font-semibold tabular-nums text-dimmed">{{ index + 1 }}</span>
-      <PlayerAvatar :src="player.portraitUrl" :name="player.name" :size="28" class="rounded-md" />
+      <span class="shrink-0 text-right text-xs font-semibold tabular-nums text-dimmed" :class="compact ? 'w-4' : 'w-5'">{{ index + 1 }}</span>
+      <PlayerAvatar :src="player.portraitUrl" :name="player.name" :size="compact ? 24 : 28" class="rounded-md" />
       <span class="min-w-0 flex-1">
-        <span class="block truncate text-sm font-semibold text-highlighted">{{ player.name }}</span>
-        <span class="block truncate text-[11px] uppercase text-dimmed">{{ [player.team, player.region, player.rank].filter(Boolean).join(' · ') }}</span>
+        <span class="block truncate font-semibold text-highlighted" :class="compact ? 'text-xs' : 'text-sm'" :title="player.name">{{ player.name }}</span>
+        <span class="block truncate uppercase text-dimmed" :class="compact ? 'text-[10px]' : 'text-[11px]'">{{ [player.team, player.region, player.rank].filter(Boolean).join(' · ') }}</span>
         <span v-if="missing?.has(player.name)" class="block text-[10px] text-warning">{{ t('analytics.players.noGame') }}</span>
       </span>
       <UIcon v-if="pending === player.name" name="i-lucide-loader-circle" class="size-4 shrink-0 text-dimmed" />
-      <span class="text-right">
-        <span v-if="player.winRate !== null" class="block text-sm font-semibold tabular-nums" :class="player.winRate >= 0.5 ? 'text-primary' : 'text-error'">{{ formatPercentage(player.winRate, 0) }}</span>
+      <span class="shrink-0 text-right">
+        <span v-if="player.winRate !== null" class="block font-semibold tabular-nums" :class="[player.winRate >= 0.5 ? 'text-primary' : 'text-error', compact ? 'text-xs' : 'text-sm']">{{ formatPercentage(player.winRate, 0) }}</span>
         <span class="block text-[10px] tabular-nums text-dimmed">{{ t('analytics.players.games', { games: player.games }) }}</span>
       </span>
     </li>

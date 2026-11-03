@@ -124,7 +124,7 @@ const emptyMessage = computed(() => t('build.view.none'))
       <div class="border-b border-default px-3 py-2.5">
         <slot name="header" />
       </div>
-      <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2">
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden p-2">
         <BuildList
           :model-value="kitShown ? null : selected"
           :options="options"
