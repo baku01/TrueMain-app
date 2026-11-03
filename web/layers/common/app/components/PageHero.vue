@@ -8,28 +8,47 @@
  * The host resolves `splashUrl` (the site through its image proxy, the app
  * straight from Data Dragon), so this component never asks which app it runs in.
  *
+ * The art is framed the way the genre's apps do it: anchored right, sized by
+ * the band's height rather than stretched across its width — a wide, short
+ * band cropped to cover shows a strip of the eyes and nothing else — so the
+ * whole width of the art shows, the character's head and shoulders in view,
+ * fading out to the left under the title.
+ *
  * `on-art` marks the band as dark whatever the theme: the site is dark-only and
  * ignores it, the desktop app's light theme reads it to keep the text over the
  * splash light (`desktop/app/app/assets/css/main.css`).
  */
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   splashUrl?: string | null
-  /** CSS `object-position` of the splash: where the art's subject sits. */
+  /**
+   * Where the art's subject sits, as an `object-position`: its vertical part
+   * places the art up or down in the band (`20%` shows its upper part).
+   */
   splashPosition?: string
 }>(), { splashUrl: null, splashPosition: '68% 22%' })
+
+/** The art is twice the band's height: shift it up by part of the slack, per the position's vertical share. */
+const artTop = computed(() => {
+  const vertical = Number.parseFloat(props.splashPosition.split(/\s+/)[1] ?? '22')
+  return `${-Math.min(100, Math.max(0, Number.isFinite(vertical) ? vertical : 22))}%`
+})
 </script>
 
 <template>
   <section class="on-art relative overflow-hidden rounded-lg border border-default bg-ink-950">
-    <img
+    <div
       v-if="splashUrl"
-      :src="splashUrl"
-      alt=""
+      class="pointer-events-none absolute inset-0"
       aria-hidden="true"
-      decoding="async"
-      class="absolute inset-0 size-full object-cover"
-      :style="{ objectPosition: splashPosition }"
     >
+      <img
+        :src="splashUrl"
+        alt=""
+        decoding="async"
+        class="absolute right-0 h-[200%] w-auto max-w-none [mask-image:linear-gradient(to_right,transparent,black_35%)]"
+        :style="{ top: artTop }"
+      >
+    </div>
     <div class="pointer-events-none absolute inset-0 bg-linear-to-r from-ink-950/85 via-ink-950/30 to-transparent" />
     <div class="pointer-events-none absolute inset-0 bg-linear-to-t from-ink-950 via-ink-950/40 to-transparent" />
 

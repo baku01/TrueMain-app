@@ -18,14 +18,14 @@ const { items } = useStaticData()
 const next = computed(() => items.value[SAMPLE_NEXT_ITEM.itemId] ?? null)
 const { itemId, held, gold, route } = SAMPLE_NEXT_ITEM
 const path = computed(() => buildPath(itemId, route, held, gold, items.value))
-const missing = computed(() => Math.max(0, goldToComplete(itemId, held, items.value) - gold))
+const toComplete = computed(() => goldToComplete(itemId, held, items.value))
+const missing = computed(() => Math.max(0, toComplete.value - gold))
 </script>
 
 <template>
-  <div v-if="panel === 'next-item'" class="space-y-2">
-    <OverlayNextItemCard :item="next" :name="next?.name ?? 'Zhonya\'s Hourglass'" :missing="missing" />
-    <GameBuildPath :path="path" :statics="items" :size="24" />
-    <GameBuildOrder :steps="SAMPLE_BUILD_ORDER" :statics="items" :size="22" class="border-t border-default pt-2" />
+  <div v-if="panel === 'next-item'" class="space-y-2.5">
+    <OverlayNextItemCard :item="next" :name="next?.name ?? 'Zhonya\'s Hourglass'" :missing="missing" :total="toComplete" />
+    <OverlayNextItemPath :path="path" :order="SAMPLE_BUILD_ORDER" :statics="items" :gold="gold" />
   </div>
   <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="game" :synced-at="syncedAt" />
   <OverlayStats v-else-if="panel === 'stats'" :game="game" :reference="SAMPLE_PACE_REFERENCE" />

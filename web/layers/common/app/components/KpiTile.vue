@@ -32,7 +32,7 @@ const tone = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-1.5 rounded-lg bg-ink-950/55 px-3 pb-2 pt-2.5 ring-1 ring-white/5 backdrop-blur-md">
+  <div class="flex min-w-0 flex-col gap-1.5 rounded-lg bg-ink-950/55 px-3 pb-2 pt-2.5 ring-1 ring-white/5 backdrop-blur-md transition-all duration-200 hover:ring-white/10 hover:bg-ink-950/70">
     <div class="flex min-w-0 items-center justify-between gap-2">
       <span class="stat-label truncate">{{ label }}</span>
       <UTooltip

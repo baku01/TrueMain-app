@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { BuildItemSet, ChampionBuildResponse, CompositionBuildResponse } from '~/types/build'
+import type { BuildItemSet, CompositionBuildResponse } from '~/types/build'
 import type { GameState } from '~/types/game'
 import { compositionStarter, starterBought, starterRequest } from '~/utils/next-item'
 
@@ -30,9 +30,7 @@ export function useStarter(game: Ref<GameState>) {
   const answer = ref<BuildItemSet | null>(null)
 
   async function laneStarter(championId: number, position: string) {
-    const build = insideTauri()
-      ? await (await import('@tauri-apps/api/core')).invoke<ChampionBuildResponse>('champion_build', { championId, position, opponentChampionId: null })
-      : await $fetch<ChampionBuildResponse>(`/api/champions/${championId}`, { query: { position } })
+    const build = await readChampionBuild(championId, position)
     return build.builds[0]?.core.starterItems ?? null
   }
 

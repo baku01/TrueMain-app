@@ -13,10 +13,16 @@ import type { SkillKey } from '~/utils/skill-grid'
 const props = defineProps<{
   skillOrder: BuildSkillOrder | null
   championStatic: ChampionStaticData
+  /** The skill taken at each level (1 Q … 4 R), when the source measured it: drawn as is, instead of derived from the priority. */
+  points?: number[] | null
+  /** The grid alone, without the priority beside it — where the page shows the priority already. */
+  gridOnly?: boolean
 }>()
 
 const { t } = useT()
-const grid = computed(() => (props.skillOrder ? skillGrid(props.skillOrder.sequence) : null))
+const KEY_BY_SLOT: Record<number, SkillKey> = { 1: 'Q', 2: 'W', 3: 'E', 4: 'R' }
+const measured = computed(() => (props.points?.length ? Object.fromEntries(props.points.map((slot, index) => [index + 1, KEY_BY_SLOT[slot]!])) as Record<number, SkillKey> : null))
+const grid = computed(() => measured.value ?? (props.skillOrder ? skillGrid(props.skillOrder.sequence) : null))
 const spell = (key: string) => props.championStatic.championSpells[key] ?? null
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)
 
@@ -31,7 +37,7 @@ const COLORS: Record<SkillKey, string> = {
 
 <template>
   <div class="flex flex-wrap items-center gap-x-8 gap-y-4">
-    <div class="shrink-0">
+    <div v-if="!gridOnly" class="shrink-0">
       <h3 class="text-sm font-medium text-muted">{{ t('champion.core.skillOrder') }}</h3>
       <div v-if="skillOrder?.sequence.length" class="mt-2 flex items-center gap-1">
         <template v-for="(key, index) in skillOrder.sequence" :key="`${key}-${index}`">
@@ -65,7 +71,7 @@ const COLORS: Record<SkillKey, string> = {
           </tr>
         </tbody>
       </table>
-      <p class="mt-1.5 text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
+      <p v-if="!measured" class="mt-1.5 text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
     </div>
   </div>
 </template>

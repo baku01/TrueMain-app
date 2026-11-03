@@ -36,9 +36,11 @@ export function useStaticData() {
       $fetch<SummonerListResponse>(`${DDRAGON}/${version}/data/${ddragonLocale(getActiveLocale())}/summoner.json`),
       fetchRuneTree(version),
     ])
-    if (itemData.status === 'fulfilled') items.value = toItemsMap(itemData.value, version)
-    if (summonerData.status === 'fulfilled') summoners.value = toSummonersMap(summonerData.value, version)
-    if (tree.status === 'fulfilled') runeTree.value = tree.value
+    // Held raw: read-only maps of hundreds of entries, replaced whole on a new
+    // patch — a deep proxy over each would only cost memory.
+    if (itemData.status === 'fulfilled') items.value = markRaw(toItemsMap(itemData.value, version))
+    if (summonerData.status === 'fulfilled') summoners.value = markRaw(toSummonersMap(summonerData.value, version))
+    if (tree.status === 'fulfilled') runeTree.value = markRaw(tree.value)
     // Offline: let the next patch read try again rather than keep empty maps.
     if ([itemData, summonerData, tree].some(result => result.status === 'rejected')) loadedFor.value = ''
     pending.value = false
@@ -53,7 +55,7 @@ export function useStaticData() {
     if (!version || !alias || champions.value[championId]) return
     try {
       const detail = await $fetch<ChampionDetailResponse>(`${DDRAGON}/${version}/data/${ddragonLocale(getActiveLocale())}/champion/${alias}.json`)
-      champions.value = { ...champions.value, [championId]: toChampionStatic(detail, alias, nameOf(championId), version) }
+      champions.value = { ...champions.value, [championId]: markRaw(toChampionStatic(detail, alias, nameOf(championId), version)) }
     }
     catch {
       // The skill order falls back to its Q/W/E labels.

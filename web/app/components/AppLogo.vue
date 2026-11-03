@@ -1,12 +1,12 @@
 <template>
-  <span class="inline-flex items-center gap-1.5 font-bold tracking-tight">
+  <span class="group/logo inline-flex items-center gap-1.5 font-bold tracking-tight">
     <!-- M-check mark: an M whose last stroke becomes a checkmark — the "true"
          main, verified by the data. Same rose-gold ramp as the wordmark.
          The gradient id is shared between instances (header + footer render
          identical defs, which browsers resolve to the same paint). -->
     <svg
       viewBox="0 0 64 64"
-      class="h-[1.15em] w-[1.15em]"
+      class="h-[1.15em] w-[1.15em] transition-transform duration-300 ease-out group-hover/logo:scale-110 group-hover/logo:-rotate-3"
       aria-hidden="true"
     >
       <defs>

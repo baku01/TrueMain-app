@@ -6,6 +6,7 @@ import { counted } from '~/utils/player-form'
 import { toMatchSummary } from '~/utils/match-summary'
 import { lpDeltaOf } from '~/utils/lp-history'
 import { MATCH_DETAIL_SOURCE } from '#common/utils/match-detail-source'
+import { blitzMatchDetail } from '~/utils/blitz/match-detail'
 
 /**
  * The player's match history, ten games a page with the site's pagination,
@@ -31,19 +32,34 @@ const props = defineProps<{
   summonerSpells: Record<number, StaticSummonerSpellData>
   runeTree: RuneTreeResponse | null
   nameTag: string
+  /**
+   * Set when the games are another player's, read from Blitz on this platform
+   * (`BR1`): an opened row reads its game from Blitz too, and no score is asked
+   * of TrueMain.
+   */
+  blitzPlatform?: string | null
 }>()
 
 const emit = defineEmits<{ loadOlder: [] }>()
 
 // An open row reads its game from TrueMain's copy when there is one, else from
 // the player's own client — the shared detail panel asks through this.
-provide(MATCH_DETAIL_SOURCE, usePlayerGameDetail)
+provide(MATCH_DETAIL_SOURCE, (nameTag, matchId) => {
+  if (!props.blitzPlatform) return usePlayerGameDetail(nameTag, matchId)
+  const data = ref<Awaited<ReturnType<typeof blitzMatchDetail>>>(null)
+  const isLoading = ref(true)
+  const notFound = ref(false)
+  watch(matchId, async (id) => {
+    isLoading.value = true
+    data.value = await blitzMatchDetail(`${props.blitzPlatform}_${id}`).catch(() => null)
+    notFound.value = !data.value
+    isLoading.value = false
+  }, { immediate: true })
+  return { data, isLoading, notFound }
+})
 
 // A row's score is TrueMain's when it holds the game, else graded from the client's (#2075).
-const storedScores = useTruemainScores(() => props.nameTag)
-
-// A play button when this game was recorded: its recap, or its clips once the full game is gone.
-const { watchTarget } = useRecordings()
+const storedScores = useTruemainScores(() => (props.blitzPlatform ? '' : props.nameTag))
 
 const { t } = useT()
 const PAGE_SIZE = 10
@@ -94,27 +110,6 @@ const loadingPage = computed(() => props.pending || (!pageMatches.value.length &
       :filtered="queue !== 'all'"
       own
     >
-      <template #actions="{ match }">
-        <!-- A slot of the same width on every row, filled or not, so the teams
-             and the build line up down the list whether a game was recorded. -->
-        <span class="flex size-6 shrink-0 items-center justify-center">
-          <UButton
-            v-if="watchTarget(Number(match.matchId))"
-            :to="watchTarget(Number(match.matchId))!"
-            icon="i-lucide-play"
-            color="neutral"
-            variant="soft"
-            size="xs"
-            square
-            class="relative"
-            :aria-label="t('dash.history.watchLabel')"
-            :title="t('dash.history.watchTitle')"
-            @click.stop
-            @keydown.enter.stop
-            @keydown.space.stop
-          />
-        </span>
-      </template>
     </MatchHistoryList>
   </section>
 </template>

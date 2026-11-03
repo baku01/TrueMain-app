@@ -2,7 +2,6 @@
 import { SERVER_FLAGS_KEY } from '#common/utils/server-flag'
 
 const { screen, ready } = useLcuState()
-const { collapsed: sidebarCollapsed } = useSidebar()
 const router = useRouter()
 const route = useRoute()
 
@@ -12,7 +11,7 @@ provide(SERVER_FLAGS_KEY, true)
 /**
  * Each overlay panel loads this same bundle on `/overlay/<panel>` in its own webview
  * (`src-tauri/src/overlay`): the page alone, with none of the window's work —
- * no recordings, no update offer, and above all no phase navigation, which
+ * no update offer, and above all no phase navigation, which
  * would carry the overlay off its page.
  */
 const overlay = route.path.startsWith('/overlay/')
@@ -20,13 +19,6 @@ const overlay = route.path.startsWith('/overlay/')
 // Followed for as long as the window lives, so a game's updates are never
 // missed while another page is open.
 useLiveGame()
-if (!overlay) {
-  // Recordings are read once and followed for the window's life too: the
-  // sidebar and the dashboard's "Watch" read the library, and the end of a
-  // recorded game opens its recap (`recording://recap`, from home or the game
-  // page only).
-  useRecordings()
-}
 
 /** The `/dev/*` tools (the draft simulator) stand alone, outside the app's shell and its phase navigation. */
 const devTool = computed(() => route.path.startsWith('/dev/'))
@@ -71,23 +63,23 @@ watch(screen, (next, previous) => {
 <template>
   <UApp>
     <NuxtPage v-if="standalone" />
-    <div v-else class="flex h-screen overflow-hidden bg-default text-default">
+    <div v-else class="flex h-screen flex-col overflow-hidden bg-default text-default">
       <AppLoadingBar />
-      <AppSidebar class="shrink-0 transition-[width] duration-200 motion-reduce:transition-none" :class="sidebarCollapsed ? 'w-16' : 'w-[200px]'" />
-
-      <div class="flex min-w-0 flex-1 flex-col">
-        <AppTopbar class="h-12 shrink-0" />
-        <main class="relative min-h-0 flex-1 overflow-hidden rounded-tl-2xl border-l border-t border-default bg-muted pane-edge">
-          <!--
-            `ready` covers the gap between mount and the first read of the Rust
-            state. Rendering a page during it would tell the player their client
-            is closed when it is not.
-          -->
-          <div v-if="!ready" class="flex h-full items-center justify-center">
-            <UIcon name="i-lucide-loader-circle" class="size-6 text-dimmed" />
-          </div>
-          <NuxtPage v-else />
-        </main>
+      <!-- The bar across the top, the rail down the left, the page beside it. -->
+      <AppTopbar class="h-12 shrink-0 border-b border-default bg-elevated" />
+      <div class="flex min-h-0 flex-1">
+      <AppNav class="shrink-0" />
+      <main class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-muted">
+        <!--
+          `ready` covers the gap between mount and the first read of the Rust
+          state. Rendering a page during it would tell the player their client
+          is closed when it is not.
+        -->
+        <div v-if="!ready" class="flex h-full items-center justify-center">
+          <UIcon name="i-lucide-loader-circle" class="size-6 text-dimmed" />
+        </div>
+        <NuxtPage v-else />
+      </main>
       </div>
     </div>
   </UApp>

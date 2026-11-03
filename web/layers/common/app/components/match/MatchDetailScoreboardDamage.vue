@@ -21,7 +21,7 @@ const percent = computed(() => props.maxDamage > 0 ? Math.round((props.damage / 
   <div class="flex w-[6.5rem] flex-col gap-1">
     <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/8">
       <div
-        class="h-full rounded-full transition-[width]"
+        class="h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none"
         :class="isTop ? 'bg-primary shadow-[0_0_8px] shadow-primary/60' : 'bg-primary/45'"
         :style="{ width: `${percent}%` }"
       />

@@ -76,7 +76,8 @@ export function useTierList() {
     if (championId === null) return null
     let best: TierEntry | null = null
     for (const entry of entries.value) {
-      if (entry.championId === championId && (best === null || entry.games > best.games)) best = entry
+      // A source that counts no games (Tencent) ranks the lanes by pick rate.
+      if (entry.championId === championId && (best === null || entry.games > best.games || (entry.games === best.games && entry.pickRate > best.pickRate))) best = entry
     }
     return best
   }

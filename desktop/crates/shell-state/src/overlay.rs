@@ -297,30 +297,6 @@ impl Default for OverlaySettings {
     }
 }
 
-/// How far down the game's screen the confirmation of a kept mark sits: below
-/// the panels anchored to the top, above the champion.
-const CONFIRMATION_DOWN: f64 = 0.2;
-
-/// Where the confirmation of a kept mark goes (#1767): centred across the
-/// game's screen, a fifth of the way down, in whole points.
-pub fn confirmation_origin(screen: Rect, size: (f64, f64)) -> (f64, f64) {
-    let (width, height) = size;
-    let x = screen.x + (screen.width - width) / 2.0;
-    let y = screen.y + screen.height * CONFIRMATION_DOWN;
-    (
-        clamp_into(x, screen.x, screen.width, width).round(),
-        clamp_into(y, screen.y, screen.height, height).round(),
-    )
-}
-
-/// Whether the confirmation of a kept mark may show now: over the game itself
-/// only, never in the settings' preview, and not once the player hid the
-/// overlay with its shortcut. The panels' own switch does not hide it: it
-/// answers a key the player pressed.
-pub fn shows_confirmation(inputs: &OverlayInputs) -> bool {
-    !inputs.preview && inputs.game_frontmost && !inputs.hidden_by_player
-}
-
 /// What the panels' visibility depends on besides the settings, measured by
 /// the shell.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -429,24 +405,11 @@ impl OverlaySettings {
             .map(|other| format!("Already the shortcut of {}.", other.name()))
     }
 
-    /// The panel `chord` brings on screen, if one does: the mark key (#2079)
-    /// may not be a panel's chord too.
+    /// The panel `chord` brings on screen, if one does.
     pub fn panel_on(&self, chord: &Chord) -> Option<OverlayPanel> {
         OverlayPanel::ALL
             .into_iter()
             .find(|panel| self.panel(*panel).trigger.chord().as_ref() == Some(chord))
-    }
-
-    /// The settings with every panel on `chord` back to its default trigger:
-    /// the chord is the mark key's.
-    pub fn freeing(mut self, chord: &Chord) -> Self {
-        while let Some(panel) = self.panel_on(chord) {
-            self.panel_mut(panel).trigger = PanelTrigger::default_for(panel);
-            if self.panel(panel).trigger.chord().as_ref() == Some(chord) {
-                self.panel_mut(panel).trigger = PanelTrigger::Always;
-            }
-        }
-        self
     }
 
     /// The keys the panels' chords name, for the shell to read and no other.
@@ -732,37 +695,6 @@ fn clamp_into(at: f64, start: f64, length: f64, extent: f64) -> f64 {
 mod tests {
     use super::*;
 
-    #[test]
-    fn the_confirmation_of_a_mark_shows_centred_over_the_game_alone() {
-        let screen = Rect {
-            x: 1920.0,
-            y: 0.0,
-            width: 1920.0,
-            height: 1080.0,
-        };
-        assert_eq!(confirmation_origin(screen, (200.5, 40.0)), (2780.0, 216.0));
-        // Wider than the screen: held against its left edge.
-        assert_eq!(confirmation_origin(screen, (2500.0, 40.0)).0, 1920.0);
-
-        let over_the_game = OverlayInputs {
-            game_frontmost: true,
-            ..OverlayInputs::default()
-        };
-        assert!(shows_confirmation(&over_the_game));
-        for inputs in [
-            OverlayInputs::default(),
-            OverlayInputs {
-                hidden_by_player: true,
-                ..over_the_game
-            },
-            OverlayInputs {
-                preview: true,
-                ..over_the_game
-            },
-        ] {
-            assert!(!shows_confirmation(&inputs), "{inputs:?}");
-        }
-    }
     use crate::keys::KeyCode;
     use OverlayPanel::*;
 
@@ -988,26 +920,6 @@ mod tests {
     }
 
     #[test]
-    fn the_mark_keys_chord_is_taken_back_from_a_panel() {
-        let mark = Chord::with(true, true, false, KeyCode::Digit0);
-        let mut settings = OverlaySettings::default();
-        settings.panel_mut(Stats).trigger = PanelTrigger::Toggle {
-            chord: mark,
-            start_shown: true,
-        };
-        assert_eq!(settings.panel_on(&mark), Some(Stats));
-        assert_eq!(settings.panel_on(&Chord::TAB), Some(ItemValue));
-
-        let freed = settings.freeing(&mark);
-        assert_eq!(freed.panel_on(&mark), None);
-        assert_eq!(freed.panel(Stats).trigger, PanelTrigger::Always);
-        // A panel whose default is the chord itself is shown always.
-        let freed = OverlaySettings::default().freeing(&Chord::TAB);
-        assert_eq!(freed.panel(ItemValue).trigger, PanelTrigger::Always);
-        assert_eq!(freed.panel(LaneGold).trigger, PanelTrigger::Always);
-    }
-
-    #[test]
     fn the_plates_come_with_the_scoreboard() {
         let settings = OverlaySettings::default();
         assert!(!settings.shows(LaneGold, &in_game()));
@@ -1217,6 +1129,17 @@ mod tests {
         settings.stats.custom = Some(OverlaySettings::point_at(SCREEN, (2260.0, 0.0), SIZE));
         let (x, y) = settings.origin(Stats, SCREEN, (176.0, 90.0));
         assert_eq!((x + 176.0, y), (SCREEN.width, 0.0));
+    }
+
+    #[test]
+    fn keeps_the_place_the_layout_editor_sends() {
+        // The Overlay page's save after a panel is dragged, as the webview sends it.
+        let body = r#"{"enabled":true,"show":"always","scale":1,"opacity":0.95,
+            "nextItem":{"enabled":true,"anchor":"top-right","custom":{"x":1,"y":0.0992},"trigger":{"kind":"always"}},
+            "winProbability":{"enabled":true,"anchor":"top-left","custom":null,"trigger":{"kind":"always"}},
+            "scoreboardNudge":0}"#;
+        let settings = OverlaySettings::from_app(body);
+        assert_eq!(settings.next_item.custom, Some(OverlayPoint { x: 1.0, y: 0.0992 }));
     }
 
     #[test]

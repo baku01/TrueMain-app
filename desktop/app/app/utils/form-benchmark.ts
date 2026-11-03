@@ -16,7 +16,7 @@ export interface FormBenchmarkResponse {
   tiers: FormBenchmarkTier[]
 }
 
-interface Quartiles {
+export interface Quartiles {
   p25: number
   median: number
   p75: number

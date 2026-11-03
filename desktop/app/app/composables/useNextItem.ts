@@ -55,7 +55,7 @@ export function useNextItem(game: Ref<GameState | null>) {
     if (orderOf.value?.owner !== owner || current.gameTime < orderOf.value.gameTime) order.value = []
     orderOf.value = { owner, gameTime: current.gameTime }
     order.value = noteNewItems(order.value, me.items.map(item => item.itemId))
-  }, { immediate: true, deep: true })
+  }, { immediate: true })
 
   let generation = 0
   let settle: ReturnType<typeof setTimeout> | undefined

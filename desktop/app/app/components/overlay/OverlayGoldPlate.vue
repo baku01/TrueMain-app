@@ -15,7 +15,7 @@ const tone = computed(() => (props.plate.ahead === null ? 'text-white/50' : prop
 
 <template>
   <div
-    class="flex h-5 min-w-12 items-center justify-center gap-0.5 rounded-md bg-neutral-950/80 px-1.5 text-[11px] leading-none font-semibold tabular-nums shadow-sm ring-1 ring-white/10 backdrop-blur-sm"
+    class="flex h-5 min-w-12 items-center justify-center gap-0.5 rounded-md bg-neutral-950/80 px-1.5 text-[11px] leading-none font-semibold tabular-nums shadow-sm ring-1 ring-white/10"
     :class="tone"
     :data-ahead="plate.ahead ?? 'even'"
   >

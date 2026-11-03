@@ -12,8 +12,7 @@ import type { LaneEdge } from '~/utils/lane-edge'
  * between them, when given, the side each lane favours (#1863). Read
  * through the player's own client from the loading screen on, never before.
  * Counts only: no score made of them. A player who hides their name shows
- * as their champion, anonymous, with nothing read about them. A true main of
- * the champion they are on carries the TrueMain mark after their name (#1910).
+ * as their champion, anonymous, with nothing read about them.
  */
 const props = defineProps<{
   players: LoadingPlayer[]
@@ -23,8 +22,6 @@ const props = defineProps<{
 
 const { portraitOf, nameOf } = useChampionStatics()
 const { t } = useT()
-/** The true-main mark (#1910), from the lookup the page asked. */
-const markOf = useTruemainMarkOf()
 
 const mine = computed<GameTeam>(() => props.players.find(player => player.isMe)?.team ?? 'ORDER')
 const side = (team: GameTeam) => props.players
@@ -79,7 +76,6 @@ const rate = (player: LoadingPlayer) => player.form!.championWins / player.form!
             <template v-else>
               <p class="flex min-w-0 items-center gap-1 text-xs font-medium text-highlighted">
                 <span class="truncate">{{ name(player.riotId) || nameOf(player.championId) }}</span>
-                <TruemainMark v-if="markOf(player)" :mark="markOf(player)!" />
               </p>
               <p v-if="player.form && player.form.championGames > 0" class="text-[11px] tabular-nums text-muted">
                 {{ player.form.championGames }} · <span :class="rate(player) >= 0.5 ? 'text-data-good' : 'text-data-bad'">{{ formatPercentage(rate(player), 0) }}</span>

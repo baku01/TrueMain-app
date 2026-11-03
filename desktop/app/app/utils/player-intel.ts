@@ -2,7 +2,6 @@ import type { GamePlayer } from '~/types/game'
 import type { LoadingPlayer, PlayerForm, PositionGames } from '~/types/loading'
 import type { RankedQueue } from '~/types/record'
 import { kdaRatio } from '#shared/utils/kda'
-import { tr } from '#common/utils/i18n'
 
 /**
  * What the Game page says about each player (#1828), read off what the
@@ -123,50 +122,4 @@ export const isRanked = (rank: RankedQueue) => Boolean(rank.tier) && rank.tier !
 export function seasonWinRate(rank: RankedQueue): number | null {
   const games = rank.wins + rank.losses
   return games ? rank.wins / games : null
-}
-
-// ─── True main ──────────────────────────────────────────────────────────────
-
-/** One player TrueMain tracks as a true main of the champion they are on (#1910): `GET /truemains/lookup`. */
-export interface TruemainMark {
-  /** `Name#TAG` as TrueMain stores it: matched without regard to case. */
-  riotId: string
-  nameTag: string
-  championId: number
-  /** Recent ranked games on the champion, over `totalMatches`. */
-  championMatches: number
-  totalMatches: number
-  playRate: number
-  isOtp: boolean
-  masteryPoints: number | null
-  /** The Truemain score on the champion, 0..100. */
-  dedication: number
-}
-
-/**
- * The players the lookup is asked about, as `Name#TAG:championId`, sorted: the
- * named ones on a champion. An anonymous player (Streamer Mode) is never sent —
- * nothing is asked about a player whose name the client keeps from us.
- */
-export function lookupPlayers(lines: LoadingPlayer[]): string[] {
-  return lines
-    .filter(line => !line.anonymous && line.riotId.includes('#') && line.championId > 0)
-    .map(line => `${line.riotId}:${line.championId}`)
-    .sort()
-}
-
-/** The mark of a loading line: their Riot ID and the champion they are on, both matching. */
-export function markOf(marks: TruemainMark[], line: LoadingPlayer | null): TruemainMark | null {
-  if (!line || line.anonymous || !line.riotId) return null
-  const riotId = line.riotId.toLowerCase()
-  return marks.find(mark => mark.championId === line.championId && mark.riotId.toLowerCase() === riotId) ?? null
-}
-
-/** What the mark's tooltip says under its title: only figures the lookup returned. */
-export function markFigures(mark: TruemainMark): string[] {
-  const figures: string[] = []
-  if (mark.totalMatches > 0) figures.push(tr('app.mark.recent', { matches: mark.championMatches, total: mark.totalMatches }))
-  if (mark.isOtp) figures.push(tr('app.mark.otp'))
-  figures.push(tr('app.mark.score', { score: Math.round(mark.dedication) }))
-  return figures
 }

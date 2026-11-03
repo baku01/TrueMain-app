@@ -36,9 +36,6 @@ const props = withDefaults(defineProps<{
 
 const { t } = useT()
 const { nameOf } = useChampionStatics()
-/** The true-main mark (#1910), from the lookup the page asked. */
-const markOf = useTruemainMarkOf()
-const mark = computed(() => markOf(props.line))
 
 const name = computed(() => props.riotId.split('#')[0] ?? '')
 const tag = computed(() => props.riotId.split('#')[1] ?? '')
@@ -104,7 +101,6 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
         </template>
         <template v-else>
           <span class="truncate font-medium text-highlighted">{{ name }}<span v-if="tag" class="font-normal text-dimmed">#{{ tag }}</span></span>
-          <TruemainMark v-if="mark" :mark="mark" />
         </template>
       </p>
 

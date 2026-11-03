@@ -44,7 +44,6 @@ npm run test && npm run lint && npm run typecheck
 cd ../src-tauri && cargo test --lib
 ```
 
-Testes que gastam a chave da Riot ficam ignorados por padrão: `RIOT_KEY=RGAPI-… cargo test --lib live_ -- --ignored --nocapture`.
 
 ---
 
@@ -198,76 +197,6 @@ Tracking issue: **#1671**.
   tester (#1745's Windows half). Automatic clips (#1766) and instant replay
   (#1767) are not built.
 
-## Recording games
-
-When the player turns recording on (off by default) and a game of a recorded
-queue starts, the shell (`src-tauri/src/recording/`) starts the capture helper
-on the game window, follows the game clock and the live feed so the moments
-land on the video, and when the game ends closes the video and emits
-`recording://recap` so the app opens the recap. It then waits up to five
-minutes for the match history to list the game and finalises the recording
-from its timeline: the player's kills, deaths and assists, the objectives, the
-K/D/A and the result. A game starting during that wait is recorded all the
-same (the wait gives up, never the next game); a game that closes on its
-loading screen — under a minute, the game clock never ran — is not kept.
-Recordings go to `~/Movies/TrueMain` (`Videos\TrueMain`
-on Windows) unless the player picked a folder; clips cut in the recap go to
-its `clips/` subfolder, each its own `clip.mp4` + `clip.json` + thumbnail. The
-helper also cuts the clips (a passthrough export, no re-encoding) and takes the
-thumbnails (`crates/capture-helper`, shared with the spike).
-
-There is one helper per platform, speaking the same JSON-lines protocol
-(`capture/macos/Sources/truemain-capture/main.swift` documents it), so nothing
-above the helper knows which one runs:
-
-- **macOS** — `capture/macos`, Swift: ScreenCaptureKit on the game's window,
-  AVAssetWriter through VideoToolbox.
-- **Windows** — `capture/windows`, Rust (#1797): Windows.Graphics.Capture on
-  the game's window (`League of Legends (TM) Client`, process `League of
-  Legends.exe`), each frame converted to NV12 and scaled on the GPU by the
-  D3D11 video processor (on the CPU where the GPU has none — a virtual machine,
-  a CI runner — which `started` reports as `"converter": "cpu"`), encoded by
-  Media Foundation with hardware transforms (NVENC, AMF, QuickSync — software
-  only where the GPU has none, reported as `"hardware": false`). Sound is the game's process tree
-  through WASAPI process loopback (Windows 10 2004+; without it the game
-  records silent), never the system mix. Clips are a Media Foundation
-  passthrough copy, thumbnails a decoded frame written through WIC. Windows
-  asks no permission to capture a window; on Windows 11 the yellow capture
-  border is turned off, on Windows 10 it cannot be.
-
-Recording needs a real client and a real game window: a tape or the simulator
-plays the client's events but records nothing. Screen Recording is asked for
-from the Recordings page — macOS shows its prompt once per app; after a
-refusal the button opens System Settings. An unsigned build loses the
-permission on each update (its signature changes), which the page shows.
-
-The webview side (`app/app/pages/recordings/`, `components/recordings/`,
-`components/recap/`, `composables/useRecordings.ts`) reads all of it through
-the shell's recording commands and events (`types/recordings.ts` mirrors them):
-the **Recordings** page lists full games and clips in DPM's layout with search,
-filters and grouping; the **recap** (`/recordings/<id>`) plays a full game over
-its timeline of moments, cuts clips by hand — drag across the timeline, or I / O
-at the playhead, several ranges, each named and saved as its own file — and keeps
-or deletes the full game; a **clip player** renames, favourites and deletes a
-clip; the **settings** slideover holds the short list of choices; and a
-dashboard row offers **Watch** when its game was recorded. Files reach the
-webview through the shell's `recording` scheme (`src-tauri/src/recording/files.rs`),
-limited to the recordings folder. Not Tauri's asset protocol: it answers every
-range with at most 1000 KiB, and WebKit drops a video track whose sample table
-(past ~36 minutes at 60 fps) comes back short, so long games played black (#1830).
-
-In development the shell finds the helper `swift build` leaves in
-`capture/macos/.build/` — build it once with
-`swift build -c release --package-path desktop/capture/macos` — or, on
-Windows, the one `cargo build -p truemain-capture` leaves in `target/`, or the
-one named by `TRUEMAIN_CAPTURE_HELPER`. On macOS the permission is then the
-terminal's, since the terminal starts `tauri dev`.
-
-`capture/windows/smoke.ps1` checks the Windows helper without League: it
-records a window that repaints itself, cuts a clip and takes thumbnails, and
-checks every answer (CI runs it; on a machine with a GPU it also exercises the
-hardware encoder).
-
 ## Sharing with the site
 
 The pages the app renders exactly like the site — champions, tier list, matchup,
@@ -410,18 +339,6 @@ desktop/
   crates/live-client/     the running game's own API, and the in-game state derived from it
   crates/shell-state/     the app's state and the screen it calls for, and the overlay's
                           settings and rules (when it shows, where)
-  crates/game-recording/  game recording minus the capture (#1744): settings, highlights,
-                          game-clock anchor, storage budget — no Tauri, no GUI
-  crates/capture-helper/  drives the capture helper: records, cuts clips, takes thumbnails,
-                          reads the Screen Recording permission — shared by app and spike
-  crates/capture-spike/   dev tool: records one game through the capture helper and
-                          reports what it measured (#1745)
-  capture/macos/          the macOS capture helper (Swift, ScreenCaptureKit) — built on
-                          a Mac only; run with capture/spike.sh
-  capture/windows/        the Windows capture helper (Rust, Windows.Graphics.Capture +
-                          Media Foundation) — its code is cfg(windows), a stub elsewhere
-  tools/                  overlay-probe.swift: the window server's view of a game (#1673);
-                          overlay-smoke-windows.ps1: the overlay over a stand-in game (#1806)
   src-tauri/              the Tauri v2 shell: owns the connections, derives the state;
                           src/overlay/ is the overlay's windows (macOS, Windows)
   app/                    Nuxt 4 SPA (ssr: false) rendering that state
@@ -429,7 +346,7 @@ desktop/
 
 The crates deliberately carry no Tauri dependency, so they build and test on
 any platform — including Linux CI, where the shell itself cannot build. Run
-their tests with `cargo test -p lcu -p live-client -p shell-state -p game-recording -p capture-helper -p truemain-capture` from
+their tests with `cargo test -p lcu -p live-client -p shell-state` from
 `desktop/`.
 
 The **navigation rule lives in Rust** (`crates/shell-state/src/lib.rs`), not in the
@@ -526,28 +443,6 @@ rule, dragging — exists only in the shell; `tools/overlay-probe.swift` reads
 what the window server does with it during a real game
 (`docs/desktop-overlay-spike.md`).
 
-### Recordings without a game (development)
-
-The recordings pages also run in `npm run dev` outside Tauri, on an in-memory
-library (`app/app/fixtures/recordings.ts`, answered by
-`app/app/utils/recordings-dev.ts`): full games and clips dated today, yesterday
-and earlier — the `lobby` scenario's game ids, so its dashboard rows offer
-"Watch" — with moments, settings and a status. Saving a clip, keeping,
-deleting and renaming all work until the next reload.
-
-```sh
-# Any local MP4 plays as every recording, with seeking (HTTP Range); `ffmpeg`,
-# when installed, cuts the thumbnails from it. Never commit a video.
-TRUEMAIN_DEV_RECORDING=/path/to/video.mp4 npm run dev
-```
-
-Without the variable the player shows a placeholder and the cards the
-champion's splash. A short video against a 30-minute fixture plays only its own
-length. `?recordings=off|empty|permission|unsupported|missing` (before the `#`)
-opens the page on that state, and `__devRecordingRecap('<id>')` in the console
-stands in for the shell's `recording://recap` — it opens the recap only from
-the dashboard or the game page, like the real event.
-
 ### Simulating a champion select (development)
 
 A champion select needs a real game. In development one can be played by hand
@@ -606,20 +501,7 @@ on macOS.
 
 ```sh
 cd desktop/app && npm install
-# macOS: the capture helper goes inside the bundle (`bundle.macOS.files`)
-swift build -c release --package-path ../capture/macos
-mkdir -p ../src-tauri/binaries && cp "$(swift build -c release --package-path ../capture/macos --show-bin-path)/truemain-capture" ../src-tauri/binaries/
-codesign --force --sign - ../src-tauri/binaries/truemain-capture
 npm run tauri build        # bundles into desktop/target/release/bundle
-```
-
-On Windows the helper is a sidecar the release workflow adds (`docs/ci.md`,
-"Desktop releases"); a local installer with recording needs the same:
-
-```sh
-cargo build --release -p truemain-capture   # from desktop/
-mkdir -p src-tauri/binaries && cp target/release/truemain-capture.exe src-tauri/binaries/truemain-capture-x86_64-pc-windows-msvc.exe
-cd app && npm run tauri build -- --config '{"bundle":{"externalBin":["binaries/truemain-capture"]}}'
 ```
 
 For development, with hot reload and the app pointed at the Nuxt dev server:

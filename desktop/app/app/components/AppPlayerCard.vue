@@ -4,16 +4,13 @@ import type { AccountIdentity } from '#common/components/Account.vue'
 import { riotIdLabel } from '#shared/utils/truemain-path'
 
 /**
- * The player, at the foot of the sidebar: who the client is logged in as, and
+ * The player, at the right of the top bar: who the client is logged in as, and
  * where it is in the gameflow. With no client it says it is waiting for one —
  * the rest of the app works without it. Drawn by the site's `Account` (#2027),
- * the level on the picture's edge and the client's status under the name.
- *
- * `compact`, in the sidebar's rail: the picture and the status dot alone, the
- * words in a tooltip.
+ * the status dot on the picture's corner and the client's status under the
+ * name; in a bar too narrow for the words, the picture alone, the words in a
+ * tooltip.
  */
-defineProps<{ compact?: boolean }>()
-
 const { state } = useLcuState()
 const { patch } = useChampionStatics()
 const { t } = useT()
@@ -46,27 +43,19 @@ const title = computed(() => riotIdLabel(identity.value.gameName, identity.value
 </script>
 
 <template>
-  <UTooltip v-if="compact" :text="`${title} · ${status.label}`">
-    <Account :identity="identity" :patch="patch || null" size="lg" :to="false" :ui="{ body: 'sr-only' }">
-      <template #avatar-badge>
-        <span class="absolute -bottom-0.5 -right-0.5 flex size-2.5 rounded-full border-2 border-default" :class="dot" />
-      </template>
-    </Account>
-  </UTooltip>
-  <div v-else class="surface flex items-center rounded-xl p-2.5">
-    <Account :identity="identity" :patch="patch || null" size="lg" :to="false" class="flex-1">
-      <template v-if="state.connected && state.summonerLevel !== null" #avatar-badge>
-        <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full border border-default bg-elevated px-1.5 text-[9px] font-semibold leading-4 tabular-nums text-highlighted">{{ state.summonerLevel }}</span>
-      </template>
-      <template #subline>
-        <span class="flex min-w-0 items-center gap-1.5 truncate text-[11px] text-muted">
-          <span class="relative flex size-1.5 shrink-0">
-            <span v-if="status.live || !state.connected" class="absolute inline-flex size-full animate-ping rounded-full opacity-60" :class="state.connected ? 'bg-primary' : 'bg-ink-400'" />
-            <span class="relative inline-flex size-1.5 rounded-full" :class="dot" />
+  <UTooltip :text="`${title} · ${status.label}`" :content="{ side: 'bottom' }">
+    <div class="flex h-9 min-w-0 items-center rounded-lg px-1.5 transition-colors hover:bg-accented/60">
+      <Account :identity="identity" :patch="patch || null" size="sm" :to="false" class="min-w-0" :ui="{ body: 'min-w-0 @max-4xl:sr-only', tag: 'hidden' }">
+        <template #avatar-badge>
+          <span class="absolute -bottom-0.5 -right-0.5 flex size-2.5">
+            <span v-if="status.live" class="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+            <span class="relative inline-flex size-2.5 rounded-full border-2 border-(--ui-bg-elevated)" :class="dot" />
           </span>
-          {{ status.label }}
-        </span>
-      </template>
-    </Account>
-  </div>
+        </template>
+        <template #subline>
+          <span class="block truncate text-[11px] leading-tight text-muted">{{ status.label }}</span>
+        </template>
+      </Account>
+    </div>
+  </UTooltip>
 </template>

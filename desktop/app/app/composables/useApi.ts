@@ -7,6 +7,9 @@
  * server proxies `/api` to the site's public entry point instead (nuxt.config).
  */
 import { answerStaticEndpoint } from '~/utils/static-endpoints'
+import { answerFromSource, answerPostFromSource } from '~/utils/sources'
+import { readChampionBuild } from '~/utils/champion-build-read'
+import { currentPatch } from '~/utils/sources/champions'
 
 type QueryValue = string | number | boolean | null | undefined
 /** A list repeats its key, one pair per entry (`?player=a&player=b`). */
@@ -52,6 +55,9 @@ function tracked<T>(work: Promise<T>, options: ReadOptions): Promise<T> {
  */
 export function apiGet<T>(path: string, query: Query = {}, options: ReadOptions = {}): Promise<T> {
   return tracked((async () => {
+    // Settings picked another source: the reads it has a counterpart for are answered from it, in TrueMain's shapes.
+    const external = answerFromSource(path, query)
+    if (external !== undefined) return await external as T
     if (insideTauri()) {
       const { invoke } = await import('@tauri-apps/api/core')
       return await invoke<T>('api_get', { path, query: pairs(query) })
@@ -66,6 +72,8 @@ export function apiGet<T>(path: string, query: Query = {}, options: ReadOptions 
  */
 export function apiPost<T>(path: string, body: unknown, query: Query = {}, options: ReadOptions = {}): Promise<T> {
   return tracked((async () => {
+    const external = answerPostFromSource(path, body, query)
+    if (external !== undefined) return await external as T
     if (insideTauri()) {
       const { invoke } = await import('@tauri-apps/api/core')
       return await invoke<T>('api_post', { path, query: pairs(query), request: body })
@@ -123,6 +131,16 @@ export function useApiFetch() {
     if (options.method !== 'POST') {
       const local = await answerStaticEndpoint(path, query)
       if (local !== undefined) return local as T
+      // A champion's lane builds (the matchup tool's standard build): the shell
+      // reads them through its own command, and another source answers them itself.
+      const champion = /^\/champions\/(\d+)$/.exec(path)
+      if (champion && typeof query.position === 'string') {
+        const answer = await readChampionBuild(Number(champion[1]), query.position, { signal: options.signal })
+        // The page loads its icons by the answer's patch: a source that names none, or names it
+        // short (`16.21`), gets Data Dragon's full version.
+        const patch = answer.patch && answer.patch.split('.').length >= 3 ? answer.patch : await currentPatch()
+        return { ...answer, patch } as T
+      }
     }
     try {
       return options.method === 'POST'

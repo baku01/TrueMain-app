@@ -6,11 +6,11 @@
 //! belongs to which phase — in one place.
 
 mod api;
+mod chrome;
+mod sources;
 mod champselect;
 mod game;
 mod graphics;
-mod highelo;
-mod highelo_data;
 mod itemsets;
 mod kits;
 mod loading;
@@ -18,8 +18,6 @@ mod menu;
 mod news;
 mod overlay;
 mod record;
-mod recording;
-mod riot;
 mod runes;
 #[cfg(debug_assertions)]
 mod sim;
@@ -329,7 +327,10 @@ pub fn run() {
     // Before the builder: WebView2's switches must be set before the first webview exists.
     let graphics = graphics::Graphics::load_before_webviews(&context.config().identifier);
 
-    let builder = tauri::Builder::default();
+    // First, so a second launch only brings this one's window forward: two
+    // supervisors would follow the same client twice.
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| menu::show_window(app)));
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
 
@@ -347,25 +348,8 @@ pub fn run() {
         .manage(SharedGame::default())
         .manage(loading::SharedLoading::default())
         .manage(graphics)
-        .register_asynchronous_uri_scheme_protocol(
-            recording::files::SCHEME,
-            |context, request, responder| {
-                // The recorder is managed in `setup`; a request before then
-                // gets an answer, not a panic.
-                let Some(recorder) = context
-                    .app_handle()
-                    .try_state::<recording::SharedRecorder>()
-                else {
-                    responder.respond(recording::files::unavailable());
-                    return;
-                };
-                let folder = recorder.folder();
-                tauri::async_runtime::spawn_blocking(move || {
-                    responder.respond(recording::files::serve(&request, &folder));
-                });
-            },
-        )
         .invoke_handler(tauri::generate_handler![
+            chrome::set_window_theme,
             current_state,
             current_screen,
             game::current_game,
@@ -374,38 +358,19 @@ pub fn run() {
             champion_build,
             composition_build,
             api_get,
+            sources::source_get,
+            sources::opgg_call,
             api_post,
             open_on_site,
             record::player_record,
             record::player_history,
             record::player_game,
-            recording::recording_settings,
-            recording::set_recording_settings,
-            recording::recording_check_mark_key,
-            recording::recording_status,
-            recording::request_capture_permission,
-            recording::recording_library,
-            recording::recording_get,
-            recording::recording_win_probability,
-            recording::recording_set_kept,
-            recording::recording_delete,
-            recording::clip_save,
-            recording::clip_update,
-            recording::clip_delete,
-            recording::reveal_recording_file,
-            recording::open_youtube_upload,
-            recording::clip_open_youtube,
-            recording::clip_set_youtube_url,
-            recording::clip_start_drag,
-            recording::clip_delete_video,
-            recording::clip_youtube_embed,
             overlay::overlay_view,
             overlay::set_overlay_settings,
             overlay::overlay_check_trigger,
             overlay::overlay_read_binds,
             overlay::overlay_preview,
             overlay::overlay_fit,
-            overlay::overlay_confirmation,
             loading::loading_players,
             runes::import_runes,
             itemsets::import_item_set,
@@ -422,22 +387,24 @@ pub fn run() {
             graphics::set_graphics_settings,
             news::riot_patch_notes_page,
             news::open_patch_note,
-            riot::riot_key_status,
-            riot::riot_key_check,
-            riot::riot_key_save,
-            riot::riot_key_clear,
-            riot::riot_match_events,
-            highelo::highelo_start,
-            highelo::highelo_stop,
-            highelo::highelo_progress,
-            highelo::highelo_stats,
-            highelo::highelo_clear
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.
         .on_window_event(|window, event| {
-            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
-                window.app_handle().exit(0);
+            if window.label() != "main" {
+                return;
+            }
+            match event {
+                // On macOS closing the window hides it, as a Mac app's does:
+                // the app stays in the Dock, a click on it brings the window back
+                // (`RunEvent::Reopen`), and ⌘Q quits.
+                #[cfg(target_os = "macos")]
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                tauri::WindowEvent::Destroyed => window.app_handle().exit(0),
+                _ => {}
             }
         })
         .setup(move |app| {
@@ -447,11 +414,7 @@ pub fn run() {
             app.manage(usage.clone());
             telemetry::start(&handle, usage);
             menu::install(app)?;
-            let (recorder, phases) = recording::Recorder::new(&handle);
-            app.manage(recorder.clone());
-            recording::start(&handle, recorder, phases);
             app.manage(kits::Kits::new(&handle));
-            app.manage(Arc::new(highelo::Collector::new(&handle)));
             overlay::setup(&handle)?;
             window_state::restore(&handle);
             tauri::async_runtime::spawn(supervisor::run(handle, shared, client));
@@ -459,11 +422,14 @@ pub fn run() {
         })
         .build(context)
         .expect("failed to start the TrueMain companion app")
-        .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
+        .run(|app, event| match event {
+            tauri::RunEvent::Exit => {
                 window_state::save(app);
                 telemetry::send_at_exit(app);
             }
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen { .. } => menu::show_window(app),
+            _ => {}
         });
 }
 

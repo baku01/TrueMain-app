@@ -55,7 +55,7 @@ const missing = computed(() => {
     <div class="flex items-center gap-3">
       <button
         type="button"
-        class="flex size-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-elevated ring-2 ring-primary outline-none transition hover:brightness-110 focus-visible:ring-offset-2 focus-visible:ring-offset-default"
+        class="flex size-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-elevated ring-2 ring-primary outline-none transition-all duration-200 hover:scale-105 hover:brightness-110 active:scale-95 focus-visible:ring-offset-2 focus-visible:ring-offset-default"
         :aria-label="champion ? t('builder.duel.yourChampion', { name: champion.name }) : t('builder.draft.chooseYours')"
         :title="champion?.name"
         @click="$emit('pick-champion')"
@@ -74,7 +74,7 @@ const missing = computed(() => {
       <span class="stat-label">{{ t('builder.duel.vs') }}</span>
       <button
         type="button"
-        class="flex size-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-elevated ring-2 outline-none transition hover:brightness-110 hover:ring-primary focus-visible:ring-primary"
+        class="flex size-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-elevated ring-2 outline-none transition-all duration-200 hover:scale-105 hover:brightness-110 hover:ring-primary active:scale-95 focus-visible:ring-primary"
         :class="opponent ? 'ring-primary/35' : 'ring-accented'"
         :aria-label="opponent ? t('builder.duel.roleOpponent', { name: opponent.name }) : t('builder.draft.chooseOpponent')"
         :title="opponent?.name"

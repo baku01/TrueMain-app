@@ -2,9 +2,7 @@
 //! switched on, built when a game starts and closed when it ends (#1916),
 //! sized to its page and placed by the settings, shown or hidden by
 //! `shell_state::overlay`'s rule, dragged into place in the preview — and the
-//! watch that feeds the rule the game's frontmost state and the keys held,
-//! and reports a press of the mark key while a game records (#2079) — whose
-//! confirmation (#1767) is one more window, shown a moment, the same way.
+//! watch that feeds the rule the game's frontmost state and the keys held.
 //!
 //! The platform module (`macos.rs`, `windows.rs`) builds the windows and
 //! owns what differs: how a window stays above the game without taking its
@@ -14,11 +12,11 @@
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use shell_state::keys::KeysDown;
 use shell_state::overlay::{
-    confirmation_origin, shows_confirmation, OverlayInputs, OverlayPanel, OverlaySettings, Rect,
+    OverlayInputs, OverlayPanel, OverlaySettings, Rect,
 };
 use shell_state::scoreboard;
 use shell_state::screens::{self, Monitor};
@@ -28,33 +26,36 @@ use tauri::{
 };
 
 use super::platform;
-use super::{label, SharedOverlay, CONFIRMATION_EVENT, CONFIRMATION_LABEL, VIEW_EVENT};
-use crate::recording::SharedRecorder;
+use super::{label, SharedOverlay, VIEW_EVENT};
 
 const KEYS_EVERY: Duration = Duration::from_millis(30);
 /// Ticks of `KEYS_EVERY` between two looks at the frontmost app (~240 ms):
 /// often enough that the panels follow a switch away without a visible lag.
 const FRONTMOST_EVERY: u32 = 8;
+/// Looks at the frontmost app between two searches for the game's window
+/// (~2 s): listing every window on screen is the costly part, and the game's
+/// window rarely moves.
+const LOCATE_EVERY: u32 = 8;
+/// With no game running and no preview open there is nothing to follow: the
+/// watch only looks, this often, whether that changed.
+const IDLE_EVERY: Duration = Duration::from_millis(500);
 
-/// One of the overlay's windows: a panel's, or the confirmation of a kept mark.
+/// One of the overlay's windows: a panel's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Slot {
     Panel(OverlayPanel),
-    Confirmation,
 }
 
 impl Slot {
     fn label(self) -> String {
         match self {
             Slot::Panel(panel) => label(panel),
-            Slot::Confirmation => CONFIRMATION_LABEL.to_string(),
         }
     }
 
     fn name(self) -> &'static str {
         match self {
             Slot::Panel(panel) => panel.slug(),
-            Slot::Confirmation => "confirmation",
         }
     }
 }
@@ -115,10 +116,6 @@ pub fn rebuild(app: &AppHandle) {
                 _ => {}
             }
         }
-        // The confirmation lasts the game it was built in.
-        if !inputs.game_running && handle.get_webview_window(CONFIRMATION_LABEL).is_some() {
-            close(&handle, Slot::Confirmation);
-        }
         apply(&handle);
     });
 }
@@ -137,34 +134,6 @@ fn close(app: &AppHandle, slot: Slot) {
     }
     forget(slot);
     tracing::info!(window = slot.name(), "overlay window closed");
-}
-
-/// Show `text` over the game a moment (`super::confirm`, which set it and its
-/// moment), building the confirmation's window the first time.
-pub fn confirm(app: &AppHandle, text: String) {
-    let handle = app.clone();
-    std::thread::spawn(move || {
-        {
-            let _rebuilding = REBUILDING.lock().expect("overlay rebuild poisoned");
-            if handle.get_webview_window(CONFIRMATION_LABEL).is_none() {
-                let opacity = handle.state::<SharedOverlay>().settings().opacity;
-                if let Err(error) = platform::build(
-                    &handle,
-                    CONFIRMATION_LABEL,
-                    "#/overlay/confirmation",
-                    opacity,
-                    false,
-                ) {
-                    tracing::error!(%error, "cannot build the overlay's confirmation");
-                    return;
-                }
-                forget(Slot::Confirmation);
-            }
-        }
-        // A page just built reads it itself (`overlay_confirmation`).
-        let _ = handle.emit_to(CONFIRMATION_LABEL, CONFIRMATION_EVENT, &text);
-        apply(&handle);
-    });
 }
 
 /// Not on the main thread (`rebuild`).
@@ -357,16 +326,6 @@ fn apply_now(app: &AppHandle) {
         let next = wanted(&overlay, &settings, &inputs, screen, panel);
         apply_window(app, Slot::Panel(panel), next);
     }
-    let size = overlay.confirmation_size();
-    let confirmation = Applied {
-        visible: overlay.confirmation(Instant::now()).is_some() && shows_confirmation(&inputs),
-        interactive: false,
-        origin: confirmation_origin(screen.area, size),
-        scale: screen.scale,
-        size,
-        opacity: settings.opacity,
-    };
-    apply_window(app, Slot::Confirmation, confirmation);
 }
 
 /// Main thread only.
@@ -462,22 +421,47 @@ fn dragged(app: &AppHandle, which: OverlayPanel, position: tauri::PhysicalPositi
     apply(app);
 }
 
-/// Follows the frontmost app and the keys for the app's life.
+/// Follows the frontmost app and the keys while a game runs or the preview is
+/// open; otherwise idles, looking twice a second whether one started.
 fn watch(app: &AppHandle) {
     let mut held = false;
-    let mut marking = false;
     let mut tick: u32 = 0;
+    let mut looks: u32 = 0;
+    let mut active = false;
     loop {
+        let overlay = app.state::<SharedOverlay>().inner().clone();
+        let now_active = overlay.game_running.load(Ordering::SeqCst) || overlay.preview.load(Ordering::SeqCst);
+        if !now_active {
+            if active {
+                // Just went idle: nothing is in front any more, and no key is held.
+                overlay.set_game_frontmost(false);
+                overlay.read_keys(&KeysDown::default());
+                held = false;
+                apply(app);
+            }
+            active = false;
+            std::thread::sleep(IDLE_EVERY);
+            continue;
+        }
+        if !active {
+            // Just woke: look at once, and find the game's window at once.
+            tick = FRONTMOST_EVERY - 1;
+            looks = 0;
+        }
+        active = true;
         tick = tick.wrapping_add(1);
         if tick.is_multiple_of(FRONTMOST_EVERY) {
+            let locate = looks.is_multiple_of(LOCATE_EVERY);
+            looks = looks.wrapping_add(1);
             let handle = app.clone();
             let _ = app.run_on_main_thread(move || {
                 let front = platform::game_frontmost();
                 let overlay = handle.state::<SharedOverlay>().inner().clone();
-                if overlay.set_game_frontmost(front) {
+                let changed = overlay.set_game_frontmost(front);
+                if changed {
                     tracing::info!(front, "the game's frontmost state changed");
                 }
-                if front {
+                if front && (locate || changed) {
                     locate_game(&handle);
                 }
                 // Also picks up a death, a respawn and the game's end.
@@ -486,7 +470,6 @@ fn watch(app: &AppHandle) {
         }
 
         // The keys only mean something over the game.
-        let overlay = app.state::<SharedOverlay>().inner().clone();
         let front = overlay.game_frontmost.load(Ordering::SeqCst);
         let down = front && platform::keys::shortcut_down();
         if down && !held {
@@ -495,31 +478,15 @@ fn watch(app: &AppHandle) {
             apply(app);
         }
         held = down;
-        // Only the keys the panels' chords and the mark key name: a few
-        // reads per tick. The mark key only while a game records.
-        let recorder = app.try_state::<SharedRecorder>().map(|r| r.inner().clone());
-        let mark_key = recorder.as_ref().and_then(|recorder| recorder.mark_key());
+        // Only the keys the panels' chords name: a few reads per tick.
         let keys = if front {
-            let mut named = overlay.settings().chord_keys();
-            named.extend(mark_key.and_then(|chord| chord.key));
-            platform::keys::read(&named)
+            platform::keys::read(&overlay.settings().chord_keys())
         } else {
             KeysDown::default()
         };
         if overlay.read_keys(&keys) {
             apply(app);
         }
-        let down = mark_key.is_some_and(|chord| chord.is_down(&keys));
-        if let (true, false, Some(recorder)) = (down, marking, recorder) {
-            // Off this loop: the mark is written to disk, then confirmed.
-            let handle = app.clone();
-            std::thread::spawn(move || {
-                if let Some(length) = recorder.mark() {
-                    super::confirm(&handle, length.saved());
-                }
-            });
-        }
-        marking = down;
         std::thread::sleep(KEYS_EVERY);
     }
 }

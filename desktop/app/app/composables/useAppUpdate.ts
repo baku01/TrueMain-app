@@ -14,12 +14,12 @@ import { tr } from '#common/utils/i18n'
  * - at launch, with no champion select or game running, it installs and
  *   restarts at once: the player has nothing open to lose yet;
  * - otherwise it waits for the player's click — in the toast, or in the
- *   sidebar for as long as the app runs — and installs at the next launch if
+ *   top bar for as long as the app runs — and installs at the next launch if
  *   they never click. A restart in the middle of champion select would cost
  *   them the draft, so the app never restarts under a running phase.
  *
  * Nothing pops up by itself during champion select or a game (#1914): a build
- * found then is offered in the sidebar at once, and its toast waits until the
+ * found then is offered in the top bar at once, and its toast waits until the
  * phase is over; an offer already on screen when one starts steps aside and
  * comes back after it. "Check for Updates…" still answers at once — the
  * player asked.
@@ -53,7 +53,7 @@ let stopDeferring: (() => void) | null = null
 export function useAppUpdate() {
   const toast = useToast()
   const { screen, ready: stateReady } = useLcuState()
-  /** The version downloaded and waiting for a restart, for the sidebar. */
+  /** The version downloaded and waiting for a restart, for the top bar. */
   const readyVersion = useState<string | null>('app-update-ready', () => null)
   const installing = useState<boolean>('app-update-installing', () => false)
   /** An install past its deadline: the app offers a plain restart instead of waiting on it. */
@@ -144,7 +144,7 @@ export function useAppUpdate() {
   }
 
   /**
-   * Offer the downloaded build: in the sidebar at once, and in a toast — held
+   * Offer the downloaded build: in the top bar at once, and in a toast — held
    * back while champion select or a game runs, unless the player asked.
    */
   function offer(update: Update, asked = false) {
@@ -154,7 +154,7 @@ export function useAppUpdate() {
         if (BUSY_SCREENS.includes(next)) return
         stopDeferring?.()
         stopDeferring = null
-        // Restarted from the sidebar in the meantime: nothing left to offer.
+        // Restarted from the top bar in the meantime: nothing left to offer.
         if (!installing.value) offer(update)
       })
       return

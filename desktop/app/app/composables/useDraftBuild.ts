@@ -1,7 +1,6 @@
 import type {
   BuildCoreView,
   BuildTreeNode,
-  ChampionBuildResponse,
   CompositionBuildRequest,
   CompositionBuildResponse,
   CompositionLane,
@@ -91,13 +90,7 @@ export function useDraftBuild(subject: Ref<BuildSubject | null>) {
   }
 
   async function standard(champion: number, position: string, signal: AbortSignal): Promise<DraftBuild | null> {
-    const answer = insideTauri()
-      ? await (await import('@tauri-apps/api/core')).invoke<ChampionBuildResponse>('champion_build', {
-          championId: champion,
-          position,
-          opponentChampionId: null,
-        })
-      : await $fetch<ChampionBuildResponse>(`/api/champions/${champion}`, { query: { position }, signal })
+    const answer = await readChampionBuild(champion, position, { signal })
     const first = answer.builds[0]
     if (!first) return null
     return {

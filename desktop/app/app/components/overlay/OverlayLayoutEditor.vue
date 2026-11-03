@@ -87,6 +87,9 @@ function begin(panel: OverlayPanel, from: Drag['from'], event: PointerEvent) {
     ? { x: event.clientX - rect.left, y: event.clientY - rect.top }
     : { x: size.width / 2, y: size.height / 2 }
   const point = { x: event.clientX, y: event.clientY }
+  // The pointer stays the editor's for the whole gesture, wherever it goes: WebKit
+  // otherwise hands a drag that leaves the panel to whatever is under it.
+  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
   drag.value = { panel, from, grab, start: point, pointer: point, moved: false }
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', end)
@@ -169,7 +172,12 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 gap-5">
+  <!--
+    No native drag in the editor: in WebKit (the app's webview on macOS) pulling a
+    panel's picture starts the browser's own drag of it, which cancels the pointer —
+    the panel then never moves. Pictures are not draggable, nothing is selected.
+  -->
+  <div class="flex min-h-0 flex-1 select-none gap-5 [&_img]:[-webkit-user-drag:none]" @dragstart.prevent>
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <div
         ref="canvas"

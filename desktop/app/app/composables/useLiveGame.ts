@@ -63,8 +63,11 @@ export function useLiveGame() {
   const syncedAt = useState<number>('live-game-synced-at', () => Date.now())
   const subscribed = useState<boolean>('live-game-subscribed', () => false)
 
+  // Every change replaces the state whole, so it is held raw: no proxy over
+  // ten players' items and stats, and the watchers that read it fire on the
+  // replacement.
   function set(next: GameState | null) {
-    game.value = next
+    game.value = next ? markRaw(next) : null
     syncedAt.value = Date.now()
   }
 

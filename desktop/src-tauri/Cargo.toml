@@ -16,8 +16,6 @@ tauri-build = { version = "2", features = [] }
 lcu = { path = "../crates/lcu" }
 live-client = { path = "../crates/live-client" }
 shell-state = { path = "../crates/shell-state" }
-game-recording = { path = "../crates/game-recording" }
-capture-helper = { path = "../crates/capture-helper" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
@@ -26,22 +24,19 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-shell = "2"
 uuid = { version = "1", features = ["v4"] }
-percent-encoding = "2"
 dirs = "6"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
-drag = "2.1"
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-keyring = { version = "3", default-features = false, features = ["apple-native"] }
 tauri-nspanel = "2.1"
 objc2-app-kit = { version = "0.3", features = ["NSWorkspace", "NSRunningApplication"] }
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFArray", "CFCGTypes", "CFDictionary", "CFNumber", "CFString"] }
 objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGGeometry", "CGWindow"] }
 
 [target.'cfg(windows)'.dependencies]
-keyring = { version = "3", default-features = false, features = ["windows-native"] }
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Graphics_Dwm",

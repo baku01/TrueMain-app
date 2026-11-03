@@ -70,6 +70,8 @@ const viewed = ref<ViewedPick | null>(null)
 const previewed = ref<number | null>(null)
 const { subject, shownView, duel } = useDraftSubject(draft, enemyLanes, viewed, previewed)
 const { build, pending: buildPending, error: buildError } = useDraftBuild(subject)
+// The items this draft moves the build toward: shown over the build, and marked inside the Blitz build panel.
+const { pushes: itemAdvice } = useDraftItemAdvice(subject)
 
 // ─── The player's own kits (#2185, #2205) ───────────────────────────────────
 
@@ -212,10 +214,11 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         :position="subject.request.position"
         :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
         :kits="kits"
+        :item-advice="itemAdvice"
         @update:kit-id="pickKit"
       >
         <template #advice>
-          <DraftItemAdvice :subject="subject" />
+          <DraftItemAdvice :pushes="itemAdvice" />
         </template>
         <template #header>
           <DraftBuildHeader

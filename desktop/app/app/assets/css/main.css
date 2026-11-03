@@ -306,20 +306,68 @@ button:not(:disabled, [role="tab"], [role="switch"]):active,
   transition: outline-color 150ms ease, box-shadow 150ms ease;
 }
 
-/* The sidebar: an entry's icon leans in on hover, and sinks with the press. */
-aside nav a svg,
-aside nav a [class*="i-"] {
-  transition: transform 220ms var(--tm-ease), color 180ms ease;
+/*
+ * One section of the rail (`AppNav`): icon and name on a row, muted until
+ * hovered; the active one lit by a bar on its left edge and a faint fill.
+ */
+@utility rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  height: 2.25rem;
+  padding-inline: 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ui-text-muted);
+  transition: color 160ms var(--tm-ease), background-color 160ms var(--tm-ease);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--ui-text-highlighted);
+    background-color: color-mix(in oklch, var(--ui-bg-accented) 60%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in oklch, var(--ui-primary) 60%, transparent);
+    outline-offset: -2px;
+  }
+
+  &[data-active] {
+    color: var(--ui-text-highlighted);
+    background-color: color-mix(in oklch, var(--ui-primary) 12%, transparent);
+  }
+
+  &[data-active]::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--ui-primary);
+  }
 }
 
-aside nav a:hover svg,
-aside nav a:hover [class*="i-"] {
-  transform: translateX(2px) scale(1.08);
+.rail-item[data-active] .rail-icon {
+  color: var(--ui-primary);
 }
 
-aside nav a:active {
-  transform: scale(0.98);
-  transition: transform 90ms var(--tm-ease);
+/* The top bar's icon buttons: square, rounded, a soft fill on hover and the icon growing a touch. */
+@utility app-btn {
+  border-radius: 0.5rem;
+
+  & [class*="i-"] {
+    transition: scale 180ms var(--tm-ease);
+  }
+
+  &:hover [class*="i-"],
+  &:focus-visible [class*="i-"] {
+    scale: 1.1;
+  }
 }
 
 /* Images fade in once drawn rather than popping, when they declare it. */
@@ -334,8 +382,8 @@ img.tm-fade {
   img.tm-fade,
   button,
   [role="button"],
-  aside nav a,
-  aside nav a svg {
+  .rail-item,
+  .app-btn [class*="i-"] {
     animation: none !important;
     transition: none !important;
     transform: none !important;
@@ -347,10 +395,54 @@ img.tm-fade {
   transition: none !important;
 }
 
-/* Thin, dark scrollbars: the window is small and a default bar is a stripe of white. */
-* {
+/*
+ * Thin, dark scrollbars on Windows: the window is small and a default bar is a
+ * stripe of white. macOS keeps its own overlay scrollbars.
+ */
+.platform-windows * {
   scrollbar-width: thin;
   scrollbar-color: var(--ui-border-accented) transparent;
+}
+
+/*
+ * An app, not a page: the interface's text is not selectable and keeps the
+ * arrow cursor — native controls do not turn into a hand — images and links
+ * do not drag, and the window does not rubber-band. What a player may want to
+ * copy (fields, a Riot ID marked `.selectable`) stays selectable.
+ */
+html {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+  overscroll-behavior: none;
+}
+
+input,
+textarea,
+[contenteditable],
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
+}
+
+img,
+a {
+  -webkit-user-drag: none;
+}
+
+button,
+[role="button"],
+[role="tab"],
+[role="radio"],
+[role="option"],
+a[href] {
+  cursor: default;
+}
+
+/* macOS draws its traffic lights over the top bar's left end; in full screen they hide. */
+.platform-macos.in-tauri:not(.fullscreen) .app-topbar {
+  padding-left: 84px;
 }
 
 /*
@@ -435,19 +527,6 @@ img.tm-fade {
 }
 
 /*
- * The content pane's top edge. On dark, a faint warm hairline catches the light;
- * on light that hairline read as a beige stain, so the pane gets a white lip and
- * a soft shade from the top bar instead.
- */
-.pane-edge {
-  box-shadow: inset 0 1px 0 0 rgb(200 170 110 / 0.28);
-}
-
-:root:not(.dark) .pane-edge {
-  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.9), inset 0 8px 12px -10px rgb(17 24 39 / 0.08);
-}
-
-/*
  * ─── In-game overlay ───────────────────────────────────────────────────────
  * Each panel is its own small window over the game (`pages/overlay/[panel].vue`).
  * Read at a glance, so the motion is for what changed, never for decoration:
@@ -478,14 +557,29 @@ img.tm-fade {
   animation: tm-overlay-in 320ms var(--tm-ease) backwards;
 }
 
-/* An objective within its last seconds: its ring breathes in the accent. */
+/*
+ * An objective within its last seconds: its ring breathes in the accent. The
+ * glow is drawn once, on a layer of its own, and only its opacity moves — the
+ * compositor's work, not a repaint every frame over the game.
+ */
 @keyframes tm-overlay-soon {
-  0%, 100% { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ui-primary) 35%, transparent), 0 0 0 0 transparent; }
-  50% { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ui-primary) 80%, transparent), 0 0 10px -2px var(--ui-primary); }
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
 
 @utility animate-overlay-soon {
-  animation: tm-overlay-soon 1.6s ease-in-out infinite;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ui-primary) 80%, transparent), 0 0 10px -2px var(--ui-primary);
+    animation: tm-overlay-soon 1.6s ease-in-out infinite;
+    will-change: opacity;
+  }
 }
 
 /* The gold now buys the item: the icon lights up once, then holds a steady glow. */
@@ -501,8 +595,69 @@ img.tm-fade {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-overlay-in,
-  .animate-overlay-soon,
+  .animate-overlay-soon::after,
   .animate-overlay-ready {
     animation: none !important;
+  }
+}
+
+/*
+ * A pro's game, won or lost (`ProbuildProMatches`, `BuildPros`): a tinted row
+ * and a bar down its left edge — the accent for a win, red for a loss — so a
+ * list of games reads at a glance. Tints and hairlines only, never a fill
+ * behind the text.
+ */
+@utility pro-win {
+  border-left-color: var(--ui-primary);
+  background: linear-gradient(to right, color-mix(in oklch, var(--ui-primary) 14%, transparent), color-mix(in oklch, var(--ui-primary) 4%, transparent) 60%);
+}
+
+@utility pro-loss {
+  border-left-color: var(--ui-error);
+  background: linear-gradient(to right, color-mix(in oklch, var(--ui-error) 14%, transparent), color-mix(in oklch, var(--ui-error) 4%, transparent) 60%);
+}
+
+/*
+ * The Blitz build panel (`BuildBlitzPanel`) by the pane's width. Narrow, its
+ * blocks stack. From 48rem the runes take a column and the small pieces
+ * (spells, starters, boots) stack beside them; the cores and their follow-ups
+ * run across the pane under both. From 80rem — a wide window — the small
+ * pieces sit side by side, the cores beside their follow-ups under them, and
+ * the runes hold the left's whole height: no block is a strip of three icons
+ * across empty width. The skills close it, across.
+ */
+.blitz-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "runes" "small" "build" "skills";
+}
+
+.blitz-small,
+.blitz-build {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+@container (width >= 48rem) {
+  .blitz-grid {
+    grid-template-columns: 23rem minmax(0, 1fr);
+    grid-template-areas: "runes small" "build build" "skills skills";
+  }
+}
+
+@container (width >= 80rem) {
+  .blitz-grid {
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "runes small" "runes build" "skills skills";
+  }
+
+  .blitz-small {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .blitz-build {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -71,7 +71,8 @@ function toggle() {
       type="button"
       :disabled="disabled"
       :aria-pressed="modelValue"
-      class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm ring ring-inset transition-colors
+      class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm ring ring-inset transition-all duration-200
+             active:scale-95 disabled:active:scale-100
              disabled:cursor-not-allowed disabled:opacity-75
              focus-visible:outline-3 focus-visible:outline-primary/25 focus-visible:ring-primary"
       :class="modelValue
@@ -85,7 +86,8 @@ function toggle() {
            Its own gradient would also collide with AppLogo's shared id. -->
       <svg
         viewBox="0 0 64 64"
-        class="size-4 shrink-0"
+        class="size-4 shrink-0 transition-transform duration-200"
+        :class="modelValue ? 'scale-105' : 'scale-90 opacity-70'"
         aria-hidden="true"
       >
         <path

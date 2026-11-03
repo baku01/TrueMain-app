@@ -42,6 +42,9 @@ export default defineAppConfig({
     // paint a fill: on `ghost` / `link` / `outline` there is no surface for a
     // lit top edge to belong to, and it would float as a stray hairline.
     button: {
+      slots: {
+        base: 'transition-all duration-150 active:scale-[0.98] disabled:active:scale-100 cursor-pointer',
+      },
       variants: {
         variant: {
           solid: 'keycap',

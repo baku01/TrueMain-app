@@ -5,26 +5,50 @@ import { QUEUE_FILTERS, championLines, counted, gamesIn, laneLines, mainLane } f
 import { toMatchSummary, toProfileRanked } from '~/utils/match-summary'
 import { activityFromGames } from '~/utils/activity-from-games'
 import { dailyStandings, latestLpMoves } from '~/utils/lp-history'
+import { regionOfPlatform } from '~/utils/blitz/player'
 
 /**
  * Home: the player, read from their own client, on the profile page the site
  * shows for a true main (`PagePlayerProfile`): the banner on the skin they chose
  * in the client, their form over the latest games, a match history whose rows
- * open the shared detail panel with their latest clips under it, and their
+ * open the shared detail panel, and their
  * ranked card, day, activity, champions and roles beside it. The banner and the tiles read the latest page
  * of games; the history pages further back. It needs no account on TrueMain:
  * the client knows every player, TrueMain only the true mains (#1682). With no
  * client there is nothing personal to show, so the patch's best picks stand in.
+ *
+ * Any other player opens here too (`?riotId=Name%23TAG&region=br`): a player
+ * clicked in a game, or found by the search — their record read from Blitz
+ * (`useViewedPlayer`) on the same page, with "My profile" to come back. Both
+ * carry the detailed stats and op.gg's ladder and seasons (`useProfileInsights`).
  */
 const { t } = useT()
 const { state } = useLcuState()
-const { record, games: loadedGames, rankHistory, status, refresh, hasOlder, loadingOlder, loadOlder } = usePlayerRecord()
+const route = useRoute()
+const own = usePlayerRecord()
+const viewedTarget = computed(() => {
+  const riotId = route.query.riotId
+  const region = route.query.region
+  return typeof riotId === 'string' && riotId ? { riotId, region: typeof region === 'string' && region ? region : null } : null
+})
+const viewing = computed(() => viewedTarget.value !== null)
+const other = useViewedPlayer(viewedTarget)
+
+// Whose profile is on screen: the player's own, from their client, or another's, from Blitz.
+const record = computed(() => (viewing.value ? other.record.value : own.record.value))
+const loadedGames = computed(() => (viewing.value ? other.games.value : own.games.value))
+const rankHistory = computed(() => (viewing.value ? other.rankHistory.value : own.rankHistory.value))
+const status = computed(() => (viewing.value ? (other.status.value === 'ready' ? 'ready' : other.status.value === 'pending' || other.status.value === 'idle' ? 'pending' : 'error') : own.status.value))
+const hasOlder = computed(() => (viewing.value ? other.hasOlder.value : own.hasOlder.value))
+const loadingOlder = computed(() => (viewing.value ? other.loadingOlder.value : own.loadingOlder.value))
+const loadOlder = () => (viewing.value ? other.loadOlder() : own.loadOlder())
+const refresh = (force = false) => (viewing.value ? other.refresh() : own.refresh(force))
 const championsById = useStaticChampionsById()
 const { items, summoners, runeTree } = useStaticData()
 const { aliasOf, patch } = useChampionStatics()
 
 const filter = ref<QueueFilter>('all')
-const latest = computed(() => record.value?.games ?? [])
+const latest = computed(() => (viewing.value ? loadedGames.value : record.value?.games ?? []))
 const games = computed(() => gamesIn(latest.value, filter.value))
 const formMatches = computed(() => counted(games.value).map(game => toMatchSummary(game, null)))
 const pending = computed(() => !record.value && (status.value === 'pending' || status.value === 'idle'))
@@ -36,7 +60,10 @@ const lpMoves = computed(() => latestLpMoves(loadedGames.value, rankHistory.valu
 const rankCurve = computed(() => dailyStandings(rankHistory.value))
 // The region's GM / Challenger lines on the LP curve, from TrueMain (#2174).
 const apexCutoffs = useApexCutoffs(() => record.value?.platformId)
-const nameTag = computed(() => state.value.riotId?.replace('#', '-') ?? '')
+const shownRiotId = computed(() => (viewing.value
+  ? other.account.value ? `${other.account.value.gameName}#${other.account.value.tagLine}` : null
+  : state.value.riotId))
+const nameTag = computed(() => shownRiotId.value?.replace('#', '-') ?? '')
 const historyGames = computed(() => gamesIn(loadedGames.value, filter.value))
 const activity = computed(() => activityFromGames(loadedGames.value))
 
@@ -45,17 +72,34 @@ const today = useToday(historyGames, loadedGames, rankHistory)
 // The form tiles' second yardstick (#2076): the median game of the player's
 // Solo/Duo tier on the lane they played most of the games on screen.
 const mainRole = computed(() => mainLane(games.value))
-const { reference: formReference } = useFormBenchmark(mainRole, computed(() => ranked.value?.tier ?? null))
+const { reference: formReference, benchmark: formBenchmark } = useFormBenchmark(mainRole, computed(() => ranked.value?.tier ?? null))
 
 const identity = computed(() => ({
-  gameName: state.value.riotId?.split('#')[0] ?? t('app.loggingIn'),
-  tagLine: state.value.riotId?.split('#')[1] ?? null,
-  profileIconId: state.value.profileIconId,
+  gameName: shownRiotId.value?.split('#')[0] ?? (viewing.value ? viewedTarget.value!.riotId.split('#')[0]! : t('app.loggingIn')),
+  tagLine: shownRiotId.value?.split('#')[1] ?? null,
+  profileIconId: viewing.value ? other.account.value?.profileIconId ?? 0 : state.value.profileIconId,
   platformId: record.value?.platformId ?? null,
 }))
+const level = computed(() => (viewing.value ? other.account.value?.level ?? null : state.value.summonerLevel))
 
-/** Without a chosen background the client shows the most-mastered champion; so does the app. */
+// The detail beyond the history, for whoever is on screen.
+const insightsQueue = computed(() => filter.value)
+const insightsPlayer = computed(() => {
+  const riotId = shownRiotId.value
+  const region = viewing.value ? other.region.value : record.value?.platformId ? regionOfPlatform(record.value.platformId) : null
+  return riotId && region ? { riotId, region } : null
+})
+const { stats: detailed, opgg, loading: detailLoading } = useProfileInsights(insightsPlayer, insightsQueue)
+
+/** Without a chosen background the client shows the most-mastered champion; so does the app. Another player's: the one they played most of late. */
 const splashUrl = computed(() => {
+  if (viewing.value) {
+    const counts = new Map<number, number>()
+    for (const game of loadedGames.value) counts.set(game.championId, (counts.get(game.championId) ?? 0) + 1)
+    const most = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0]
+    const alias = most ? aliasOf(most) : backdropAlias()
+    return alias ? splashOfAlias(alias) : null
+  }
   const skinId = record.value?.backgroundSkinId
     ?? (state.value.championPool[0] ? state.value.championPool[0] * 1000 : null)
   const alias = skinId ? aliasOf(Math.floor(skinId / 1000)) : backdropAlias()
@@ -72,24 +116,24 @@ const QUEUE_LABELS = {
 } as const satisfies Record<QueueFilter, string>
 const queueTabs = computed(() => QUEUE_FILTERS.map(option => ({ label: t(QUEUE_LABELS[option.value]), value: option.value })))
 
-onMounted(() => refresh())
-watch(() => state.value.riotId, () => refresh())
+onMounted(() => own.refresh())
+watch(() => state.value.riotId, () => own.refresh())
 
 // A game that ends reaches the history once the client has its stats: read
 // again at the end-of-game screen, and once more on the way back to the lobby.
 const POST_GAME: GameflowPhase[] = ['WaitingForStats', 'PreEndOfGame', 'EndOfGame']
 watch(() => state.value.phase, (next, previous) => {
-  if (next === 'EndOfGame' || (POST_GAME.includes(previous) && !POST_GAME.includes(next))) void refresh(true)
+  if (next === 'EndOfGame' || (POST_GAME.includes(previous) && !POST_GAME.includes(next))) void own.refresh(true)
 })
 </script>
 
 <template>
   <div class="flex h-full flex-col gap-4 overflow-y-auto p-5">
-    <template v-if="state.connected && state.riotId">
+    <template v-if="viewing || (state.connected && state.riotId)">
       <PagePlayerProfile
         :identity="identity"
         :patch="patch || null"
-        :level="state.summonerLevel"
+        :level="level"
         :ranked="ranked"
         :splash-url="splashUrl"
         :matches="formMatches"
@@ -100,6 +144,7 @@ watch(() => state.value.phase, (next, previous) => {
           <div class="flex items-center gap-3">
             <UIcon name="i-lucide-house" class="size-6 text-primary" />
             <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('dash.title') }}</h1>
+            <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="xs" />
             <div class="ml-auto flex items-center gap-2">
               <UTabs
                 v-model="filter"
@@ -122,7 +167,14 @@ watch(() => state.value.phase, (next, previous) => {
             </div>
           </div>
           <UAlert
-            v-if="status === 'error' && !record"
+            v-if="viewing && (other.status.value === 'missing' || other.status.value === 'error')"
+            color="neutral"
+            variant="subtle"
+            icon="i-lucide-circle-alert"
+            :title="other.status.value === 'missing' ? t('dash.viewing.missing') : t('dash.viewing.error')"
+          />
+          <UAlert
+            v-else-if="status === 'error' && !record"
             color="neutral"
             variant="subtle"
             icon="i-lucide-circle-alert"
@@ -133,6 +185,7 @@ watch(() => state.value.phase, (next, previous) => {
         </template>
 
         <template #history>
+          <DashboardDetailedStats :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
           <DashboardMatchHistory
             :games="historyGames"
             :all-games="loadedGames"
@@ -146,10 +199,9 @@ watch(() => state.value.phase, (next, previous) => {
             :summoner-spells="summoners"
             :rune-tree="runeTree"
             :name-tag="nameTag"
+            :blitz-platform="viewing ? record?.platformId ?? null : null"
             @load-older="loadOlder"
           />
-          <!-- Under the history rather than in the column: it evens out the two sides. -->
-          <DashboardClipsCard v-if="!pending" />
         </template>
 
         <template #aside>
@@ -162,7 +214,8 @@ watch(() => state.value.phase, (next, previous) => {
               <DashboardLpMoves :moves="lpMoves" />
             </template>
           </ProfileRankedCard>
-          <DashboardTodayCard v-if="!pending" :summary="today" />
+          <DashboardSeasons :profile="opgg" />
+          <DashboardTodayCard v-if="!pending && !viewing" :summary="today" />
           <template v-if="pending">
             <USkeleton class="h-40 rounded-lg" />
             <USkeleton class="h-56 rounded-lg" />

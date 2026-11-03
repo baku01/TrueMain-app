@@ -22,11 +22,13 @@
         "maximizable": true,
         "visible": false,
         "decorations": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "theme": "Dark",
+        "backgroundColor": "#131a27"
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://cmsassets.rgpub.io recording: http://recording.localhost data:; media-src 'self' recording: http://recording.localhost; connect-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org; style-src 'self' 'unsafe-inline'; frame-src http://127.0.0.1:*"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://cmsassets.rgpub.io https://blitz-cdn.blitz.gg https://opgg-static.akamaized.net data:; connect-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {
@@ -45,10 +47,7 @@
     ],
     "macOS": {
       "minimumSystemVersion": "13.3",
-      "signingIdentity": "-",
-      "files": {
-        "MacOS/truemain-capture": "binaries/truemain-capture"
-      }
+      "signingIdentity": "-"
     },
     "createUpdaterArtifacts": true
   },

@@ -137,7 +137,7 @@ const label = computed(() => {
       <OverlayPanelIcon :panel="panel" class="size-3.5 text-primary" />
       {{ OVERLAY_PANEL_INFO[panel].label }}
     </div>
-    <RecordingsSegmented :model-value="kind" :items="KINDS" @update:model-value="pick" />
+    <AppSegmented :model-value="kind" :items="KINDS" @update:model-value="pick" />
     <div v-if="kind !== 'always'" class="flex items-center gap-1">
       <button
         ref="field"

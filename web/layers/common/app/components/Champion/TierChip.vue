@@ -76,7 +76,7 @@ const ariaLabel = computed(() => {
     <NuxtLink
       :to="to"
       :aria-label="ariaLabel"
-      class="relative block rounded-lg ring-primary/60 transition hover:ring-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      class="relative block rounded-lg ring-primary/60 transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:ring-2 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <SkeletonImage
         :src="iconUrl"

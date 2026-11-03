@@ -16,13 +16,7 @@ export function useChampionBuilds(championId: Ref<number | null>, position: Ref<
 
   let latest = 0
 
-  async function fetchBuilds(champion: number, lane: string): Promise<ChampionBuildResponse> {
-    if (insideTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return await invoke<ChampionBuildResponse>('champion_build', { championId: champion, position: lane, opponentChampionId: null })
-    }
-    return await $fetch<ChampionBuildResponse>(`/api/champions/${champion}`, { query: { position: lane } })
-  }
+  const fetchBuilds = (champion: number, lane: string) => readChampionBuild(champion, lane)
 
   watch(key, async (next) => {
     error.value = null

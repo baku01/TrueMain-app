@@ -122,7 +122,7 @@ onBeforeUnmount(() => void preview(false))
 
       <section v-if="current.nextItem.enabled" class="flex flex-col gap-2">
         <h3 class="stat-label">{{ t('overlay.settings.buildPathShows') }}</h3>
-        <RecordingsSegmented :model-value="current.show" :items="SHOWS" @update:model-value="apply({ show: $event })" />
+        <AppSegmented :model-value="current.show" :items="SHOWS" @update:model-value="apply({ show: $event })" />
       </section>
 
       <section v-if="shownPanels.length" class="flex flex-col gap-3">

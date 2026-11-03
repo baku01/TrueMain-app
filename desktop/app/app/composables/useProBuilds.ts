@@ -12,11 +12,7 @@ export function useProBuilds() {
 
   async function readLane(championId: number, position: string): Promise<ChampionBuildResponse | null> {
     try {
-      if (insideTauri()) {
-        const { invoke } = await import('@tauri-apps/api/core')
-        return await invoke<ChampionBuildResponse>('champion_build', { championId, position, opponentChampionId: null })
-      }
-      return await $fetch<ChampionBuildResponse>(`/api/champions/${championId}`, { query: { position } })
+      return await readChampionBuild(championId, position)
     }
     catch {
       return null

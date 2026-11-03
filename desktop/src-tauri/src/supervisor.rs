@@ -36,6 +36,11 @@ pub const STATE_EVENT: &str = "lcu://state";
 /// spin on a machine where League is simply not installed, short enough that
 /// launching the game feels like it connects immediately.
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
+/// After this many looks without a client (about half a minute), look less
+/// often: finding it starts a process (`ps`, PowerShell on Windows), and a
+/// player who has not opened League is not waiting on the app.
+const QUICK_LOOKS: u32 = 15;
+const IDLE_RECONNECT_DELAY: Duration = Duration::from_secs(5);
 
 /// Write every reading of the live session to this path.
 const RECORD_VAR: &str = "TRUEMAIN_LCU_RECORD";
@@ -53,7 +58,6 @@ pub(crate) fn replaying() -> bool {
 
 pub(crate) fn publish(app: &AppHandle, shared: &SharedState, next: AppState) {
     let in_game = in_game(&next);
-    crate::recording::follow(app, next.phase);
     crate::overlay::follow(app, in_game);
     // Hold the lock only to swap; emitting under it would let a slow listener
     // block the LCU stream.
@@ -109,14 +113,30 @@ pub async fn run(app: AppHandle, shared: SharedState, client: SharedClient) {
         return;
     }
 
+    let mut misses: u32 = 0;
+    // The empty state is published when the state on screen is not already
+    // it, not on every look: each publish reaches every window.
+    let idle = serde_json::to_value(AppState::default()).ok();
+    let mut first = true;
     loop {
         match attach(&app, &shared, &client).await {
-            Ok(()) => tracing::info!("client disconnected, waiting for it to come back"),
-            Err(error) => tracing::debug!(%error, "no client yet"),
+            Ok(()) => {
+                tracing::info!("client disconnected, waiting for it to come back");
+                misses = 0;
+            }
+            Err(error) => {
+                tracing::debug!(%error, "no client yet");
+                misses = misses.saturating_add(1);
+            }
         }
 
-        publish(&app, &shared, AppState::default());
-        tokio::time::sleep(RECONNECT_DELAY).await;
+        let current = serde_json::to_value(&*shared.lock().expect("state mutex poisoned")).ok();
+        if first || current != idle {
+            publish(&app, &shared, AppState::default());
+        }
+        first = false;
+        let delay = if misses > QUICK_LOOKS { IDLE_RECONNECT_DELAY } else { RECONNECT_DELAY };
+        tokio::time::sleep(delay).await;
     }
 }
 

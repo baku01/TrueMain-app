@@ -41,14 +41,14 @@ const ariaLabel = computed(() => (props.activeChampion
   <div v-if="variant === 'field'" class="relative">
     <button
       type="button"
-      class="group keycap flex w-full items-center border bg-muted text-left transition-colors hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      class="group keycap flex w-full items-center border bg-muted text-left transition-all duration-200 hover:border-primary/50 hover:bg-muted/80 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       :class="[SIZE_CLASS[size], activeChampion ? 'border-primary/50 pr-12' : 'border-default']"
       :aria-label="ariaLabel"
       @click="emit('open')"
     >
       <UIcon
         name="i-lucide-search"
-        class="shrink-0 text-dimmed transition-colors group-hover:text-primary"
+        class="shrink-0 text-dimmed transition-all duration-200 group-hover:scale-110 group-hover:text-primary"
         :class="size === 'sm' ? 'size-4' : 'size-5'"
       />
       <span v-if="activeChampion" class="flex min-w-0 flex-1 items-center gap-2">
@@ -80,7 +80,7 @@ const ariaLabel = computed(() => (props.activeChampion
       color="neutral"
       variant="ghost"
       size="xs"
-      class="absolute right-2 top-1/2 -translate-y-1/2"
+      class="absolute right-2 top-1/2 -translate-y-1/2 transition-transform duration-150 hover:scale-110 active:scale-90"
       :aria-label="t('search.clearFilter', { name: activeChampion.name })"
       @click="emit('clear')"
     />

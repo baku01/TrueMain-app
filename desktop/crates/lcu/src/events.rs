@@ -70,6 +70,12 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
         let Message::Text(payload) = message else {
             continue;
         };
+        // The socket carries everything the client does — chat, friends,
+        // presence, the patcher — and the app follows three endpoints: the
+        // rest is dropped before it is parsed.
+        if !followed(&payload) {
+            continue;
+        }
         let Some(event) = parse_event(&payload) else {
             continue;
         };
@@ -83,18 +89,28 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
     Ok(())
 }
 
+/// Whether a frame may be about an endpoint the app follows: its path, quoted,
+/// appears in it. A cheap look at the text, whatever its spacing; the parse
+/// that follows reads the `uri` itself.
+fn followed(payload: &str) -> bool {
+    crate::uri::FOLLOWED
+        .iter()
+        .any(|uri| payload.contains(&format!("\"{uri}\"")))
+}
+
 /// Pull an event out of a `[8, "OnJsonApiEvent", {...}]` frame.
 ///
 /// Returns `None` for anything else — the client also sends bare
 /// acknowledgements, and one unparseable frame must not end the stream.
 pub fn parse_event(payload: &str) -> Option<LcuEvent> {
-    let frame: serde_json::Value = serde_json::from_str(payload).ok()?;
-    let array = frame.as_array()?;
+    let mut frame: serde_json::Value = serde_json::from_str(payload).ok()?;
+    let array = frame.as_array_mut()?;
     if array.len() < 3 || array[0].as_i64() != Some(8) {
         return None;
     }
 
-    let body = array[2].as_object()?;
+    // Taken out of the frame, not copied: a champ select session is large.
+    let body = array[2].as_object_mut()?;
     Some(LcuEvent {
         uri: body.get("uri")?.as_str()?.to_string(),
         event_type: body
@@ -102,13 +118,20 @@ pub fn parse_event(payload: &str) -> Option<LcuEvent> {
             .and_then(serde_json::Value::as_str)
             .unwrap_or("Update")
             .to_string(),
-        data: body.get("data").cloned().unwrap_or(serde_json::Value::Null),
+        data: body.remove("data").unwrap_or(serde_json::Value::Null),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn drops_what_the_app_does_not_follow_before_parsing() {
+        assert!(followed(r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-champ-select/v1/session"}]"#));
+        assert!(followed(r#"[8,"OnJsonApiEvent",{"uri": "/lol-gameflow/v1/gameflow-phase"}]"#));
+        assert!(!followed(r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-chat/v1/conversations"}]"#));
+    }
 
     #[test]
     fn reads_a_champ_select_update() {

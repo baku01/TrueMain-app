@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { formatPercentage } from '#shared/utils/ddragon'
 import type { ChampionItemContextAxis } from '#shared/types/item-context'
-import type { BuildSubject } from '~/composables/useDraftBuild'
+import type { DraftItemPush } from '~/utils/draft-damage'
 import { ITEM_CONTEXT_TONE_CLASS } from '#shared/utils/item-context'
 import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
 
@@ -13,9 +13,9 @@ import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
  * next-item read asked before the first purchase. Absent when the draft moves
  * nothing; the build below is then already the answer.
  */
-const props = defineProps<{ subject: BuildSubject | null }>()
-
-const { pushes } = useDraftItemAdvice(toRef(props, 'subject'))
+/** The draft's pushes, read once by the screen (`useDraftItemAdvice`): the Blitz build panel marks the same items. */
+const props = defineProps<{ pushes: DraftItemPush[] }>()
+const pushes = toRef(props, 'pushes')
 const { items } = useStaticData()
 const { t } = useT()
 

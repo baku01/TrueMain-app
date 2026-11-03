@@ -94,7 +94,7 @@ function label(row: TeamRow) {
     >
       <button
         type="button"
-        class="block h-[140px] w-full rounded-lg outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-primary enabled:cursor-pointer enabled:hover:brightness-110 disabled:cursor-default"
+        class="block h-[140px] w-full rounded-lg outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-primary enabled:enabled:hover:brightness-110 disabled:cursor-default"
         :disabled="!readable(row)"
         :draggable="correctable && row.championId !== null"
         :aria-label="label(row)"

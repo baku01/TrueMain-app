@@ -37,10 +37,15 @@ const props = defineProps<{
 const now = ref(Date.now())
 let ticking: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  ticking = setInterval(() => (now.value = Date.now()), 1000)
+  // A hidden window has no clock to show; it catches up on the next tick it is seen.
+  ticking = setInterval(() => {
+    if (!document.hidden) now.value = Date.now()
+  }, 1000)
 })
 onBeforeUnmount(() => clearInterval(ticking))
 
+// Handed to a player only while they are dead, for the respawn countdown: the
+// others' rows do not redraw every second.
 const clock = computed(() => props.game.gameTime + Math.max(0, now.value - props.syncedAt) / 1000)
 
 const { t } = useT()
@@ -131,7 +136,7 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
         >
           <GamePlayerSide
             :player="row.ally"
-            :clock="clock"
+            :clock="row.ally?.dead ? clock : 0"
             :line="row.allyLine"
             :reading="reading"
             class="-mx-2 rounded-lg px-2 py-1.5"
@@ -143,7 +148,7 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
           </div>
           <GamePlayerSide
             :player="row.enemy"
-            :clock="clock"
+            :clock="row.enemy?.dead ? clock : 0"
             :line="row.enemyLine"
             :reading="reading"
             mirrored

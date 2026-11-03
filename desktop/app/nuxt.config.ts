@@ -67,6 +67,13 @@ export default defineNuxtConfig({
       '/api': { target: `${siteUrl}/api`, changeOrigin: true },
       // Riot's patch notes, which the shell fetches in the app (`src-tauri/src/news.rs`) and the site gives no CORS header for.
       '/__riot': { target: 'https://www.leagueoflegends.com', changeOrigin: true },
+      // The other sources Settings can pick (`src-tauri/src/sources.rs` in the app): Blitz, lolalytics and op.gg's official API.
+      '/__lolalytics': { target: 'https://a1.lolalytics.com/mega', changeOrigin: true },
+      '/__opgg': { target: 'https://mcp-api.op.gg/mcp', changeOrigin: true },
+      '/__tencent': { target: 'https://lol.qq.com/act/lbp/common/guides', changeOrigin: true },
+      '/__blitz/data': { target: 'https://data.v2.iesdev.com/api/v1/query_objects/prod/lol', changeOrigin: true },
+      '/__blitz/lol': { target: 'https://lol.v2.iesdev.com', changeOrigin: true },
+      '/__blitz/utils': { target: 'https://utils.iesdev.com/static/json/lol', changeOrigin: true },
     },
   },
   // Where `openOnSite` sends a browser-only `npm run dev`; inside the shell the

@@ -23,7 +23,7 @@ defineEmits<{ toggle: [] }>()
       :aria-label="label"
       :title="label"
       :disabled="disabled"
-      class="inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+      class="inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-all duration-150 hover:bg-primary/10 active:scale-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
       :class="active ? 'text-primary' : 'text-muted hover:text-primary'"
       @click.stop.prevent="$emit('toggle')"
     >
@@ -39,8 +39,8 @@ defineEmits<{ toggle: [] }>()
       <UIcon
         mode="svg"
         name="i-lucide-star"
-        class="size-4 shrink-0"
-        :class="active ? '[&_path]:fill-current' : undefined"
+        class="size-4 shrink-0 transition-transform duration-200 ease-out"
+        :class="active ? '[&_path]:fill-current animate-favorite-pop' : 'hover:scale-110'"
         aria-hidden="true"
       />
     </button>

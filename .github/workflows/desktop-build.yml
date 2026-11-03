@@ -31,7 +31,7 @@ jobs:
             rust-targets: ""
             args: --bundles nsis
             bundle: desktop/target/release/bundle
-            flavor: '{"bundle":{"createUpdaterArtifacts":false,"externalBin":["binaries/truemain-capture"]}}'
+            flavor: '{"bundle":{"createUpdaterArtifacts":false}}'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
@@ -50,22 +50,6 @@ jobs:
           workspaces: desktop
       - run: npm ci
         working-directory: desktop/app
-      - name: Build the capture helper
-        if: matrix.name == 'macOS'
-        run: |
-          swift build -c release --arch arm64 --arch x86_64 --package-path desktop/capture/macos
-          bin="$(swift build -c release --arch arm64 --arch x86_64 --package-path desktop/capture/macos --show-bin-path)"
-          mkdir -p desktop/src-tauri/binaries
-          cp "$bin/truemain-capture" desktop/src-tauri/binaries/truemain-capture
-          codesign --force --sign - desktop/src-tauri/binaries/truemain-capture
-          lipo -archs desktop/src-tauri/binaries/truemain-capture
-      - name: Build the capture helper
-        if: matrix.name == 'Windows'
-        shell: bash
-        run: |
-          cargo build --release --manifest-path desktop/Cargo.toml -p truemain-capture
-          mkdir -p desktop/src-tauri/binaries
-          cp desktop/target/release/truemain-capture.exe desktop/src-tauri/binaries/truemain-capture-x86_64-pc-windows-msvc.exe
       - name: Build the app
         shell: bash
         env:
@@ -82,11 +66,9 @@ jobs:
           mkdir -p dist
           if [ "${{ matrix.name }}" = "macOS" ]; then
             app=$(ls -d "$BUNDLE"/macos/*.app)
-            test -x "$app/Contents/MacOS/truemain-capture"
             codesign --verify --deep --strict "$app"
             cp "$BUNDLE"/dmg/*.dmg dist/TrueMain-macOS.dmg
           else
-            test -f desktop/target/release/truemain-capture.exe
             cp "$BUNDLE"/nsis/*-setup.exe dist/TrueMain-Windows-setup.exe
           fi
           ls -la dist

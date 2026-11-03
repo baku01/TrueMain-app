@@ -125,7 +125,7 @@ function clear(event: Event) {
     <button
       v-if="showClear"
       type="button"
-      class="absolute inset-y-0 end-7 inline-flex items-center px-1 text-dimmed transition-colors hover:text-default focus:outline-none focus-visible:text-default"
+      class="absolute inset-y-0 end-7 inline-flex items-center px-1 text-dimmed transition-all duration-150 hover:scale-110 hover:text-default active:scale-90 focus:outline-none focus-visible:text-default"
       :aria-label="t('common.clearChampionFilter')"
       @click.stop="clear"
     >

@@ -53,7 +53,7 @@
       <div class="relative">
         <div
           aria-hidden="true"
-          class="pointer-events-none absolute inset-x-[10%] top-[15%] -z-10 h-3/4 rounded-full bg-primary/12 blur-3xl"
+          class="pointer-events-none absolute inset-x-[10%] top-[15%] -z-10 h-3/4 animate-pulse rounded-full bg-primary/12 blur-3xl [animation-duration:4s]"
         />
         <SkeletonPicture
           src="/desktop/dashboard.webp"
@@ -61,7 +61,7 @@
           :height="760"
           alt="The TrueMain app's dashboard: rank, recent form, match history and champions."
           loading="lazy"
-          class="rounded-xl shadow-[0_30px_80px_-20px_rgb(0_0_0/0.9)] ring-1 ring-white/15"
+          class="rounded-xl shadow-[0_30px_80px_-20px_rgb(0_0_0/0.9)] ring-1 ring-white/15 transition-all duration-500 hover:scale-[1.01] hover:ring-white/25 hover:shadow-[0_35px_90px_-15px_rgb(0_0_0/0.95)]"
         />
       </div>
     </div>

@@ -33,7 +33,7 @@ withDefaults(defineProps<{ steps: NextItemOrderStep[], statics: Record<number, S
         :item="statics[statics[step.itemId]!.from![0]!] ?? null"
         :width="12"
         :height="12"
-        class="absolute -right-1 -bottom-1 size-3 rounded-sm ring-1 ring-default"
+        class="absolute -right-1 -top-1 size-3 rounded-sm ring-1 ring-default"
       />
     </li>
   </ol>

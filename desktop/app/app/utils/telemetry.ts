@@ -11,14 +11,10 @@ const PAGE_KEYS: Record<string, string> = {
   'champions-id': 'champion',
   'tierlist': 'tierlist',
   'matchup': 'matchup',
-  'truemains': 'truemains',
   'favorites': 'favorites',
   'draft': 'draft',
   'game': 'game',
   'overlay': 'overlay',
-  'recordings': 'recordings',
-  'recordings-id': 'recording',
-  'recordings-clips-id': 'clip',
 }
 
 /** The key a route is counted under, or none. */

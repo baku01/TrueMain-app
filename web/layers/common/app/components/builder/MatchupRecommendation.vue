@@ -44,6 +44,13 @@ const matchupMissing = computed(() =>
   && props.recommendation.matchupRequested
   && !props.recommendation.matchupFound)
 
+// The standard build still has games behind the stat line's "see games"
+// button: with no recommendation panel to hold the drawer, it is held here,
+// its icons read at the answer's patch only in that case.
+const fallbackPatch = computed(() => (matchupMissing.value ? props.recommendation?.patch ?? null : null))
+const { runeTree: fallbackRuneTree, itemsMap: fallbackItems } = useBuildAssets(fallbackPatch)
+const { data: fallbackSummoners } = useStaticSummonerSpells(fallbackPatch)
+
 /** Tooltip on the standard build's warning dot — the whole explanation, in one line. */
 const missingMatchupNotice = computed(() => {
   const champion = props.playedChampion?.name ?? t('builder.rec.thisChampion')
@@ -88,6 +95,18 @@ const missingMatchupNotice = computed(() => {
       :position="playedPosition"
       :champion-name="playedChampion?.name ?? null"
       :notice="missingMatchupNotice"
+    />
+    <BuilderGamesDrawer
+      v-if="matchupMissing"
+      :open="gamesDrawerOpen"
+      :champion-id="recommendation.championId"
+      :draft-request="draftRequest"
+      :champion-name="playedChampion?.name ?? null"
+      :champions="champions"
+      :items="fallbackItems"
+      :summoner-spells="fallbackSummoners ?? {}"
+      :rune-tree="fallbackRuneTree"
+      @update:open="gamesDrawerOpen = $event"
     />
 
     <SectionCard

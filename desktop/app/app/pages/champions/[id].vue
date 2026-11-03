@@ -18,7 +18,8 @@ const { entries, entryOf, patch } = useTierList()
 /** The lanes the champion is tiered on, most played first. */
 const lanes = computed<Lane[]>(() => entries.value
   .filter(entry => entry.championId === championId.value)
-  .sort((a, b) => b.games - a.games)
+  // A source that counts no games (Tencent) orders them by pick rate.
+  .sort((a, b) => b.games - a.games || b.pickRate - a.pickRate)
   .map(entry => entry.position as Lane)
   .filter(lane => POSITIONS.includes(lane)))
 
@@ -62,7 +63,6 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
         :position="lane ?? ''"
         :patch="patch || null"
         :total-games="entry?.games ?? 0"
-        truemains-only
         :tier="entry?.tier ?? null"
         :trend="trend?.points ?? null"
         :trend-loading="trendPending"

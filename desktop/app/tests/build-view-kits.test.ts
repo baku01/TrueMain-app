@@ -12,12 +12,10 @@ import { kit } from './kit-fixtures'
 const global = {
   stubs: {
     BuildList: { props: ['modelValue', 'options'], emits: ['update:modelValue'], template: '<div class="builds" :data-selected="modelValue"><button v-for="o in options" :key="o.key" class="build" @click="$emit(\'update:modelValue\', o.key)">{{ o.key }}</button></div>' },
-    BuildMains: { emits: ['select'], template: '<button class="main" @click="$emit(\'select\', { identity: { gameName: \'x\' } })" />' },
     KitList: { props: ['kits', 'modelValue'], emits: ['update:modelValue'], template: '<div class="kits" :data-selected="modelValue"><button v-for="k in kits" :key="k.id" class="kit" @click="$emit(\'update:modelValue\', k.id)">{{ k.name }}</button></div>' },
     KitBuild: { props: ['kit'], template: '<div class="kit-build">{{ kit.name }}</div>' },
     BuildCore: { template: '<div class="core" />' },
     BuildTreeBlock: { template: '<div class="tree" />' },
-    BuildMainBanner: true,
     UIcon: true,
   },
 }
@@ -32,16 +30,6 @@ beforeEach(() => {
   vi.stubGlobal('useChampionBuilds', () => ({ response: ref(lane), pending: ref(false) }))
   vi.stubGlobal('useStaticData', () => ({ items: ref({}), summoners: ref({}), runeTree: ref(null), pending: ref(false), loadChampion: () => {}, championStatic: () => null }))
   vi.stubGlobal('useChampionStatics', () => ({ patch: ref('16.21.1') }))
-  vi.stubGlobal('useMainBuildOption', ({ selected }: { selected: { value: string | null } }) => ({
-    mainNameTag: ref(null),
-    onMain: computed(() => selected.value === 'main'),
-    selectMain: () => (selected.value = 'main'),
-    mainPending: ref(false),
-    mainFailed: ref(false),
-    mainDraft: ref(null),
-    mainOption: ref(null),
-    mainScope: ref(null),
-  }))
 })
 
 afterEach(() => vi.unstubAllGlobals())
@@ -63,10 +51,6 @@ describe('BuildView with kits', () => {
     await wrapper.get('.build').trigger('click')
     expect(wrapper.emitted('update:kitId')!.at(-1)).toEqual([null])
     expect(wrapper.find('.kit-build').exists()).toBe(false)
-
-    await wrapper.findAll('.kit')[0]!.trigger('click')
-    await wrapper.get('.main').trigger('click')
-    expect(wrapper.emitted('update:kitId')!.at(-1)).toEqual([null])
   })
 
   it('has no kits section without kits', () => {

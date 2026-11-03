@@ -30,5 +30,8 @@ export function useFormBenchmark(position: Ref<string | null>, tier: Ref<string 
     return formReference(current ? benchmarks.value[current] ?? null : null, tier.value)
   })
 
-  return { reference }
+  /** The whole benchmark of the position: every tier's quartiles, for the ladder that places the player among them. */
+  const benchmark = computed<FormBenchmarkResponse | null>(() => (position.value ? benchmarks.value[position.value] ?? null : null))
+
+  return { reference, benchmark }
 }

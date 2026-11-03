@@ -60,7 +60,7 @@ const toneClass = computed(() => TONE_CLASS[props.tone])
     <!-- Width is an inline style, not a class: it is a value, and Tailwind
          cannot emit a utility per percentage. -->
     <span
-      class="block h-full rounded-full"
+      class="block h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none"
       :class="toneClass"
       :style="{ width: `${percent}%` }"
     />

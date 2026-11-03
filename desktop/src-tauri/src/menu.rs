@@ -4,6 +4,8 @@
 //! the window forward and asks the webview to check (`useAppUpdate`), which
 //! owns the updater and says how the check went.
 //!
+//! On macOS the application menu also opens Settings on ⌘, (`app://navigate`).
+//!
 //! Next to it, "Share Anonymous Usage Data" (#1805), checked by default: the
 //! switch for the usage counts `telemetry.rs` sends, kept across launches.
 //!
@@ -23,12 +25,16 @@ const CHECK_FOR_UPDATES: &str = "check-for-updates";
 const SHOW: &str = "show";
 const QUIT: &str = "quit";
 const SHARE_USAGE: &str = "share-usage";
+const SETTINGS: &str = "settings";
+/// Listened to by `app.vue`: the payload is the route to open.
+const NAVIGATE_EVENT: &str = "app://navigate";
 /// Listened to by `useAppUpdate` in the webview.
 const CHECK_EVENT: &str = "app://check-for-updates";
 
 /// The texts of the menu and the tray, in one language.
 struct Labels {
     check_for_updates: &'static str,
+    settings: &'static str,
     share_usage: &'static str,
     open: &'static str,
     quit: &'static str,
@@ -37,6 +43,7 @@ struct Labels {
 
 const ENGLISH: Labels = Labels {
     check_for_updates: "Check for Updates…",
+    settings: "Settings…",
     share_usage: "Share Anonymous Usage Data",
     open: "Open TrueMain",
     quit: "Quit TrueMain",
@@ -45,6 +52,7 @@ const ENGLISH: Labels = Labels {
 
 const PORTUGUESE: Labels = Labels {
     check_for_updates: "Verificar atualizações…",
+    settings: "Configurações…",
     share_usage: "Compartilhar dados de uso anônimos",
     open: "Abrir o TrueMain",
     quit: "Sair do TrueMain",
@@ -105,6 +113,11 @@ fn app_menu<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         let check = check_for_updates(app)?;
         app_submenu.insert(&check, 1)?;
         app_submenu.insert(&share_usage(app)?, 2)?;
+        // ⌘, opens Settings, where every Mac app keeps it.
+        let settings = MenuItem::with_id(app, SETTINGS, ENGLISH.settings, true, Some("CmdOrCtrl+,"))?;
+        register_text(app, &settings, |labels| labels.settings);
+        app_submenu.insert(&PredefinedMenuItem::separator(app)?, 3)?;
+        app_submenu.insert(&settings, 4)?;
     }
     app.set_menu(menu)?;
     Ok(())
@@ -211,13 +224,17 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
                 telemetry.set_enabled(!telemetry.enabled());
             }
         }
+        SETTINGS => {
+            show_window(app);
+            let _ = app.emit(NAVIGATE_EVENT, "/settings");
+        }
         SHOW => show_window(app),
         QUIT => app.exit(0),
         _ => {}
     }
 }
 
-fn show_window<R: Runtime>(app: &AppHandle<R>) {
+pub fn show_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.show();

@@ -1,8 +1,8 @@
-import type { MatchDetailItemEvent, MatchDetailResponse, MatchDetailSkillEvent } from '#shared/types/match-detail'
+import type { MatchDetailResponse } from '#shared/types/match-detail'
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import type { WinProbabilityTimeline } from '#shared/types/win-probability'
-import { tr } from '#common/utils/i18n'
 import { gradeDetail } from '~/utils/match-summary'
+import { matchEvents } from '~/utils/blitz/player'
 
 /**
  * The app's side of the composables the twinned site components call, so the
@@ -67,24 +67,18 @@ async function readTruemainDetail(nameTag: string, platformId: string | null, ma
   }
 }
 
-interface RiotEvents {
-  participantId: number
-  itemEvents: MatchDetailItemEvent[]
-  skillEvents: MatchDetailSkillEvent[]
-}
-
 /**
  * A game the client read has no purchases and no skill points — its timeline
- * lists neither — so with a Riot key saved they are asked of Riot's own match
- * timeline and put on each participant. Nothing changes without a key, or when
- * Riot has no timeline for the game: the panel then says there is no build data.
+ * lists neither — so they are read from the game's timeline on Blitz
+ * (`matchEvents`, no Riot key) and put on each participant. Nothing changes
+ * when Blitz has no timeline for the game: the panel then says there is no
+ * build data.
  */
-async function withRiotEvents(detail: MatchDetailResponse, platformId: string | null, matchId: string, toast: ReturnType<typeof useToast>): Promise<MatchDetailResponse> {
+async function withRiotEvents(detail: MatchDetailResponse, platformId: string | null, matchId: string): Promise<MatchDetailResponse> {
   const missing = detail.participants.some(participant => !participant.itemEvents?.length && !participant.skillEvents?.length)
-  if (!missing || !platformId || !insideTauri()) return detail
+  if (!missing || !platformId) return detail
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
-    const events = await invoke<RiotEvents[]>('riot_match_events', { platformId, gameId: Number(matchId) })
+    const events = await matchEvents(platformId, matchId)
     const byParticipant = new Map(events.map(entry => [entry.participantId, entry]))
     return {
       ...detail,
@@ -95,34 +89,10 @@ async function withRiotEvents(detail: MatchDetailResponse, platformId: string | 
     }
   }
   catch (error) {
-    // No key, a game Riot no longer keeps, or Riot unreachable.
-    warnRiotEvents(String(error), toast)
+    // A game Blitz does not keep, or Blitz unreachable: the build stays empty.
+    console.warn('match events failed', error)
     return detail
   }
-}
-
-/** The reasons already told this session: one notice each, not one per opened game. */
-const toldRiotEvents = new Set<string>()
-
-/**
- * Says why a game has no purchases or skill points when the cause is the
- * player's to fix — a missing, refused or rate-limited key. A game Riot simply
- * no longer keeps (404) is nothing to act on and stays silent.
- */
-function warnRiotEvents(reason: string, toast: ReturnType<typeof useToast>) {
-  const kind = reason.includes('No Riot API key')
-    ? 'noKey'
-    : reason.includes('refused the key')
-      ? 'refused'
-      : reason.includes('over its limit')
-        ? 'limit'
-        : reason.includes('no timeline')
-          ? null
-          : 'failed'
-  console.warn('riot_match_events failed', reason)
-  if (!kind || toldRiotEvents.has(kind)) return
-  toldRiotEvents.add(kind)
-  toast.add({ title: tr('app.riotEvents.title'), description: tr(`app.riotEvents.${kind}`, { reason }), color: 'warning', icon: 'i-lucide-triangle-alert' })
 }
 
 async function readClientDetail(matchId: string): Promise<MatchDetailResponse | null> {
@@ -158,7 +128,6 @@ async function readClientDetail(matchId: string): Promise<MatchDetailResponse | 
  */
 export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: MaybeRefOrGetter<string>) {
   const { record } = usePlayerRecord()
-  const toast = useToast()
   const data = ref<MatchDetailResponse | null>(null)
   const isLoading = ref(true)
   const notFound = ref(false)
@@ -172,7 +141,7 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
       // The client's fallback is cached by the shell; TrueMain is asked again
       // next time, since it may have ingested the game since.
       const read = truemain ?? await readClientDetail(id)
-      data.value = read ? await withRiotEvents(read, record.value?.platformId ?? null, id, toast) : null
+      data.value = read ? await withRiotEvents(read, record.value?.platformId ?? null, id) : null
     }
     catch {
       data.value = null

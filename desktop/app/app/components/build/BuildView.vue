@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ProfileIdentity } from '#shared/types/profile'
 import type { BuildOption, CompositionBuildRequest } from '~/types/build'
 import type { DraftBuild } from '~/composables/useDraftBuild'
 import type { Kit } from '#shared/types/kit'
+import type { DraftItemPush } from '~/utils/draft-damage'
+import { externalSource, fromBlitz } from '~/utils/data-source'
 
 /**
  * A champion's build, laid out the way the reference client does after a pick
@@ -29,6 +30,8 @@ const props = defineProps<{
   draft?: { build: DraftBuild | null, pending: boolean, error: string | null, opponentId?: number | null, label?: string, request?: CompositionBuildRequest | null } | null
   /** The player's kits on this champion and lane, offered beside the builds. */
   kits?: Kit[]
+  /** The items the draft moves the build toward (`useDraftItemAdvice`), marked in the Blitz panel. */
+  itemAdvice?: DraftItemPush[]
 }>()
 
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
@@ -60,7 +63,8 @@ const options = computed<BuildOption[]>(() => {
   }
   for (const build of response.value?.builds ?? []) {
     list.push({
-      key: `lane-${build.firstItemId}-${build.primaryKeystoneId}`,
+      // The whole path: two builds may open on the same item with the same keystone (another source's cores do).
+      key: `lane-${build.firstItemId}-${build.primaryKeystoneId}-${(build.core.itemPath?.itemIds ?? []).join('_')}-${(build.core.boots?.itemIds ?? []).join('_')}`,
       core: build.core,
       firstItemId: build.firstItemId,
       keystoneId: build.primaryKeystoneId,
@@ -72,30 +76,32 @@ const options = computed<BuildOption[]>(() => {
   return list
 })
 
-/** The row on screen: a build's key, or `main` for the true main picked in the list. */
+/** The row on screen: a build's key, or `pro` for the player picked in the list. */
 const selected = ref<string | null>(null)
-const main = ref<{ identity: ProfileIdentity } | null>(null)
 
 // A new champion puts the view back on its first row; a draft build arriving
-// takes the first row too, unless a true main's build is being read.
+// takes the first row too, unless a player's build is on screen.
 watch(() => `${props.championId}:${props.position}`, () => {
-  main.value = null
+  pro.value = null
   selected.value = options.value[0]?.key ?? null
 })
 watch(() => options.value[0]?.key, (first) => {
-  if (selected.value !== 'main') selected.value = first ?? null
+  if (selected.value !== 'pro') selected.value = first ?? null
 })
 
-const { mainNameTag, onMain, selectMain, mainPending, mainFailed, mainDraft, mainOption, mainScope } = useMainBuildOption({
-  championId: toRef(props, 'championId'),
-  position: toRef(props, 'position'),
-  draftRequest: computed(() => props.draft?.request ?? null),
-  selected,
-  main,
-})
+/** A pro picked in the list (Blitz only): their last game's build, and whose it is. */
+const blitz = fromBlitz()
+/** Settings picked a source other than TrueMain: its lane builds show every option it measured. */
+const external = externalSource() !== null
+const pro = ref<{ option: BuildOption, player: string } | null>(null)
+function selectPro(option: BuildOption, player: string) {
+  kitId.value = null
+  pro.value = { option, player }
+  selected.value = 'pro'
+}
 
 const shown = computed(() => {
-  if (onMain.value) return mainOption.value
+  if (selected.value === 'pro' && pro.value) return pro.value.option
   return options.value.find(option => option.key === selected.value) ?? options.value[0] ?? null
 })
 /** What the item set button imports: the build on screen, named for the set's title. */
@@ -103,13 +109,8 @@ const itemSetSubject = computed(() => {
   const name = championStatic(props.championId)?.championName
   return shown.value && name ? { championId: props.championId, champion: name, position: props.position, build: shown.value } : null
 })
-const waiting = computed(() => !shown.value && (onMain.value ? mainPending.value || mainDraft.value === undefined : lanePending.value || props.draft?.pending))
-const emptyMessage = computed(() => {
-  if (onMain.value && main.value) {
-    return mainFailed.value ? t('build.view.mainFailed', { name: main.value.identity.gameName }) : t('build.view.mainNone', { name: main.value.identity.gameName })
-  }
-  return t('build.view.none')
-})
+const waiting = computed(() => !shown.value && (lanePending.value || props.draft?.pending))
+const emptyMessage = computed(() => t('build.view.none'))
 </script>
 
 <template>
@@ -136,7 +137,10 @@ const emptyMessage = computed(() => {
           <h3 class="px-2 pb-1 stat-label">{{ t('kit.list.label') }}</h3>
           <KitList v-model="kitId" :kits="kits" />
         </section>
-        <BuildMains :champion-id="championId" :position="position" :selected-name-tag="onMain && !kitShown ? mainNameTag : null" @select="kitId = null; selectMain($event)" />
+        <!-- Settings reads from Blitz: its pros, each with their last game's build. -->
+        <BuildPros v-if="blitz" :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="selectPro" />
+        <!-- op.gg and lolalytics: their ranked players; a pick reads that player's last game on the champion from Blitz. -->
+        <ProbuildTopPlayers v-else-if="external" :champion-id="championId" :position="position" compact selectable @select="selectPro" />
       </div>
     </aside>
 
@@ -146,13 +150,29 @@ const emptyMessage = computed(() => {
     </div>
 
     <div v-else-if="shown" class="min-h-0 space-y-4 overflow-y-auto p-3">
-      <!-- Whose build this is, when it is a true main's. -->
-      <BuildMainBanner v-if="onMain && main" :identity="main.identity" :name-tag="mainNameTag!" :games="shown.games" :scope="mainScope" />
+      <p v-if="selected === 'pro' && pro" class="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs text-default">
+        <UIcon name="i-lucide-trophy" class="size-4 shrink-0 text-primary" />
+        {{ t('pro.banner', { player: pro.player, result: pro.option.winRate ? t('pro.win') : t('pro.loss') }) }}
+      </p>
 
       <!-- What the page around the view adds above the build: the draft's item advice (#1907). -->
       <slot name="advice" />
 
+      <!-- Settings reads from another source: a lane build shows every option it measured, each with its win rate. -->
+      <BuildSourcePanel
+        v-if="external && shown.key.startsWith('lane-')"
+        :champion-id="championId"
+        :position="position"
+        :initial-core="shown.core.itemPath?.itemIds ?? null"
+        :champion-static="championStatic(championId)"
+        :champion-name="championStatic(championId)?.championName || null"
+        :items="items"
+        :summoners="summoners"
+        :rune-tree="runeTree"
+        :advice="itemAdvice ?? []"
+      />
       <BuildCore
+        v-else
         :summoner-spells="shown.core.summonerSpells"
         :starter-items="shown.core.starterItems"
         :skill-order="shown.core.skillOrder"

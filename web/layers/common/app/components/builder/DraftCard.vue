@@ -50,7 +50,7 @@ const placeholder = computed(() => {
 <template>
   <button
     type="button"
-    class="group relative block aspect-[308/560] w-full cursor-pointer overflow-hidden rounded-lg bg-elevated outline-none transition-[box-shadow,filter] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-primary"
+    class="group relative block aspect-[308/560] w-full cursor-pointer overflow-hidden rounded-lg bg-elevated outline-none transition-all duration-200 hover:-translate-y-1 hover:brightness-110 active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary"
     :class="ring"
     :aria-label="champion ? t('builder.card.named', { label, name: champion.name }) : t('builder.card.empty', { label })"
     :title="champion?.name"
@@ -67,7 +67,7 @@ const placeholder = computed(() => {
         :key="art"
         :src="art"
         alt=""
-        class="img-skeleton absolute inset-0 size-full object-cover object-[50%_14%]"
+        class="img-skeleton absolute inset-0 size-full object-cover object-[50%_14%] transition-transform duration-500 ease-out group-hover:scale-105"
         decoding="async"
       >
       <span class="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/85 to-transparent to-45%" />
