@@ -5,18 +5,22 @@
 
 Um **companheiro para League of Legends**, em português do Brasil: lê o cliente do jogo no seu computador, acompanha a seleção de campeões e a partida, e mostra builds, runas, ordem de habilidades, confrontos e notas de atualização, tudo num app leve (Tauri + Nuxt), com tema escuro e claro.
 
-![Painel do app com o perfil, o histórico e a evolução de PDL](docs/screenshots/dashboard.png)
+![Painel do app com o perfil de um jogador, as estatísticas e o histórico](docs/screenshots/dashboard.png)
 
 ## Capturas de tela
 
-As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com os dados que o app lê da API do TrueMain e do Data Dragon. Algumas telas (painel, seleção de campeões e partida) usam *cenários de simulação* do próprio projeto, com contas e partidas fictícias, porque o League não estava aberto.
+As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dados reais das fontes (Blitz, lolalytics, op.gg e Data Dragon). As telas de seleção de campeões e partida usam *cenários de simulação* do próprio projeto, com contas e partidas fictícias, porque o League não estava aberto.
 
 | | |
 |---|---|
-| ![Página de um campeão com as runas, a árvore de itens e a ordem de habilidades](docs/screenshots/champion.png)<br>**Campeão:** runas, itens, feitiços e a sequência de itens em árvore, mais a ordem de habilidades nível a nível | ![Tier list em grupos de tier](docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas S, A, B, C e D |
-| ![Página de classes e subclasses](docs/screenshots/classes.png)<br>**Classes:** todos os campeões por classe e subclasse, com uma explicação do papel de cada uma | ![Lista de itens com a receita do item escolhido](docs/screenshots/items.png)<br>**Itens:** todos os itens, com descrição e receita em árvore |
-| ![Runas por árvore e a descrição da escolhida](docs/screenshots/runes.png)<br>**Runas:** as cinco árvores, com a descrição colorida de cada runa | ![Notas da atualização 26.21](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** as notas da Riot, patch a patch, atualizadas sozinhas |
-| ![Seleção de campeões com recomendações](docs/screenshots/draft.png)<br>**Seleção de campeões:** picks recomendados e a build contra o draft | ![Página da partida em andamento](docs/screenshots/ingame.png)<br>**Partida:** o placar das duas equipes, o próximo item e o que cada jogador vem fazendo |
+| ![Painel de um jogador](docs/screenshots/dashboard.png)<br>**Painel:** o perfil de qualquer jogador — o seu (lido do cliente) ou o de quem você buscar ou clicar numa partida | ![Estatísticas detalhadas](docs/screenshots/stats.png)<br>**Estatísticas detalhadas:** por elo (régua com a mediana de cada elo) e contra os oponentes de rota; ranking e temporadas do op.gg |
+| ![Página de um campeão](docs/screenshots/champion.png)<br>**Campeão:** todas as opções medidas pela fonte escolhida, com taxa de vitória — runas, feitiços, iniciais, botas, núcleos e melhores jogadores | ![Analytics](docs/screenshots/analytics.png)<br>**Analytics:** tudo o que a fonte mede sobre um campeão, por rota e elo |
+| ![Confronto](docs/screenshots/matchup.png)<br>**Confronto:** a build para o draft e as partidas reais do confronto | ![Busca](docs/screenshots/search.png)<br>**Busca (⌘K):** campeões e jogadores (`Nome#TAG`), com a região e o elo |
+| ![Fontes de dados](docs/screenshots/sources.png)<br>**Configurações:** a fonte de dados — TrueMain, Blitz, op.gg, lolalytics ou Tencent | ![ProBuild](docs/screenshots/probuild.png)<br>**ProBuild:** as partidas recentes de pros, vitória ou derrota em destaque |
+| ![Tier list](docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas | ![Classes](docs/screenshots/classes.png)<br>**Classes:** campeões por classe e subclasse, com o papel de cada uma |
+| ![Itens](docs/screenshots/items.png)<br>**Itens:** descrição e receita em árvore | ![Runas](docs/screenshots/runes.png)<br>**Runas:** as árvores e a descrição colorida |
+| ![Seleção de campeões](docs/screenshots/draft.png)<br>**Seleção de campeões:** picks e a build contra o draft | ![Partida](docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e o que cada jogador vem fazendo |
+| ![Notas da atualização](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas | ![Overlay de próximo item](docs/screenshots/overlay-next-item.png)<br>**Overlay:** o próximo item sobre o jogo, com a receita e a ordem da build |
 
 **Tema claro:** o app tem tema escuro (o padrão) e claro, alternados pelo botão da barra superior.
 
@@ -25,34 +29,43 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com os 
 ## O que o app faz
 
 - **Acompanha o cliente do League** no macOS e no Windows e abre a tela certa em cada fase: a seleção de campeões abre o draft, e a partida abre a página do jogo.
-- **Seleção de campeões:** recomenda picks e bans, mostra o confronto da rota e a build para o draft atual, e escreve runas e conjuntos de itens no cliente **só quando você clica**.
-- **Partida:** placar das duas equipes, próximo item recomendado, ordem de compra dos componentes, timers de objetivos e painéis de overlay sobre o jogo.
-- **Gravações:** grava as partidas, mostra o resumo, os momentos importantes e deixa cortar clipes.
-- **Campeões, tier list, confronto, kits e favoritos:** as páginas de estatísticas e as suas próprias builds ("Meus kits").
+- **Painel de jogador:** o seu perfil (lido do cliente) ou o de **qualquer jogador** — buscado por `Nome#TAG` na busca do topo (⌘K) ou clicado numa partida. Mostra elo, histórico com o detalhe de cada partida, campeões, funções, atividade, e:
+  - **estatísticas detalhadas** das últimas 20 partidas (≈25 métricas: dano, parcela do dano do time, CS aos 10, visão, objetivos, abates solo, skillshots…), cada uma **comparada aos oponentes de rota** nas mesmas partidas, com barras e veredito por grupo;
+  - **comparação por elo:** KDA, participação, CS/min, visão/min e mortes numa régua com a mediana de cada elo (Ferro a Desafiante), com qualquer elo escolhido como referência;
+  - **ranking e temporadas** (op.gg): posição na ladder, pico da temporada e elos das temporadas anteriores.
+- **Campeões, tier list e Analytics:** builds com todas as opções medidas (runas, feitiços, iniciais, botas, núcleos e 4º/5º item com taxa de vitória), melhores jogadores e builds de pros, e uma página de **Analytics** com tudo o que a fonte mede sobre o campeão.
+- **Confronto:** a build para o draft e as partidas reais do confronto.
+- **Seleção de campeões:** picks, bans e a build para o draft, com **itens sugeridos pela composição inimiga** (ex.: Mercúrio contra muito controle de grupo). Runas e conjuntos de itens só vão para o cliente **quando você clica**.
+- **Partida e overlay:** placar das duas equipes, próximo item com a receita e a ordem da build, timers de objetivos e painéis sobre o jogo.
 - **Português do Brasil** em todo o app, inclusive nos nomes de itens, campeões e runas.
+
+## Fontes de dados (Configurações)
+
+Em **Configurações → Fonte de dados**, todas as telas de estatísticas passam a vir da fonte escolhida (a troca recarrega a janela):
+
+| Fonte | O que traz |
+|---|---|
+| **TrueMain** | As estatísticas do projeto original, a partir dos *true mains* |
+| **Blitz** | Builds, tier list, matchups, builds contra um oponente e as partidas recentes de pros |
+| **op.gg** | A API oficial (servidor MCP) do op.gg: builds, runas, counters, ranking por campeão |
+| **lolalytics** *(experimental)* | A mais detalhada: cada runa, item por slot, matchups, objetivos, duração de partida |
+| **Tencent** *(experimental)* | Os guias do lol.qq.com (servidores chineses, atualizados diariamente): páginas de runa completas, núcleos, ordem de habilidades e matchups |
+
+As fontes marcadas como experimentais usam endpoints públicos que os sites não documentam e podem mudar sem aviso. Nenhuma fonte é lida contornando proteções: sites que exigem burlar anti-bot ficaram de fora.
 
 ## O que este fork muda
 
 Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
 
-- **Idioma:** o app desktop inteiro fala **português do Brasil** (e inglês), escolhido num menu da barra superior. Os nomes e textos de itens, campeões, runas e feitiços acompanham o idioma. O site continua em inglês.
-- **Identidade visual:** azul-marinho com um azul de destaque, **tema escuro e claro**, ícones em traço fino (Phosphor), medalhas para os tiers e um ícone novo para o app.
-- **Menu lateral retrátil** (⌘B).
-- **Abas novas:** **Itens e runas**, **Classes** (campeões por classe e subclasse, com explicação do papel), **Notas da atualização** (leitura das notas da Riot, com seletor de patch) e **ProBuild**.
-- **Ordem de habilidades nível a nível**, derivada da prioridade de evolução, e a página do campeão reorganizada em cartões.
-- **Chave da API da Riot** em Configurações: guardada no chaveiro do sistema, verificada na hora, com os limites de requisições da chave.
-- **ProBuild:** uma coleta automática das partidas dos melhores jogadores (Desafiante e Grão-Mestre) para mostrar as builds e runas de cada campeão com as taxas de vitória. Veja a seção abaixo.
-- **Ordem de compra e de habilidades** de partidas lidas do cliente, buscadas na timeline da Riot com a sua chave.
-- **Infraestrutura:** os workflows do projeto original (CI, deploy em servidor próprio, SonarQube, etc.) foram removidos. Resta só o **build do app para macOS e Windows** (`.github/workflows/desktop-build.yml`).
-
-## ProBuild: builds de quem joga no topo
-
-A API da Riot não permite perguntar "as partidas do Ezreal no Desafiante". O app anda pelo ranking: lê os melhores jogadores do servidor, as partidas ranqueadas recentes de cada um, e guarda as builds dos **10 jogadores** de cada partida. Daí conta, para o campeão escolhido, a escolha e a vitória de cada pedra-chave, página de runas, item e par de feitiços.
-
-- Roda **sozinho** com o app aberto, no ritmo que os limites da sua chave permitem.
-- Precisa de uma **chave da API da Riot** (gere uma em [developer.riotgames.com](https://developer.riotgames.com); a de desenvolvimento vale 24 horas).
-- Com a chave pessoal (100 requisições a cada 2 minutos), uma rodada completa leva horas. Os melhores jogadores vêm primeiro, então os primeiros números aparecem em minutos.
-- **Limites:** a ordem de compra dos itens ainda não é coletada (exigiria a timeline de cada partida), e menos de 30 partidas de um campeão dão porcentagens pouco confiáveis, o que a tela avisa.
+- **Idioma:** o app desktop inteiro fala **português do Brasil** (e inglês), escolhido na barra superior. Os textos de itens, campeões, runas e feitiços acompanham o idioma. O site continua em inglês.
+- **Identidade visual:** azul-marinho com um azul de destaque, **tema escuro e claro**, ícones em traço fino (Phosphor) e medalhas para os tiers.
+- **Navegação:** menu lateral agrupado (Campeões, Builds, Em partida), recolhível, só com ícones em janelas estreitas; busca única de campeão e jogador (⌘K).
+- **Abas novas:** **Analytics**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).
+- **Várias fontes de dados** (acima) e o **painel para qualquer jogador**, lido do Blitz e do op.gg — sem chave da API da Riot.
+- **Cara de app nativo:** barra de título no tema do app (no macOS, integrada à barra superior), uma única instância, ⌘, abre Configurações, fechar a janela no macOS só a esconde, e na versão final sem menu de clique direito nem atalhos de navegador.
+- **Desempenho:** o app só processa os eventos do cliente que usa, o overlay fica parado fora da partida, a busca pelo cliente desacelera quando ele está fechado, e os caches têm limite.
+- **Removido:** a chave da API da Riot, o ranking de Truemains, as gravações de partidas (e o helper de captura), a aba Jogador e a aba Matchups.
+- **Infraestrutura:** os workflows do projeto original (deploy, SonarQube, etc.) foram removidos. Resta só o **build do app para macOS e Windows** (`.github/workflows/desktop-build.yml`).
 
 ## Baixar
 
@@ -83,7 +96,7 @@ npm run tauri dev
 npm run test
 npm run lint
 npm run typecheck
-cd ../src-tauri && cargo test --lib
+cd .. && cargo test --workspace
 ```
 
 O app lê as estatísticas de campeões da **API do TrueMain** (`https://truemain.lol`, o servidor do projeto original). Para apontar para outro servidor, defina `TRUEMAIN_SITE_URL` (veja [`desktop/README.md`](desktop/README.md)).
@@ -94,14 +107,16 @@ Para gerar o instalador: `npm run tauri build` dentro de `desktop/app`. O GitHub
 
 | Fonte | Para quê |
 |---|---|
-| API do TrueMain (`truemain.lol`) | Tier list, estatísticas e builds de campeões, ranking de Truemains, recomendações de draft e de próximo item |
+| API do TrueMain (`truemain.lol`) | Estatísticas na fonte TrueMain, recomendações de draft e de próximo item, referências por elo |
+| Blitz (`iesdev.com`) | Perfis e partidas de qualquer jogador, builds e pros; na fonte Blitz, as estatísticas |
+| op.gg (API oficial) | Ranking e temporadas dos jogadores; na fonte op.gg, as estatísticas |
+| lolalytics e Tencent | As estatísticas nessas fontes (experimental) |
 | [Data Dragon](https://developer.riotgames.com/docs/lol) e [Community Dragon](https://www.communitydragon.org/) | Nomes, textos e imagens de itens, campeões, feitiços e runas, no idioma escolhido |
 | Cliente do League (local) | Seleção de campeões, perfil, histórico e a partida ao vivo |
-| API da Riot (sua chave) | ProBuild; ordem de compra e de habilidades de partidas antigas |
 | [Wiki do League](https://wiki.leagueoflegends.com/) | Subclasses dos campeões (um retrato guardado no app) |
 | leagueoflegends.com | Notas da atualização |
 
-> **Dependência importante:** quase todas as estatísticas vêm de um servidor que não é deste fork. Se `truemain.lol` sair do ar, as telas de campeões, tier list e ranking ficam vazias; as de itens, runas, classes, notas da atualização e a partida ao vivo continuam funcionando.
+> **Dependências:** as estatísticas vêm de servidores que não são deste fork. Com a fonte TrueMain, se `truemain.lol` sair do ar as telas de campeões e tier list ficam vazias — basta escolher outra fonte em Configurações. Itens, runas, classes, notas da atualização e a partida ao vivo não dependem de nenhuma.
 
 ## Sobre o projeto original
 

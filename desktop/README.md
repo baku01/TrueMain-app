@@ -6,32 +6,33 @@
 
 Um app leve (Tauri v2 + Nuxt 4) que lê o cliente do League of Legends **somente para leitura**, acompanha a seleção de campeões e a partida, e mostra estatísticas, builds, runas e notas de atualização.
 
-![Página de um campeão: runas, sequência de itens em árvore e ordem de habilidades](../docs/screenshots/champion.png)
+![Página de um campeão: todas as opções de build medidas pela fonte escolhida](../docs/screenshots/champion.png)
 
 | | |
 |---|---|
-| ![Painel](../docs/screenshots/dashboard.png)<br>**Painel:** perfil, histórico de partidas e evolução de PDL | ![Tier list](../docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas |
-| ![Classes](../docs/screenshots/classes.png)<br>**Classes:** campeões por classe e subclasse, com o papel de cada uma | ![Itens](../docs/screenshots/items.png)<br>**Itens:** descrição e receita em árvore |
-| ![Runas](../docs/screenshots/runes.png)<br>**Runas:** as árvores e a descrição colorida | ![Notas da atualização](../docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas |
-| ![Seleção de campeões](../docs/screenshots/draft.png)<br>**Seleção de campeões:** picks e a build contra o draft | ![Partida](../docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e overlay |
+| ![Painel de um jogador](../docs/screenshots/dashboard.png)<br>**Painel:** o perfil de qualquer jogador — o seu (lido do cliente) ou o de quem você buscar ou clicar numa partida | ![Estatísticas detalhadas](../docs/screenshots/stats.png)<br>**Estatísticas detalhadas:** por elo (régua com a mediana de cada elo) e contra os oponentes de rota; ranking e temporadas do op.gg |
+| ![Página de um campeão](../docs/screenshots/champion.png)<br>**Campeão:** todas as opções medidas pela fonte escolhida, com taxa de vitória — runas, feitiços, iniciais, botas, núcleos e melhores jogadores | ![Analytics](../docs/screenshots/analytics.png)<br>**Analytics:** tudo o que a fonte mede sobre um campeão, por rota e elo |
+| ![Confronto](../docs/screenshots/matchup.png)<br>**Confronto:** a build para o draft e as partidas reais do confronto | ![Busca](../docs/screenshots/search.png)<br>**Busca (⌘K):** campeões e jogadores (`Nome#TAG`), com a região e o elo |
+| ![Fontes de dados](../docs/screenshots/sources.png)<br>**Configurações:** a fonte de dados — TrueMain, Blitz, op.gg, lolalytics ou Tencent | ![ProBuild](../docs/screenshots/probuild.png)<br>**ProBuild:** as partidas recentes de pros, vitória ou derrota em destaque |
+| ![Tier list](../docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas | ![Classes](../docs/screenshots/classes.png)<br>**Classes:** campeões por classe e subclasse, com o papel de cada uma |
+| ![Itens](../docs/screenshots/items.png)<br>**Itens:** descrição e receita em árvore | ![Runas](../docs/screenshots/runes.png)<br>**Runas:** as árvores e a descrição colorida |
+| ![Seleção de campeões](../docs/screenshots/draft.png)<br>**Seleção de campeões:** picks e a build contra o draft | ![Partida](../docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e o que cada jogador vem fazendo |
+| ![Notas da atualização](../docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas | ![Overlay de próximo item](../docs/screenshots/overlay-next-item.png)<br>**Overlay:** o próximo item sobre o jogo, com a receita e a ordem da build |
 
-As capturas foram feitas no navegador (`npm run dev`), e as telas de painel, seleção de campeões e partida usam cenários de simulação do projeto (contas e partidas fictícias). O app também tem **tema claro**, alternado pelo botão da barra superior:
+As capturas foram feitas no navegador (`npm run dev`) com dados reais das fontes; as telas de seleção de campeões e partida usam cenários de simulação do projeto (contas e partidas fictícias). O app também tem **tema claro**, alternado pelo botão da barra superior:
 
 ![Página de um campeão no tema claro](../docs/screenshots/light.png)
 
 ## Novidades deste fork
 
-- **Idioma:** português do Brasil e inglês, escolhidos na barra superior. Os textos de itens, campeões, runas e feitiços vêm do Data Dragon e do Community Dragon no idioma escolhido, e a troca recarrega a janela. O menu nativo e a bandeja seguem o idioma. As mensagens ficam em dicionários por área (`app/i18n/` aqui e `web/layers/common/app/i18n/` na camada compartilhada), e o teste `tests/i18n-messages.test.ts` falha se faltar uma chave em um idioma.
-- **Visual:** azul-marinho, tema escuro e claro, ícones Phosphor, medalhas de tier, ícone do app novo e menu lateral retrátil (⌘B).
-- **Abas novas:**
-  - **Itens e runas** com a receita em árvore e a descrição colorida;
-  - **Classes**, com as classes e subclasses (um retrato da wiki do League, guardado no app) e uma explicação de cada papel. Atiradores não têm subclasse oficial, então seguem a convenção da comunidade e a tela avisa;
-  - **Notas da atualização**, lidas de leagueoflegends.com pelo Rust (o site não permite leitura direta), com seletor de patch, busca e atualização automática;
-  - **ProBuild**, descrito abaixo.
-- **Página do campeão:** reorganizada em cartões, com a **ordem de habilidades nível a nível**. Essa grade é **derivada** da prioridade de evolução, porque a API do TrueMain não traz o que foi aprendido em cada nível, e a tela diz isso.
-- **Configurações:** onde você cola a **chave da API da Riot**. Ela fica no chaveiro do sistema (Keychain ou Credential Manager), nunca no navegador do app. O app a verifica com uma chamada à Riot e mostra os **limites de requisições** que a Riot informa.
-- **Partidas lidas do cliente:** o histórico do cliente não traz compras nem pontos de habilidade. Com a chave salva, o app os busca na timeline da Riot.
-- **ProBuild:** uma coleta **automática** das partidas dos melhores jogadores do servidor (Desafiante e Grão-Mestre). O app anda pelo ranking, lê as partidas recentes de cada um e guarda as builds dos 10 jogadores de cada partida. A página conta, para o campeão escolhido, a escolha e a vitória de cada pedra-chave, página de runas, item e par de feitiços. Roda sozinha com o app aberto, no ritmo da sua chave, e continua de onde parou. Ainda não coleta a ordem de compra.
+- **Idioma:** português do Brasil e inglês, escolhidos na barra superior. Os textos de itens, campeões, runas e feitiços vêm do Data Dragon e do Community Dragon no idioma escolhido, e a troca recarrega a janela. O menu nativo e a bandeja seguem o idioma. As mensagens ficam em dicionários por área (`app/i18n/` aqui e `web/layers/common/app/i18n/` na camada compartilhada; `app/i18n-sources/` troca alguns textos quando outra fonte está escolhida), e o teste `tests/i18n-messages.test.ts` falha se faltar uma chave em um idioma.
+- **Visual e navegação:** azul-marinho, tema escuro e claro, ícones Phosphor, medalhas de tier, menu lateral agrupado e recolhível (`AppNav`), busca única de campeão e jogador (⌘K, `ChampionSearch`).
+- **Fontes de dados** (`app/utils/data-source.ts`, `app/utils/sources/`): TrueMain, Blitz, op.gg, lolalytics e Tencent. Cada fonte responde as mesmas leituras nos formatos do TrueMain (`Provider` em `utils/sources/index.ts`): `apiGet`/`apiPost` e `readChampionBuild` perguntam primeiro à fonte escolhida. No Tauri as leituras externas passam pelo Rust (`src-tauri/src/sources.rs`: bases fixas, caminhos validados, cache de 2 h limitado a 32 MB); no `npm run dev`, pelos proxies `/__blitz/*`, `/__opgg`, `/__lolalytics` e `/__tencent` (`nuxt.config.ts`).
+- **Painel de qualquer jogador** (`pages/index.vue`): `?riotId=Nome%23TAG&region=br` mostra outro jogador lido do Blitz (`useViewedPlayer`), no mesmo layout do perfil próprio; os links de jogador da camada compartilhada (`/truemains/…`) e o antigo `/player` caem nele (`middleware/player-links.global.ts`). Estatísticas detalhadas contra os oponentes de rota e por elo (`utils/player-stats.ts`, `DashboardDetailedStats`, `DashboardEloLadder`) e ranking/temporadas do op.gg (`utils/sources/opgg-profile.ts`, `DashboardSeasons`).
+- **Abas:** Analytics, Itens e runas, Classes, Notas da atualização (lidas de leagueoflegends.com pelo Rust), ProBuild (por fonte).
+- **Overlay:** próximo item com a receita e a ordem da build (`OverlayNextItemPath`), o mesmo componente no exemplo das configurações.
+- **Nativo:** barra de título no tema do app (`chrome.rs`; no macOS `titleBarStyle: Overlay` em `tauri.macos.conf.json`, com regiões de arraste na barra superior), instância única (`tauri-plugin-single-instance`), ⌘, para Configurações, fechar esconde no macOS, e `plugins/native.client.ts` tira o menu de clique direito e os atalhos de navegador na versão final.
+- **Removido:** chave da API da Riot e o coletor ProBuild que dependia dela, ranking e marcas de Truemains, gravações (crates `game-recording`, `capture-helper`, `capture-spike` e `capture/`), abas Jogador e Matchups.
 
 ## Rodando
 
@@ -41,7 +42,7 @@ npm ci
 npm run dev            # a interface no navegador, com cenários de simulação
 npm run tauri dev      # o app de verdade, com o cliente do League aberto
 npm run test && npm run lint && npm run typecheck
-cd ../src-tauri && cargo test --lib
+cd .. && cargo test --workspace
 ```
 
 
