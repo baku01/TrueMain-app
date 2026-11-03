@@ -47,7 +47,10 @@ const ariaLabel = computed(() => {
 </script>
 
 <template>
-  <UTooltip
+  <!-- Mounted on the first hover (`LazyTooltip`, #1585): a tier list draws a
+       few hundred chips, and a tooltip root per chip froze the page as it
+       opened. -->
+  <GameTooltipLazyTooltip
     :delay-duration="150"
     :ui="{ content: 'h-auto items-start p-2' }"
   >
@@ -102,5 +105,5 @@ const ariaLabel = computed(() => {
         class="absolute -bottom-1 -right-1 size-[18px] rounded-full bg-default p-px ring-1 ring-default"
       />
     </NuxtLink>
-  </UTooltip>
+  </GameTooltipLazyTooltip>
 </template>

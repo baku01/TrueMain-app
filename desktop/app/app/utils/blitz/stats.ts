@@ -21,6 +21,9 @@ interface BlitzChampionRow {
   champion_role_tier: number | null
 }
 
+/** The share of a champion's games a lane needs to be listed when every lane is shown. */
+const MIN_LANE_SHARE = 0.08
+
 export async function tierListFromBlitz(query: Record<string, unknown>): Promise<ChampionTierListResponse> {
   const position = typeof query.position === 'string' && query.position ? query.position : null
   const rows = await blitzRows<BlitzChampionRow>('champion_postmatch_stats', {
@@ -29,7 +32,15 @@ export async function tierListFromBlitz(query: Record<string, unknown>): Promise
     tier: blitzTier(query.eloBracket),
     columns: 'champion_id,individual_position,patch,games,win_rate,pick_rate,champion_ban_rate,champion_role_tier',
   })
-  const lanes = rows.filter(row => row.individual_position !== 'ALL' && (position === null || truemainPosition(row.individual_position) === position))
+  // Every lane a champion was ever played on is a row; across all lanes only
+  // the ones that make up a real share of its games are listed, as the
+  // site's own tier list does — a support Yasuo is not a tier list entry.
+  const byChampion = new Map<number, number>()
+  for (const row of rows) if (row.individual_position !== 'ALL') byChampion.set(row.champion_id, (byChampion.get(row.champion_id) ?? 0) + row.games)
+  const lanes = rows.filter(row => row.individual_position !== 'ALL'
+    && (position === null
+      ? row.games >= MIN_LANE_SHARE * (byChampion.get(row.champion_id) ?? 0)
+      : truemainPosition(row.individual_position) === position))
   const tiers = ['S', 'A', 'B', 'C', 'D'].map(tier => ({
     tier,
     entries: lanes

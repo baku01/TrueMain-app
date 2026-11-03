@@ -9,9 +9,12 @@ on:
 permissions:
   contents: read
 
+# On main every build publishes the downloads, so a push waits for the build
+# before it rather than cancelling it — a cancelled build publishes nothing,
+# and the release would skip that commit. Elsewhere only the newest matters.
 concurrency:
   group: desktop-build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:

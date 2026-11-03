@@ -212,8 +212,9 @@ export async function lolalyticsRows(query: Record<string, unknown>): Promise<Ch
 }
 
 export async function lolalyticsTierList(query: Record<string, unknown>): Promise<ChampionTierListResponse> {
-  const rows = await lolalyticsRows(query)
   const position = typeof query.position === 'string' && query.position ? query.position : null
+  // Across every lane, only the lanes that make up a real share of the champion's games (`pctLane`, as a fraction).
+  const rows = (await lolalyticsRows(query)).filter(row => position !== null || row.lanePlayRate >= 0.08)
   const tiers = ['S', 'A', 'B', 'C', 'D'].map(tier => ({
     tier,
     entries: rows.filter(row => row.tier === tier).sort((a, b) => b.tierScore - a.tierScore || b.winRate - a.winRate)
