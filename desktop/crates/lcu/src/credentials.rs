@@ -126,31 +126,40 @@ fn from_lockfile_at(path: &Path) -> Result<Credentials> {
     parse_lockfile(&contents)
 }
 
+/// Windows' `CREATE_NO_WINDOW`: a console program started from an app that
+/// has no console of its own otherwise opens a console window — a PowerShell
+/// window flashing up every few seconds while the app looks for the client.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 /// Ask the OS for the client's command line.
 ///
 /// On Windows this deliberately does **not** use `wmic`: it is deprecated and
 /// absent from recent Windows 11 builds, so the documented recipe found in most
 /// LCU tutorials fails on a current machine. `Get-CimInstance` is the supported
-/// replacement.
+/// replacement. It runs with no window (`CREATE_NO_WINDOW`).
 async fn command_line_from_process() -> Option<String> {
-    let output = if cfg!(target_os = "windows") {
-        tokio::process::Command::new("powershell")
-            .args([
-                "-NoProfile",
-                "-Command",
-                "Get-CimInstance Win32_Process -Filter \"name='LeagueClientUx.exe'\" \
-                 | Select-Object -ExpandProperty CommandLine",
-            ])
-            .output()
-            .await
-            .ok()?
-    } else {
-        tokio::process::Command::new("ps")
-            .args(["-A", "-o", "args="])
-            .output()
-            .await
-            .ok()?
-    };
+    #[cfg(windows)]
+    let output = tokio::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
+            "-Command",
+            "Get-CimInstance Win32_Process -Filter \"name='LeagueClientUx.exe'\" \
+             | Select-Object -ExpandProperty CommandLine",
+        ])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .await
+        .ok()?;
+    #[cfg(not(windows))]
+    let output = tokio::process::Command::new("ps")
+        .args(["-A", "-o", "args="])
+        .output()
+        .await
+        .ok()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     stdout
