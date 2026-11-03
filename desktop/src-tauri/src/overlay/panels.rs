@@ -15,9 +15,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use shell_state::keys::KeysDown;
-use shell_state::overlay::{
-    OverlayInputs, OverlayPanel, OverlaySettings, Rect,
-};
+use shell_state::overlay::{OverlayInputs, OverlayPanel, OverlaySettings, Rect};
 use shell_state::scoreboard;
 use shell_state::screens::{self, Monitor};
 use tauri::{
@@ -362,10 +360,6 @@ fn apply_window(app: &AppHandle, which: Slot, next: Applied) {
     }
     if previous.map(|p| p.visible) != Some(next.visible) {
         platform::show(app, &label, next.visible);
-        // A panel over a game, not in the settings' preview (#1805).
-        if next.visible && !next.interactive && matches!(which, Slot::Panel(_)) {
-            crate::telemetry::feature(app, crate::telemetry::Feature::OverlayShown);
-        }
         tracing::info!(window = which.name(), visible = next.visible, "overlay");
     }
 }
@@ -430,7 +424,8 @@ fn watch(app: &AppHandle) {
     let mut active = false;
     loop {
         let overlay = app.state::<SharedOverlay>().inner().clone();
-        let now_active = overlay.game_running.load(Ordering::SeqCst) || overlay.preview.load(Ordering::SeqCst);
+        let now_active =
+            overlay.game_running.load(Ordering::SeqCst) || overlay.preview.load(Ordering::SeqCst);
         if !now_active {
             if active {
                 // Just went idle: nothing is in front any more, and no key is held.

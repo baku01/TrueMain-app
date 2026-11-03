@@ -21,7 +21,8 @@ const props = defineProps<{
 }>()
 
 const { t } = useT()
-const open = ref(true)
+// Folded until opened: the history is what the dashboard opens on.
+const open = ref(false)
 
 const format = (value: number | null, line: StatLine) => {
   if (value === null) return '—'

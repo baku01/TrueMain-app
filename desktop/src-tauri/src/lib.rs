@@ -6,9 +6,8 @@
 //! belongs to which phase — in one place.
 
 mod api;
-mod chrome;
-mod sources;
 mod champselect;
+mod chrome;
 mod game;
 mod graphics;
 mod itemsets;
@@ -22,8 +21,8 @@ mod runes;
 #[cfg(debug_assertions)]
 mod sim;
 mod site;
+mod sources;
 mod supervisor;
-mod telemetry;
 mod window_state;
 
 use std::sync::{Arc, Mutex};
@@ -302,7 +301,6 @@ fn open_on_site(app: tauri::AppHandle, path: String) -> Result<(), String> {
 
     let url = site::page(&site::base(), &path)
         .ok_or_else(|| format!("{path} is not a page of the site"))?;
-    telemetry::feature(&app, telemetry::Feature::SiteOpened);
     // The shell plugin's opener is deprecated in favour of `tauri-plugin-opener`,
     // which this one call does not justify adding; it has no scope to check
     // from Rust, so the path rule above is the whole guard.
@@ -326,11 +324,14 @@ pub fn run() {
     let context = tauri::generate_context!();
     // Before the builder: WebView2's switches must be set before the first webview exists.
     let graphics = graphics::Graphics::load_before_webviews(&context.config().identifier);
+    api::load_data_source(&context.config().identifier);
 
     // First, so a second launch only brings this one's window forward: two
     // supervisors would follow the same client twice.
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| menu::show_window(app)));
+    let builder =
+        tauri::Builder::default().plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            menu::show_window(app)
+        }));
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
 
@@ -350,6 +351,7 @@ pub fn run() {
         .manage(graphics)
         .invoke_handler(tauri::generate_handler![
             chrome::set_window_theme,
+            api::set_data_source,
             current_state,
             current_screen,
             game::current_game,
@@ -381,7 +383,6 @@ pub fn run() {
             champselect::champ_select_lock,
             champselect::champ_select_choices,
             champselect::champ_select_spells,
-            telemetry::telemetry_page,
             menu::set_menu_language,
             graphics::graphics_settings,
             graphics::set_graphics_settings,
@@ -409,10 +410,6 @@ pub fn run() {
         })
         .setup(move |app| {
             let handle = app.handle().clone();
-            // Before the menu, which shows whether it is on.
-            let usage = telemetry::Telemetry::new(&handle);
-            app.manage(usage.clone());
-            telemetry::start(&handle, usage);
             menu::install(app)?;
             app.manage(kits::Kits::new(&handle));
             overlay::setup(&handle)?;
@@ -423,10 +420,7 @@ pub fn run() {
         .build(context)
         .expect("failed to start the TrueMain companion app")
         .run(|app, event| match event {
-            tauri::RunEvent::Exit => {
-                window_state::save(app);
-                telemetry::send_at_exit(app);
-            }
+            tauri::RunEvent::Exit => window_state::save(app),
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => menu::show_window(app),
             _ => {}

@@ -13,6 +13,8 @@ const { t } = useT()
       <PageHeader :eyebrow="t('settings.eyebrow')" :title="t('settings.title')" />
       <SettingsDataSource />
       <SettingsGraphics />
+      <!-- Riot's legal notice: here, once, rather than at every page's foot. -->
+      <RiotDisclaimer compact class="pt-2 text-center" />
     </div>
   </SharedPage>
 </template>

@@ -2,7 +2,7 @@
  * One read of Blitz. Inside Tauri it goes through the shell (`sources.rs`);
  * in `npm run dev` through the dev server's `/__blitz/*` proxy (nuxt.config).
  */
-export type BlitzSource = 'data' | 'lol' | 'utils'
+export type BlitzSource = 'data' | 'lol' | 'utils' | 'nexus'
 
 export type BlitzQuery = Record<string, string | number | null | undefined>
 

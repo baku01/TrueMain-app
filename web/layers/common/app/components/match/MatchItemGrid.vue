@@ -70,7 +70,7 @@ const gap = computed(() => (props.size >= 24 ? 'gap-1' : 'gap-0.5'))
           :item="slot.kind === 'item' ? slot.item : null"
           :width="size"
           :height="size"
-          loading="lazy"
+         
           class="rounded"
         />
       </template>
@@ -81,7 +81,7 @@ const gap = computed(() => (props.size >= 24 ? 'gap-1' : 'gap-0.5'))
         :item="trinket.kind === 'item' ? trinket.item : null"
         :width="size"
         :height="size"
-        loading="lazy"
+       
         class="rounded-full"
       />
       <div v-else class="shrink-0 rounded-full bg-white/5" :style="cellStyle" aria-hidden="true" />
@@ -90,7 +90,7 @@ const gap = computed(() => (props.size >= 24 ? 'gap-1' : 'gap-0.5'))
         :item="roleBound.kind === 'item' ? roleBound.item : null"
         :width="size"
         :height="size"
-        loading="lazy"
+       
         class="rounded"
       />
       <div v-else class="shrink-0" :style="cellStyle" aria-hidden="true" />

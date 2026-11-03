@@ -1,3 +1,4 @@
+import { externalSource } from '~/utils/data-source'
 import type { Update } from '@tauri-apps/plugin-updater'
 import type { Screen } from '~/types/lcu'
 import { tr } from '#common/utils/i18n'
@@ -175,6 +176,8 @@ export function useAppUpdate() {
    */
   async function check(trigger: 'launch' | 'timer' | 'manual') {
     const manual = trigger === 'manual'
+    // The update feed is TrueMain's server: with another data source picked, it is never asked.
+    if (externalSource()) return
     if (installing.value) return
     // Nothing installs during a game, so the timer leaves it alone (#1916): the next tick after it checks.
     if (trigger === 'timer' && screen.value === 'in-game') return

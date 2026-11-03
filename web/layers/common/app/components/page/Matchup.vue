@@ -166,6 +166,15 @@ function setEnemy(position: ChampionPosition, championId: number | null) {
       :on-retry="retryDraft"
     />
 
+    <!-- A host's own reading of the same draft (the desktop app's build for
+         this draft), given the request the recommendation was asked with. -->
+    <slot
+      v-if="playedChampionId !== null && shownDraftRequest"
+      name="advice"
+      :champion-id="playedChampionId"
+      :request="shownDraftRequest"
+    />
+
     <BuilderMatchupRecommendation
       v-if="playedChampionId !== null && playedPosition !== null"
       v-model:games-drawer-open="gamesDrawerOpen"

@@ -356,6 +356,13 @@ button:not(:disabled, [role="tab"], [role="switch"]):active,
   color: var(--ui-primary);
 }
 
+/* A short window: the rail's rows tighten so every section fits without scrolling. */
+@media (max-height: 800px) {
+  .rail-item {
+    height: 1.875rem;
+  }
+}
+
 /* The top bar's icon buttons: square, rounded, a soft fill on hover and the icon growing a touch. */
 @utility app-btn {
   border-radius: 0.5rem;

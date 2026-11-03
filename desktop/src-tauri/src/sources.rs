@@ -45,6 +45,8 @@ fn base(source: &str) -> Option<&'static str> {
         // The account reads sit at the root (`riot_account/…`), the match reads under `lol/`: each path carries its own prefix.
         "lol" => Some("https://lol.v2.iesdev.com/"),
         "utils" => Some("https://utils.iesdev.com/static/json/lol/"),
+        // Blitz's champion insights (tips, strengths, weaknesses), published beside its site.
+        "nexus" => Some("https://utils.iesdev.com/static/json/nexus/lol/"),
         "lolalytics" => Some("https://a1.lolalytics.com/mega/"),
         // The guides lol.qq.com's own pages load: scripts (`var X = {…};`), read as their object.
         "tencent" => Some("https://lol.qq.com/act/lbp/common/guides/"),
@@ -99,7 +101,11 @@ fn keep(key: String, text: Arc<str>) -> Result<(), String> {
     cache.insert(key, (Instant::now(), text));
     let mut total: usize = cache.values().map(|(_, text)| text.len()).sum();
     while total > CACHE_BYTES {
-        let Some(oldest) = cache.iter().min_by_key(|(_, (at, _))| *at).map(|(key, _)| key.clone()) else {
+        let Some(oldest) = cache
+            .iter()
+            .min_by_key(|(_, (at, _))| *at)
+            .map(|(key, _)| key.clone())
+        else {
             break;
         };
         if let Some((_, text)) = cache.remove(&oldest) {
@@ -157,8 +163,9 @@ fn script_object(text: &str) -> Result<Box<RawValue>, String> {
 
 /// One of op.gg's League tools — `lol_` and lower-case words, nothing else.
 fn opgg_tool(tool: &str) -> bool {
-    tool.strip_prefix("lol_")
-        .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'))
+    tool.strip_prefix("lol_").is_some_and(|rest| {
+        !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+    })
 }
 
 /// The tool's answer out of a JSON-RPC reply, sent as plain JSON or as a
@@ -173,7 +180,10 @@ fn opgg_text(body: &str) -> Result<String, String> {
         return Err(format!("op.gg answered {error}"));
     }
     let result = &reply["result"];
-    let text = result["content"][0]["text"].as_str().unwrap_or_default().to_string();
+    let text = result["content"][0]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
     if result["isError"].as_bool() == Some(true) {
         return Err(format!("op.gg answered {text}"));
     }
@@ -258,9 +268,13 @@ mod tests {
 
     #[test]
     fn reads_the_text_from_json_or_an_event() {
-        let reply = r#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"A(1)"}]}}"#;
+        let reply =
+            r#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"A(1)"}]}}"#;
         assert_eq!(opgg_text(reply).unwrap(), "A(1)");
-        assert_eq!(opgg_text(&format!("event: message\ndata: {reply}\n")).unwrap(), "A(1)");
+        assert_eq!(
+            opgg_text(&format!("event: message\ndata: {reply}\n")).unwrap(),
+            "A(1)"
+        );
         let failed = r#"{"result":{"isError":true,"content":[{"text":"bad"}]}}"#;
         assert!(opgg_text(failed).is_err());
     }
@@ -283,6 +297,10 @@ mod network {
         .await
         .expect("op.gg answered");
         assert!(text.contains("LolGetChampionAnalysis"));
-        assert!(started.elapsed() < Duration::from_secs(15), "took {:?}", started.elapsed());
+        assert!(
+            started.elapsed() < Duration::from_secs(15),
+            "took {:?}",
+            started.elapsed()
+        );
     }
 }

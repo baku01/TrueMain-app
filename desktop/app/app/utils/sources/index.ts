@@ -9,6 +9,9 @@ import { matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/bl
 import { directoryFromBlitz } from '~/utils/blitz/directory'
 import { blitzOptions } from '~/utils/sources/blitz'
 import { compositionFromSource, compositionGamesFromBlitz } from '~/utils/sources/composition'
+import { nextItemFromSource } from '~/utils/sources/next-item'
+import { championTraits } from '~/utils/sources/champions'
+import type { NextItemRequest } from '~/utils/next-item'
 import { pageDirectory } from '~/utils/sources/directory'
 import { lolalyticsBuilds, lolalyticsMatchups, lolalyticsOptions, lolalyticsRows, lolalyticsTierList, lolalyticsTrend } from '~/utils/sources/lolalytics'
 import { tencentBuilds, tencentMatchups, tencentOptions, tencentRows, tencentTierList, tencentTrend } from '~/utils/sources/tencent'
@@ -23,7 +26,8 @@ import { externalSource } from '~/utils/data-source'
  */
 export interface Provider {
   builds: (championId: number, position: string, opponentChampionId?: number | null) => Promise<ChampionBuildResponse>
-  options: (championId: number, position: string) => Promise<BuildOptions | null>
+  /** Every option measured on the lane — against `opponentChampionId` when the source measures builds by matchup (Blitz). */
+  options: (championId: number, position: string, opponentChampionId?: number | null) => Promise<BuildOptions | null>
   tierList: (query: Record<string, unknown>) => Promise<ChampionTierListResponse>
   directory: (query: Record<string, unknown>) => Promise<ChampionDirectoryResponse>
   matchups: (championId: number, query: Record<string, unknown>) => Promise<ChampionMatchups>
@@ -91,6 +95,39 @@ export function answerFromSource(path: string, query: Record<string, unknown>): 
   if (matchups) return provider.matchups(Number(matchups[1]), query)
   const trend = /^\/champions\/(\d+)\/trend$/.exec(path)
   if (trend) return provider.trend(Number(trend[1]), query)
+  // TrueMain's situational reading of each item — its model's, which no other
+  // source has: none, rather than TrueMain's beside another source's build.
+  // Every champion's damage split, for the draft's team bars: Riot's own 0–10
+  // attack and magic ratings (Data Dragon) as the split, the same weight each.
+  if (path === '/champions/damage-profiles') {
+    return championTraits().then(traits => ({
+      patch: null,
+      profiles: [...traits.values()].filter(champion => champion.info).map((champion) => {
+        const total = Math.max(1, champion.info!.attack + champion.info!.magic)
+        return {
+          championId: champion.id,
+          position: null,
+          profilePosition: null,
+          source: 'measured' as const,
+          patch: null,
+          games: null,
+          physicalShare: champion.info!.attack / total,
+          magicShare: champion.info!.magic / total,
+          trueShare: 0,
+          damagePerGame: 20000,
+          damageClass: null,
+          builds: [],
+          flexDamage: false,
+        }
+      }),
+    }))
+  }
+  // The shop's classes are TrueMain's reading of the client: none from another source.
+  if (path === '/items/classes') return Promise.resolve({ patch: String(query.patch ?? ''), items: [] })
+  const itemContext = /^\/champions\/(\d+)\/item-context$/.exec(path)
+  if (itemContext) {
+    return Promise.resolve({ championId: Number(itemContext[1]), position: String(query.position ?? ''), patch: typeof query.patch === 'string' ? query.patch : null, allRanks: true, items: [] })
+  }
   return undefined
 }
 
@@ -105,6 +142,8 @@ export function answerPostFromSource(path: string, body: unknown, query: Record<
   const request = body as CompositionBuildRequest
   const games = /^\/champions\/(\d+)\/composition-build\/games$/.exec(path)
   if (games) return compositionGamesFromBlitz(Number(games[1]), request, Math.max(1, Number(query.page) || 1), Math.max(1, Number(query.pageSize) || 13))
+  const next = /^\/champions\/(\d+)\/next-item$/.exec(path)
+  if (next) return nextItemFromSource(provider, Number(next[1]), request as unknown as NextItemRequest)
   const build = /^\/champions\/(\d+)\/composition-build$/.exec(path)
   if (build) return compositionFromSource(provider, Number(build[1]), request, externalSource() === 'blitz')
   return undefined

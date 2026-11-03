@@ -61,30 +61,16 @@ pub(crate) fn publish(app: &AppHandle, shared: &SharedState, next: AppState) {
     crate::overlay::follow(app, in_game);
     // Hold the lock only to swap; emitting under it would let a slow listener
     // block the LCU stream.
-    let previous = {
+    {
         let mut guard = shared.lock().expect("state mutex poisoned");
-        std::mem::replace(&mut *guard, next.clone())
+        *guard = next.clone();
     };
-    count_phase(app, &previous, &next);
     // The loading screen's roster is read off the phase (#1753).
     crate::loading::follow(app, &next);
     let _ = app.emit(STATE_EVENT, next);
     // After the state, so the game page is open before its board fills — and
     // a game that ended is cleared on the same publish that left the phase.
     crate::game::follow(app, in_game);
-}
-
-/// A champion select or a game the app followed, counted as it opens (#1805).
-fn count_phase(app: &AppHandle, previous: &AppState, next: &AppState) {
-    let screen = next.screen();
-    if screen == previous.screen() {
-        return;
-    }
-    match screen {
-        Screen::Draft => crate::telemetry::feature(app, crate::telemetry::Feature::ChampSelect),
-        Screen::InGame => crate::telemetry::feature(app, crate::telemetry::Feature::LiveGame),
-        _ => {}
-    }
 }
 
 /// Whether the game should be read: the screen the phase calls for is the
@@ -135,7 +121,11 @@ pub async fn run(app: AppHandle, shared: SharedState, client: SharedClient) {
             publish(&app, &shared, AppState::default());
         }
         first = false;
-        let delay = if misses > QUICK_LOOKS { IDLE_RECONNECT_DELAY } else { RECONNECT_DELAY };
+        let delay = if misses > QUICK_LOOKS {
+            IDLE_RECONNECT_DELAY
+        } else {
+            RECONNECT_DELAY
+        };
         tokio::time::sleep(delay).await;
     }
 }

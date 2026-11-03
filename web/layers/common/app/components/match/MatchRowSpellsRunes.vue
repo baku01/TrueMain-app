@@ -28,13 +28,13 @@ const subStyle = computed(() => props.runeTree.perkStyles[props.self.subStyleId]
         :spell="spell"
         :width="18"
         :height="18"
-        loading="lazy"
+       
         class="size-[18px] rounded"
       />
     </div>
     <div class="flex flex-col items-center gap-0.5">
-      <GameTooltipPerkIcon :perk="keystone" :width="18" :height="18" loading="lazy" class="size-[18px] rounded-full bg-black/40" />
-      <GameTooltipPerkStyleIcon :style="subStyle" :width="14" :height="14" loading="lazy" class="size-3.5" />
+      <GameTooltipPerkIcon :perk="keystone" :width="18" :height="18" class="size-[18px] rounded-full bg-black/40" />
+      <GameTooltipPerkStyleIcon :style="subStyle" :width="14" :height="14" class="size-3.5" />
     </div>
   </div>
 </template>

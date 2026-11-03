@@ -2,6 +2,11 @@ import type { BuildSubject } from '~/composables/useDraftBuild'
 import type { NextItemRequest, NextItemResponse } from '~/utils/next-item'
 import type { DraftItemPush } from '~/utils/draft-damage'
 import { draftPush, isDraftReason, PUSH_MIN_RATIO } from '~/utils/draft-damage'
+import type { SourceBuildStep } from '~/utils/draft-build'
+import { draftBuildFromOptions, enemySituation, proShares } from '~/utils/draft-build'
+import { readProMatches } from '~/utils/blitz/pro'
+import { activeProvider } from '~/utils/sources'
+import { externalSource } from '~/utils/data-source'
 
 /** How many completed items the draft's build runs to, the boots apart. */
 const BUILD_ITEMS = 5
@@ -10,8 +15,13 @@ const BUILD_ITEMS = 5
 export interface DraftBuildStep {
   itemId: number
   isBoots: boolean
-  share: number
-  baseShare: number
+  /** TrueMain's model: the item's share in a game like this one, and usually. */
+  share?: number
+  baseShare?: number
+  /** Another source: the games it measured the item in. */
+  games?: number
+  /** The share of the latest pro games on the champion and lane it was finished in; absent without pro games. */
+  pros?: number | null
   /** The enemy or lane situation that moved it up; null when it is the standard pick at its step. */
   reason: { axis: string, bucket: 'High' | 'Low' } | null
 }
@@ -44,6 +54,8 @@ export function useDraftItemAdvice(subject: Ref<BuildSubject | null>) {
   const pending = ref(false)
   const build = ref<DraftBuildStep[]>([])
   const buildPending = ref(false)
+  const { champions } = useChampionStatics()
+  const { items } = useStaticData()
 
   let generation = 0
   let settle: ReturnType<typeof setTimeout> | undefined
@@ -97,6 +109,13 @@ export function useDraftItemAdvice(subject: Ref<BuildSubject | null>) {
       }
       if (boots) steps.splice(Math.min(bootsAt, steps.length), 0, boots)
       if (mine === generation) build.value = steps
+      // The pros beside TrueMain's steps: the share of their latest games each item was finished in.
+      const opponent = current.request.enemies.find(enemy => enemy.position === current.request.position)?.championId ?? null
+      const pro = await readProMatches(current.championId, current.request.position).catch(() => [])
+      if (mine === generation && pro.length) {
+        const shares = proShares(pro, opponent, items.value)
+        build.value = steps.map(step => ({ ...step, pros: shares.get(step.itemId) ?? 0 }))
+      }
     }
     catch {
       // What was read stands: a build cut short is still the start of one.
@@ -104,6 +123,45 @@ export function useDraftItemAdvice(subject: Ref<BuildSubject | null>) {
     }
     finally {
       if (mine === generation) buildPending.value = false
+    }
+  }
+
+  /**
+   * Another source picked in Settings: the build from what it measured for the
+   * champion (`utils/draft-build.ts`), read against the enemy team from Riot's
+   * champion data — TrueMain is not asked.
+   */
+  async function fromSource(mine: number, current: BuildSubject) {
+    pending.value = true
+    buildPending.value = true
+    try {
+      const opponent = current.request.enemies.find(enemy => enemy.position === current.request.position)?.championId ?? null
+      const [options, pro] = await Promise.all([
+        activeProvider()!.options(current.championId, current.request.position, opponent),
+        // The pros' games are Blitz's, whatever the source: none of the others lists them.
+        readProMatches(current.championId, current.request.position).catch(() => []),
+      ])
+      if (mine !== generation) return
+      const situations = enemySituation(current.request.enemies.map(enemy => enemy.championId), champions.value, opponent)
+      const steps = options ? draftBuildFromOptions(options, situations, items.value, proShares(pro, opponent, items.value)) : []
+      build.value = steps.map(step => ({ itemId: step.itemId, isBoots: step.isBoots, games: step.games, pros: step.pros, reason: step.reason }))
+      // The pushes the build panel marks: the boots and the first item the draft moved.
+      const pushOf = (slot: 'boots' | 'build', step: SourceBuildStep | undefined): DraftItemPush | null =>
+        step?.reason ? { slot, itemId: step.itemId, share: 0, baseShare: 0, reason: step.reason } : null
+      pushes.value = [pushOf('boots', steps.find(step => step.isBoots)), pushOf('build', steps.find(step => !step.isBoots && step.reason))]
+        .filter((push): push is DraftItemPush => push !== null)
+    }
+    catch {
+      if (mine === generation) {
+        build.value = []
+        pushes.value = []
+      }
+    }
+    finally {
+      if (mine === generation) {
+        pending.value = false
+        buildPending.value = false
+      }
     }
   }
 
@@ -120,7 +178,8 @@ export function useDraftItemAdvice(subject: Ref<BuildSubject | null>) {
       buildPending.value = false
       return
     }
-    settle = setTimeout(() => ask(current), SETTLE_MS)
+    const mine = generation
+    settle = setTimeout(() => (externalSource() ? fromSource(mine, current) : ask(current)), SETTLE_MS)
   }, { immediate: true })
 
   onScopeDispose(() => clearTimeout(settle))

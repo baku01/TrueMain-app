@@ -83,7 +83,7 @@ function select(itemId: number) {
                     :alt="entry.item.name"
                     :width="44"
                     :height="44"
-                    loading="lazy"
+                   
                     class="size-11 shrink-0 rounded-lg ring-1 transition"
                     :class="entry.item.id === selectedId ? 'ring-primary' : 'ring-default group-hover:ring-accented'"
                   />

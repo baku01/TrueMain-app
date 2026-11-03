@@ -8,6 +8,7 @@
  */
 import { answerStaticEndpoint } from '~/utils/static-endpoints'
 import { answerFromSource, answerPostFromSource } from '~/utils/sources'
+import { externalSource } from '~/utils/data-source'
 import { readChampionBuild } from '~/utils/champion-build-read'
 import { currentPatch } from '~/utils/sources/champions'
 
@@ -31,6 +32,18 @@ function fetchQuery(query: Query): Record<string, string | string[]> {
     result[key] = known === undefined ? value : [...(Array.isArray(known) ? known : [known]), value]
   }
   return result
+}
+
+/**
+ * With another source picked in Settings, TrueMain is never asked: a read the
+ * source has no answer for fails here, before anything leaves the app, and
+ * the page shows that part as unavailable.
+ */
+export class NotFromSourceError extends Error {
+  constructor(path: string) {
+    super(`${path} is TrueMain's alone: not read with another data source`)
+    this.name = 'NotFromSourceError'
+  }
 }
 
 /** How a read is sent: a signal, and whether the window's loading bar ignores it. */
@@ -58,6 +71,7 @@ export function apiGet<T>(path: string, query: Query = {}, options: ReadOptions 
     // Settings picked another source: the reads it has a counterpart for are answered from it, in TrueMain's shapes.
     const external = answerFromSource(path, query)
     if (external !== undefined) return await external as T
+    if (externalSource()) throw new NotFromSourceError(path)
     if (insideTauri()) {
       const { invoke } = await import('@tauri-apps/api/core')
       return await invoke<T>('api_get', { path, query: pairs(query) })
@@ -74,6 +88,7 @@ export function apiPost<T>(path: string, body: unknown, query: Query = {}, optio
   return tracked((async () => {
     const external = answerPostFromSource(path, body, query)
     if (external !== undefined) return await external as T
+    if (externalSource()) throw new NotFromSourceError(path)
     if (insideTauri()) {
       const { invoke } = await import('@tauri-apps/api/core')
       return await invoke<T>('api_post', { path, query: pairs(query), request: body })

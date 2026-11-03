@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ChampionInsights from '~/components/Champion/ChampionInsights.vue'
+import { externalSource } from '~/utils/data-source'
 import { POSITIONS, positionLabel } from '#common/utils/positions'
 import type { Lane } from '~/types/draft'
 
@@ -33,14 +35,16 @@ const lane = computed<Lane | null>({
 
 const entry = computed(() => entryOf(championId.value, lane.value))
 
-/** The lane's builds, or the player's own kits on it (#2185); kept in the URL like the lane. */
-const view = computed<'builds' | 'kits'>({
-  get: () => (route.query.view === 'kits' ? 'kits' : 'builds'),
-  set: value => void router.replace({ query: { ...route.query, view: value === 'kits' ? 'kits' : undefined } }),
+/** The lane's builds, the player's own kits on it (#2185), or the champion's insights; kept in the URL like the lane. */
+type View = 'builds' | 'kits' | 'insights'
+const view = computed<View>({
+  get: () => (route.query.view === 'kits' || route.query.view === 'insights' ? route.query.view : 'builds'),
+  set: value => void router.replace({ query: { ...route.query, view: value === 'builds' ? undefined : value } }),
 })
 const views = computed(() => [
   { label: t('dash.champion.builds'), value: 'builds', icon: 'i-lucide-scroll-text' },
   { label: t('dash.champion.kits'), value: 'kits', icon: 'i-lucide-swords' },
+  { label: t('insights.tab'), value: 'insights', icon: 'i-lucide-lightbulb' },
 ])
 
 // The banner's figures, as on the site: the lane's patch against the one before.
@@ -91,6 +95,7 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
         :ui="{ list: 'ring ring-default', indicator: 'rounded-md bg-accented shadow-none', trigger: 'px-3 data-[state=active]:text-highlighted' }"
       />
       <KitPanel v-if="view === 'kits'" :champion-id="championId" :position="lane" class="min-h-0 flex-1" />
+      <ChampionInsights v-else-if="view === 'insights'" :champion-id="championId" class="min-h-0 flex-1" />
       <BuildView v-else :champion-id="championId" :position="lane" class="min-h-0 flex-1">
         <template #header>
           <div class="flex items-center justify-between gap-2">
@@ -105,8 +110,9 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
                 :aria-label="t('dash.champion.matchup')"
                 :title="t('dash.champion.against')"
               />
+              <!-- TrueMain's site, only when TrueMain is the source. -->
               <UButton
-                v-if="aliasOf(championId)"
+                v-if="aliasOf(championId) && !externalSource()"
                 icon="i-lucide-external-link"
                 color="neutral"
                 variant="ghost"

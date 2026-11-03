@@ -91,7 +91,7 @@ function pick(itemId: number) {
               :aria-label="blocked.includes(item.id) ? `${item.name}, ${note}` : item.name"
               @click="pick(item.id)"
             >
-              <GameTooltipItemIcon :item="item" :width="36" :height="36" loading="lazy" class="size-9 rounded" />
+              <GameTooltipItemIcon :item="item" :width="36" :height="36" class="size-9 rounded" />
             </button>
           </div>
         </section>

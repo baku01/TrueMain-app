@@ -12,6 +12,7 @@
 
 use std::collections::HashMap;
 use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -25,6 +26,54 @@ use serde::Serialize;
 /// tape against a backend they are editing — a local API answers without the
 /// proxy's `/api` prefix, so it is a different base, not a different site.
 const API_BASE_VAR: &str = "TRUEMAIN_API_BASE";
+
+/// Another data source is picked in Settings (`utils/data-source.ts`): the
+/// app then asks TrueMain nothing at all — not a read, not the usage counts.
+/// Set from the saved choice before any window opens, and by the webview when
+/// the player changes it.
+static EXTERNAL_SOURCE: AtomicBool = AtomicBool::new(false);
+const DATA_SOURCE_FILE: &str = "data-source.json";
+
+fn refuse_when_external(path: &str) -> Result<(), String> {
+    if EXTERNAL_SOURCE.load(Ordering::SeqCst) {
+        return Err(format!("{path}: TrueMain is not the data source"));
+    }
+    Ok(())
+}
+
+fn data_source_path(identifier: &str) -> std::path::PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| std::env::temp_dir().join("truemain"))
+        .join(identifier)
+        .join(DATA_SOURCE_FILE)
+}
+
+/// The saved choice, read once at launch: a launch on another source never
+/// sends TrueMain the requests made before the webview says so.
+pub fn load_data_source(identifier: &str) {
+    let external = std::fs::read_to_string(data_source_path(identifier))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|value| value.get("external").and_then(serde_json::Value::as_bool))
+        .unwrap_or(false);
+    EXTERNAL_SOURCE.store(external, Ordering::SeqCst);
+    tracing::info!(external, "data source");
+}
+
+/// The webview's choice of data source, kept for the next launch.
+#[tauri::command]
+pub fn set_data_source(app: tauri::AppHandle, external: bool) -> Result<(), String> {
+    EXTERNAL_SOURCE.store(external, Ordering::SeqCst);
+    let path = data_source_path(&app.config().identifier);
+    if let Some(folder) = path.parent() {
+        std::fs::create_dir_all(folder).map_err(|error| error.to_string())?;
+    }
+    std::fs::write(
+        &path,
+        serde_json::json!({ "external": external }).to_string(),
+    )
+    .map_err(|error| error.to_string())
+}
 
 /// Cheap to clone: `reqwest::Client` is a handle onto one shared pool.
 #[derive(Clone)]
@@ -60,6 +109,7 @@ impl ApiClient {
         path: &str,
         body: &B,
     ) -> Result<T, String> {
+        refuse_when_external(path)?;
         let request = self.http.post(format!("{}{path}", self.base)).json(body);
         Self::read(request, path).await
     }
@@ -72,6 +122,7 @@ impl ApiClient {
         body: &B,
         timeout: Duration,
     ) -> Result<T, String> {
+        refuse_when_external(path)?;
         let request = self
             .http
             .post(format!("{}{path}", self.base))
@@ -88,6 +139,7 @@ impl ApiClient {
         body: &B,
         timeout: Duration,
     ) -> Result<T, String> {
+        refuse_when_external(path)?;
         let request = self
             .http
             .post(format!("{}{path}", self.base))
@@ -102,6 +154,7 @@ impl ApiClient {
         path: &str,
         query: &Q,
     ) -> Result<T, String> {
+        refuse_when_external(path)?;
         let request = self.http.get(format!("{}{path}", self.base)).query(query);
         Self::read(request, path).await
     }
@@ -114,29 +167,13 @@ impl ApiClient {
         query: &Q,
         timeout: Duration,
     ) -> Result<T, String> {
+        refuse_when_external(path)?;
         let request = self
             .http
             .get(format!("{}{path}", self.base))
             .query(query)
             .timeout(timeout);
         Self::read(request, path).await
-    }
-
-    /// A POST whose answer carries nothing to read: a report, not a read —
-    /// the usage counts (`telemetry.rs`).
-    pub async fn send<B: Serialize>(&self, path: &str, body: &B) -> Result<(), String> {
-        let response = self
-            .http
-            .post(format!("{}{path}", self.base))
-            .json(body)
-            .send()
-            .await
-            .map_err(|e| format!("could not reach TrueMain: {e}"))?;
-        let status = response.status();
-        if !status.is_success() {
-            return Err(format!("TrueMain answered {status} for {path}"));
-        }
-        Ok(())
     }
 
     async fn read<T: DeserializeOwned>(

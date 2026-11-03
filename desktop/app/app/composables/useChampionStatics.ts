@@ -7,6 +7,10 @@ export interface Champion {
   /** Riot's alias, e.g. `MonkeyKing` — the key its art is filed under. */
   alias: string
   name: string
+  /** Riot's classes (`Tank`, `Mage`, `Marksman`…) and 0–10 ratings, and the basic attack's range: what the draft reads a team by. */
+  tags?: string[]
+  info?: { attack: number, defense: number, magic: number }
+  attackRange?: number
 }
 
 /**
@@ -37,13 +41,13 @@ export function useChampionStatics() {
       const latest = versions[0]
       if (!latest) return
 
-      const payload = await $fetch<{ data: Record<string, { key: string, id: string, name: string }> }>(
+      const payload = await $fetch<{ data: Record<string, { key: string, id: string, name: string, tags?: string[], info?: { attack: number, defense: number, magic: number }, stats?: { attackrange?: number } }> }>(
         `https://ddragon.leagueoflegends.com/cdn/${latest}/data/${ddragonLocale(getActiveLocale())}/champion.json`,
       )
 
       const next = new Map<number, Champion>()
       for (const entry of Object.values(payload.data)) {
-        next.set(Number(entry.key), { id: Number(entry.key), alias: entry.id, name: entry.name })
+        next.set(Number(entry.key), { id: Number(entry.key), alias: entry.id, name: entry.name, tags: entry.tags, info: entry.info, attackRange: entry.stats?.attackrange })
       }
       champions.value = next
       patch.value = latest

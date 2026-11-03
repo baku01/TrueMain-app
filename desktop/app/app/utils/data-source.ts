@@ -40,7 +40,18 @@ export const fromBlitz = () => current.value === 'blitz'
 /** The source the reads go to when it is not TrueMain; null on TrueMain. */
 export const externalSource = (): ExternalSource | null => (current.value === 'truemain' ? null : current.value)
 
-export function setDataSource(next: DataSource) {
+/**
+ * Tell the shell whether TrueMain is the source: with another one it refuses
+ * every request to TrueMain's API, the ones it makes on its own included, and
+ * keeps the choice for the next launch (`api.rs`).
+ */
+export async function syncDataSourceWithShell(source: DataSource = current.value) {
+  if (!insideTauri()) return
+  const { invoke } = await import('@tauri-apps/api/core')
+  await invoke('set_data_source', { external: source !== 'truemain' }).catch(() => {})
+}
+
+export async function setDataSource(next: DataSource) {
   if (next === current.value) return
   try {
     localStorage.setItem(STORAGE_KEY, next)
@@ -49,5 +60,6 @@ export function setDataSource(next: DataSource) {
     // Storage unavailable: the choice holds until the window closes.
   }
   current.value = next
+  await syncDataSourceWithShell(next)
   window.location.reload()
 }

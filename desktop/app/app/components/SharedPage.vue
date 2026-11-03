@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
  * The frame of a page shared with the site (#1732): the app's scroll
- * container, a `<Suspense>` of the app's own (#1788), and Riot's legal notice
- * at the very foot, pushed to the window's bottom on a short page, which the
- * site draws in its footer instead (#2090).
+ * container and a `<Suspense>` of the app's own (#1788). Riot's legal notice
+ * is not at every page's foot — on a page that nearly fits, it alone made the
+ * window scroll — but at the end of Settings (#2090: the site draws it in its
+ * footer).
  *
  * The shared pages await their first read in setup. On the site that keeps
  * the outgoing page under the header's loading bar (#1689); under the app's
@@ -57,6 +58,5 @@ onBeforeUnmount(() => suspended.end())
       </Suspense>
     </div>
 
-    <RiotDisclaimer compact class="mx-auto mt-auto w-full max-w-6xl shrink-0 px-4 pt-6 pb-2 text-center md:px-6" />
   </div>
 </template>

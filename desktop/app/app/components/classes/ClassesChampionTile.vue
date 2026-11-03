@@ -21,7 +21,7 @@ const { nameOf, portraitOf } = useChampionStatics()
       alt=""
       width="48"
       height="48"
-      loading="lazy"
+     
       class="img-skeleton size-12 rounded-lg ring-1 ring-default transition group-hover:ring-primary"
     >
     <span v-else class="img-skeleton size-12 rounded-lg" />

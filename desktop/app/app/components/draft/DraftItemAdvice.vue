@@ -14,14 +14,30 @@ import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
  * up is lit, and the situation said under the row in the site's item-context
  * wording — Mercury's Treads against crowd control, an armour item against a
  * physical team. A pushed item the build does not reach is offered as the
- * situational pick.
+ * situational pick. Under each item, the share of the latest pro games on the
+ * champion and lane it was finished in.
+ *
+ * With TrueMain picked in Settings the steps are its next-item model's; with
+ * another source, that source's measured build read against the enemy team
+ * and the pros (`utils/draft-build.ts`).
  */
 const props = defineProps<{ pushes: DraftItemPush[], build?: DraftBuildStep[], pending?: boolean }>()
 const { items } = useStaticData()
+const SOURCE_NAME: Record<string, string> = { truemain: 'TrueMain', blitz: 'Blitz', opgg: 'op.gg', lolalytics: 'lolalytics', tencent: 'Tencent' }
+const sourceName = computed(() => SOURCE_NAME[dataSource.value] ?? dataSource.value)
 const { t } = useT()
 
 const name = (itemId: number) => items.value[itemId]?.name ?? t('draft.advice.item', { id: itemId })
 const percent = (share: number) => formatPercentage(share, 0)
+/** How a step is measured: TrueMain's share in a draft like this one against usually, or the source's games. */
+const measureOf = (step: { share?: number, baseShare?: number, games?: number }) =>
+  step.share !== undefined && step.baseShare !== undefined
+    ? t('draft.advice.vs', { share: percent(step.share), base: percent(step.baseShare) })
+    : t('draft.advice.games', { games: (step.games ?? 0).toLocaleString() })
+const titleOf = (step: { share?: number, baseShare?: number, games?: number, pros?: number | null }) => [
+  step.share !== undefined && step.baseShare !== undefined ? t('draft.advice.title', { share: percent(step.share), base: percent(step.baseShare) }) : measureOf(step),
+  step.pros != null ? t('draft.advice.prosTitle', { share: percent(step.pros) }) : null,
+].filter(Boolean).join(' · ')
 const phraseOf = (reason: { axis: string, bucket: 'High' | 'Low' } | null) =>
   reason ? localizedAxisPhrase({ axis: reason.axis, bucket: reason.bucket } as ChampionItemContextAxis) : null
 
@@ -42,13 +58,13 @@ const situational = computed(() => props.pushes
     <header class="flex items-center gap-2">
       <UIcon name="i-lucide-swords" class="size-4 text-primary" />
       <h3 class="text-[11px] font-semibold uppercase tracking-wider text-dimmed">{{ t('draft.advice.build') }}</h3>
-      <span class="text-[11px] text-dimmed">{{ t('draft.advice.buildHint') }}</span>
+      <span class="text-[11px] text-dimmed">{{ t('draft.advice.buildHint', { source: sourceName }) }}</span>
     </header>
 
     <ol v-if="steps.length" class="flex flex-wrap items-center gap-1.5">
       <li v-for="(step, index) in steps" :key="`${step.itemId}-${index}`" class="flex items-center gap-1.5">
         <UIcon v-if="index > 0" name="i-lucide-chevron-right" class="size-3.5 text-dimmed" />
-        <span class="relative" :title="t('draft.advice.title', { share: percent(step.share), base: percent(step.baseShare) })">
+        <span class="relative flex flex-col items-center" :title="titleOf(step)">
           <GameTooltipItemIcon
             :item="items[step.itemId] ?? null"
             :width="36"
@@ -59,6 +75,7 @@ const situational = computed(() => props.pushes
           <span v-if="step.phrase" class="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-primary">
             <UIcon name="i-lucide-swords" class="size-2.5 text-inverted" />
           </span>
+          <span v-if="step.pros != null" class="mt-0.5 text-[9px] font-semibold leading-none tabular-nums" :class="step.pros >= 0.3 ? 'text-stat-gold' : 'text-dimmed'">PRO {{ percent(step.pros) }}</span>
         </span>
       </li>
       <li v-if="pending" class="ml-1"><UIcon name="i-lucide-loader-circle" class="size-4 animate-spin text-dimmed" /></li>
@@ -72,7 +89,7 @@ const situational = computed(() => props.pushes
         <span class="truncate text-muted">
           <template v-for="(token, index) in step.phrase!" :key="index"><span :class="token.tone && ITEM_CONTEXT_TONE_CLASS[token.tone]">{{ token.text }}</span></template>
         </span>
-        <span class="ml-auto shrink-0 text-[10px] tabular-nums text-dimmed">{{ t('draft.advice.vs', { share: percent(step.share), base: percent(step.baseShare) }) }}</span>
+        <span class="ml-auto shrink-0 text-[10px] tabular-nums text-dimmed">{{ measureOf(step) }}</span>
       </li>
       <li v-for="push in situational" :key="`alt-${push.itemId}`" class="flex items-center gap-2 text-xs">
         <GameTooltipItemIcon :item="items[push.itemId] ?? null" :width="18" :height="18" class="size-[18px] shrink-0 rounded ring-1 ring-primary/60" />

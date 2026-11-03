@@ -17,10 +17,8 @@ use std::sync::Arc;
 
 use lcu::{ActionKind, ChampSelectSession, Error, LcuClient, SpellSelection};
 use serde::Serialize;
-use tauri::AppHandle;
 
 use crate::record::SharedClient;
-use crate::telemetry::{self, Feature};
 
 /// The client answered an error status to a write — the timer ran out between
 /// the read and the write, or the phase moved on. Matched by the frontend.
@@ -132,7 +130,6 @@ async fn read(target: &Target, kind: ActionKind) -> Result<(ChampSelectSession, 
 /// ranked planning phase, declare it as the pick intent.
 #[tauri::command]
 pub async fn champ_select_hover(
-    app: AppHandle,
     writer: tauri::State<'_, ChampSelectWriter>,
     kind: String,
     champion_id: i64,
@@ -147,9 +144,6 @@ pub async fn champ_select_hover(
         .hover(action, champion_id)
         .await
         .map_err(write_failed)?;
-    if kind == ActionKind::Pick {
-        telemetry::feature(&app, Feature::ChampSelectHover);
-    }
     Ok(())
 }
 
@@ -157,7 +151,6 @@ pub async fn champ_select_hover(
 /// the client must already show hovered on their open action.
 #[tauri::command]
 pub async fn champ_select_lock(
-    app: AppHandle,
     writer: tauri::State<'_, ChampSelectWriter>,
     kind: String,
     champion_id: i64,
@@ -169,13 +162,6 @@ pub async fn champ_select_lock(
         .plan_lock(kind, champion_id, &allowed)
         .map_err(|refusal| refusal.code().to_string())?;
     target.complete(action).await.map_err(write_failed)?;
-    telemetry::feature(
-        &app,
-        match kind {
-            ActionKind::Pick => Feature::ChampSelectLock,
-            ActionKind::Ban => Feature::ChampSelectBan,
-        },
-    );
     Ok(())
 }
 

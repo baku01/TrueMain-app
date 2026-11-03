@@ -81,15 +81,11 @@ const result = computed(() => resultTone(self.value.win))
 </script>
 
 <template>
-  <!-- `content-visibility: auto` skips style, layout and paint of a row off
-       screen (#2129): a page of 20 rows lays out only the ~9 in view. It stays
-       in the accessibility tree, the focus order and in-page find. The 54 px
-       stands in for a row never rendered yet; `auto` makes the browser keep the
-       last height it rendered instead, so an opened accordion scrolled away
-       keeps its size. Block size only: the width is the list's. -->
+  <!-- Drawn whether on screen or not: skipping a row off screen
+       (`content-visibility: auto`, #2129) saved little on a page of ten and
+       showed rows empty for a frame when the list was scrolled fast. -->
   <article
     class="@container surface overflow-hidden rounded-lg"
-    :class="!expanded && !hasOpened && '[content-visibility:auto] [contain-intrinsic-block-size:auto_54px]'"
     :aria-label="t('match.row.label', { result: result.label, champion: championName, kda: `${self.kills}/${self.deaths}/${self.assists}` })"
   >
     <!-- The row sizes off its own width, not the viewport (#967): it sits

@@ -176,6 +176,7 @@ async function fetchRuneTreeAt(patch: string | null): Promise<RuneTreeResponse> 
 export interface ChampionDetailResponse {
   data: Record<string, {
     partype?: string
+    passive?: { name: string, description?: string, image: { full: string } }
     spells: Array<{
       name: string
       image: { full: string }
@@ -222,6 +223,16 @@ export function toChampionStatic(
       }]]
     }),
   )
+  // The passive too, under `P`: what the champion insights name `@spell_P@`.
+  const passive = detail.data[alias]?.passive
+  if (passive) {
+    championSpells.P = {
+      key: 'P',
+      name: passive.name,
+      iconUrl: `${DDRAGON}/${patch}/img/passive/${passive.image.full}`,
+      description: passive.description,
+    } as unknown as StaticChampionSpellData
+  }
   return {
     championName: name,
     championIconUrl: `${DDRAGON}/${patch}/img/champion/${alias}.png`,

@@ -76,7 +76,7 @@ const name = (id: number) => props.items[id]?.name ?? t('items.unknown', { id })
           :aria-label="name(id)"
           @click="emit('select', id)"
         >
-          <GameTooltipItemIcon :item="items[id] ?? null" :width="36" :height="36" loading="lazy" class="size-9 rounded-md" />
+          <GameTooltipItemIcon :item="items[id] ?? null" :width="36" :height="36" class="size-9 rounded-md" />
         </button>
       </div>
     </section>

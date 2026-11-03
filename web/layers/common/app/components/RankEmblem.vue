@@ -34,7 +34,7 @@ const TOOLTIP_UI = { content: 'p-0 h-auto max-w-none bg-transparent ring-0 shado
 <template>
   <UTooltip :delay-duration="150" :ui="TOOLTIP_UI">
     <span class="flex shrink-0 items-center gap-1" v-bind="$attrs">
-      <RankIcon :tier="rank.tier" :size="size" loading="lazy" />
+      <RankIcon :tier="rank.tier" :size="size" />
       <span
         v-if="!crestOnly && !isApexTier(rank.tier)"
         class="text-xs font-semibold tabular-nums"

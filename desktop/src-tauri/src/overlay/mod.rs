@@ -74,7 +74,6 @@ const NOTICE: Option<&str> = None;
 /// A panel's size before its page has measured itself, in points.
 const INITIAL_SIZE: (f64, f64) = (232.0, 64.0);
 
-
 pub struct Overlay {
     settings_path: PathBuf,
     settings: Mutex<OverlaySettings>,

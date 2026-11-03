@@ -6,25 +6,20 @@
 //!
 //! On macOS the application menu also opens Settings on ⌘, (`app://navigate`).
 //!
-//! Next to it, "Share Anonymous Usage Data" (#1805), checked by default: the
-//! switch for the usage counts `telemetry.rs` sends, kept across launches.
-//!
 //! The texts follow the language the player chose in the app: the webview
 //! tells the shell at launch and on every change (`set_menu_language`), which
 //! rewrites each item in place. Until it does, they read in English.
 
 use std::sync::Mutex;
 
-use tauri::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, MenuItemKind, PredefinedMenuItem};
+use tauri::menu::{Menu, MenuEvent, MenuItem, MenuItemKind, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{App, AppHandle, Emitter, Manager, Runtime};
 
-use crate::telemetry::SharedTelemetry;
 
 const CHECK_FOR_UPDATES: &str = "check-for-updates";
 const SHOW: &str = "show";
 const QUIT: &str = "quit";
-const SHARE_USAGE: &str = "share-usage";
 const SETTINGS: &str = "settings";
 /// Listened to by `app.vue`: the payload is the route to open.
 const NAVIGATE_EVENT: &str = "app://navigate";
@@ -35,7 +30,6 @@ const CHECK_EVENT: &str = "app://check-for-updates";
 struct Labels {
     check_for_updates: &'static str,
     settings: &'static str,
-    share_usage: &'static str,
     open: &'static str,
     quit: &'static str,
     tooltip: &'static str,
@@ -44,7 +38,6 @@ struct Labels {
 const ENGLISH: Labels = Labels {
     check_for_updates: "Check for Updates…",
     settings: "Settings…",
-    share_usage: "Share Anonymous Usage Data",
     open: "Open TrueMain",
     quit: "Quit TrueMain",
     tooltip: "TrueMain",
@@ -53,7 +46,6 @@ const ENGLISH: Labels = Labels {
 const PORTUGUESE: Labels = Labels {
     check_for_updates: "Verificar atualizações…",
     settings: "Configurações…",
-    share_usage: "Compartilhar dados de uso anônimos",
     open: "Abrir o TrueMain",
     quit: "Sair do TrueMain",
     tooltip: "TrueMain",
@@ -112,12 +104,12 @@ fn app_menu<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
         let check = check_for_updates(app)?;
         app_submenu.insert(&check, 1)?;
-        app_submenu.insert(&share_usage(app)?, 2)?;
         // ⌘, opens Settings, where every Mac app keeps it.
-        let settings = MenuItem::with_id(app, SETTINGS, ENGLISH.settings, true, Some("CmdOrCtrl+,"))?;
+        let settings =
+            MenuItem::with_id(app, SETTINGS, ENGLISH.settings, true, Some("CmdOrCtrl+,"))?;
         register_text(app, &settings, |labels| labels.settings);
-        app_submenu.insert(&PredefinedMenuItem::separator(app)?, 3)?;
-        app_submenu.insert(&settings, 4)?;
+        app_submenu.insert(&PredefinedMenuItem::separator(app)?, 2)?;
+        app_submenu.insert(&settings, 3)?;
     }
     app.set_menu(menu)?;
     Ok(())
@@ -135,7 +127,6 @@ fn tray<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         &[
             &open_item,
             &check_for_updates(app)?,
-            &share_usage(app)?,
             &PredefinedMenuItem::separator(app)?,
             &quit_item,
         ],
@@ -188,40 +179,12 @@ fn check_for_updates<R: Runtime>(app: &App<R>) -> tauri::Result<MenuItem<R>> {
     Ok(item)
 }
 
-/// Checked when the counts are sent. A click toggles the item's own check
-/// mark, and the menu event flips the setting to match.
-fn share_usage<R: Runtime>(app: &App<R>) -> tauri::Result<CheckMenuItem<R>> {
-    let on = app
-        .try_state::<SharedTelemetry>()
-        .is_some_and(|telemetry| telemetry.enabled());
-    let item = CheckMenuItem::with_id(
-        app,
-        SHARE_USAGE,
-        ENGLISH.share_usage,
-        true,
-        on,
-        None::<&str>,
-    )?;
-    if let Some(texts) = app.try_state::<MenuTexts>() {
-        let item = item.clone();
-        texts.register(move |labels| {
-            let _ = item.set_text(labels.share_usage);
-        });
-    }
-    Ok(item)
-}
-
 fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     match event.id().as_ref() {
         CHECK_FOR_UPDATES => {
             show_window(app);
             if let Err(error) = app.emit(CHECK_EVENT, ()) {
                 tracing::warn!(%error, "could not ask the webview to check for updates");
-            }
-        }
-        SHARE_USAGE => {
-            if let Some(telemetry) = app.try_state::<SharedTelemetry>() {
-                telemetry.set_enabled(!telemetry.enabled());
             }
         }
         SETTINGS => {

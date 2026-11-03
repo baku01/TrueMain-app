@@ -27,8 +27,7 @@ const SETTINGS_FILE: &str = "graphics.json";
 /// wry's own WebView2 switches. The environment variable replaces the ones the
 /// app would pass, so they are restated next to ours.
 #[cfg(windows)]
-const WRY_DEFAULT_ARGS: &str =
-    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+const WRY_DEFAULT_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 #[cfg(windows)]
 const SOFTWARE_ARGS: &str = "--disable-gpu --disable-gpu-compositing";
 #[cfg(windows)]
@@ -176,7 +175,12 @@ mod tests {
         let view = graphics.set(false).unwrap();
         assert!(!view.hardware_acceleration);
         assert_eq!(view.restart_required, cfg!(windows));
-        assert_eq!(load(&path), Some(Settings { hardware_acceleration: false }));
+        assert_eq!(
+            load(&path),
+            Some(Settings {
+                hardware_acceleration: false
+            })
+        );
         assert!(!graphics.set(true).unwrap().restart_required);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }

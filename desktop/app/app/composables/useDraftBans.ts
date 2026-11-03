@@ -1,5 +1,7 @@
 import type { DraftBans } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
+import { activeProvider } from '~/utils/sources'
+import { draftBansFromSource } from '~/utils/sources/draft'
 
 /** Bans and hovers landing together collapse into one request. */
 const DEBOUNCE_MS = 120
@@ -32,6 +34,9 @@ export function useDraftBans(
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function ask(request: object): Promise<DraftBans> {
+    // Another source picked in Settings: its matchups and ban rates, never TrueMain's model.
+    const provider = activeProvider()
+    if (provider) return await draftBansFromSource(provider, request as Parameters<typeof draftBansFromSource>[1])
     if (insideTauri()) {
       const { invoke } = await import('@tauri-apps/api/core')
       return await invoke<DraftBans>('draft_bans', { request })

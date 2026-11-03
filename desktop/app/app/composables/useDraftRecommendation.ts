@@ -1,5 +1,7 @@
 import type { DraftCandidate, DraftRecommendation } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
+import { activeProvider } from '~/utils/sources'
+import { draftRecommendationFromSource } from '~/utils/sources/draft'
 
 /** Our allies' champions keyed by lane, locked ones or hovered ones. */
 export function alliesByLane(draft: DraftState | null, locked: boolean): Record<string, number> {
@@ -56,6 +58,9 @@ export function useDraftRecommendation(
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function ask(request: object): Promise<DraftRecommendation> {
+    // Another source picked in Settings: its tier list and matchups, never TrueMain's model.
+    const provider = activeProvider()
+    if (provider) return await draftRecommendationFromSource(provider, request as Parameters<typeof draftRecommendationFromSource>[1])
     if (insideTauri()) {
       const { invoke } = await import('@tauri-apps/api/core')
       return await invoke<DraftRecommendation>('draft_recommendation', { request })

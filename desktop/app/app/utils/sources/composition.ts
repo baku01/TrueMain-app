@@ -4,17 +4,20 @@ import type { ProMatch } from '~/utils/blitz/pro'
 import type { Provider } from '~/utils/sources'
 import { blitzMatchDetail } from '~/utils/blitz/match-detail'
 import { readProMatches } from '~/utils/blitz/pro'
-import { currentPatch } from '~/utils/sources/champions'
+import { championTraits, currentPatch, liveItems } from '~/utils/sources/champions'
+import { draftBuildFromOptions, enemySituation, proShares } from '~/utils/draft-build'
 
 /**
  * The matchup tool's two reads (`POST /champions/{id}/composition-build` and
  * its `/games`) when Settings picked another source. TrueMain weighs games by
  * how close their draft is to the one asked; no other source does, so:
  *
- * - the recommendation is the source's build on the lane — against the lane
- *   opponent when the source measures builds by matchup (Blitz does), the
- *   lane's own otherwise, said as a matchup not found — with the matchup's
- *   games and win rate from the source's matchups;
+ * - the recommendation is built the way the draft's is (`utils/draft-build.ts`):
+ *   the source's measured options on the lane, read against the enemy team
+ *   on the board (Riot's champion data) and weighted by what the pros finish
+ *   in their latest games there, the ones against this opponent counting
+ *   twice — with the matchup's games and win rate from the source's
+ *   matchups. A source with no options to read falls back to its lane build;
  * - the games are real games of the matchup the source cannot list itself:
  *   the latest high-elo and pro games Blitz keeps of the champion on the
  *   lane, the ones against that opponent first.
@@ -29,6 +32,27 @@ export async function compositionFromSource(provider: Provider, championId: numb
     opponent ? provider.matchups(championId, { position: body.position, opponent }).catch(() => null) : null,
   ])
   const versus = matchups?.matchups.find(row => row.opponentChampionId === opponent) ?? null
+  const fromDraft = await draftRecommendation(provider, championId, body, opponent).catch(() => null)
+  if (fromDraft) {
+    const games = versus?.games ?? fromDraft.gamesConsidered
+    return {
+      championId,
+      position: body.position,
+      patch: answer.patch && answer.patch.split('.').length >= 3 ? answer.patch : await currentPatch(),
+      eloBracket: body.eloBracket ?? 'ALL',
+      matchupRequested: opponent !== null,
+      matchupFound: true,
+      confidence: { sampleSize: games, candidatePoolSize: games, truemainGameCount: 0, maxPossibleScore: 0, meanSimilarity: 0 },
+      lane: {
+        measuredGames: versus?.decidedLaneGames ?? 0,
+        decidedGames: versus?.decidedLaneGames ?? 0,
+        winRate: versus?.laneWinRate ?? null,
+        averageGoldDiffAt15: versus?.averageGoldDiffAt15 ?? null,
+        averageXpDiffAt15: versus?.averageXpDiffAt15 ?? null,
+      },
+      build: { ...fromDraft, buildTree: answer.builds[0]?.buildTree ?? [] },
+    } as CompositionBuildResponse
+  }
   const build = answer.builds[0] ?? null
   const games = versus?.games ?? build?.games ?? 0
   return {
@@ -60,6 +84,44 @@ export async function compositionFromSource(provider: Provider, championId: numb
       buildTree: build?.buildTree ?? [],
     },
   } as CompositionBuildResponse
+}
+
+/**
+ * The draft's build for the matchup board: the source's options read against
+ * the enemy team and the pros, as the recommendation's build. Null when the
+ * source has no options to read.
+ */
+async function draftRecommendation(provider: Provider, championId: number, body: CompositionBuildRequest, opponent: number | null): Promise<Omit<CompositionBuildResponse['build'], 'buildTree'> | null> {
+  const [options, traits, items, pros] = await Promise.all([
+    provider.options(championId, body.position, opponent),
+    championTraits(),
+    liveItems(),
+    readProMatches(championId, body.position).catch(() => []),
+  ])
+  if (!options) return null
+  const steps = draftBuildFromOptions(options, enemySituation(body.enemies.map(enemy => enemy.championId), traits, opponent), items, proShares(pros, opponent, items))
+  if (!steps.length) return null
+  const measured = (list: { itemIds: number[], games: number, pickRate: number, winRate: number }[], itemId: number) =>
+    list.find(option => option.itemIds.includes(itemId)) ?? null
+  const boots = steps.find(step => step.isBoots)
+  const path = steps.filter(step => !step.isBoots).map(step => step.itemId)
+  const core = options.cores.find(option => path.slice(0, 2).every(id => option.itemIds.includes(id))) ?? options.cores[0] ?? null
+  const bootsOption = boots ? measured(options.boots, boots.itemId) : null
+  const page = options.pages[0] ?? null
+  const spells = options.spells[0] ?? null
+  const skill = options.skills[0] ?? null
+  const starter = options.starters[0] ?? null
+  return {
+    gamesConsidered: core?.games ?? options.games,
+    wins: core ? Math.round(core.games * core.winRate) : 0,
+    runePage: page ? { ...page.page, games: page.games, pickRate: page.pickRate, winRate: page.winRate } : null,
+    starterItems: starter ? { itemIds: starter.itemIds, games: starter.games, pickRate: starter.pickRate, winRate: starter.winRate } : null,
+    boots: boots ? { itemIds: [boots.itemId], games: bootsOption?.games ?? boots.games, pickRate: bootsOption?.pickRate ?? 0, winRate: bootsOption?.winRate ?? 0 } : null,
+    corePath: { itemIds: path, games: core?.games ?? 0, pickRate: core?.pickRate ?? 0, winRate: core?.winRate ?? 0 },
+    summonerSpells: spells && spells.spellIds.length >= 2 ? { spell1Id: spells.spellIds[0]!, spell2Id: spells.spellIds[1]!, games: spells.games, pickRate: spells.pickRate, winRate: spells.winRate } : null,
+    skillOrder: skill ? { sequence: skill.order, games: skill.games, pickRate: skill.pickRate, winRate: skill.winRate } : null,
+    firstItemId: path[0] ?? 0,
+  }
 }
 
 /** One Blitz game as a match-history row, the pilot's slice of it; null when Blitz no longer has the game. */

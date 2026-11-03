@@ -1,3 +1,4 @@
+import { syncDataSourceWithShell } from '~/utils/data-source'
 /**
  * What makes the window read as an app rather than a page:
  *
@@ -25,7 +26,10 @@ export default defineNuxtPlugin(() => {
   const platform = agent.includes('Mac') ? 'macos' : agent.includes('Windows') ? 'windows' : 'other'
   document.documentElement.classList.add(`platform-${platform}`)
 
-  if (!insideTauri() || location.hash.startsWith('#/overlay/')) return
+  if (!insideTauri()) return
+  // The shell kept the last choice; this launch's says the same, or corrects an older build's.
+  void syncDataSourceWithShell()
+  if (location.hash.startsWith('#/overlay/')) return
 
   document.documentElement.classList.add('in-tauri')
   void import('@tauri-apps/api/window').then(async ({ getCurrentWindow }) => {

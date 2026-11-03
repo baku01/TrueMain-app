@@ -74,6 +74,7 @@ export default defineNuxtConfig({
       '/__blitz/data': { target: 'https://data.v2.iesdev.com/api/v1/query_objects/prod/lol', changeOrigin: true },
       '/__blitz/lol': { target: 'https://lol.v2.iesdev.com', changeOrigin: true },
       '/__blitz/utils': { target: 'https://utils.iesdev.com/static/json/lol', changeOrigin: true },
+      '/__blitz/nexus': { target: 'https://utils.iesdev.com/static/json/nexus/lol', changeOrigin: true },
     },
   },
   // Where `openOnSite` sends a browser-only `npm run dev`; inside the shell the

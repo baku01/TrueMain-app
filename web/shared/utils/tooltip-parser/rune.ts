@@ -56,6 +56,13 @@ export function parseRuneDescription(description: string): ParsedDocument {
 export function prepareRuneHtml(description: string): string {
   let prepared = description
 
+  // 0. A game variable the static data never fills (`@f3@`, `@GoldPerTick*100@`)
+  //    would show raw: a bracket that holds one goes (it only states a number
+  //    the reader cannot have), and one left elsewhere becomes an ellipsis.
+  prepared = prepared
+    .replace(/\s*\([^()]*@[^@\s]+@[^()]*\)/g, '')
+    .replace(/@[^@\s]+@/g, '…')
+
   // 1. Replace `<font color='#HEX'>X</font>` with `<TAG>X</TAG>` where TAG is
   //    a known semantic tag, or strip the wrapper if the hex is unknown.
   prepared = prepared.replace(FONT_TAG_RE, (_, hex: string, inner: string) => {
