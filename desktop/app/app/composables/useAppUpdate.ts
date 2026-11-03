@@ -1,14 +1,12 @@
-import { externalSource } from '~/utils/data-source'
 import type { Update } from '@tauri-apps/plugin-updater'
 import type { Screen } from '~/types/lcu'
 import { tr } from '#common/utils/i18n'
 
 /**
- * The app updates itself. Each build asks its own site's update feed
- * (`plugins.updater.endpoints`, set per flavour by `desktop-release.yml`)
- * whether a newer signed build exists — preprod's feed offers a build of every
- * app change merged to develop, production's a version bump once production
- * runs what it reads — at launch and then every fifteen minutes, since the
+ * The app updates itself. It asks this fork's update feed — the `latest.json`
+ * of its latest GitHub release (`plugins.updater.endpoints`), published by
+ * `desktop-build.yml` with a signed build of every push to main — whether a
+ * newer build exists, at launch and then every fifteen minutes, since the
  * companion stays open all day.
  *
  * A newer build is downloaded in the background, then:
@@ -176,8 +174,6 @@ export function useAppUpdate() {
    */
   async function check(trigger: 'launch' | 'timer' | 'manual') {
     const manual = trigger === 'manual'
-    // The update feed is TrueMain's server: with another data source picked, it is never asked.
-    if (externalSource()) return
     if (installing.value) return
     // Nothing installs during a game, so the timer leaves it alone (#1916): the next tick after it checks.
     if (trigger === 'timer' && screen.value === 'in-game') return
