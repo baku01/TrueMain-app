@@ -135,15 +135,21 @@ describe('buildsFromBlitz', () => {
 })
 
 describe('tierListFromBlitz', () => {
-  it('groups the lanes by grade, S to D, and leaves Blitz\'s all-lanes rows out', async () => {
+  it('groups the lanes by grade, S to D, leaving Blitz\'s all-lanes rows and a champion\'s rare lanes out', async () => {
     const { tierListFromBlitz } = await import('~/utils/blitz/stats')
     const list = await tierListFromBlitz({})
     expect(list.patchVersion).toBe('16.21')
+    // Ahri's bot lane is under 8% of her games: not a tier list entry across every lane.
     expect(list.tiers.map(group => [group.tier, group.entries.map(entry => `${entry.championId}:${entry.position}`)])).toEqual([
       ['S', ['103:MIDDLE']],
       ['B', ['64:JUNGLE']],
-      ['D', ['103:BOTTOM']],
     ])
+  })
+
+  it('lists a rare lane when the page asks for that lane', async () => {
+    const { tierListFromBlitz } = await import('~/utils/blitz/stats')
+    const list = await tierListFromBlitz({ position: 'BOTTOM' })
+    expect(list.tiers.flatMap(group => group.entries).map(entry => `${entry.championId}:${entry.position}`)).toEqual(['103:BOTTOM'])
   })
 
   it('keeps one lane when the page asks for it', async () => {
