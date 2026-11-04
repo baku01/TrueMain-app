@@ -4,6 +4,7 @@ import { positionIndex } from '#common/utils/positions'
 import type { GameTeam } from '~/types/game'
 import type { LoadingPlayer } from '~/types/loading'
 import type { LaneEdge } from '~/utils/lane-edge'
+import { regionOfPlatform, splitRiotId } from '~/utils/blitz/player'
 
 /**
  * The loading screen (#1753): each player's games on the champion they are
@@ -41,6 +42,13 @@ const rows = computed(() => {
 })
 
 const name = (riotId: string) => riotId.split('#')[0]
+const { view } = useLoadingPlayers()
+/** The player's profile on the game's server (`pages/index.vue`); none without a full Riot id. */
+const profileOf = (riotId: string) => {
+  if (!splitRiotId(riotId)) return null
+  const region = view.value.platformId ? regionOfPlatform(view.value.platformId) : null
+  return { path: '/', query: region ? { riotId, region } : { riotId } }
+}
 const rate = (player: LoadingPlayer) => player.form!.championWins / player.form!.championGames
 </script>
 
@@ -75,7 +83,8 @@ const rate = (player: LoadingPlayer) => player.form!.championWins / player.form!
             </template>
             <template v-else>
               <p class="flex min-w-0 items-center gap-1 text-xs font-medium text-highlighted">
-                <span class="truncate">{{ name(player.riotId) || nameOf(player.championId) }}</span>
+                <NuxtLink v-if="profileOf(player.riotId)" :to="profileOf(player.riotId)!" class="truncate underline-offset-2 hover:text-primary hover:underline" :title="t('game.openProfile', { name: player.riotId })">{{ name(player.riotId) }}</NuxtLink>
+                <span v-else class="truncate">{{ name(player.riotId) || nameOf(player.championId) }}</span>
               </p>
               <p v-if="player.form && player.form.championGames > 0" class="text-[11px] tabular-nums text-muted">
                 {{ player.form.championGames }} · <span :class="rate(player) >= 0.5 ? 'text-data-good' : 'text-data-bad'">{{ formatPercentage(rate(player), 0) }}</span>

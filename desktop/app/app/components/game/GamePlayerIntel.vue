@@ -2,6 +2,7 @@
 import { formatPercentage, getPositionIconUrl } from '#shared/utils/ddragon'
 import { formatKdaRatio } from '#shared/utils/kda'
 import { isChampionPosition, positionLabel } from '#common/utils/positions'
+import type { RouteLocationRaw } from 'vue-router'
 import type { LoadingPlayer } from '~/types/loading'
 import { formatLeaguePoints, formatRank, tierColor } from '#common/utils/tiers'
 import {
@@ -32,7 +33,9 @@ const props = withDefaults(defineProps<{
   /** The loading screen is reading the game: a line still missing is coming. */
   reading: boolean
   mirrored?: boolean
-}>(), { mirrored: false })
+  /** The route to the player's profile; the name links there when set. */
+  profile?: RouteLocationRaw | null
+}>(), { mirrored: false, profile: null })
 
 const { t } = useT()
 const { nameOf } = useChampionStatics()
@@ -100,7 +103,8 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
           <span class="text-muted">{{ t('game.intel.anonymous') }}</span>
         </template>
         <template v-else>
-          <span class="truncate font-medium text-highlighted">{{ name }}<span v-if="tag" class="font-normal text-dimmed">#{{ tag }}</span></span>
+          <NuxtLink v-if="profile" :to="profile" class="truncate font-medium text-highlighted underline-offset-2 hover:text-primary hover:underline" :title="t('game.openProfile', { name: riotId })">{{ name }}<span v-if="tag" class="font-normal text-dimmed">#{{ tag }}</span></NuxtLink>
+          <span v-else class="truncate font-medium text-highlighted">{{ name }}<span v-if="tag" class="font-normal text-dimmed">#{{ tag }}</span></span>
         </template>
       </p>
 

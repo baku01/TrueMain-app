@@ -2,6 +2,7 @@
 import type { StaticSummonerSpellData } from '#shared/types/static-data'
 import type { GamePlayer } from '~/types/game'
 import type { LoadingPlayer } from '~/types/loading'
+import { regionOfPlatform, splitRiotId } from '~/utils/blitz/player'
 
 /**
  * One player on the board: champion with its level and summoner spells, then
@@ -11,6 +12,7 @@ import type { LoadingPlayer } from '~/types/loading'
  * mirrored, so each lane reads as a face-off across the middle. A dead
  * player's portrait goes grey under the seconds left before they are back,
  * counted down on screen from the respawn time the game gave at the death.
+ * The portrait and the name open the player's profile, on the game's server.
  */
 const { t } = useT()
 const props = withDefaults(defineProps<{
@@ -48,6 +50,15 @@ const spellsByKey = computed(() => {
   return out
 })
 
+const { view } = useLoadingPlayers()
+/** The player's profile (`pages/index.vue` reads anyone's), on the game's server; none for a hidden name or a bot. */
+const profile = computed(() => {
+  const riotId = props.player?.riotId
+  if (!riotId || props.line?.anonymous || !splitRiotId(riotId)) return null
+  const region = view.value.platformId ? regionOfPlatform(view.value.platformId) : null
+  return { path: '/', query: region ? { riotId, region } : { riotId } }
+})
+
 const respawnIn = computed(() => {
   const at = props.player?.respawnAt
   if (!props.player?.dead || at === null || at === undefined) return null
@@ -58,13 +69,16 @@ const respawnIn = computed(() => {
 <template>
   <div v-if="player" class="flex min-w-0 items-center gap-2.5" :class="mirrored && 'flex-row-reverse'">
     <div class="relative shrink-0">
-      <div
-        class="relative size-12 overflow-hidden rounded-lg bg-elevated ring-1 ring-white/10"
-        :title="player.championName"
+      <component
+        :is="profile ? resolveComponent('NuxtLink') : 'div'"
+        :to="profile ?? undefined"
+        class="relative block size-12 overflow-hidden rounded-lg bg-elevated ring-1 ring-white/10"
+        :class="profile && 'transition hover:ring-primary/60'"
+        :title="profile ? t('game.openProfile', { name: player.riotId }) : player.championName"
       >
         <img v-if="portrait" :src="portrait" :alt="player.championName" class="img-skeleton size-full object-cover transition" :class="player.dead && 'opacity-40 grayscale'">
         <span v-if="respawnIn" class="absolute inset-0 flex items-center justify-center stat-value text-base text-highlighted drop-shadow-[0_1px_2px_rgb(0_0_0/0.9)]">{{ respawnIn }}</span>
-      </div>
+      </component>
       <span
         class="absolute -bottom-1 rounded-sm bg-default px-1 text-[10px] font-bold leading-3.5 tabular-nums text-muted ring-1 ring-default"
         :class="mirrored ? '-left-1' : '-right-1'"
@@ -87,6 +101,7 @@ const respawnIn = computed(() => {
 
     <GamePlayerIntel
       :riot-id="player.riotId"
+      :profile="profile"
       :position="player.position"
       :champion-id="championId"
       :line="line"
