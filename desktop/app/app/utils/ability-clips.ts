@@ -11,6 +11,24 @@ const id = (championId: number) => String(championId).padStart(4, '0')
 
 /** The clip itself: mp4, the lighter of the two cuts Riot serves, and the one the macOS webview plays. */
 export const clipUrl = (championId: number, key: string) => `${BASE}/${id(championId)}/ability_${id(championId)}_${key}1.mp4`
+
+/** Blitz's own copies of the clips, by Data Dragon alias (`XinZhao/Q`): they cover abilities Riot's CDN has none of. */
+const BLITZ = 'https://blitz-cdn-videos.blitz.gg/tooltip_videos'
+
+/**
+ * Every address an ability's clip may be at, in the order to try them: Riot's
+ * mp4, Riot's webm (some clips exist only in it — Camille's R, Pyke's kit),
+ * then Blitz's copies (Xin Zhao, Locke, many passives Riot never filmed).
+ * The `<video>` tries them in turn and plays the first that loads.
+ */
+export function clipSources(championId: number, alias: string | null, key: string): { src: string, type: string }[] {
+  const riot = `${BASE}/${id(championId)}/ability_${id(championId)}_${key}1`
+  return [
+    { src: `${riot}.mp4`, type: 'video/mp4' },
+    { src: `${riot}.webm`, type: 'video/webm' },
+    ...(alias ? [{ src: `${BLITZ}/${alias}/${key}.webm`, type: 'video/webm' }, { src: `${BLITZ}/${alias}/${key}.mp4`, type: 'video/mp4' }] : []),
+  ]
+}
 /** The clip's first frame, shown while it loads. */
 export const posterUrl = (championId: number, key: string) => `${BASE}/${id(championId)}/ability_${id(championId)}_${key}1.jpg`
 

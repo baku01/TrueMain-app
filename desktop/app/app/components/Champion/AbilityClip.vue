@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AbilityData } from '~/utils/ability-data'
 import { perRank } from '~/utils/ability-data'
-import { clipUrl, posterUrl } from '~/utils/ability-clips'
+import { clipSources, posterUrl } from '~/utils/ability-clips'
 
 /**
  * One ability, whole, as Blitz shows it: Riot's clip of it playing — the one
@@ -22,7 +22,8 @@ const props = defineProps<{
 
 const { t } = useT()
 const COLORS: Record<string, string> = { P: 'text-muted', Q: 'text-toned', W: 'text-toned', E: 'text-toned', R: 'text-primary' }
-const clip = computed(() => clipUrl(props.championId, props.ability.key))
+const { aliasOf } = useChampionStatics()
+const sources = computed(() => clipSources(props.championId, aliasOf(props.championId), props.ability.key))
 const poster = computed(() => posterUrl(props.championId, props.ability.key))
 const failed = ref(false)
 watch(() => `${props.championId}-${props.ability.key}`, () => (failed.value = false))
@@ -52,7 +53,10 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
     <!-- The clip, and under it what the page puts there (the insights), beside the text on a wide pane. -->
     <div class="min-w-0 @2xl:p-4">
       <div class="relative aspect-video bg-black @2xl:overflow-hidden @2xl:rounded-xl">
-        <video v-if="!failed" :key="`${championId}-${ability.key}`" :src="clip" :poster="poster" autoplay muted loop playsinline preload="auto" class="size-full object-cover" @error="failed = true" />
+        <!-- Each address in turn: the browser moves to the next source when one fails, and the last one failing means there is no clip. -->
+        <video v-if="!failed" :key="`${championId}-${ability.key}`" :poster="poster" autoplay muted loop playsinline preload="auto" class="size-full object-cover">
+          <source v-for="(source, index) in sources" :key="source.src" :src="source.src" :type="source.type" @error="index === sources.length - 1 && (failed = true)">
+        </video>
         <div v-else class="grid size-full place-items-center text-sm text-muted">{{ t('abilities.noClip') }}</div>
         <div class="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent" />
       </div>
