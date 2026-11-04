@@ -2,17 +2,16 @@ import { readonly, shallowRef } from 'vue'
 
 /**
  * Which games the sources read (Settings): the current patch, the one before
- * it, a patch picked by its number (`patch:16.20`), the last 7, 14 or 30
- * days, or `auto` — the current patch once it has
- * games enough, the last 7 days while it is new (a patch a day old holds a
- * hundredth of a week's games). Kept across launches; changing it reloads
+ * it, a patch picked by its number (`patch:16.20`), or `auto` — the current
+ * patch once it has games enough, the one before while it is new (a patch a
+ * day old holds a hundredth of the last one's games). Kept across launches; changing it reloads
  * the window, like the source (`setDataSource`), so no session cache mixes
  * two windows.
  *
  * Only lolalytics takes a window. Blitz, op.gg and Tencent answer their own
  * latest patch whatever is asked; Settings says so.
  */
-export const DATA_WINDOWS = ['auto', 'current', 'previous', '7', '14', '30'] as const
+export const DATA_WINDOWS = ['auto', 'current', 'previous'] as const
 /** A window by name, or one patch by its number (`patch:16.20`). */
 export type DataWindow = typeof DATA_WINDOWS[number] | `patch:${string}`
 

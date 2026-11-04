@@ -86,9 +86,9 @@ export function lolalyticsTier(eloBracket: unknown): string {
 
 /**
  * The games lolalytics reads (`patch=`, Settings' window, `utils/data-window.ts`):
- * a patch (`16.21`), a count of days (`7`), or none for the current patch.
- * `auto` takes the current patch once it holds a quarter of a week's games,
- * and the last 7 days before: asked once a session, across every champion.
+ * a patch (`16.21`), or none for the current one. `auto` takes the current
+ * patch once it holds a quarter of the one before's games, and the one before
+ * until then: asked once a session, across every champion.
  */
 let windowParam: Promise<string | null> | null = null
 function lolalyticsWindow(): Promise<string | null> {
@@ -96,12 +96,12 @@ function lolalyticsWindow(): Promise<string | null> {
     windowParam = (async () => {
       const chosen = dataWindow.value
       if (chosen === 'current') return null
-      if (chosen === 'previous') return previousPatch(await currentPatch()) ?? '14'
       if (chosen.startsWith('patch:')) return chosen.slice('patch:'.length)
-      if (chosen !== 'auto') return chosen
+      const previous = previousPatch(await currentPatch())
+      if (chosen === 'previous' || !previous) return previous
       const probe = (patch?: string) => fetchRaw<{ analysed?: number }>({ ep: 'build-full', c: 'ahri', lane: 'middle', tier: 'emerald_plus', ...(patch ? { patch } : {}) })
-      const [now, week] = await Promise.all([probe(), probe('7')])
-      return (now.analysed ?? 0) >= (week.analysed ?? 0) * 0.25 ? null : '7'
+      const [now, before] = await Promise.all([probe(), probe(previous)])
+      return (now.analysed ?? 0) >= (before.analysed ?? 0) * 0.25 ? null : previous
     })()
     windowParam.catch(() => (windowParam = null))
   }
@@ -135,8 +135,6 @@ export function readLolalyticsBuild(championId: number, position: string, eloBra
     answer = championSlug(championId).then(async (slug) => {
       if (!slug) return null
       const read_ = await read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region })
-      // A window of days answers its length as the patch (`7`): the patch on screen stays the live one.
-      if (read_.header && !String(read_.header.patch).includes('.')) read_.header.patch = (await currentPatch()).split('.').slice(0, 2).join('.')
       return read_.header ? read_ : null
     })
     answer.catch(() => builds.delete(key))

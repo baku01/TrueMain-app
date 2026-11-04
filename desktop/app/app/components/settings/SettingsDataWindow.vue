@@ -5,7 +5,7 @@ import { dataSource } from '~/utils/data-source'
 
 /**
  * Which games the numbers come from (`utils/data-window.ts`): the current
- * patch, the one before, the last days, or automatic. The choice reloads the
+ * patch, the one before, a patch picked, or automatic. The choice reloads the
  * window, like the source's. Only lolalytics takes it; with another source
  * the panel says the source answers its own latest patch.
  */
@@ -30,7 +30,7 @@ const patchItems = computed(() => patches.value.map(value => ({ value, label: t(
       </div>
       <p class="text-xs text-muted">{{ t('dataWindow.description') }}</p>
     </header>
-    <div class="grid gap-2 sm:grid-cols-2" role="radiogroup" :aria-label="t('dataWindow.title')">
+    <div class="grid gap-2 sm:grid-cols-3" role="radiogroup" :aria-label="t('dataWindow.title')">
       <button
         v-for="option in DATA_WINDOWS"
         :key="option"
