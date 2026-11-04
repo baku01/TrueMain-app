@@ -193,18 +193,38 @@ main :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-xs).uppercase {
   color: var(--ui-text-muted);
 }
 
+/*
+ * Light: white panes on a cool grey page, the same tone ladder as dark turned
+ * over. The page sits a clear step below the panes (`#eef1f6` under white), so
+ * a panel reads as a panel without a heavy border; the panes are opaque, since
+ * nothing scrolls behind them.
+ */
 :root:not(.dark) {
   color-scheme: light;
-  --ui-bg: #f4f6fa;
-  --ui-bg-muted: #eaedf3;
+  --ui-bg: #eef1f6;
+  --ui-bg-muted: #f3f5f9;
   --ui-bg-elevated: #ffffff;
-  --ui-bg-accented: #e0e5ee;
-  --ui-bg-surface: color-mix(in oklch, #ffffff 90%, transparent);
-  --ui-border: #d8dde7;
-  --ui-border-accented: #c2c9d8;
+  --ui-bg-accented: #e4e9f1;
+  --ui-bg-surface: #ffffff;
+  --ui-border: #d6dce6;
+  --ui-border-accented: #b9c3d3;
+  /* The pane every panel sits on, and the step a panel inside a panel takes. */
+  --tm-pane: #ffffff;
+  --tm-pane-2: #f3f5f9;
+  /*
+   * The accent one step deeper than Nuxt UI's light default (`500`, about 3.4:1
+   * on white): links, the eyebrow and the active nav read at 5:1, and a filled
+   * button keeps white text legible.
+   */
+  --ui-primary: var(--ui-color-primary-600);
+  /* The gold of the hairlines and the crown, deepened: `#d9b676` all but vanishes on white. */
+  --color-gold: #a37a2c;
   /* The data axis and the tier colours, deeper so they read on white. */
   --color-data-good: #1a6fd6;
-  --color-data-good-dim: #6b9fd9;
+  --color-data-good-dim: #5f8fc9;
+  --color-data-mid: var(--color-ink-500);
+  --color-data-bad-dim: var(--color-ink-500);
+  --color-data-bad: var(--color-ink-600);
   --color-tier-s: #1a6fd6;
   --color-tier-a: #a8741a;
   --color-tier-b: #647083;
@@ -263,6 +283,12 @@ main :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-xs).uppercase {
 :where(:root:not(.dark)) .surface {
   border-color: var(--ui-border);
   box-shadow: 0 1px 2px rgb(17 24 39 / 0.04), 0 1px 3px rgb(17 24 39 / 0.04);
+}
+
+/* A panel inside a panel steps down to the muted tone, as it steps up on dark. */
+:where(:root:not(.dark)) .surface .surface {
+  background-color: var(--tm-pane-2);
+  box-shadow: none;
 }
 
 :where(:root:not(.dark)) .surface-hover:hover,
@@ -618,9 +644,13 @@ a[href] {
   border-color: transparent;
   box-shadow: none;
 }
+/* On light, tone alone is too faint a step: a hairline barely darker than the page and a short shadow draw the edge. */
 :root:not(.dark) .surface {
-  border-color: transparent;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+  border-color: rgb(15 23 42 / 0.07);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 2px 6px -2px rgb(15 23 42 / 0.06);
+}
+:root:not(.dark) .surface .surface {
+  box-shadow: none;
 }
 
 /*
@@ -645,10 +675,17 @@ a[href] {
   --ui-bg-surface: color-mix(in oklch, #0d121c 70%, transparent);
   --ui-border: #1c2535;
   --ui-border-accented: #2d3a4f;
+  --tm-pane: #101827;
+  --tm-pane-2: #141d2d;
+  --ui-primary: var(--ui-color-primary-400);
+  --color-gold: #d9b676;
   --shadow-key: inset 0 1px 0 0 rgb(255 255 255 / 0.05), inset 0 -1px 0 0 rgb(0 0 0 / 0.2);
   --skeleton-fill: var(--color-ink-700);
   --color-data-good: #52a8ff;
   --color-data-good-dim: #7f9cc4;
+  --color-data-mid: #8693ab;
+  --color-data-bad-dim: #7b8499;
+  --color-data-bad: #61708a;
   --color-tier-s: #52a8ff;
   --color-tier-a: #e2b95c;
   --color-tier-b: #b9c2cd;

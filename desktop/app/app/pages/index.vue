@@ -232,7 +232,7 @@ watch(() => state.value.phase, (next, previous) => {
     </template>
 
     <template v-else>
-      <section class="relative flex min-h-60 items-end overflow-hidden rounded-2xl bg-[var(--tm-pane)] p-7">
+      <section class="on-art relative flex min-h-60 items-end overflow-hidden rounded-2xl bg-[var(--tm-pane)] p-7">
         <!-- The art on the right, fading into the text on its left: at the banner's whole width a splash shows only a quarter of its height, rarely the face. Each backdrop is framed on its own subject (`backdropFraming`). -->
         <div class="absolute inset-y-0 right-0 w-[62%] [mask-image:linear-gradient(to_right,transparent,black_30%)]">
           <ChampionArt :alias="backdrop.alias" fade="none" :position="backdrop.position" />
