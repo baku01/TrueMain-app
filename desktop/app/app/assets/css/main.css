@@ -5,6 +5,37 @@
 @import "../../../../../web/layers/common/app/assets/css/theme.css";
 
 /*
+ * ─── Type ──────────────────────────────────────────────────────────────────
+ * The app's own faces, vendored beside it (`public/fonts`, SIL OFL): Sora,
+ * geometric and wide, for titles and the big figures — the voice of the app;
+ * Figtree, a warm grotesque that stays legible at 11px, for everything else.
+ * Inter stays behind both for the scripts they do not cover (Cyrillic,
+ * Greek, Vietnamese Riot IDs).
+ */
+@font-face { font-family: 'Sora'; src: url('/fonts/sora-latin-ext.woff2') format('woff2'); font-weight: 100 800; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Sora'; src: url('/fonts/sora-latin.woff2') format('woff2'); font-weight: 100 800; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Figtree'; src: url('/fonts/figtree-latin-ext.woff2') format('woff2'); font-weight: 300 900; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Figtree'; src: url('/fonts/figtree-latin.woff2') format('woff2'); font-weight: 300 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+@theme {
+  --font-sans: 'Figtree', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'Figtree', 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Titles and headline figures speak in the display face. */
+h1, h2, .font-display, .stat-value {
+  font-family: var(--font-display);
+}
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'tnum' 0;
+  -webkit-font-smoothing: antialiased;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
  * The app's accent is blue. The site's palette names its accent `rosegold`, and
  * every use of it — the primary colour, the focus rings, the glows — reads
  * that ramp through its variables, so the app repoints the ramp rather than
@@ -92,6 +123,60 @@ main :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-xs).uppercase {
   text-transform: none;
   letter-spacing: 0.01em;
 }
+
+/*
+ * ─── Blitz's frame, TrueMain's colours ────────────────────────────────────
+ * The page emblem: a tile lit from the top in the accent, the way Blitz frames
+ * the game's crest beside its titles.
+ */
+.tm-emblem {
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in oklch, var(--ui-primary) 28%, transparent), transparent 70%),
+    var(--tm-pane);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ui-primary) 30%, transparent), 0 6px 20px -10px color-mix(in oklch, var(--ui-primary) 60%, transparent);
+}
+
+/* A page's tab, underlined as Blitz's: muted, the active one lit with a short accent bar under it. */
+.tm-tab {
+  position: relative;
+  padding: 0.25rem 0 0.75rem;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ui-text-muted);
+  transition: color 150ms;
+}
+.tm-tab:hover { color: var(--ui-text-highlighted); }
+.tm-tab[data-active] { color: var(--ui-text-highlighted); }
+.tm-tab[data-active]::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 1.75rem;
+  height: 3px;
+  translate: -50% 0;
+  border-radius: 3px 3px 0 0;
+  background: var(--ui-primary);
+}
+
+/*
+ * A panel inside a panel (the build pane's spells, runes, items) is one step
+ * lighter than the pane it sits in — every one the same step, so no block
+ * reads brighter than its neighbours. `--tm-pane-2` is that step, for the
+ * blocks drawn without `surface` (the rune trees).
+ */
+:root.dark {
+  --tm-pane-2: #141d2d;
+}
+:root.dark .surface .surface {
+  background-color: var(--tm-pane-2);
+}
+
+/* Panels lift a touch on the dark page: a hairline of light on their top edge, nothing around them. */
+:root.dark .surface {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
 
 /* Tighter corners, as Blitz's: a 16px card read as a toy at this density. */
 @theme {

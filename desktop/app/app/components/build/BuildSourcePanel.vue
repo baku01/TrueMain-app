@@ -121,7 +121,8 @@ const headline = computed(() => {
   return { sequence: picked.order, games: measure.games, pickRate: measure.pickRate, winRate: measure.winRate }
 })
 
-const SKILL_TEXT: Record<string, string> = { Q: 'text-orange-400', W: 'text-cyan-300', E: 'text-blue-400', R: 'text-yellow-300' }
+/** The sequence's letters in one tone, the ultimate's in the accent: the order reads without a rainbow. */
+const SKILL_TEXT: Record<string, string> = { Q: 'text-toned', W: 'text-toned', E: 'text-toned', R: 'text-primary' }
 const ORDINAL: Record<number, string> = { 4: 'panel.slot4', 5: 'panel.slot5', 6: 'panel.slot6' }
 const percent = (value: number) => formatPercentage(value, 1)
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-default')

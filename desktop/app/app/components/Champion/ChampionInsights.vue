@@ -47,7 +47,7 @@ const SECTIONS = [
 /** The section on screen when embedded: one at a time, picked by its tab. */
 const shownSection = ref<typeof SECTIONS[number]['key']>('insights')
 const sections = computed(() => (props.embedded ? SECTIONS.filter(section => section.key === shownSection.value) : SECTIONS))
-const KEY_TONE: Record<string, string> = { P: 'text-dimmed', Q: 'text-orange-400', W: 'text-cyan-400', E: 'text-violet-400', R: 'text-yellow-400' }
+const KEY_TONE: Record<string, string> = { P: 'text-dimmed', Q: 'text-toned', W: 'text-toned', E: 'text-toned', R: 'text-primary' }
 </script>
 
 <template>

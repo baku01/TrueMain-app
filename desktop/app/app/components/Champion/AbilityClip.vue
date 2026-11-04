@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AbilityData } from '~/utils/ability-data'
 import { perRank } from '~/utils/ability-data'
+import { clipUrl, posterUrl } from '~/utils/ability-clips'
 
 /**
  * One ability, whole, as Blitz shows it: Riot's clip of it playing — the one
@@ -20,10 +21,9 @@ const props = defineProps<{
 }>()
 
 const { t } = useT()
-const COLORS: Record<string, string> = { P: 'text-muted', Q: 'text-orange-400', W: 'text-cyan-300', E: 'text-blue-400', R: 'text-yellow-300' }
-const BASE = 'https://d28xe8vt774jo5.cloudfront.net/champion-abilities'
-const id = computed(() => String(props.championId).padStart(4, '0'))
-const clip = (kind: 'mp4' | 'webm') => `${BASE}/${id.value}/ability_${id.value}_${props.ability.key}1.${kind}`
+const COLORS: Record<string, string> = { P: 'text-muted', Q: 'text-toned', W: 'text-toned', E: 'text-toned', R: 'text-primary' }
+const clip = computed(() => clipUrl(props.championId, props.ability.key))
+const poster = computed(() => posterUrl(props.championId, props.ability.key))
 const failed = ref(false)
 watch(() => `${props.championId}-${props.ability.key}`, () => (failed.value = false))
 
@@ -52,10 +52,7 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
     <!-- The clip, and under it what the page puts there (the insights), beside the text on a wide pane. -->
     <div class="min-w-0 @2xl:p-4">
       <div class="relative aspect-video bg-black @2xl:overflow-hidden @2xl:rounded-xl">
-        <video v-if="!failed" :key="`${championId}-${ability.key}`" autoplay muted loop playsinline class="size-full object-cover" @error="failed = true">
-          <source :src="clip('mp4')" type="video/mp4">
-          <source :src="clip('webm')" type="video/webm" @error="failed = true">
-        </video>
+        <video v-if="!failed" :key="`${championId}-${ability.key}`" :src="clip" :poster="poster" autoplay muted loop playsinline preload="auto" class="size-full object-cover" @error="failed = true" />
         <div v-else class="grid size-full place-items-center text-sm text-muted">{{ t('abilities.noClip') }}</div>
         <div class="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent" />
       </div>

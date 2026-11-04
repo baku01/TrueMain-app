@@ -108,6 +108,15 @@ function lolalyticsWindow(): Promise<string | null> {
   return windowParam
 }
 
+/** The patch a read without one reads: the window's (Settings), else the live one, as `16.22`. */
+async function patchRead(): Promise<string> {
+  const window = await lolalyticsWindow().catch(() => null)
+  return window && window.includes('.') ? window : (await currentPatch()).split('.').slice(0, 2).join('.')
+}
+
+/** A patch the page picked (`16.22.1`, `16.22`) as lolalytics names it; null for none. */
+const pickedPatch = (value: unknown) => (typeof value === 'string' && /^\d+\.\d+/.test(value) ? value.split('.').slice(0, 2).join('.') : null)
+
 async function read<T>(query: Record<string, string>): Promise<T> {
   const patch = await lolalyticsWindow().catch(() => null)
   return await fetchRaw<T>(patch ? { patch, ...query } : query)
@@ -227,9 +236,11 @@ interface TierAnswer {
 
 export async function lolalyticsRows(query: Record<string, unknown>): Promise<ChampionSummaryResponse[]> {
   const position = typeof query.position === 'string' && query.position ? query.position : null
+  // The patch picked on the page wins over the window; the list says which patch it is.
+  const picked = pickedPatch(query.patch)
   const [answer, patch] = await Promise.all([
-    read<TierAnswer>({ ep: 'tier', lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket) }),
-    currentPatch(),
+    read<TierAnswer>({ ep: 'tier', lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
+    picked ?? patchRead(),
   ])
   const now = new Date().toISOString()
   return Object.entries(answer.tier ?? {}).flatMap(([grade, group]) => {

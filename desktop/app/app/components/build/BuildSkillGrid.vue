@@ -5,6 +5,7 @@ import { formatCount } from '#shared/utils/counts'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { winRateTone } from '#common/utils/rate-tone'
 import AbilityHover from '~/components/Champion/AbilityHover.vue'
+import { warmClips } from '~/utils/ability-clips'
 import { SKILL_ROWS, completeSkillGrid, skillGrid } from '~/utils/skill-grid'
 import type { SkillKey } from '~/utils/skill-grid'
 
@@ -40,12 +41,16 @@ const grid = computed(() => measured.value ?? (props.skillOrder ? skillGrid(prop
 const spell = (key: string) => props.championStatic.championSpells[key] ?? null
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)
 
-/** Each skill keeps its colour everywhere it shows, as in the game's own skill bar. */
+/**
+ * One accent, not four: a learned point is the app's blue, quiet; the
+ * ultimate's points a step brighter, the moments the order is built around.
+ * The basic abilities read by their letter and their row, not by a hue each.
+ */
 const COLORS: Record<SkillKey, { text: string, cell: string, ring: string }> = {
-  Q: { text: 'text-orange-400', cell: 'bg-orange-500/15 ring-orange-400/40', ring: 'ring-orange-400/70' },
-  W: { text: 'text-cyan-300', cell: 'bg-cyan-500/15 ring-cyan-300/40', ring: 'ring-cyan-300/70' },
-  E: { text: 'text-blue-400', cell: 'bg-blue-500/15 ring-blue-400/40', ring: 'ring-blue-400/70' },
-  R: { text: 'text-yellow-300', cell: 'bg-yellow-500/15 ring-yellow-300/40', ring: 'ring-yellow-300/70' },
+  Q: { text: 'text-highlighted', cell: 'bg-primary/12', ring: 'ring-default' },
+  W: { text: 'text-highlighted', cell: 'bg-primary/12', ring: 'ring-default' },
+  E: { text: 'text-highlighted', cell: 'bg-primary/12', ring: 'ring-default' },
+  R: { text: 'text-primary', cell: 'bg-primary/22', ring: 'ring-default' },
 }
 const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
 /** A key of the max order as an ability's (`Q`, `W`, `E`): the max order holds the basic abilities only. */
@@ -54,17 +59,18 @@ const abilityKey = (key: string) => key as SkillKey
 
 <template>
   <!-- Side by side and centred where there is room; the max order over the grid, both centred, where there is not. -->
-  <div class="@container w-full">
+  <!-- The pointer reaching the skill order starts the clips downloading: by the time it rests on an icon, its clip is there. -->
+  <div class="@container w-full" @pointerenter.once="championId && warmClips(championId, ['Q', 'W', 'E', 'R'])">
     <div class="flex flex-col items-center gap-5 @3xl:flex-row @3xl:justify-center @3xl:gap-10">
       <div v-if="!gridOnly" class="flex shrink-0 flex-col items-center gap-3 text-center @3xl:items-start @3xl:text-left">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('build.skillGrid.maxOrder') }}</h3>
         <p v-if="skillOrder && skillOrder.games > 0" class="flex items-center gap-2 text-xs">
-          <span class="rounded px-1.5 py-0.5 font-bold tabular-nums ring-1 ring-inset ring-current/25" :class="winRateTone(skillOrder.winRate)">{{ formatPercentage(skillOrder.winRate, 1) }}</span>
-          <span class="uppercase tracking-wide text-muted">{{ t('build.skillGrid.games', { games: formatCount(skillOrder.games) }) }}</span>
+          <span class="rounded bg-accented/60 px-1.5 py-0.5 font-bold tabular-nums" :class="winRateTone(skillOrder.winRate)">{{ formatPercentage(skillOrder.winRate, 1) }}</span>
+          <span class="text-muted">{{ t('build.skillGrid.games', { games: formatCount(skillOrder.games) }) }}</span>
         </p>
         <div v-if="skillOrder?.sequence.length" class="flex items-center gap-1.5">
           <template v-for="(key, index) in skillOrder.sequence" :key="`${key}-${index}`">
-            <div class="relative size-10 shrink-0 rounded-lg ring-2" :class="colorOf(key).ring">
+            <div class="relative size-10 shrink-0 rounded-lg ring-1" :class="colorOf(key).ring">
               <AbilityHover v-if="championId && spell(key)" :champion-id="championId" :spell-key="abilityKey(key)">
                 <img :src="spell(key)!.iconUrl" :alt="spell(key)!.name" width="40" height="40" class="size-10 cursor-help rounded-lg">
               </AbilityHover>
@@ -99,7 +105,7 @@ const abilityKey = (key: string) => key as SkillKey
               :key="`${key}-${level}`"
               role="cell"
               class="grid aspect-square max-h-9 w-full max-w-9 place-items-center self-center justify-self-center rounded-md"
-              :class="grid[level] === key ? [colorOf(key).text, colorOf(key).cell, 'ring-1 ring-inset'] : 'bg-accented/40'"
+              :class="grid[level] === key ? [colorOf(key).text, colorOf(key).cell] : 'bg-accented/25'"
             >{{ grid[level] === key ? key : '' }}</span>
           </template>
         </div>

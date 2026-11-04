@@ -4,6 +4,7 @@ import { getActiveLocale } from '#common/utils/i18n'
 import AbilityClip from '~/components/Champion/AbilityClip.vue'
 import ChampionInsights from '~/components/Champion/ChampionInsights.vue'
 import { perRank, readAbilities } from '~/utils/ability-data'
+import { warmClips } from '~/utils/ability-clips'
 
 /**
  * The champion's abilities, the way Blitz shows them: the passive and Q, W,
@@ -20,7 +21,7 @@ const { championStatic, loadChampion } = useStaticData()
 const { patch } = useChampionStatics()
 watch(() => `${props.championId}:${patch.value}`, () => loadChampion(props.championId), { immediate: true })
 
-const COLORS: Record<string, string> = { P: 'text-muted', Q: 'text-orange-400', W: 'text-cyan-300', E: 'text-blue-400', R: 'text-yellow-300' }
+const COLORS: Record<string, string> = { P: 'text-muted', Q: 'text-toned', W: 'text-toned', E: 'text-toned', R: 'text-primary' }
 
 const abilities = shallowRef<AbilityData[]>([])
 const status = ref<'pending' | 'ready' | 'error'>('pending')
@@ -32,6 +33,8 @@ watch(() => props.championId, async (id) => {
     if (id !== props.championId) return
     abilities.value = read
     status.value = 'ready'
+    // Every clip of the tab starts downloading now, the one on screen first.
+    warmClips(id, ['Q', 'W', 'E', 'R', 'P'])
   }
   catch {
     if (id === props.championId) status.value = 'error'

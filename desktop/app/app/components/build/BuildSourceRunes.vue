@@ -72,7 +72,7 @@ const shareOf = (map: Map<number, { pickRate: number }> | undefined, id: number)
 
     <div v-if="primary && page" class="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-2.5">
       <!-- The primary tree: its name, its keystones, its three rows. -->
-      <div class="space-y-3 rounded-xl bg-accented/20 px-2 pb-3 pt-2" :style="ringOf(primary.styleId)">
+      <div class="space-y-3 rounded-xl bg-white/[0.03] px-2 pb-3 pt-2" :style="ringOf(primary.styleId)">
         <p class="flex items-center justify-center gap-1.5 text-xs font-semibold" :style="{ color: 'var(--rune)' }">
           <img :src="primary.iconUrl" alt="" width="16" height="16" class="size-4">{{ primary.name }}
         </p>
@@ -88,7 +88,7 @@ const shareOf = (map: Map<number, { pickRate: number }> | undefined, id: number)
       </div>
 
       <!-- The secondary tree and, under it, the shards. -->
-      <div class="space-y-3 rounded-xl bg-accented/20 px-2 pb-3 pt-2" :style="ringOf(secondary?.styleId)">
+      <div class="space-y-3 rounded-xl bg-white/[0.03] px-2 pb-3 pt-2" :style="ringOf(secondary?.styleId)">
         <template v-if="secondary">
           <p class="flex items-center justify-center gap-1.5 text-xs font-semibold" :style="{ color: 'var(--rune)' }">
             <img :src="secondary.iconUrl" alt="" width="16" height="16" class="size-4">{{ secondary.name }}
