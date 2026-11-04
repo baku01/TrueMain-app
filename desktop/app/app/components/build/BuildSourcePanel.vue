@@ -172,7 +172,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
               <span class="tabular-nums text-dimmed">{{ t('panel.skillsGames', { games: formatCount(option.games) }) }}</span>
             </button>
           </header>
-          <BuildSkillGrid :skill-order="headline" :points="skills[skill]!.points" :champion-static="championStatic" :note="t('panel.skillsNote')" />
+          <BuildSkillGrid :champion-id="championId" :skill-order="headline" :points="skills[skill]!.points" :champion-static="championStatic" :note="t('panel.skillsNote')" />
         </div>
       </section>
     </div>

@@ -33,7 +33,9 @@ withDefaults(defineProps<{
   noRunesMessage?: string | null
   /** Names the page the import button pushes into the client; no button without it. */
   championName?: string | null
-}>(), { summonersPending: false, noRunesMessage: null, championName: null })
+  /** The champion, for the abilities' clips under the pointer (`AbilityHover`). */
+  championId?: number | null
+}>(), { summonersPending: false, noRunesMessage: null, championName: null, championId: null })
 </script>
 
 <template>
@@ -73,7 +75,7 @@ withDefaults(defineProps<{
 
     <!-- The skill order across the bottom: the priority and, beside it, the level-by-level grid. -->
     <div v-if="championStatic" class="mt-4 rounded-xl border border-default bg-default/40 p-4">
-      <BuildSkillGrid :skill-order="skillOrder" :champion-static="championStatic" />
+      <BuildSkillGrid :skill-order="skillOrder" :champion-static="championStatic" :champion-id="championId ?? null" />
     </div>
   </div>
 </template>

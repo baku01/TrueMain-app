@@ -4,6 +4,7 @@ import type { ChampionStaticData } from '#shared/types/static-data'
 import { formatCount } from '#shared/utils/counts'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { winRateTone } from '#common/utils/rate-tone'
+import AbilityHover from '~/components/Champion/AbilityHover.vue'
 import { SKILL_ROWS, completeSkillGrid, skillGrid } from '~/utils/skill-grid'
 import type { SkillKey } from '~/utils/skill-grid'
 
@@ -25,6 +26,8 @@ const props = defineProps<{
   gridOnly?: boolean
   /** A line under the grid, from the caller: what its numbers count. */
   note?: string | null
+  /** The champion, when the caller knows it: each ability's icon then shows its clip and figures under the pointer (`AbilityHover`). */
+  championId?: number | null
 }>()
 
 const { t } = useT()
@@ -45,6 +48,8 @@ const COLORS: Record<SkillKey, { text: string, cell: string, ring: string }> = {
   R: { text: 'text-yellow-300', cell: 'bg-yellow-500/15 ring-yellow-300/40', ring: 'ring-yellow-300/70' },
 }
 const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
+/** A key of the max order as an ability's (`Q`, `W`, `E`): the max order holds the basic abilities only. */
+const abilityKey = (key: string) => key as SkillKey
 </script>
 
 <template>
@@ -60,7 +65,10 @@ const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
         <div v-if="skillOrder?.sequence.length" class="flex items-center gap-1.5">
           <template v-for="(key, index) in skillOrder.sequence" :key="`${key}-${index}`">
             <div class="relative size-10 shrink-0 rounded-lg ring-2" :class="colorOf(key).ring">
-              <GameTooltipChampionSpellIcon :spell="spell(key)" :width="40" :height="40" class="size-10 rounded-lg" />
+              <AbilityHover v-if="championId && spell(key)" :champion-id="championId" :spell-key="abilityKey(key)">
+                <img :src="spell(key)!.iconUrl" :alt="spell(key)!.name" width="40" height="40" class="size-10 cursor-help rounded-lg">
+              </AbilityHover>
+              <GameTooltipChampionSpellIcon v-else :spell="spell(key)" :width="40" :height="40" class="size-10 rounded-lg" />
               <span class="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded bg-default text-[10px] font-extrabold" :class="colorOf(key).text">{{ key }}</span>
             </div>
             <UIcon v-if="index < skillOrder.sequence.length - 1" name="i-lucide-chevron-right" class="size-4 shrink-0 text-dimmed" />
@@ -80,7 +88,10 @@ const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
           <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
           <template v-for="key in SKILL_ROWS" :key="key">
             <span role="rowheader" class="grid place-items-center">
-              <GameTooltipChampionSpellIcon v-if="spell(key)" :spell="spell(key)" :width="32" :height="32" class="size-6 rounded-md @lg:size-7 @xl:size-8" />
+              <AbilityHover v-if="championId && spell(key)" :champion-id="championId" :spell-key="key">
+                <img :src="spell(key)!.iconUrl" :alt="spell(key)!.name" width="32" height="32" class="size-6 cursor-help rounded-md @lg:size-7 @xl:size-8">
+              </AbilityHover>
+              <GameTooltipChampionSpellIcon v-else-if="spell(key)" :spell="spell(key)" :width="32" :height="32" class="size-6 rounded-md @lg:size-7 @xl:size-8" />
               <span v-else class="text-muted">{{ key }}</span>
             </span>
             <span

@@ -15,6 +15,8 @@ const props = defineProps<{
   iconUrl?: string | null
   /** The resource its cost is paid in (`Mana`, `Energia`), when the ability's data does not say. */
   resource?: string | null
+  /** A tooltip's size: the clip over the text, smaller type, no icon. */
+  compact?: boolean
 }>()
 
 const { t } = useT()
@@ -45,8 +47,8 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
 
 <template>
   <!-- The clip beside the text where the pane is wide enough, over it where it is not. -->
-  <div class="@container">
-  <div class="grid @2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @2xl:items-start">
+  <div :class="compact ? '' : '@container'">
+  <div class="grid" :class="compact ? '' : '@2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @2xl:items-start'">
     <!-- The clip, and under it what the page puts there (the insights), beside the text on a wide pane. -->
     <div class="min-w-0 @2xl:p-4">
       <div class="relative aspect-video bg-black @2xl:overflow-hidden @2xl:rounded-xl">
@@ -61,11 +63,11 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
         <slot name="below" />
       </div>
     </div>
-    <div class="space-y-4 p-5 @2xl:pl-1">
+    <div :class="compact ? 'space-y-2.5 p-3' : 'space-y-4 p-5 @2xl:pl-1'">
       <header class="flex items-center gap-3">
-        <img v-if="iconUrl" :src="iconUrl" alt="" width="40" height="40" class="size-10 rounded-lg ring-1 ring-default">
+        <img v-if="iconUrl && !compact" :src="iconUrl" alt="" width="40" height="40" class="size-10 rounded-lg ring-1 ring-default">
         <div class="min-w-0">
-          <h2 class="flex items-center gap-2 text-lg font-semibold text-highlighted">
+          <h2 class="flex items-center gap-2 font-semibold text-highlighted" :class="compact ? 'text-sm' : 'text-lg'">
             {{ ability.name }}
             <span class="rounded bg-accented px-1.5 py-0.5 text-xs font-extrabold" :class="COLORS[ability.key]">{{ ability.key === 'P' ? t('abilities.passive') : ability.key }}</span>
           </h2>
@@ -75,10 +77,10 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
 
       <!-- The game's own text, its figures filled in; the HTML is built from escaped text and the game's tags only (`safeDescription`). -->
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <p class="ability-text text-sm leading-relaxed text-toned" v-html="ability.html" />
+      <p class="ability-text leading-relaxed text-toned" :class="compact ? 'text-xs' : 'text-sm'" v-html="ability.html" />
 
       <div v-if="rows.length" class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full" :class="compact ? 'text-xs' : 'text-sm'">
           <thead>
             <tr class="text-[11px] uppercase tracking-wider text-dimmed">
               <th class="pb-2 text-left font-medium" />

@@ -146,6 +146,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
             v-if="analytics.summary.common || analytics.summary.winning"
             :summary="analytics.summary"
             :champion-static="championStatic(championId)"
+            :champion-id="championId"
             :items="items"
             :summoners="summoners"
             :rune-tree="runeTree"

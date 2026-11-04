@@ -16,6 +16,8 @@ const props = defineProps<{
   items: Record<number, StaticItemData>
   summoners: Record<number, StaticSummonerSpellData>
   runeTree: RuneTreeResponse | null
+  /** The champion, for the abilities' clips under the pointer. */
+  championId?: number | null
 }>()
 
 const { t } = useT()
@@ -77,7 +79,7 @@ const line = (measure: { winRate: number, games: number } | null) => (measure ? 
       <div class="min-w-0 text-center">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('analytics.summary.skillOrder') }}</h3>
         <div v-if="build.skillOrder && championStatic" class="mt-2">
-          <BuildSkillGrid :skill-order="build.skillPriority ? { sequence: build.skillPriority.order, games: build.skillPriority.games, pickRate: 0, winRate: build.skillPriority.winRate } : null" :points="build.skillOrder.points" :champion-static="championStatic" grid-only />
+          <BuildSkillGrid :skill-order="build.skillPriority ? { sequence: build.skillPriority.order, games: build.skillPriority.games, pickRate: 0, winRate: build.skillPriority.winRate } : null" :points="build.skillOrder.points" :champion-static="championStatic" :champion-id="championId ?? null" grid-only />
           <p class="mt-1 text-xs text-muted">{{ line(build.skillOrder) }}</p>
         </div>
         <p v-else class="mt-2 text-sm text-dimmed">—</p>
