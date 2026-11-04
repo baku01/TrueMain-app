@@ -22,7 +22,7 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dad
 | ![Seleção de campeões](docs/screenshots/draft.png)<br>**Seleção de campeões:** picks e a build contra o draft | ![Partida](docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e o que cada jogador vem fazendo |
 | ![Notas da atualização](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas | ![Overlay de próximo item](docs/screenshots/overlay-next-item.png)<br>**Overlay:** o próximo item sobre o jogo, com a receita e a ordem da build |
 
-**Tema claro:** o app tem tema escuro (o padrão) e claro, alternados pelo botão da barra superior.
+**Tema claro:** o app tem tema escuro (o padrão) e claro, alternados pelo botão da barra superior. No claro, os painéis são brancos sobre um fundo cinza-azulado, com texto e destaque escurecidos para manter o contraste; os banners sobre arte de campeão continuam escuros.
 
 ![Página de um campeão no tema claro](docs/screenshots/light.png)
 
@@ -33,9 +33,11 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dad
   - **estatísticas detalhadas** das últimas 20 partidas (≈25 métricas: dano, parcela do dano do time, CS aos 10, visão, objetivos, abates solo, skillshots…), cada uma **comparada aos oponentes de rota** nas mesmas partidas, com barras e veredito por grupo;
   - **comparação por elo:** KDA, participação, CS/min, visão/min e mortes numa régua com a mediana de cada elo (Ferro a Desafiante), com qualquer elo escolhido como referência;
   - **ranking e temporadas** (op.gg): posição na ladder, pico da temporada e elos das temporadas anteriores.
-- **Campeões, tier list e Analytics:** builds com todas as opções medidas (runas, feitiços, iniciais, botas, núcleos e 4º/5º item com taxa de vitória), melhores jogadores e builds de pros, e uma página de **Analytics** com tudo o que a fonte mede sobre o campeão.
+- **Campeões, tier list e Analytics:** builds com todas as opções medidas (runas, feitiços, iniciais, botas, núcleos e 4º/5º item com taxa de vitória), a sequência de itens em árvore, a ordem de habilidades com o vídeo de cada uma ao passar o mouse, melhores jogadores e builds de pros, e uma página de **Analytics** com tudo o que a fonte mede sobre o campeão.
+- **Habilidades:** cada habilidade com o vídeo da Riot e a descrição do próprio jogo, com os valores resolvidos nível a nível.
+- **Meus kits:** builds suas (árvore de itens, página de runas e feitiços) para um campeão e as rotas escolhidas, oferecidas na seleção de campeões ao lado das do TrueMain; escolhido um kit, o overlay segue os itens dele.
 - **Confronto:** a build para o draft e as partidas reais do confronto.
-- **Seleção de campeões:** picks, bans e a build para o draft, com **itens sugeridos pela composição inimiga** (ex.: Mercúrio contra muito controle de grupo). Runas e conjuntos de itens só vão para o cliente **quando você clica**.
+- **Seleção de campeões:** picks, bans e a build para o draft, com **itens sugeridos pela composição inimiga** (ex.: Mercúrio contra muito controle de grupo). Por padrão, runas e conjuntos de itens só vão para o cliente **quando você clica**; com a **importação automática** ligada (Configurações), a build vai sozinha ao travar o campeão, como no Blitz. Só a página de runas e os conjuntos do próprio TrueMain são substituídos.
 - **Partida e overlay:** placar das duas equipes, próximo item com a receita e a ordem da build, timers de objetivos e painéis sobre o jogo.
 - **Português do Brasil** em todo o app, inclusive nos nomes de itens, campeões e runas.
 
@@ -53,14 +55,17 @@ Em **Configurações → Fonte de dados**, todas as telas de estatísticas passa
 
 As fontes marcadas como experimentais usam endpoints públicos que os sites não documentam e podem mudar sem aviso. Nenhuma fonte é lida contornando proteções: sites que exigem burlar anti-bot ficaram de fora.
 
+Em **Configurações → Patch dos dados**, escolha de quais partidas as builds, a tier list, os confrontos e o Analytics são lidos: o **patch atual** (o padrão), o **anterior**, o **automático** (o atual quando já tem partidas suficientes) ou um **patch específico** entre os dez últimos. Blitz, op.gg e Tencent sempre respondem com o próprio patch mais recente; a escolha vale quando a fonte é o lolalytics.
+
 ## O que este fork muda
 
 Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
 
 - **Idioma:** o app desktop inteiro fala **português do Brasil** (e inglês), escolhido na barra superior. Os textos de itens, campeões, runas e feitiços acompanham o idioma. O site continua em inglês.
-- **Identidade visual:** azul-marinho com um azul de destaque, **tema escuro e claro**, ícones em traço fino (Phosphor) e medalhas para os tiers.
+- **Identidade visual:** layout inspirado no Blitz nas cores do TrueMain — azul-marinho com um azul de destaque, **tema escuro e claro**, Sora nos títulos e Figtree no texto, ícones em traço fino (Tabler) e medalhas para os tiers.
 - **Navegação:** menu lateral agrupado (Campeões, Builds, Em partida), recolhível, só com ícones em janelas estreitas; busca única de campeão e jogador (⌘K).
-- **Abas novas:** **Analytics**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).
+- **Abas novas:** **Analytics**, **Habilidades**, **Meus kits**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).
+- **Atualização automática:** o app se atualiza pelas releases deste fork, mostrando o progresso do download num aviso no canto.
 - **Várias fontes de dados** (acima) e o **painel para qualquer jogador**, lido do Blitz e do op.gg — sem chave da API da Riot.
 - **Cara de app nativo:** barra de título no tema do app (no macOS, integrada à barra superior), uma única instância, ⌘, abre Configurações, fechar a janela no macOS só a esconde, e na versão final sem menu de clique direito nem atalhos de navegador.
 - **Desempenho:** o app só processa os eventos do cliente que usa, o overlay fica parado fora da partida, a busca pelo cliente desacelera quando ele está fechado, e os caches têm limite.
@@ -115,6 +120,7 @@ Para gerar o instalador: `npm run tauri build` dentro de `desktop/app`. O GitHub
 | Cliente do League (local) | Seleção de campeões, perfil, histórico e a partida ao vivo |
 | [Wiki do League](https://wiki.leagueoflegends.com/) | Subclasses dos campeões (um retrato guardado no app) |
 | leagueoflegends.com | Notas da atualização |
+| CDNs da Riot e do Blitz | Vídeos das habilidades e suas miniaturas |
 
 > **Dependências:** as estatísticas vêm de servidores que não são deste fork. Com a fonte TrueMain, se `truemain.lol` sair do ar as telas de campeões e tier list ficam vazias — basta escolher outra fonte em Configurações. Itens, runas, classes, notas da atualização e a partida ao vivo não dependem de nenhuma.
 
@@ -136,5 +142,6 @@ Este fork **não faz deploy** do backend, do site nem do portal: os arquivos de 
 
 - **Licença:** [PolyForm Noncommercial 1.0.0](LICENSE), a mesma do projeto original. Pode ler, rodar, modificar e compartilhar o código para fins **não comerciais**; uso comercial exige outra licença do detentor dos direitos. O aviso do arquivo `LICENSE` (*Required Notice: Copyright 2026 Ilyan Fraimbault*) deve ser mantido em qualquer cópia.
 - **Projeto original e autoria:** [ilyanfraimbault/TrueMain](https://github.com/ilyanfraimbault/TrueMain), de Ilyan Fraimbault. Este repositório é um fork e não tem relação oficial com o projeto de origem.
-- **Ícones:** [Phosphor](https://phosphoricons.com) (MIT) e [Lucide](https://lucide.dev) (ISC).
+- **Ícones:** [Tabler](https://tabler.io/icons) (MIT), [Phosphor](https://phosphoricons.com) (MIT) e [Lucide](https://lucide.dev) (ISC).
+- **Fontes:** [Sora](https://fonts.google.com/specimen/Sora) e [Figtree](https://fonts.google.com/specimen/Figtree) (SIL OFL), incluídas no app.
 - **Dados do jogo e arte:** Riot Games. O TrueMain **não é endossado pela Riot Games** e não reflete as opiniões da Riot Games nem de quem esteja envolvido na produção ou no gerenciamento das propriedades da Riot Games. League of Legends e Riot Games são marcas ou marcas registradas da Riot Games, Inc.
