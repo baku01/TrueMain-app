@@ -39,16 +39,15 @@ async function opggPlayers(championId: number): Promise<TopPlayer[]> {
   }).sort((a, b) => b.games - a.games)
 }
 
-/** How many of a list's players get their account's icon: the ones a page shows first. */
-const ICONS_READ = 15
 const icons = new Map<string, Promise<string | null>>()
 
 /**
  * A player's profile icon, read from their account through Blitz (lolalytics
  * lists names only): Data Dragon's picture for the icon the account wears.
- * Kept for the session; null for an account Blitz does not find.
+ * Kept for the session; null for an account Blitz does not find. Read by
+ * each avatar on its own (`PlayerAvatar`), so a list never waits on them.
  */
-function iconOf(name: string, region: string | null): Promise<string | null> {
+export function accountIconOf(name: string, region: string | null): Promise<string | null> {
   const key = `${region}:${name}`
   let read = icons.get(key)
   if (!read) {
@@ -72,14 +71,9 @@ async function lolalyticsPlayers(championId: number, position: string): Promise<
     games: Number(games),
     rank: elo || null,
   }))
-  return await withIcons(players)
+  return players
 }
 
-/** Players listed by name (lolalytics), each of the first ones with their account's icon. */
-export async function withIcons(players: TopPlayer[]): Promise<TopPlayer[]> {
-  const portraits = await Promise.all(players.slice(0, ICONS_READ).map(player => iconOf(player.name, player.region?.toLowerCase() ?? null)))
-  return players.map((player, index) => ({ ...player, portraitUrl: player.portraitUrl ?? portraits[index] ?? null }))
-}
 
 const READERS: Partial<Record<DataSource, (championId: number, position: string) => Promise<TopPlayer[]>>> = {
   opgg: opggPlayers,

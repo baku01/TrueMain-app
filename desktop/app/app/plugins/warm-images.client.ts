@@ -1,7 +1,10 @@
+import type { RuneTreeResponse, StaticSummonerSpellData } from '#shared/types/static-data'
+import { answerStaticEndpoint } from '~/utils/static-endpoints'
 import { championTraits, liveItems, liveVersion } from '~/utils/sources/champions'
 
 /**
- * The pictures every page draws — champion portraits and item icons — fetched
+ * The pictures every page draws — champion portraits, item icons, summoner
+ * spells and runes — fetched
  * once, quietly, a few seconds after the window opens, so a page that shows
  * them finds them in the cache: they no longer appear a beat after the page
  * (the flash of empty squares). The window only, never the overlay's panels;
@@ -29,9 +32,22 @@ export default defineNuxtPlugin(() => {
 
   setTimeout(async () => {
     try {
-      const [version, champions, items] = await Promise.all([liveVersion(), championTraits(), liveItems()])
+      const [version, champions, items, spells, runes] = await Promise.all([
+        liveVersion(),
+        championTraits(),
+        liveItems(),
+        answerStaticEndpoint('/static/summoner-spells', {}).catch(() => ({})) as Promise<Record<number, StaticSummonerSpellData>>,
+        answerStaticEndpoint('/static/rune-tree', {}).catch(() => null) as Promise<RuneTreeResponse | null>,
+      ])
       const portraits = [...champions.values()].map(champion => `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champion.alias}.png`)
-      warm([...portraits, ...Object.values(items).map(item => item.iconUrl)])
+      // The small sets first — spells and runes are on every build — then the portraits and items.
+      warm([
+        ...Object.values(spells).map(spell => spell.iconUrl),
+        ...Object.values(runes?.perks ?? {}).map(perk => perk.iconUrl),
+        ...Object.values(runes?.perkStyles ?? {}).map(style => style.iconUrl),
+        ...portraits,
+        ...Object.values(items).map(item => item.iconUrl),
+      ].filter(Boolean))
     }
     catch {
       // Nothing warmed: the pages load their pictures as before.

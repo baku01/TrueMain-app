@@ -1,3 +1,4 @@
+import { championTraits } from '~/utils/sources/champions'
 /**
  * A champion's abilities with every figure the game shows, read from
  * CommunityDragon's `latest` — extracted from the game client on each patch,
@@ -318,9 +319,13 @@ export function readAbilities(championId: number, locale: 'pt' | 'en'): Promise<
 
 async function load(championId: number, locale: 'pt' | 'en'): Promise<AbilityData[]> {
   const lang = locale === 'pt' ? 'pt_br' : 'default'
-  const client = await $fetch<Obj>(`${CDRAGON}/plugins/rcp-be-lol-game-data/global/${lang}/v1/champions/${championId}.json`)
+  // Both files at once: the champion's alias is known from Data Dragon's roster, so the game file need not wait for the client's.
+  const known = (await championTraits().catch(() => null))?.get(championId)?.alias?.toLowerCase() ?? null
+  const clientRead = $fetch<Obj>(`${CDRAGON}/plugins/rcp-be-lol-game-data/global/${lang}/v1/champions/${championId}.json`)
+  const binOf = (alias: string) => $fetch<Obj>(`${CDRAGON}/game/data/characters/${alias}/${alias}.bin.json`).catch(() => ({} as Obj))
+  const [client, early] = await Promise.all([clientRead, known ? binOf(known) : Promise.resolve(null)])
   const alias = String(client.alias ?? '').toLowerCase()
-  const bin = await $fetch<Obj>(`${CDRAGON}/game/data/characters/${alias}/${alias}.bin.json`).catch(() => ({} as Obj))
+  const bin = early && known === alias ? early : await binOf(alias)
   const root = Object.entries(bin).find(([path]) => path.toLowerCase().endsWith('characterrecords/root'))?.[1] as Obj | undefined
   const spellPath = (name: string) => Object.keys(bin).find(path => path.toLowerCase() === `characters/${alias}/spells/${name.toLowerCase()}`)
   const spellOf = (name: string | undefined) => {

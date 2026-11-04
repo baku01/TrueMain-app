@@ -6,6 +6,8 @@ import { formatPercentage } from '#shared/utils/ddragon'
 import { winRateTone } from '#common/utils/rate-tone'
 import AbilityHover from '~/components/Champion/AbilityHover.vue'
 import { warmClips } from '~/utils/ability-clips'
+import { readAbilities } from '~/utils/ability-data'
+import { getActiveLocale } from '#common/utils/i18n'
 import { SKILL_ROWS, completeSkillGrid, skillGrid } from '~/utils/skill-grid'
 import type { SkillKey } from '~/utils/skill-grid'
 
@@ -55,12 +57,18 @@ const COLORS: Record<SkillKey, { text: string, cell: string, ring: string }> = {
 const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
 /** A key of the max order as an ability's (`Q`, `W`, `E`): the max order holds the basic abilities only. */
 const abilityKey = (key: string) => key as SkillKey
+/** The pointer reaching the skill order: the clips and the abilities' text start loading, so a hover finds them ready. */
+function warm() {
+  if (!props.championId) return
+  warmClips(props.championId, ['Q', 'W', 'E', 'R'])
+  void readAbilities(props.championId, getActiveLocale().startsWith('pt') ? 'pt' : 'en').catch(() => {})
+}
 </script>
 
 <template>
   <!-- Side by side and centred where there is room; the max order over the grid, both centred, where there is not. -->
   <!-- The pointer reaching the skill order starts the clips downloading: by the time it rests on an icon, its clip is there. -->
-  <div class="@container w-full" @pointerenter.once="championId && warmClips(championId, ['Q', 'W', 'E', 'R'])">
+  <div class="@container w-full" @pointerenter.once="warm">
     <div class="flex flex-col items-center gap-5 @3xl:flex-row @3xl:justify-center @3xl:gap-10">
       <div v-if="!gridOnly" class="flex shrink-0 flex-col items-center gap-3 text-center @3xl:items-start @3xl:text-left">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('build.skillGrid.maxOrder') }}</h3>

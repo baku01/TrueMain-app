@@ -35,7 +35,7 @@ const rankName = (rank: string | null) => {
       @keydown.enter="selectable && emit('select', player)"
     >
       <span class="shrink-0 text-right text-xs font-semibold tabular-nums text-dimmed" :class="compact ? 'w-4' : 'w-5'">{{ index + 1 }}</span>
-      <PlayerAvatar :src="player.portraitUrl" :name="player.name" :size="compact ? 24 : 28" class="rounded-md" />
+      <PlayerAvatar :src="player.portraitUrl" :name="player.name" :region="player.region" :size="compact ? 24 : 28" class="rounded-md" />
       <span class="min-w-0 flex-1">
         <span class="block truncate font-semibold text-highlighted" :class="compact ? 'text-xs' : 'text-sm'" :title="player.name">{{ player.name }}</span>
         <span class="block truncate text-dimmed" :class="compact ? 'text-[10px]' : 'text-[11px]'">{{ [player.team, player.region, rankName(player.rank)].filter(Boolean).join(' · ') }}</span>

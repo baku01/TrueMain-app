@@ -1,4 +1,3 @@
-import { withIcons } from '~/utils/sources/players'
 import type { ChampionAnalytics, LaneRows, Objective, RuneStat, SkillPath, SummaryBuild, TrendSeries } from '~/utils/sources/analytics'
 import type { LolalyticsSummary } from '~/utils/sources/lolalytics'
 import { damageShares, emptyAnalytics, lettersOf, pointsOf } from '~/utils/sources/analytics'
@@ -156,14 +155,14 @@ export async function lolalyticsAnalytics(championId: number, position: string, 
     analytics.trend = { winRate: series(graph.wr, rate), pickRate: series(graph.pr, rate), banRate: series(graph.br, rate), games: series(graph.n, value => value) }
   }
 
-  // lolalytics names its players only: their account icons are read through Blitz.
-  analytics.topPlayers = await withIcons((build.sidebar?.topList ?? []).map(([, name, region, wr, games, elo]) => ({
+  // lolalytics names its players only: each avatar reads its account icon through Blitz (`PlayerAvatar`).
+  analytics.topPlayers = (build.sidebar?.topList ?? []).map(([, name, region, wr, games, elo]) => ({
     name,
     region: region ? region.toUpperCase() : null,
     winRate: rate(wr),
     games: Number(games),
     rank: elo || null,
-  })))
+  }))
 
   const depth = build.sidebar?.depth
   if (depth) analytics.playerBase = { players: depth[1], breadth: Number(depth[2]), depth: Number(depth[3]), label: depth[4] }
