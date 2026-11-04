@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ChampionInsights from '~/components/Champion/ChampionInsights.vue'
+import ChampionAbilities from '~/components/Champion/ChampionAbilities.vue'
 import { externalSource } from '~/utils/data-source'
 import { POSITIONS, positionLabel } from '#common/utils/positions'
 import type { Lane } from '~/types/draft'
@@ -35,16 +35,18 @@ const lane = computed<Lane | null>({
 
 const entry = computed(() => entryOf(championId.value, lane.value))
 
-/** The lane's builds, the player's own kits on it (#2185), or the champion's insights; kept in the URL like the lane. */
-type View = 'builds' | 'kits' | 'insights'
+/** The lane's builds, the player's own kits on it (#2185), or the champion's abilities with its insights under them; kept in the URL like the lane. */
+type View = 'builds' | 'kits' | 'abilities'
+const VIEWS: View[] = ['builds', 'kits', 'abilities']
 const view = computed<View>({
-  get: () => (route.query.view === 'kits' || route.query.view === 'insights' ? route.query.view : 'builds'),
+  // The insights' old address opens the abilities, where they now are.
+  get: () => (route.query.view === 'insights' ? 'abilities' : VIEWS.includes(route.query.view as View) ? route.query.view as View : 'builds'),
   set: value => void router.replace({ query: { ...route.query, view: value === 'builds' ? undefined : value } }),
 })
 const views = computed(() => [
   { label: t('dash.champion.builds'), value: 'builds', icon: 'i-lucide-scroll-text' },
   { label: t('dash.champion.kits'), value: 'kits', icon: 'i-lucide-swords' },
-  { label: t('insights.tab'), value: 'insights', icon: 'i-lucide-lightbulb' },
+  { label: t('abilities.tab'), value: 'abilities', icon: 'i-lucide-sparkles' },
 ])
 
 // The banner's figures, as on the site: the lane's patch against the one before.
@@ -95,7 +97,7 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
         :ui="{ list: 'ring ring-default', indicator: 'rounded-md bg-accented shadow-none', trigger: 'px-3 data-[state=active]:text-highlighted' }"
       />
       <KitPanel v-if="view === 'kits'" :champion-id="championId" :position="lane" class="min-h-0 flex-1" />
-      <ChampionInsights v-else-if="view === 'insights'" :champion-id="championId" class="min-h-0 flex-1" />
+      <ChampionAbilities v-else-if="view === 'abilities'" :champion-id="championId" class="min-h-0 flex-1" />
       <BuildView v-else :champion-id="championId" :position="lane" class="min-h-0 flex-1">
         <template #header>
           <div class="flex items-center justify-between gap-2">
