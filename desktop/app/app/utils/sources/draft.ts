@@ -1,6 +1,7 @@
 import type { ChampionTierListResponse } from '#shared/types/champions'
 import type { DraftBanCandidate, DraftBans, DraftCandidate, DraftReason, DraftRecommendation, EnemyLane } from '~/types/draft'
 import type { Provider } from '~/utils/sources'
+import { POSITIONS } from '#common/utils/positions'
 
 /**
  * Champion select's picks and bans from the source Settings picked, in the
@@ -8,8 +9,9 @@ import type { Provider } from '~/utils/sources'
  * unchanged. No source scores a whole draft the way TrueMain's model does, so
  * the reading is the one every source can give:
  *
- * - each enemy's lane is the lane the source sees it played on most (or the
- *   one the player pinned), and the lane opponent the enemy on the player's lane;
+ * - the enemies share the five lanes (one each): the lanes the player pinned,
+ *   then, among the rest, the split that keeps each enemy closest to where the
+ *   source sees it played; the lane opponent is the enemy on the player's lane;
  * - a pick is scored by its strength on the lane (its win rate against the
  *   lane's average) and by its matchup against that opponent, each shrunk by
  *   its games so a thin sample does not outrank a measured one;
@@ -30,14 +32,47 @@ const reason = (fields: Partial<DraftReason> & Pick<DraftReason, 'kind'>): Draft
 interface Entry { championId: number, position: string, games: number, winRate: number, pickRate: number, banRate: number | null }
 const entriesOf = (list: ChampionTierListResponse): Entry[] => list.tiers.flatMap(group => group.entries)
 
-/** Every enemy on a lane: pinned by the player, else the lane the source sees it played on most. */
-function enemyLanes(enemies: number[], pinned: Record<string, string>, rows: Entry[]): EnemyLane[] {
-  return enemies.map((championId) => {
-    if (pinned[championId]) return { championId, position: pinned[championId]!, confidence: 1, pinned: true }
-    const lanes = rows.filter(row => row.championId === championId).sort((a, b) => b.pickRate - a.pickRate)
+/**
+ * Every enemy on its own lane: pinned by the player, else the split of the
+ * lanes left that keeps the most of each enemy's play share there. One lane
+ * each, as in the game — two enemies the source both sees mid cannot share
+ * it, or the board, which draws one enemy per lane, would lose one of them.
+ */
+export function enemyLanes(enemies: number[], pinned: Record<string, string>, rows: Entry[]): EnemyLane[] {
+  const share = (championId: number, position: string) => {
+    const lanes = rows.filter(row => row.championId === championId)
     const total = lanes.reduce((sum, row) => sum + row.pickRate, 0)
-    return { championId, position: lanes[0]?.position ?? 'MIDDLE', confidence: total > 0 ? (lanes[0]?.pickRate ?? 0) / total : 0, pinned: false }
+    return total > 0 ? (lanes.find(row => row.position === position)?.pickRate ?? 0) / total : 0
+  }
+  const placed = new Map<number, EnemyLane>()
+  for (const championId of enemies) {
+    const position = pinned[championId]
+    if (position && ![...placed.values()].some(lane => lane.position === position)) {
+      placed.set(championId, { championId, position, confidence: 1, pinned: true })
+    }
+  }
+  const free = enemies.filter(championId => !placed.has(championId))
+  const open = POSITIONS.filter(position => ![...placed.values()].some(lane => lane.position === position))
+
+  // At most five enemies on five lanes: every split is tried (120 at most), the
+  // first best kept, so the same draft always reads the same way.
+  let best: string[] = []
+  let bestScore = -1
+  const split = (index: number, taken: string[], score: number) => {
+    if (index === free.length || taken.length === open.length) {
+      if (score > bestScore) [best, bestScore] = [taken, score]
+      return
+    }
+    for (const position of open) {
+      if (!taken.includes(position)) split(index + 1, [...taken, position], score + share(free[index]!, position))
+    }
+  }
+  split(0, [], 0)
+  free.forEach((championId, index) => {
+    const position = best[index] ?? 'MIDDLE'
+    placed.set(championId, { championId, position, confidence: share(championId, position), pinned: false })
   })
+  return enemies.map(championId => placed.get(championId)!)
 }
 
 interface RecommendationRequest {

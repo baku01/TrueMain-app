@@ -32,11 +32,19 @@ export function useDraftTeamRows(
    */
   const enemyRows = computed<TeamRow[]>(() => {
     if (recommendation.value) {
-      return slots.value.map(slot => ({
-        championId: slot.championId !== null && draft.value.enemyChampions.includes(slot.championId) ? slot.championId : null,
+      const enemies = draft.value.enemyChampions
+      const rows = slots.value.map(slot => ({
+        championId: slot.championId !== null && enemies.includes(slot.championId) ? slot.championId : null,
         lane: slot.lane,
         locked: true,
       }))
+      // An enemy the answer does not place yet — picked after it was asked, or
+      // its re-ask failed — still shows, on a lane left empty, until one does.
+      const unplaced = enemies.filter(championId => !rows.some(row => row.championId === championId))
+      for (const row of rows) {
+        if (row.championId === null && unplaced.length) row.championId = unplaced.shift()!
+      }
+      return rows
     }
     const open = byLane.value && draft.value.enemyChampions.length === 0
     return Array.from({ length: 5 }, (_, index) => ({
