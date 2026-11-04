@@ -8,10 +8,10 @@
 //!   Settings — once at their own lock-in (`useDraftAutoImport`), the way the
 //!   major companion apps do. Never on a hover, never a pick or a queue
 //!   accepted for them: the player still makes every decision;
-//! * it never deletes a page it did not create. Overwriting somebody's own rune
-//!   pages because we ran out of slots would be an unforced disaster, so a full
-//!   page list with no page of ours is reported back, not resolved by deleting
-//!   one of theirs.
+//! * it reuses its own page; when the list is full and none of it is ours, it
+//!   frees a slot the way Blitz does, as the player chose (2026-11-04): an
+//!   invalid page first, else the one modified longest ago — never a page the
+//!   client generates itself, which cannot be removed.
 
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +28,16 @@ pub struct RunePage {
     /// False for the pages the client generates itself, which cannot be removed.
     #[serde(default)]
     pub is_deletable: bool,
+    /// False for a page the client no longer accepts (a rune removed by a patch).
+    #[serde(default = "valid")]
+    pub is_valid: bool,
+    /// When the page was last changed, in milliseconds: the least used is the oldest.
+    #[serde(default)]
+    pub last_modified: i64,
+}
+
+fn valid() -> bool {
+    true
 }
 
 impl RunePage {
@@ -60,8 +70,10 @@ pub enum RuneImportPlan {
     Create,
     /// Our previous page exists; delete it and create the new one in its place.
     ReplaceOwn { page_id: i64 },
-    /// The list is full and none of it is ours. The user has to free a slot —
-    /// we will not choose one for them.
+    /// The list is full and none of it is ours: the player's least used page
+    /// (an invalid one first, else the one modified longest ago) makes room.
+    ReplaceLeastUsed { page_id: i64 },
+    /// The list is full of pages nobody can delete.
     NoSlotAvailable,
 }
 
@@ -81,10 +93,15 @@ pub fn plan_import(pages: &[RunePage], max_pages: usize) -> RuneImportPlan {
     // pages sit in the list without occupying a slot the player can free.
     let used = pages.iter().filter(|page| page.is_deletable).count();
     if used < max_pages {
-        RuneImportPlan::Create
-    } else {
-        RuneImportPlan::NoSlotAvailable
+        return RuneImportPlan::Create;
     }
+    pages
+        .iter()
+        .filter(|page| page.is_deletable)
+        .min_by_key(|page| (page.is_valid, page.last_modified))
+        .map_or(RuneImportPlan::NoSlotAvailable, |page| {
+            RuneImportPlan::ReplaceLeastUsed { page_id: page.id }
+        })
 }
 
 #[cfg(test)]
@@ -96,6 +113,8 @@ mod tests {
             id,
             name: name.to_string(),
             is_deletable: deletable,
+            is_valid: true,
+            last_modified: id,
         }
     }
 
@@ -128,11 +147,35 @@ mod tests {
     }
 
     #[test]
-    fn never_deletes_a_page_the_player_made() {
-        // The whole point: a full list with nothing of ours must come back as a
-        // refusal, not as a freed slot.
-        let pages = vec![page(1, "My Ahri", true), page(2, "Jungle", true)];
-        assert_eq!(plan_import(&pages, 2), RuneImportPlan::NoSlotAvailable);
+    fn a_full_list_frees_the_page_modified_longest_ago() {
+        // As Blitz does: the player's least used page makes room.
+        let mut old = page(1, "My Ahri", true);
+        old.last_modified = 100;
+        let mut recent = page(2, "Jungle", true);
+        recent.last_modified = 900;
+        assert_eq!(
+            plan_import(&[recent, old], 2),
+            RuneImportPlan::ReplaceLeastUsed { page_id: 1 }
+        );
+    }
+
+    #[test]
+    fn an_invalid_page_goes_before_any_valid_one() {
+        let mut broken = page(2, "Old patch", true);
+        broken.is_valid = false;
+        broken.last_modified = 999;
+        assert_eq!(
+            plan_import(&[page(1, "My Ahri", true), broken], 2),
+            RuneImportPlan::ReplaceLeastUsed { page_id: 2 }
+        );
+    }
+
+    #[test]
+    fn pages_nobody_can_delete_leave_no_slot() {
+        assert_eq!(
+            plan_import(&[page(1, "Recommended", false)], 0),
+            RuneImportPlan::NoSlotAvailable
+        );
     }
 
     #[test]

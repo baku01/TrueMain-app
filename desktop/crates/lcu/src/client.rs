@@ -242,13 +242,14 @@ impl LcuClient {
     ///
     /// Reuses the page this app owns when one exists, so a player does not end
     /// a session with one TrueMain page per game. When the list is full and
-    /// none of it is ours, this fails with [`Error::NoRunePageSlot`] rather
-    /// than freeing a slot by deleting a page the player made.
+    /// none of it is ours, the player's least used page makes room, as Blitz
+    /// does (`plan_import`); [`Error::NoRunePageSlot`] only when no page can go.
     pub async fn import_rune_page(&self, draft: &RunePageDraft) -> Result<i64> {
         let pages = self.rune_pages().await?;
         match plan_import(&pages, self.owned_page_limit().await) {
             RuneImportPlan::NoSlotAvailable => return Err(Error::NoRunePageSlot),
-            RuneImportPlan::ReplaceOwn { page_id } => {
+            RuneImportPlan::ReplaceOwn { page_id }
+            | RuneImportPlan::ReplaceLeastUsed { page_id } => {
                 self.delete(&format!("/lol-perks/v1/pages/{page_id}"))
                     .await?;
             }
