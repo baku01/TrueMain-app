@@ -5,6 +5,8 @@ import type { DraftItemPush } from '~/utils/draft-damage'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
 import { formatPercentage } from '#shared/utils/ddragon'
+import { formatCount } from '#shared/utils/counts'
+import { prioritiesOf, skillOpenings } from '~/utils/sources/model'
 import { activeProvider } from '~/utils/sources'
 
 /**
@@ -92,7 +94,23 @@ const followUps = computed(() => options.value?.followUps(cores.value[core.value
 const skills = computed(() => options.value?.skills ?? [])
 const skill = ref(0)
 watch(options, () => (skill.value = 0))
+/** Each sequence named by the levels where they part, so no two tabs read alike. */
+const openings = computed(() => skillOpenings(skills.value))
+/**
+ * The headline over the grid: the max order the picked sequence follows,
+ * counted over every game it was played in. A sequence's own win rate only
+ * counts the games that reached its last level, which win more than the
+ * champion does; its tab still shows it, the note says why it runs high.
+ */
+const headline = computed(() => {
+  const picked = skills.value[skill.value]
+  if (!picked) return null
+  const priority = prioritiesOf({ skills: skills.value, priorities: options.value?.priorities }).find(entry => entry.order.join('') === picked.order.join(''))
+  const measure = priority ?? picked
+  return { sequence: picked.order, games: measure.games, pickRate: measure.pickRate, winRate: measure.winRate }
+})
 
+const SKILL_TEXT: Record<string, string> = { Q: 'text-orange-400', W: 'text-cyan-300', E: 'text-blue-400', R: 'text-yellow-300' }
 const ORDINAL: Record<number, string> = { 4: 'panel.slot4', 5: 'panel.slot5', 6: 'panel.slot6' }
 const percent = (value: number) => formatPercentage(value, 1)
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-default')
@@ -131,13 +149,14 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
             :class="skill === index ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/20 hover:bg-accented/50'"
             @click="skill = index"
           >
-            <span class="font-mono text-[11px] text-dimmed">{{ option.opening.join(' ') }}</span>
-            <span class="font-semibold text-highlighted">{{ option.order.join(' › ') }}</span>
+            <span class="flex gap-0.5 font-mono text-[11px] font-bold">
+              <span v-for="(key, at) in openings[index]" :key="at" :class="SKILL_TEXT[key]">{{ key }}</span>
+            </span>
             <span class="font-semibold tabular-nums" :class="tone(option.winRate)">{{ percent(option.winRate) }}</span>
-            <span class="tabular-nums text-dimmed">{{ percent(option.pickRate) }}</span>
+            <span class="tabular-nums text-dimmed">{{ t('panel.skillsGames', { games: formatCount(option.games) }) }}</span>
           </button>
         </header>
-        <BuildSkillGrid :skill-order="{ sequence: skills[skill]!.order, games: skills[skill]!.games, pickRate: skills[skill]!.pickRate, winRate: skills[skill]!.winRate }" :points="skills[skill]!.points" :champion-static="championStatic" />
+        <BuildSkillGrid :skill-order="headline" :points="skills[skill]!.points" :champion-static="championStatic" :note="t('panel.skillsNote')" />
       </section>
     </div>
   </div>

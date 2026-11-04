@@ -37,8 +37,25 @@ export const starterOptions = (doc: BlitzBuildDoc, count = 3): ItemOption[] =>
 export const coreOptions = (doc: BlitzBuildDoc, count = 5): ItemOption[] =>
   top(doc.coreItems, count).map(entry => ({ ...share(entry, doc.games), itemIds: entry.itemIds.split(',').map(Number) }))
 
-/** Boots over every core path that carries a pair and every follow-up that is one, most bought first. */
+/**
+ * The boots players buy, most bought first, each one's share of the games
+ * that bought boots and its win rate there. Read from Blitz's items outside
+ * the cores, where every game's boots are counted (its own client reads them
+ * there); the core paths alone hold boots in the few games whose first items
+ * included them, which gave each pair a share of a few per cent.
+ */
 export function bootsOptions(doc: BlitzBuildDoc, count = 3): ItemOption[] {
+  const bought = (doc.situationalItems ?? []).filter(entry => isBoots(entry.itemId) && entry.itemId !== 1001 && entry.games > 0)
+  const total = bought.reduce((sum, entry) => sum + entry.games, 0)
+  if (total > 0) {
+    return [...bought].sort((a, b) => b.games - a.games).slice(0, count)
+      .map(entry => ({ itemIds: [entry.itemId], games: entry.games, pickRate: entry.games / total, winRate: entry.wins / entry.games }))
+  }
+  return bootsFromCores(doc, count)
+}
+
+/** Boots over every core path that carries a pair and every follow-up that is one: the reading when Blitz lists no items outside the cores. */
+function bootsFromCores(doc: BlitzBuildDoc, count: number): ItemOption[] {
   const byItem = new Map<number, Tally>()
   const add = (id: number, tally: Tally) => {
     const known = byItem.get(id)

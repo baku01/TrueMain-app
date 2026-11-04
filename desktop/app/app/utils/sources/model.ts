@@ -55,6 +55,47 @@ export interface BuildOptions {
   /** The fourth item onward: after that core when the source measures it so, else the lane's. */
   followUps: (core: ItemOption | null) => SlotGroup[]
   skills: SkillOption[]
+  /** The max orders over every game, when the source measures them apart from whole sequences (lolalytics). */
+  priorities?: SkillPriority[]
+}
+
+/** A max order (`Q › W › E`) over the games it was played in, however the points were spent on the way. */
+export interface SkillPriority extends Measure { order: string[] }
+
+/**
+ * The max orders to headline the skills with: the source's own, else the
+ * sequences' added up by the order they max — a whole sequence only counts
+ * the games that got to its end, which run longer and win more than the
+ * champion's games do, so it is no headline itself when better is measured.
+ */
+export function prioritiesOf(options: Pick<BuildOptions, 'skills' | 'priorities'>): SkillPriority[] {
+  if (options.priorities?.length) return options.priorities
+  const byOrder = new Map<string, SkillPriority>()
+  for (const skill of options.skills) {
+    const key = skill.order.join('')
+    const known = byOrder.get(key)
+    if (!known) {
+      byOrder.set(key, { order: skill.order, games: skill.games, pickRate: skill.pickRate, winRate: skill.winRate })
+      continue
+    }
+    const games = known.games + skill.games
+    known.winRate = games ? (known.winRate * known.games + skill.winRate * skill.games) / games : 0
+    known.games = games
+    known.pickRate += skill.pickRate
+  }
+  return [...byOrder.values()].sort((a, b) => b.games - a.games)
+}
+
+/**
+ * Each sequence's label: its first levels, as many as it takes for no two of
+ * them to read alike (three at least) — two orders that max alike often only
+ * part at level four or five.
+ */
+export function skillOpenings(skills: Pick<SkillOption, 'points'>[]): string[][] {
+  const letters = (points: number[], length: number) => points.slice(0, length).map(slot => 'QWER'[slot - 1] ?? '?')
+  let length = 3
+  while (length < 10 && new Set(skills.map(skill => letters(skill.points, length).join(''))).size < skills.length) length++
+  return skills.map(skill => letters(skill.points, length))
 }
 
 export const measure = (games: number, winRate: number, pickRate: number): Measure => ({ games, winRate, pickRate })
