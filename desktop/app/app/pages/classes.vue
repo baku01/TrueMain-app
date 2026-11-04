@@ -5,10 +5,10 @@ import { groupChampions, subclassesOf } from '~/utils/champion-classes'
 /**
  * Champions by class and subclass (Riot's scheme: a Mage is a Burst Mage, a
  * Battle Mage or an Artillery Mage), each with a line on what it does in a
- * game. A class is a card, its subclasses panels side by side inside it, so a
- * class reads at a glance instead of as a long column. The tabs and the filter
- * stay pinned while scrolling: a tab narrows to one class, the filter by name.
- * A click opens the champion's page.
+ * game. Laid out like the tier list: a row per class, its emblem and count in
+ * a column on the left, its subclasses side by side on the right, each with
+ * its line and its champions. The page header carries the filter by name and,
+ * under it, the classes as tabs. A click opens the champion's page.
  */
 const { t } = useT()
 const { champions, nameOf } = useChampionStatics()
@@ -40,8 +40,8 @@ const tabs = computed(() => [
 
 const count = (n: number) => t(n === 1 ? 'classes.champions.one' : 'classes.champions.other', { count: n })
 
-/** Subclass panels per row: two side by side, three for the classes that have three or more. */
-const columns = (n: number) => n === 1 ? '' : n === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-2 xl:grid-cols-3'
+/** Subclasses per row: two side by side, three for the classes that have three or more. */
+const columns = (n: number) => n === 1 ? '' : n === 2 ? '@3xl:grid-cols-2' : '@3xl:grid-cols-2 @6xl:grid-cols-3'
 
 /** Other subclasses of a champion, for its tooltip: a diver that is also a skirmisher says so. */
 function alsoTitle(id: number, here: SubclassId) {
@@ -52,31 +52,22 @@ function alsoTitle(id: number, here: SubclassId) {
 
 <template>
   <SharedPage :eyebrow="t('classes.eyebrow')" :title="t('classes.page.title')">
-    <div class="mx-auto max-w-6xl p-4 md:p-6">
-      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <PageHeader :eyebrow="t('classes.eyebrow')" :title="t('classes.page.title')" :description="t('classes.page.description')" />
-        <UInput
-          v-model="query"
-          icon="i-lucide-filter"
-          :placeholder="t('classes.search')"
-          :aria-label="t('classes.search')"
-          class="w-full md:w-64 md:shrink-0"
-        >
-          <template v-if="query" #trailing>
-            <UButton color="neutral" variant="link" size="sm" icon="i-lucide-x" :aria-label="t('classes.clear')" @click="query = ''" />
-          </template>
-        </UInput>
-      </div>
-
-      <!-- Pinned to the top of the scroll area, so changing class never means scrolling back up. -->
-      <div class="sticky top-0 z-10 -mx-4 mt-5 border-b border-default bg-muted/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
-        <div class="flex flex-wrap gap-1.5" role="group" :aria-label="t('classes.page.title')">
+    <div class="@container mx-auto max-w-6xl space-y-5 p-4 md:p-6">
+      <PageHeader :title="t('classes.page.title')" :description="t('classes.page.description')">
+        <template #actions>
+          <UInput v-model="query" icon="i-lucide-search" size="sm" :placeholder="t('classes.search')" :aria-label="t('classes.search')" class="w-60">
+            <template v-if="query" #trailing>
+              <UButton color="neutral" variant="link" size="sm" icon="i-lucide-x" :aria-label="t('classes.clear')" @click="query = ''" />
+            </template>
+          </UInput>
+        </template>
+        <template #tabs>
           <button
             v-for="tab in tabs"
             :key="tab.value"
             type="button"
-            class="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-primary"
-            :class="selected === tab.value ? 'border-primary/50 bg-primary/10 text-highlighted' : 'border-default text-muted hover:bg-elevated hover:text-default'"
+            class="tm-tab flex items-center gap-1.5"
+            :data-active="selected === tab.value || undefined"
             :aria-pressed="selected === tab.value"
             @click="selected = tab.value"
           >
@@ -84,44 +75,38 @@ function alsoTitle(id: number, here: SubclassId) {
             {{ tab.label }}
             <span class="text-[11px] tabular-nums text-dimmed">{{ tab.count }}</span>
           </button>
-        </div>
-      </div>
+        </template>
+      </PageHeader>
 
-      <div class="mt-6 space-y-8">
+      <div class="space-y-3">
         <section
           v-for="group in visible"
           :key="group.class.id"
           :aria-labelledby="`class-${group.class.id}`"
-          class="surface rounded-2xl p-4 md:p-5"
+          class="grid grid-cols-1 gap-2 @3xl:grid-cols-[11rem_minmax(0,1fr)]"
         >
-          <header class="flex items-start gap-4">
-            <span class="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+          <!-- The class: its emblem, name and count, and what it does. -->
+          <header class="surface flex flex-col gap-2 rounded-xl p-4">
+            <span class="tm-emblem grid size-11 place-items-center rounded-xl text-primary">
               <UIcon :name="group.class.icon" class="size-6" />
             </span>
-            <div class="min-w-0">
-              <h2 :id="`class-${group.class.id}`" class="flex items-baseline gap-2.5 text-xl font-semibold tracking-tight text-highlighted">
-                {{ t(`class.${group.class.id}.name`) }}
-                <span class="text-sm font-normal text-dimmed">{{ count(group.total) }}</span>
-              </h2>
-              <p class="mt-1 max-w-3xl text-sm leading-relaxed text-muted">{{ t(`class.${group.class.id}.desc`) }}</p>
-              <p v-if="group.class.id === 'marksman'" class="mt-2 flex max-w-3xl items-start gap-1.5 text-xs leading-relaxed text-dimmed">
-                <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />{{ t('classes.community') }}
-              </p>
-            </div>
+            <h2 :id="`class-${group.class.id}`" class="text-lg font-semibold leading-tight text-highlighted">{{ t(`class.${group.class.id}.name`) }}</h2>
+            <span class="text-xs tabular-nums text-dimmed">{{ count(group.total) }}</span>
+            <p class="text-xs leading-relaxed text-muted">{{ t(`class.${group.class.id}.desc`) }}</p>
+            <p v-if="group.class.id === 'marksman'" class="flex items-start gap-1.5 text-[11px] leading-relaxed text-dimmed">
+              <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />{{ t('classes.community') }}
+            </p>
           </header>
 
-          <div class="mt-4 grid gap-3" :class="columns(group.class.subclasses.length)">
-            <div
-              v-for="sub in group.subclasses"
-              :key="sub.subclass"
-              class="flex flex-col surface rounded-xl p-3.5"
-            >
-              <div v-if="group.class.subclasses.length > 1" class="mb-3">
-                <h3 class="flex items-center gap-2 text-sm font-semibold text-highlighted before:h-4 before:w-0.5 before:rounded-full before:bg-primary/70">
+          <!-- Its subclasses, side by side. -->
+          <div class="surface grid content-start gap-x-6 gap-y-5 rounded-xl p-4" :class="columns(group.class.subclasses.length)">
+            <div v-for="sub in group.subclasses" :key="sub.subclass" class="min-w-0">
+              <div v-if="group.class.subclasses.length > 1" class="mb-2.5">
+                <h3 class="flex items-center gap-2 text-sm font-semibold text-highlighted">
                   {{ t(`sub.${sub.subclass}.name`) }}
-                  <span class="rounded-full bg-accented px-1.5 text-[11px] font-normal tabular-nums text-muted">{{ sub.champions.length }}</span>
+                  <span class="text-[11px] font-normal tabular-nums text-dimmed">{{ sub.champions.length }}</span>
                 </h3>
-                <p class="mt-1 text-[13px] leading-snug text-muted">{{ t(`sub.${sub.subclass}.desc`) }}</p>
+                <p class="mt-0.5 text-xs leading-snug text-muted">{{ t(`sub.${sub.subclass}.desc`) }}</p>
               </div>
               <ul class="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1">
                 <li v-for="id in sub.champions" :key="id">
@@ -132,10 +117,10 @@ function alsoTitle(id: number, here: SubclassId) {
           </div>
         </section>
 
-        <section v-if="showUnclassified" aria-labelledby="class-unclassified" class="surface rounded-2xl p-4 md:p-5">
+        <section v-if="showUnclassified" aria-labelledby="class-unclassified" class="surface rounded-xl p-4">
           <h2 id="class-unclassified" class="flex items-baseline gap-2.5 text-base font-semibold text-highlighted">
             {{ t('classes.unclassified') }}
-            <span class="text-sm font-normal text-dimmed">{{ count(tree.unclassified.length) }}</span>
+            <span class="text-xs font-normal text-dimmed">{{ count(tree.unclassified.length) }}</span>
           </h2>
           <p class="mt-1 text-xs text-muted">{{ t('classes.unclassified.hint') }}</p>
           <ul class="mt-3 grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1">
