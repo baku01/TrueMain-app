@@ -4,14 +4,15 @@ import { readonly, shallowRef } from 'vue'
  * Which games the sources read (Settings): the current patch, the one before
  * it, a patch picked by its number (`patch:16.20`), or `auto` — the current
  * patch once it has games enough, the one before while it is new (a patch a
- * day old holds a hundredth of the last one's games). Kept across launches; changing it reloads
+ * day old holds a hundredth of the last one's games). The live patch until
+ * the player picks another. Kept across launches; changing it reloads
  * the window, like the source (`setDataSource`), so no session cache mixes
  * two windows.
  *
  * Only lolalytics takes a window. Blitz, op.gg and Tencent answer their own
  * latest patch whatever is asked; Settings says so.
  */
-export const DATA_WINDOWS = ['auto', 'current', 'previous'] as const
+export const DATA_WINDOWS = ['current', 'previous', 'auto'] as const
 /** A window by name, or one patch by its number (`patch:16.20`). */
 export type DataWindow = typeof DATA_WINDOWS[number] | `patch:${string}`
 
@@ -21,18 +22,20 @@ export const PATCHES_BACK = 10
 const isWindow = (value: string): value is DataWindow => (DATA_WINDOWS as readonly string[]).includes(value) || /^patch:\d+\.\d+$/.test(value)
 
 const STORAGE_KEY = 'truemain-data-window'
+/** Until the player picks otherwise, every page reads the live patch. */
+const DEFAULT_WINDOW: DataWindow = 'current'
 
 function readStored(): DataWindow {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored && isWindow(stored) ? stored : 'auto'
+    return stored && isWindow(stored) ? stored : DEFAULT_WINDOW
   }
   catch {
-    return 'auto'
+    return DEFAULT_WINDOW
   }
 }
 
-const current = shallowRef<DataWindow>(import.meta.client ? readStored() : 'auto')
+const current = shallowRef<DataWindow>(import.meta.client ? readStored() : DEFAULT_WINDOW)
 
 export const dataWindow = readonly(current)
 
