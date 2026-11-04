@@ -110,7 +110,8 @@ export interface ChampionAnalytics {
   synergies: LaneRows[]
   objectives: Objective[]
   /** Win rate by game length, shortest games first. */
-  gameLength: Measure[]
+  /** Win rate by game length, shortest first; each band's minutes when the source says (`[from, to]`, `to` null for the last). */
+  gameLength: (Measure & { minutes?: [number, number | null] })[]
   /** Win rate, pick rate, ban rate and games over time. */
   trend: { winRate: TrendSeries[], pickRate: TrendSeries[], banRate: TrendSeries[], games: TrendSeries[] }
   topPlayers: TopPlayer[]
@@ -120,6 +121,21 @@ export interface ChampionAnalytics {
   playerBase: { breadth: number, depth: number, players: number, label: string } | null
   /** Per-game averages (kills, gold, damage…) and the champion's rank among all on each. */
   stats: { key: string, value: number, rank: number | null }[]
+  /** Every summoner spell pair, measured. */
+  spellTable: (Measure & { spellIds: number[] })[]
+  /** The starting sets, and each starting item on its own. */
+  startingSets: ItemOption[]
+  startingItems: ItemOption[]
+  /** The items bought by ten minutes. */
+  earlyItems: ItemOption[]
+  /** The sets of one, two, three… items actually built, by size. */
+  itemSets: { size: number, options: ItemOption[] }[]
+  /** The items most bought, the ones winning most, and all of them, with the minute they are bought. */
+  itemLists: { popular: (ItemOption & { minute?: number })[], winning: (ItemOption & { minute?: number })[], all: (ItemOption & { minute?: number })[] }
+  /** Who the champion beats and loses to on its lane, most clearly. */
+  counters: { strong: number[], weak: number[] } | null
+  /** The best players on it over the last week: their win rate and games, how many, their average rank, and where the champion ranks in expert hands. */
+  best: { winRate: number, games: number, players: number, elo: string, expertRank: number } | null
 }
 
 export const emptyAnalytics = (): ChampionAnalytics => ({
@@ -141,6 +157,14 @@ export const emptyAnalytics = (): ChampionAnalytics => ({
   damage: null,
   playerBase: null,
   stats: [],
+  spellTable: [],
+  startingSets: [],
+  startingItems: [],
+  earlyItems: [],
+  itemSets: [],
+  itemLists: { popular: [], winning: [], all: [] },
+  counters: null,
+  best: null,
 })
 
 const LETTERS = 'QWER'

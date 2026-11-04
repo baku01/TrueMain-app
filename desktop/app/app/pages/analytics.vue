@@ -2,6 +2,7 @@
 import type { ChampionAnalytics } from '~/utils/sources/analytics'
 import { readAnalytics } from '~/utils/sources/analytics-read'
 import { LANES } from '~/utils/site-build'
+import { LOLALYTICS_REGIONS } from '~/utils/sources/lolalytics'
 
 /**
  * Analytics: one champion on one lane, detail by detail, from the source
@@ -25,6 +26,10 @@ const query = ref('')
 const championId = ref<number | null>(null)
 const position = ref<string | null>(null)
 const elo = ref<typeof ELOS[number]>('EMERALD_PLUS')
+/** lolalytics reads a region; the others read the whole world. */
+const region = ref<typeof LOLALYTICS_REGIONS[number]>('all')
+const regional = computed(() => dataSource.value === 'lolalytics')
+const regions = computed(() => LOLALYTICS_REGIONS.map(value => ({ value, label: value === 'all' ? t('analytics.region.all') : value.toUpperCase() })))
 const analytics = shallowRef<ChampionAnalytics | null>(null)
 const reading = ref(false)
 const failed = ref(false)
@@ -44,13 +49,13 @@ function pick(id: number) {
 }
 
 let latest = 0
-watch([championId, position, elo], async ([id, lane, bracket]) => {
+watch([championId, position, elo, region], async ([id, lane, bracket, area]) => {
   if (id === null || !lane) return
   const read = ++latest
   reading.value = true
   failed.value = false
   try {
-    const answer = await trackLoad(readAnalytics(id, lane, bracket))
+    const answer = await trackLoad(readAnalytics(id, lane, bracket, regional.value ? area : 'all'))
     if (read !== latest) return
     analytics.value = answer
     failed.value = !answer.header && !answer.options
@@ -66,6 +71,18 @@ watch([championId, position, elo], async ([id, lane, bracket]) => {
 /** The lanes to offer: the source's, with the share of games on each, or the five when it does not say. */
 const lanes = computed(() => (analytics.value?.lanes.length ? analytics.value.lanes : LANES.map(lane => ({ position: lane, share: 0 }))))
 const percent = (value: number) => `${Math.round(value * 1000) / 10}%`
+const ABILITIES = ['P', 'Q', 'W', 'E', 'R'] as const
+const average = computed(() => analytics.value?.header?.winRate ?? null)
+const rowsOf = (list: { itemIds: number[], games: number, pickRate: number, winRate: number, minute?: number }[]) => list
+const startingTabs = computed(() => [
+  { key: 'sets', label: t('analytics.tab.sets'), rows: rowsOf(analytics.value?.startingSets ?? []) },
+  { key: 'single', label: t('analytics.tab.single'), rows: rowsOf(analytics.value?.startingItems ?? []) },
+].filter(tab => tab.rows.length))
+const setTabs = computed(() => (analytics.value?.itemSets ?? []).filter(set => set.options.length).map(set => ({ key: String(set.size), label: t('analytics.tab.itemSet', { size: set.size }), rows: rowsOf(set.options) })))
+const listTabs = computed(() => {
+  const lists = analytics.value?.itemLists
+  return lists ? (['popular', 'winning', 'all'] as const).map(key => ({ key, label: t(`analytics.tab.${key}`), rows: rowsOf(lists[key]) })).filter(tab => tab.rows.length) : []
+})
 const trendEmpty = computed(() => !analytics.value || Object.values(analytics.value.trend).every(series => series.every(line => line.points.length === 0)))
 </script>
 
@@ -87,6 +104,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
           </ul>
         </div>
         <USelect v-model="elo" :items="ELOS.map(value => ({ value, label: t(`analytics.elo.${value}`) }))" size="sm" class="w-40" :aria-label="t('analytics.elo')" />
+        <USelect v-if="regional" v-model="region" :items="regions" size="sm" class="w-40" :aria-label="t('analytics.region')" />
         <UBadge :label="t('analytics.source', { source })" color="neutral" variant="subtle" class="ml-auto" />
       </div>
 
@@ -98,6 +116,11 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
           <div class="min-w-0">
             <h2 class="text-2xl font-semibold tracking-tight text-highlighted">{{ nameOf(championId) }}</h2>
             <p v-if="analytics?.patch" class="text-xs text-muted">Patch {{ analytics.patch }}</p>
+            <div v-if="championStatic(championId)" class="mt-1.5 flex gap-1">
+              <span v-for="key in ABILITIES" :key="key" class="relative size-7">
+                <GameTooltipChampionSpellIcon :spell="championStatic(championId)?.championSpells[key] ?? null" :width="28" :height="28" class="size-7 rounded" /><ItemRankBadge :value="key" />
+              </span>
+            </div>
           </div>
           <div class="ml-auto flex flex-wrap gap-1.5" role="group">
             <UButton
@@ -117,6 +140,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
 
         <template v-else-if="analytics">
           <AnalyticsHeader v-if="analytics.header" :header="analytics.header" :damage="analytics.damage" />
+          <AnalyticsSummaryLine :analytics="analytics" :champion-name="nameOf(championId)" :lane="t(LANE_KEYS[position ?? ''] ?? position ?? '')" />
 
           <AnalyticsSummaryBuild
             v-if="analytics.summary.common || analytics.summary.winning"
@@ -139,6 +163,23 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
               </AnalyticsSection>
               <AnalyticsSection :title="t('analytics.section.synergyTeam')" :empty="!analytics.synergies.length" :source="source">
                 <AnalyticsLaneRows :lanes="analytics.synergies" kind="synergy" />
+              </AnalyticsSection>
+              <div class="grid gap-4 @4xl:grid-cols-2">
+                <AnalyticsSection :title="t('analytics.section.spells')" :empty="!analytics.spellTable.length" :source="source">
+                  <AnalyticsItemTable :tabs="[{ key: 'spells', label: '', rows: analytics.spellTable }]" :summoners="summoners" :average="average" :limit="6" />
+                </AnalyticsSection>
+                <AnalyticsSection :title="t('analytics.section.starting')" :empty="!startingTabs.length" :source="source">
+                  <AnalyticsItemTable :tabs="startingTabs" :items="items" :average="average" :limit="6" />
+                </AnalyticsSection>
+                <AnalyticsSection :title="t('analytics.section.early')" :empty="!analytics.earlyItems.length" :source="source">
+                  <AnalyticsItemTable :tabs="[{ key: 'early', label: '', rows: rowsOf(analytics.earlyItems) }]" :items="items" :average="average" :limit="8" />
+                </AnalyticsSection>
+                <AnalyticsSection :title="t('analytics.section.itemSets')" :empty="!setTabs.length" :source="source">
+                  <AnalyticsItemTable :tabs="setTabs" :items="items" :average="average" :limit="8" />
+                </AnalyticsSection>
+              </div>
+              <AnalyticsSection :title="t('analytics.section.itemLists')" :empty="!listTabs.length" :source="source">
+                <AnalyticsItemTable :tabs="listTabs" :items="items" :average="average" :limit="15" />
               </AnalyticsSection>
               <AnalyticsSection :title="t('analytics.section.items')" :empty="!analytics.itemSlots.length" :source="source">
                 <AnalyticsItemSlots :slots="analytics.itemSlots" :items="items" />

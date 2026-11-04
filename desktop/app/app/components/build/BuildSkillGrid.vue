@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BuildSkillOrder } from '#shared/types/champions'
 import type { ChampionStaticData } from '#shared/types/static-data'
-import { SKILL_ROWS, skillGrid } from '~/utils/skill-grid'
+import { SKILL_ROWS, completeSkillGrid, skillGrid } from '~/utils/skill-grid'
 import type { SkillKey } from '~/utils/skill-grid'
 
 /**
@@ -21,7 +21,10 @@ const props = defineProps<{
 
 const { t } = useT()
 const KEY_BY_SLOT: Record<number, SkillKey> = { 1: 'Q', 2: 'W', 3: 'E', 4: 'R' }
-const measured = computed(() => (props.points?.length ? Object.fromEntries(props.points.map((slot, index) => [index + 1, KEY_BY_SLOT[slot]!])) as Record<number, SkillKey> : null))
+// A measured order covers the levels the source counted (fifteen at most): the rest are completed by the game's rules.
+const measured = computed(() => (props.points?.length
+  ? completeSkillGrid(Object.fromEntries(props.points.slice(0, 18).map((slot, index) => [index + 1, KEY_BY_SLOT[slot]!])) as Record<number, SkillKey>, props.skillOrder?.sequence ?? null)
+  : null))
 const grid = computed(() => measured.value ?? (props.skillOrder ? skillGrid(props.skillOrder.sequence) : null))
 const spell = (key: string) => props.championStatic.championSpells[key] ?? null
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)

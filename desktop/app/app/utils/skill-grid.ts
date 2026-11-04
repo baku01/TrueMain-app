@@ -29,3 +29,32 @@ export function skillGrid(priority: string[]): Record<number, SkillKey> | null {
   for (const [key, levels] of plan) for (const level of levels) order[level] = key as SkillKey
   return order
 }
+
+/** The most points a skill takes: five for a basic skill, three for the ultimate. */
+const MAX_RANK: Record<SkillKey, number> = { Q: 5, W: 5, E: 5, R: 3 }
+
+/**
+ * A measured order completed to level 18. The sources measure the first
+ * fifteen levels (lolalytics' `skill15`, Blitz's timelines); what is left is
+ * the game's to decide: the ultimate at 16, then the skills not yet maxed, in
+ * the priority's order — the given one, or the order the measured levels max
+ * them in.
+ */
+export function completeSkillGrid(measured: Record<number, SkillKey>, priority: string[] | null = null): Record<number, SkillKey> {
+  const grid = { ...measured }
+  const counts: Record<SkillKey, number> = { Q: 0, W: 0, E: 0, R: 0 }
+  for (const key of Object.values(grid)) counts[key]++
+  // The priority: given, or the basic skills by points taken, most first.
+  const given = (priority ?? []).map(key => key.toUpperCase()).filter((key): key is SkillKey => ['Q', 'W', 'E'].includes(key))
+  const order = given.length === 3 ? given : (['Q', 'W', 'E'] as SkillKey[]).sort((a, b) => counts[b] - counts[a])
+  for (let level = 1; level <= 18; level++) {
+    if (grid[level]) continue
+    const key = ULTIMATE_LEVELS.includes(level) && counts.R < MAX_RANK.R
+      ? 'R'
+      : order.find(skill => counts[skill] < MAX_RANK[skill]) ?? null
+    if (!key) break
+    grid[level] = key
+    counts[key]++
+  }
+  return grid
+}

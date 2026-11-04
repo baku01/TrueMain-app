@@ -8,7 +8,7 @@ import { truemainAnalytics } from '~/utils/sources/analytics-truemain'
 import { dataSource } from '~/utils/data-source'
 
 /** One champion's analytics on a lane, from the source Settings picked. */
-const READERS: Record<DataSource, (championId: number, position: string, eloBracket: unknown) => Promise<ChampionAnalytics>> = {
+const READERS: Record<DataSource, (championId: number, position: string, eloBracket: unknown, region?: string) => Promise<ChampionAnalytics>> = {
   truemain: truemainAnalytics,
   blitz: blitzAnalytics,
   opgg: opggAnalytics,
@@ -16,6 +16,7 @@ const READERS: Record<DataSource, (championId: number, position: string, eloBrac
   tencent: tencentAnalytics,
 }
 
-export function readAnalytics(championId: number, position: string, eloBracket: unknown): Promise<ChampionAnalytics> {
-  return READERS[dataSource.value](championId, position, eloBracket)
+/** `region` narrows the read to one server where the source measures them (lolalytics); `all` is every server. */
+export function readAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all'): Promise<ChampionAnalytics> {
+  return READERS[dataSource.value](championId, position, eloBracket, region)
 }

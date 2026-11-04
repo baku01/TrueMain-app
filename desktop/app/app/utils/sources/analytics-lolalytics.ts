@@ -52,8 +52,18 @@ const rate = (percent: number | string) => Number(percent) / 100
 /** lolalytics' trend brackets, in the order its charts list them. */
 const BRACKETS = ['all', 'diamond_plus', 'emerald', 'platinum', 'gold', 'silver', 'bronze', 'iron']
 
-export async function lolalyticsAnalytics(championId: number, position: string, eloBracket: unknown): Promise<ChampionAnalytics> {
-  const build = await readLolalyticsBuild(championId, position, eloBracket)
+type Row = [number | string, number, number, number, number?]
+/** A row of item ids (`1056_2003_2003` or one id) as the panel's option, rates as fractions, with the minute it is bought when given. */
+const itemRow = ([ids, wr, pr, games, minute]: Row) => ({
+  itemIds: String(ids).split('_').map(Number).filter(Boolean),
+  winRate: rate(wr),
+  pickRate: rate(pr),
+  games,
+  ...(minute !== undefined ? { minute } : {}),
+})
+
+export async function lolalyticsAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all'): Promise<ChampionAnalytics> {
+  const build = await readLolalyticsBuild(championId, position, eloBracket, region)
   const analytics = emptyAnalytics()
   if (!build) return analytics
   const header = build.header
@@ -124,12 +134,14 @@ export async function lolalyticsAnalytics(championId: number, position: string, 
     }
   })
 
+  // lolalytics' bands: 1 is under 15 minutes, then five minutes each, 7 is 40 and over.
+  const LENGTH_MINUTES: Record<string, [number, number | null]> = { 1: [0, 15], 2: [15, 20], 3: [20, 25], 4: [25, 30], 5: [30, 35], 6: [35, 40], 7: [40, null] }
   const time = build.sidebar?.time
   if (time) {
     const total = Object.values(time.time).reduce((sum, games) => sum + games, 0)
     analytics.gameLength = Object.keys(time.time).sort((a, b) => Number(a) - Number(b)).map((bucket) => {
       const games = time.time[bucket] ?? 0
-      return measure(games, games > 0 ? (time.timeWin[bucket] ?? 0) / games : 0, total > 0 ? games / total : 0)
+      return { ...measure(games, games > 0 ? (time.timeWin[bucket] ?? 0) / games : 0, total > 0 ? games / total : 0), minutes: LENGTH_MINUTES[bucket] }
     })
   }
 
@@ -155,7 +167,7 @@ export async function lolalyticsAnalytics(championId: number, position: string, 
   if (depth) analytics.playerBase = { players: depth[1], breadth: Number(depth[2]), depth: Number(depth[3]), label: depth[4] }
   analytics.stats = (build.sidebar?.stats?.stats ?? []).map(([key, , value, , rank]) => ({ key, value, rank: rank || null }))
 
-  const team = await readLolalyticsTeam(championId, position, eloBracket).catch(() => null)
+  const team = await readLolalyticsTeam(championId, position, eloBracket, region).catch(() => null)
   analytics.synergies = Object.entries(team?.team ?? {}).map(([lane, rows]): LaneRows => ({
     position: POSITION[lane] ?? lane.toUpperCase(),
     rows: rows.map(([id, wr, delta1, delta2, pr, n]) => ({ championId: id, winRate: rate(wr), pickRate: rate(pr), games: n, delta1, delta2 })),
@@ -163,5 +175,27 @@ export async function lolalyticsAnalytics(championId: number, position: string, 
 
   const damage = header.damage
   analytics.damage = damage ? damageShares(damage.physical ?? 0, damage.magic ?? 0, damage.true ?? 0) : null
+  analytics.spellTable = (build.spells ?? []).map(([ids, wr, pr, games]) => ({ spellIds: ids.split('_').map(Number), winRate: rate(wr), pickRate: rate(pr), games }))
+  analytics.startingSets = (build.startSet ?? []).map(row => itemRow(row as Row))
+  analytics.startingItems = (build.startItem ?? []).map(itemRow)
+  analytics.earlyItems = (build.earlyItem ?? []).map(itemRow)
+  const total = header.n || 1
+  analytics.itemSets = Object.entries(build.itemSets ?? {})
+    .map(([key, sets]) => ({
+      size: Number(/(\d+)$/.exec(key)?.[1] ?? 0),
+      options: Object.entries(sets)
+        .map(([ids, [games, wins]]) => ({ itemIds: ids.split('_').map(Number).filter(Boolean), games, winRate: games ? wins / games : 0, pickRate: games / total }))
+        .sort((a, b) => b.games - a.games),
+    }))
+    .filter(group => group.size > 0 && group.options.length > 0)
+    .sort((a, b) => a.size - b.size)
+  analytics.itemLists = {
+    popular: (build.popularItem ?? []).map(itemRow),
+    winning: (build.winningItem ?? []).map(itemRow),
+    all: (build.item ?? []).map(itemRow),
+  }
+  analytics.counters = header.counters ? { strong: header.counters.strong, weak: header.counters.weak } : null
+  const top = build.sidebar?.topStats
+  analytics.best = top ? { winRate: rate(top.topwin), games: top.toppick, players: top.topcount, elo: top.topelo, expertRank: top.toprank } : null
   return analytics
 }

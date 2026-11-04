@@ -53,7 +53,17 @@ export interface LolalyticsBuild {
   summary?: Record<'pick' | 'win', LolalyticsSummary>
   skill6?: [number, number, number, number][]
   skill10?: [number, number, number, number][]
+  /** Every starting item, every item bought by ten minutes, and the items most bought, winning most, and all: `[id, win rate, pick rate, games, minute?]`. */
+  startItem?: Row[]
+  earlyItem?: Row[]
+  popularItem?: Row[]
+  winningItem?: Row[]
+  item?: Row[]
+  /** The sets of one, two and three items actually built, boots included: `{ "a_b": [games, wins] }`. */
+  itemSets?: Record<string, Record<string, [number, number]>>
   sidebar?: {
+    /** The best players on the champion over the last seven days. */
+    topStats?: { toppick: number, toprank: number, topcount: number, topwin: number, topelo: string }
     depth?: [number, number, string, string, string]
     stats?: { stats: [string, number, number, number, number][] }
     topList?: [number, string, string, string, string, string, string, Record<string, string>][]
@@ -85,13 +95,16 @@ async function read<T>(query: Record<string, string>): Promise<T> {
 const builds = new Map<string, Promise<LolalyticsBuild | null>>()
 
 /** The whole `build-full` read for a champion's lane, kept for the session; null when lolalytics has no such champion. */
-export function readLolalyticsBuild(championId: number, position: string, eloBracket?: unknown): Promise<LolalyticsBuild | null> {
-  const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}`
+/** lolalytics' regions: `all` (global) or one server. */
+export const LOLALYTICS_REGIONS = ['all', 'br', 'na', 'euw', 'eune', 'kr', 'lan', 'las', 'oce', 'tr', 'ru', 'jp', 'vn', 'tw', 'sg', 'ph', 'th', 'me'] as const
+
+export function readLolalyticsBuild(championId: number, position: string, eloBracket?: unknown, region = 'all'): Promise<LolalyticsBuild | null> {
+  const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}:${region}`
   let answer = builds.get(key)
   if (!answer) {
     answer = championSlug(championId).then(async (slug) => {
       if (!slug) return null
-      const read_ = await read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket) })
+      const read_ = await read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region })
       return read_.header ? read_ : null
     })
     answer.catch(() => builds.delete(key))
@@ -274,11 +287,11 @@ export interface LolalyticsTeam { team?: Record<string, [number, number, number,
 
 const teams = new Map<string, Promise<LolalyticsTeam | null>>()
 
-export function readLolalyticsTeam(championId: number, position: string, eloBracket?: unknown): Promise<LolalyticsTeam | null> {
-  const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}`
+export function readLolalyticsTeam(championId: number, position: string, eloBracket?: unknown, region = 'all'): Promise<LolalyticsTeam | null> {
+  const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}:${region}`
   let answer = teams.get(key)
   if (!answer) {
-    answer = championSlug(championId).then(slug => (slug ? read<LolalyticsTeam>({ ep: 'build-team', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket) }) : null))
+    answer = championSlug(championId).then(slug => (slug ? read<LolalyticsTeam>({ ep: 'build-team', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region }) : null))
     answer.catch(() => teams.delete(key))
     keepBounded(teams, key, answer)
   }
