@@ -48,50 +48,54 @@ const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-x-10 gap-y-5">
-    <div v-if="!gridOnly" class="shrink-0 space-y-3">
-      <h3 class="text-sm font-semibold text-highlighted">{{ t('build.skillGrid.maxOrder') }}</h3>
-      <p v-if="skillOrder && skillOrder.games > 0" class="flex items-center gap-2 text-xs">
-        <span class="rounded px-1.5 py-0.5 font-bold tabular-nums ring-1 ring-inset ring-current/25" :class="winRateTone(skillOrder.winRate)">{{ formatPercentage(skillOrder.winRate, 1) }}</span>
-        <span class="uppercase tracking-wide text-muted">{{ t('build.skillGrid.games', { games: formatCount(skillOrder.games) }) }}</span>
-      </p>
-      <div v-if="skillOrder?.sequence.length" class="flex items-center gap-1.5">
-        <template v-for="(key, index) in skillOrder.sequence" :key="`${key}-${index}`">
-          <div class="relative size-10 shrink-0 rounded-lg ring-2" :class="colorOf(key).ring">
-            <GameTooltipChampionSpellIcon :spell="spell(key)" :width="40" :height="40" class="size-10 rounded-lg" />
-            <span class="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded bg-default text-[10px] font-extrabold" :class="colorOf(key).text">{{ key }}</span>
-          </div>
-          <UIcon v-if="index < skillOrder.sequence.length - 1" name="i-lucide-chevron-right" class="size-4 shrink-0 text-dimmed" />
-        </template>
+  <!-- Side by side and centred where there is room; the max order over the grid, both centred, where there is not. -->
+  <div class="@container w-full">
+    <div class="flex flex-col items-center gap-5 @3xl:flex-row @3xl:justify-center @3xl:gap-10">
+      <div v-if="!gridOnly" class="flex shrink-0 flex-col items-center gap-3 text-center @3xl:items-start @3xl:text-left">
+        <h3 class="text-sm font-semibold text-highlighted">{{ t('build.skillGrid.maxOrder') }}</h3>
+        <p v-if="skillOrder && skillOrder.games > 0" class="flex items-center gap-2 text-xs">
+          <span class="rounded px-1.5 py-0.5 font-bold tabular-nums ring-1 ring-inset ring-current/25" :class="winRateTone(skillOrder.winRate)">{{ formatPercentage(skillOrder.winRate, 1) }}</span>
+          <span class="uppercase tracking-wide text-muted">{{ t('build.skillGrid.games', { games: formatCount(skillOrder.games) }) }}</span>
+        </p>
+        <div v-if="skillOrder?.sequence.length" class="flex items-center gap-1.5">
+          <template v-for="(key, index) in skillOrder.sequence" :key="`${key}-${index}`">
+            <div class="relative size-10 shrink-0 rounded-lg ring-2" :class="colorOf(key).ring">
+              <GameTooltipChampionSpellIcon :spell="spell(key)" :width="40" :height="40" class="size-10 rounded-lg" />
+              <span class="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded bg-default text-[10px] font-extrabold" :class="colorOf(key).text">{{ key }}</span>
+            </div>
+            <UIcon v-if="index < skillOrder.sequence.length - 1" name="i-lucide-chevron-right" class="size-4 shrink-0 text-dimmed" />
+          </template>
+        </div>
+        <p v-else class="text-sm text-muted">{{ t('common.noData') }}</p>
       </div>
-      <p v-else class="text-sm text-muted">{{ t('common.noData') }}</p>
-    </div>
 
-    <div v-if="grid" class="min-w-0 flex-1 overflow-x-auto">
-      <div
-        class="grid w-full max-w-[60rem] grid-flow-row gap-1.5 text-xs font-bold"
-        style="grid-template-columns: 2.25rem repeat(18, minmax(1.5rem, 1fr))"
-        role="table"
-        :aria-label="t('build.skillGrid.label')"
-      >
-        <span role="columnheader" />
-        <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
-        <template v-for="key in SKILL_ROWS" :key="key">
-          <span role="rowheader" class="grid place-items-center">
-            <GameTooltipChampionSpellIcon v-if="spell(key)" :spell="spell(key)" :width="32" :height="32" class="size-8 rounded-md" />
-            <span v-else class="text-muted">{{ key }}</span>
-          </span>
-          <span
-            v-for="level in LEVELS"
-            :key="`${key}-${level}`"
-            role="cell"
-            class="grid aspect-square max-h-9 w-full max-w-9 place-items-center self-center justify-self-center rounded-md"
-            :class="grid[level] === key ? [colorOf(key).text, colorOf(key).cell, 'ring-1 ring-inset'] : 'bg-accented/40'"
-          >{{ grid[level] === key ? key : '' }}</span>
-        </template>
+      <div v-if="grid" class="w-full min-w-0 max-w-[60rem] overflow-x-auto @3xl:flex-1">
+        <div
+          class="mx-auto grid w-full min-w-[23rem] grid-flow-row gap-1 text-[10px] font-bold @lg:text-[11px] @xl:gap-1.5 @xl:text-xs"
+          style="grid-template-columns: 1.75rem repeat(18, minmax(1rem, 1fr))"
+          role="table"
+          :aria-label="t('build.skillGrid.label')"
+        >
+          <span role="columnheader" />
+          <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
+          <template v-for="key in SKILL_ROWS" :key="key">
+            <span role="rowheader" class="grid place-items-center">
+              <GameTooltipChampionSpellIcon v-if="spell(key)" :spell="spell(key)" :width="32" :height="32" class="size-6 rounded-md @lg:size-7 @xl:size-8" />
+              <span v-else class="text-muted">{{ key }}</span>
+            </span>
+            <span
+              v-for="level in LEVELS"
+              :key="`${key}-${level}`"
+              role="cell"
+              class="grid aspect-square max-h-9 w-full max-w-9 place-items-center self-center justify-self-center rounded-md"
+              :class="grid[level] === key ? [colorOf(key).text, colorOf(key).cell, 'ring-1 ring-inset'] : 'bg-accented/40'"
+            >{{ grid[level] === key ? key : '' }}</span>
+          </template>
+        </div>
       </div>
-      <p v-if="note" class="mt-3 max-w-[60rem] text-[11px] leading-relaxed text-dimmed">{{ note }}</p>
-      <p v-else-if="!measured" class="mt-1.5 text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
     </div>
+    <!-- What the numbers count, centred under the whole block, as the header over it is. -->
+    <p v-if="note" class="mx-auto mt-4 max-w-[48rem] text-center text-[11px] leading-relaxed text-dimmed">{{ note }}</p>
+    <p v-else-if="grid && !measured" class="mx-auto mt-3 text-center text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
   </div>
 </template>

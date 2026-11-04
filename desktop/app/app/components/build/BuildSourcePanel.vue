@@ -138,25 +138,28 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
         </section>
       </div>
 
-      <section v-if="championStatic && skills.length" class="surface space-y-3 rounded-2xl p-4 [grid-area:skills]">
-        <header class="flex flex-wrap items-center gap-2 pb-2">
-          <h3 class="stat-label mr-2">{{ t('panel.skills') }}</h3>
-          <button
-            v-for="(option, index) in skills"
-            :key="index"
-            type="button"
-            class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition-colors"
-            :class="skill === index ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/20 hover:bg-accented/50'"
-            @click="skill = index"
-          >
-            <span class="flex gap-0.5 font-mono text-[11px] font-bold">
-              <span v-for="(key, at) in openings[index]" :key="at" :class="SKILL_TEXT[key]">{{ key }}</span>
-            </span>
-            <span class="font-semibold tabular-nums" :class="tone(option.winRate)">{{ percent(option.winRate) }}</span>
-            <span class="tabular-nums text-dimmed">{{ t('panel.skillsGames', { games: formatCount(option.games) }) }}</span>
-          </button>
-        </header>
-        <BuildSkillGrid :skill-order="headline" :points="skills[skill]!.points" :champion-static="championStatic" :note="t('panel.skillsNote')" />
+      <section v-if="championStatic && skills.length" class="surface rounded-2xl p-4 [grid-area:skills]">
+        <!-- One centred column: the sequences, the max order and grid, and the note share its axis. -->
+        <div class="mx-auto w-full max-w-[68rem] space-y-3">
+          <header class="flex flex-wrap items-center justify-center gap-2 pb-2">
+            <h3 class="stat-label mr-2">{{ t('panel.skills') }}</h3>
+            <button
+              v-for="(option, index) in skills"
+              :key="index"
+              type="button"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition-colors"
+              :class="skill === index ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/20 hover:bg-accented/50'"
+              @click="skill = index"
+            >
+              <span class="flex gap-0.5 font-mono text-[11px] font-bold">
+                <span v-for="(key, at) in openings[index]" :key="at" :class="SKILL_TEXT[key]">{{ key }}</span>
+              </span>
+              <span class="font-semibold tabular-nums" :class="tone(option.winRate)">{{ percent(option.winRate) }}</span>
+              <span class="tabular-nums text-dimmed">{{ t('panel.skillsGames', { games: formatCount(option.games) }) }}</span>
+            </button>
+          </header>
+          <BuildSkillGrid :skill-order="headline" :points="skills[skill]!.points" :champion-static="championStatic" :note="t('panel.skillsNote')" />
+        </div>
       </section>
     </div>
   </div>
