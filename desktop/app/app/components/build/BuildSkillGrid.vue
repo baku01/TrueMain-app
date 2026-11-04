@@ -48,8 +48,8 @@ const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
-    <div v-if="!gridOnly" class="shrink-0 space-y-2">
+  <div class="flex flex-wrap items-center gap-x-10 gap-y-5">
+    <div v-if="!gridOnly" class="shrink-0 space-y-3">
       <h3 class="text-sm font-semibold text-highlighted">{{ t('build.skillGrid.maxOrder') }}</h3>
       <p v-if="skillOrder && skillOrder.games > 0" class="flex items-center gap-2 text-xs">
         <span class="rounded px-1.5 py-0.5 font-bold tabular-nums ring-1 ring-inset ring-current/25" :class="winRateTone(skillOrder.winRate)">{{ formatPercentage(skillOrder.winRate, 1) }}</span>
@@ -67,30 +67,30 @@ const colorOf = (key: string) => COLORS[key as SkillKey] ?? COLORS.R
       <p v-else class="text-sm text-muted">{{ t('common.noData') }}</p>
     </div>
 
-    <div v-if="grid" class="min-w-0 max-w-full overflow-x-auto">
+    <div v-if="grid" class="min-w-0 flex-1 overflow-x-auto">
       <div
-        class="grid w-fit grid-flow-row gap-1 text-[11px] font-bold"
-        style="grid-template-columns: 1.75rem repeat(18, 1.5rem)"
+        class="grid w-full max-w-[60rem] grid-flow-row gap-1.5 text-xs font-bold"
+        style="grid-template-columns: 2.25rem repeat(18, minmax(1.5rem, 1fr))"
         role="table"
         :aria-label="t('build.skillGrid.label')"
       >
         <span role="columnheader" />
-        <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-5 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
+        <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
         <template v-for="key in SKILL_ROWS" :key="key">
-          <span role="rowheader" class="grid size-7 place-items-center">
-            <GameTooltipChampionSpellIcon v-if="spell(key)" :spell="spell(key)" :width="24" :height="24" class="size-6 rounded" />
+          <span role="rowheader" class="grid place-items-center">
+            <GameTooltipChampionSpellIcon v-if="spell(key)" :spell="spell(key)" :width="32" :height="32" class="size-8 rounded-md" />
             <span v-else class="text-muted">{{ key }}</span>
           </span>
           <span
             v-for="level in LEVELS"
             :key="`${key}-${level}`"
             role="cell"
-            class="grid size-6 place-items-center self-center rounded"
+            class="grid aspect-square max-h-9 w-full max-w-9 place-items-center self-center justify-self-center rounded-md"
             :class="grid[level] === key ? [colorOf(key).text, colorOf(key).cell, 'ring-1 ring-inset'] : 'bg-accented/40'"
           >{{ grid[level] === key ? key : '' }}</span>
         </template>
       </div>
-      <p v-if="note" class="mt-1.5 max-w-[34rem] text-[11px] text-dimmed">{{ note }}</p>
+      <p v-if="note" class="mt-3 max-w-[60rem] text-[11px] leading-relaxed text-dimmed">{{ note }}</p>
       <p v-else-if="!measured" class="mt-1.5 text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
     </div>
   </div>

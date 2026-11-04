@@ -138,14 +138,14 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
         </section>
       </div>
 
-      <section v-if="championStatic && skills.length" class="surface space-y-2 rounded-2xl p-3 [grid-area:skills]">
-        <header class="flex flex-wrap items-center gap-1.5">
+      <section v-if="championStatic && skills.length" class="surface space-y-3 rounded-2xl p-4 [grid-area:skills]">
+        <header class="flex flex-wrap items-center gap-2 pb-2">
           <h3 class="stat-label mr-2">{{ t('panel.skills') }}</h3>
           <button
             v-for="(option, index) in skills"
             :key="index"
             type="button"
-            class="flex items-center gap-2 rounded-lg px-2.5 py-1 text-xs transition-colors"
+            class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition-colors"
             :class="skill === index ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/20 hover:bg-accented/50'"
             @click="skill = index"
           >
