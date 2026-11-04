@@ -2,7 +2,8 @@ import type { TopPlayer } from '~/utils/sources/analytics'
 import type { DataSource } from '~/utils/data-source'
 import type { Obj } from '~/utils/sources/opgg'
 import { dataSource } from '~/utils/data-source'
-import { championSlug } from '~/utils/sources/champions'
+import { readPlayerAccount, splitRiotId } from '~/utils/blitz/player'
+import { championSlug, liveVersion } from '~/utils/sources/champions'
 import { readLolalyticsBuild } from '~/utils/sources/lolalytics'
 import { asList, callOpgg, num } from '~/utils/sources/opgg'
 
@@ -38,15 +39,46 @@ async function opggPlayers(championId: number): Promise<TopPlayer[]> {
   }).sort((a, b) => b.games - a.games)
 }
 
+/** How many of a list's players get their account's icon: the ones a page shows first. */
+const ICONS_READ = 15
+const icons = new Map<string, Promise<string | null>>()
+
+/**
+ * A player's profile icon, read from their account through Blitz (lolalytics
+ * lists names only): Data Dragon's picture for the icon the account wears.
+ * Kept for the session; null for an account Blitz does not find.
+ */
+function iconOf(name: string, region: string | null): Promise<string | null> {
+  const key = `${region}:${name}`
+  let read = icons.get(key)
+  if (!read) {
+    const id = splitRiotId(name)
+    read = id && region
+      ? Promise.all([readPlayerAccount(region, id.gameName, id.tagLine), liveVersion()])
+          .then(([account, version]) => (account?.profileIconId != null ? `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${account.profileIconId}.png` : null))
+          .catch(() => null)
+      : Promise.resolve(null)
+    icons.set(key, read)
+  }
+  return read
+}
+
 async function lolalyticsPlayers(championId: number, position: string): Promise<TopPlayer[]> {
   const build = await readLolalyticsBuild(championId, position)
-  return (build?.sidebar?.topList ?? []).map(([, name, region, wr, games, elo]) => ({
+  const players = (build?.sidebar?.topList ?? []).map(([, name, region, wr, games, elo]) => ({
     name,
     region: region ? region.toUpperCase() : null,
     winRate: Number(wr) / 100,
     games: Number(games),
     rank: elo || null,
   }))
+  return await withIcons(players)
+}
+
+/** Players listed by name (lolalytics), each of the first ones with their account's icon. */
+export async function withIcons(players: TopPlayer[]): Promise<TopPlayer[]> {
+  const portraits = await Promise.all(players.slice(0, ICONS_READ).map(player => iconOf(player.name, player.region?.toLowerCase() ?? null)))
+  return players.map((player, index) => ({ ...player, portraitUrl: player.portraitUrl ?? portraits[index] ?? null }))
 }
 
 const READERS: Partial<Record<DataSource, (championId: number, position: string) => Promise<TopPlayer[]>>> = {

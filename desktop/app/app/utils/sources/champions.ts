@@ -76,6 +76,11 @@ export async function currentPatch(): Promise<string> {
   return (await rosterOnce()).patch
 }
 
+/** Data Dragon's whole live version (`16.22.1`): its image paths take nothing shorter. */
+export async function liveVersion(): Promise<string> {
+  return (await rosterOnce()).version
+}
+
 /** Every champion's classes, ratings and attack range, by id. */
 export async function championTraits(): Promise<Map<number, Champion>> {
   return (await rosterOnce()).traits
