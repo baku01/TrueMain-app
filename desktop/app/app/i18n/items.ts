@@ -4,6 +4,7 @@ import type { MessageDictionary } from '#common/utils/i18n'
 export default {
   'en': {
     'items.page.title': 'Items & runes',
+    'items.page.description': 'Every item and rune of the live patch, with what it does and what it is built from.',
     'items.tab.items': 'Items',
     'items.tab.runes': 'Runes',
     'items.search': 'Search an item…',
@@ -35,6 +36,7 @@ export default {
   },
   'pt-BR': {
     'items.page.title': 'Itens e runas',
+    'items.page.description': 'Todos os itens e runas do patch em vigor, com o que fazem e do que são feitos.',
     'items.tab.items': 'Itens',
     'items.tab.runes': 'Runas',
     'items.search': 'Buscar um item…',

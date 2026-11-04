@@ -85,7 +85,7 @@ const TONE_BAR = { good: 'bg-primary', bad: 'bg-error', even: 'bg-(--ui-text-dim
         <div class="grid gap-3 lg:grid-cols-2">
           <div v-for="group in stats.groups" :key="group.key" class="rounded-xl bg-elevated/50 p-3 ring-1 ring-default">
             <header class="mb-2.5 flex items-center gap-2">
-              <h3 class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">{{ t(`dash.stats.group.${group.key}`) }}</h3>
+              <h3 class="stat-label">{{ t(`dash.stats.group.${group.key}`) }}</h3>
               <span class="ml-auto text-[11px] font-semibold" :class="TONE_TEXT[tone(group.edge)]">{{ verdict(group.edge) }}</span>
             </header>
             <ul class="space-y-2">

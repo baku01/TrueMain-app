@@ -102,7 +102,7 @@ watch(() => props.note, () => {
       </div>
     </div>
 
-    <blockquote v-if="note.intro && !query && !section && !kind" class="note-html rounded-xl border border-default bg-default/40 p-4 text-sm leading-relaxed text-toned" v-html="note.intro" />
+    <blockquote v-if="note.intro && !query && !section && !kind" class="note-html surface rounded-xl p-4 text-sm leading-relaxed text-toned" v-html="note.intro" />
 
     <section v-for="entry in visible" :key="entry.id" class="space-y-3">
       <h2 v-if="entry.title" class="flex items-center gap-2">
@@ -114,12 +114,12 @@ watch(() => props.note, () => {
           <UIcon :name="KIND_STYLE[group.kind].icon" class="size-4" />{{ t(`patchnotes.kind.${group.kind}`) }}
           <span class="rounded-full bg-accented px-1.5 text-[10px] font-normal text-muted">{{ group.blocks.length }}</span>
         </h3>
-        <h3 v-else-if="groupsOf(entry).length > 1" class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t('patchnotes.kind.other') }}</h3>
+        <h3 v-else-if="groupsOf(entry).length > 1" class="stat-label">{{ t('patchnotes.kind.other') }}</h3>
         <div class="grid grid-cols-[repeat(auto-fill,minmax(22rem,1fr))] gap-3">
           <article
             v-for="block in group.blocks"
             :key="block.id"
-            class="relative overflow-hidden rounded-xl border border-default bg-default/40 p-4"
+            class="relative overflow-hidden surface rounded-xl p-4"
             :class="block.wide ? 'col-span-full' : ''"
           >
             <span v-if="group.kind" class="absolute inset-y-0 left-0 w-1" :class="KIND_STYLE[group.kind].bar" aria-hidden="true" />

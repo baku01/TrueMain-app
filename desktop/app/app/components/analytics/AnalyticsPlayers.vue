@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatTierName } from '#common/utils/tiers'
 import PlayerAvatar from '~/components/PlayerAvatar.vue'
 import type { TopPlayer } from '~/utils/sources/analytics'
 import { formatPercentage } from '#shared/utils/ddragon'
@@ -13,6 +14,12 @@ import { formatPercentage } from '#shared/utils/ddragon'
 defineProps<{ players: TopPlayer[], selectable?: boolean, pending?: string | null, missing?: ReadonlySet<string>, compact?: boolean }>()
 const emit = defineEmits<{ select: [player: TopPlayer] }>()
 const { t } = useT()
+/** A rank as the app names tiers (`challenger` → Desafiante); the division and LP after it kept as written. */
+const rankName = (rank: string | null) => {
+  if (!rank) return null
+  const [tier, ...rest] = rank.split(' ')
+  return [formatTierName(tier!.toUpperCase()), ...rest].join(' ')
+}
 </script>
 
 <template>
@@ -31,7 +38,7 @@ const { t } = useT()
       <PlayerAvatar :src="player.portraitUrl" :name="player.name" :size="compact ? 24 : 28" class="rounded-md" />
       <span class="min-w-0 flex-1">
         <span class="block truncate font-semibold text-highlighted" :class="compact ? 'text-xs' : 'text-sm'" :title="player.name">{{ player.name }}</span>
-        <span class="block truncate uppercase text-dimmed" :class="compact ? 'text-[10px]' : 'text-[11px]'">{{ [player.team, player.region, player.rank].filter(Boolean).join(' · ') }}</span>
+        <span class="block truncate text-dimmed" :class="compact ? 'text-[10px]' : 'text-[11px]'">{{ [player.team, player.region, rankName(player.rank)].filter(Boolean).join(' · ') }}</span>
         <span v-if="missing?.has(player.name)" class="block text-[10px] text-warning">{{ t('analytics.players.noGame') }}</span>
       </span>
       <UIcon v-if="pending === player.name" name="i-lucide-loader-circle" class="size-4 shrink-0 text-dimmed" />

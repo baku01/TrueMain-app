@@ -99,7 +99,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
         <p v-if="championId === null" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('probuild.champion.pick') }}</p>
 
         <template v-else-if="result">
-          <header class="flex flex-wrap items-center gap-4 rounded-xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
+          <header class="flex flex-wrap items-center gap-4 surface rounded-xl bg-gradient-to-br from-primary/10 via-[var(--tm-pane)] to-[var(--tm-pane)] p-4">
             <img v-if="portraitOf(championId)" :src="portraitOf(championId)!" alt="" width="56" height="56" class="img-skeleton size-14 rounded-xl ring-1 ring-default">
             <div class="min-w-0">
               <h2 class="text-xl font-semibold tracking-tight text-highlighted">{{ nameOf(championId) }}</h2>
@@ -126,7 +126,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
               />
             </div>
 
-            <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4">
+            <section class="space-y-3 surface rounded-xl p-4">
               <h3 class="stat-label">{{ t('probuild.keystones') }}</h3>
               <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 <li v-for="tally in keystones" :key="tally.id" class="flex items-center gap-3 rounded-lg border border-default px-3 py-2">
@@ -151,7 +151,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
               </ul>
             </section>
 
-            <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4">
+            <section class="space-y-3 surface rounded-xl p-4">
               <h3 class="stat-label">{{ t('probuild.items') }}</h3>
               <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 <li v-for="tally in mainItems" :key="tally.id" class="flex items-center gap-3 rounded-lg border border-default px-3 py-2">
@@ -175,7 +175,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
               </template>
             </section>
 
-            <section class="space-y-3 rounded-xl border border-default bg-default/40 p-4">
+            <section class="space-y-3 surface rounded-xl p-4">
               <h3 class="stat-label">{{ t('probuild.spells') }}</h3>
               <ul class="flex flex-wrap gap-2">
                 <li v-for="pair in result.spells.slice(0, 4)" :key="pair.spells.join('-')" class="flex items-center gap-3 rounded-lg border border-default px-3 py-2">

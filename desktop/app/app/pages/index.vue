@@ -142,11 +142,9 @@ watch(() => state.value.phase, (next, previous) => {
         :loading="pending"
       >
         <template #header>
-          <div class="flex items-center gap-3">
-            <UIcon name="i-lucide-house" class="size-6 text-primary" />
-            <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('dash.title') }}</h1>
-            <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="xs" />
-            <div class="ml-auto flex items-center gap-2">
+          <PageHeader :title="t('dash.title')" :description="viewing ? t('dash.viewing.description') : t('dash.description')">
+            <template #actions>
+              <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="sm" />
               <UTabs
                 v-model="filter"
                 :items="queueTabs"
@@ -165,8 +163,8 @@ watch(() => state.value.phase, (next, previous) => {
                 :aria-label="t('dash.refresh')"
                 @click="refresh(true)"
               />
-            </div>
-          </div>
+            </template>
+          </PageHeader>
           <UAlert
             v-if="viewing && (other.status.value === 'missing' || other.status.value === 'error')"
             color="neutral"

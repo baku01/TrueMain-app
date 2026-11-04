@@ -33,7 +33,7 @@ const laneLabel = computed(() => positionLabel(props.position, { short: true }))
       <div class="size-12 overflow-hidden rounded-lg bg-elevated ring-2 ring-primary">
         <img v-if="championId && portraitOf(championId)" :src="portraitOf(championId)!" :alt="nameOf(championId)" :title="nameOf(championId)" class="img-skeleton size-full object-cover">
       </div>
-      <span class="text-[10px] font-semibold uppercase tracking-widest text-dimmed">{{ t('draft.duel.vs') }}</span>
+      <span class="stat-label">{{ t('draft.duel.vs') }}</span>
       <!-- No opponent yet is an empty slot, not a question: it fills when their laner picks. -->
       <div class="size-12 overflow-hidden rounded-lg bg-elevated ring-2" :class="opponentId ? 'ring-primary/35' : 'ring-default'">
         <img v-if="opponentId && portraitOf(opponentId)" :src="portraitOf(opponentId)!" :alt="nameOf(opponentId)" :title="nameOf(opponentId)" class="img-skeleton size-full object-cover">

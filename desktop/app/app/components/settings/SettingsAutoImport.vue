@@ -9,7 +9,7 @@ const PARTS = ['runes', 'items', 'spells'] as const
 </script>
 
 <template>
-  <section class="space-y-4 rounded-xl border border-default bg-default/40 p-5">
+  <section class="space-y-4 surface rounded-xl p-5">
     <header class="space-y-1">
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-download" class="size-5 text-primary" />

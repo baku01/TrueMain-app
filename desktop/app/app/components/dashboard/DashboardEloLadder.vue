@@ -74,7 +74,7 @@ const format = (value: number, share?: boolean) => (share ? `${Math.round(value 
 <template>
   <div v-if="rows.length" class="rounded-xl bg-elevated/50 p-3 ring-1 ring-default">
     <header class="mb-2 flex flex-wrap items-center gap-2">
-      <h3 class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">{{ t('dash.elo.title') }}</h3>
+      <h3 class="stat-label">{{ t('dash.elo.title') }}</h3>
       <span class="text-[10px] text-dimmed">{{ t('dash.elo.hint') }}</span>
     </header>
     <div class="mb-3 flex flex-wrap items-center gap-1" role="radiogroup" :aria-label="t('dash.elo.compare')">

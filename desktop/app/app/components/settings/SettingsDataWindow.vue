@@ -22,7 +22,7 @@ const patchItems = computed(() => patches.value.map(value => ({ value, label: t(
 </script>
 
 <template>
-  <section class="space-y-4 rounded-xl border border-default bg-default/40 p-5">
+  <section class="space-y-4 surface rounded-xl p-5">
     <header class="space-y-1">
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-calendar-range" class="size-5 text-primary" />
@@ -37,8 +37,8 @@ const patchItems = computed(() => patches.value.map(value => ({ value, label: t(
         type="button"
         role="radio"
         :aria-checked="dataWindow === option"
-        class="rounded-lg border px-3 py-2 text-left transition"
-        :class="dataWindow === option ? 'border-primary/60 bg-primary/10' : 'border-default hover:border-accented'"
+        class="rounded-lg px-3 py-2 text-left transition-colors"
+        :class="dataWindow === option ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/30 hover:bg-accented/60'"
         @click="setDataWindow(option)"
       >
         <span class="block text-sm font-medium text-highlighted">{{ t(`dataWindow.option.${option}`) }}</span>
@@ -46,8 +46,8 @@ const patchItems = computed(() => patches.value.map(value => ({ value, label: t(
       </button>
     </div>
     <div
-      class="flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2"
-      :class="specific ? 'border-primary/60 bg-primary/10' : 'border-default'"
+      class="flex flex-wrap items-center gap-3 rounded-lg px-3 py-2"
+      :class="specific ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/30'"
     >
       <div class="min-w-0 flex-1">
         <span class="block text-sm font-medium text-highlighted">{{ t('dataWindow.option.specific') }}</span>

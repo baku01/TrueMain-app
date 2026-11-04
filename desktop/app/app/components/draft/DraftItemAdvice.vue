@@ -57,7 +57,7 @@ const situational = computed(() => props.pushes
   <section v-if="steps.length || pending" class="space-y-2 rounded-xl bg-elevated/50 p-3 ring-1 ring-default">
     <header class="flex items-center gap-2">
       <UIcon name="i-lucide-swords" class="size-4 text-primary" />
-      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-dimmed">{{ t('draft.advice.build') }}</h3>
+      <h3 class="stat-label">{{ t('draft.advice.build') }}</h3>
       <span class="text-[11px] text-dimmed">{{ t('draft.advice.buildHint', { source: sourceName }) }}</span>
     </header>
 

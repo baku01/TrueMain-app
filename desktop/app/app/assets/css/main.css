@@ -67,6 +67,32 @@
   border-color: transparent;
 }
 
+/*
+ * One frame for every page: content starts at the same edge, at the same
+ * padding, whatever page it is — the shared pages (`SharedPage`) centred each
+ * at its own width, which made the left edge jump from page to page.
+ */
+.tm-stagger > .mx-auto {
+  margin-inline: 0;
+  max-width: none;
+  padding: 1.5rem;
+}
+/* A page read as text (Settings) keeps a reading width — at the same left edge. */
+.tm-stagger > .tm-narrow {
+  max-width: 60rem;
+}
+
+/*
+ * The shared layer's small labels (profile cards, match details) set in
+ * spaced capitals read, in the app's window, in its sentence case like every
+ * other label. Scoped to the window's `main`: the overlay over the game keeps
+ * its own.
+ */
+main :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-xs).uppercase {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
 /* Tighter corners, as Blitz's: a 16px card read as a toy at this density. */
 @theme {
   --radius-2xl: 0.75rem;
@@ -669,7 +695,7 @@ a[href] {
 
 /* Spells, starters and boots side by side as soon as each has a readable width: a row stretched across the pane reads its icons far from its numbers. */
 .blitz-small {
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 }
 
 @container (width >= 56rem) {

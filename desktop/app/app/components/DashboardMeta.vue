@@ -30,7 +30,7 @@ const view = computed(() => lanePicksView(laneEntries, status.value))
       <!-- The lane sits above the art, never over it: a portrait's face is somewhere in its corner. -->
       <div class="flex items-center gap-1.5 px-3 py-2">
         <img :src="getPositionIconUrl(column.lane)" alt="" class="size-4">
-        <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">{{ column.label }}</span>
+        <span class="stat-label">{{ column.label }}</span>
       </div>
       <NuxtLink
         v-if="column.lead"

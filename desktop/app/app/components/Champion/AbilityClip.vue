@@ -82,7 +82,7 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
       <div v-if="rows.length" class="overflow-x-auto">
         <table class="w-full" :class="compact ? 'text-xs' : 'text-sm'">
           <thead>
-            <tr class="text-[11px] uppercase tracking-wider text-dimmed">
+            <tr class="stat-label">
               <th class="pb-2 text-left font-medium" />
               <th v-for="rank in rankCount" :key="rank" class="pb-2 text-right font-medium tabular-nums">{{ t('abilities.rank', { rank }) }}</th>
             </tr>

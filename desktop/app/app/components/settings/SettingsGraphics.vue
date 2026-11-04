@@ -22,7 +22,7 @@ async function restart() {
 </script>
 
 <template>
-  <section class="space-y-4 rounded-xl border border-default bg-default/40 p-5">
+  <section class="space-y-4 surface rounded-xl p-5">
     <header class="flex items-center gap-2">
       <UIcon name="i-ph-cpu-light" class="size-5 text-primary" />
       <h2 class="text-sm font-semibold text-highlighted">{{ t('graphics.title') }}</h2>

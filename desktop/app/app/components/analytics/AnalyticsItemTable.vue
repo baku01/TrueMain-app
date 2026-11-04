@@ -62,7 +62,7 @@ const columns = computed(() => [
     </div>
     <table class="w-full text-xs">
       <thead>
-        <tr class="text-[10px] uppercase tracking-wider text-dimmed">
+        <tr class="stat-label">
           <th class="pb-1.5 text-left font-semibold">{{ spellsOnly(tabs) ? t('analytics.table.spells') : t('analytics.table.items') }}</th>
           <th v-for="column in columns" :key="column.key" class="pb-1.5 text-right font-semibold">
             <button type="button" class="inline-flex items-center gap-0.5 uppercase" :class="sort === column.key ? 'text-highlighted' : 'hover:text-muted'" @click="sort = column.key">

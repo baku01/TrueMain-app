@@ -45,12 +45,12 @@ async function saveEdited(kit: Kit) {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-4 p-5">
-    <div class="flex items-center gap-3">
-      <UIcon name="i-ph-backpack-light" class="size-6 text-primary" />
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('kit.page.title') }}</h1>
-      <UButton class="ml-auto" :label="t('kit.new.button')" icon="i-lucide-plus" size="sm" :disabled="editing !== null" @click="creating = true" />
-    </div>
+  <div class="flex h-full min-h-0 flex-col gap-5 p-6">
+    <PageHeader :title="t('kit.page.title')" :description="t('kit.page.description')">
+      <template #actions>
+        <UButton :label="t('kit.new.button')" icon="i-lucide-plus" size="sm" :disabled="editing !== null" @click="creating = true" />
+      </template>
+    </PageHeader>
 
     <div v-if="groups.length || editing" class="surface grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
       <aside class="min-h-0 overflow-y-auto border-r border-default bg-muted/50 p-2">

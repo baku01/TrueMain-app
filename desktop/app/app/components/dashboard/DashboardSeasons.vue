@@ -27,22 +27,22 @@ const top = computed(() => {
 <template>
   <section v-if="profile && (profile.ladder || profile.peak || profile.previousSeasons.length)" class="surface space-y-3 rounded-2xl p-4">
     <header class="flex items-center gap-2">
-      <h2 class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">{{ t('dash.seasons.title') }}</h2>
+      <h2 class="stat-label">{{ t('dash.seasons.title') }}</h2>
       <span class="ml-auto text-[10px] text-dimmed">op.gg</span>
     </header>
     <div class="grid grid-cols-2 gap-2">
       <div v-if="profile.ladder" class="rounded-lg bg-elevated/50 px-3 py-2 ring-1 ring-default">
-        <p class="text-[10px] uppercase tracking-wider text-dimmed">{{ t('dash.seasons.ladder') }}</p>
+        <p class="stat-label">{{ t('dash.seasons.ladder') }}</p>
         <p class="text-sm font-semibold tabular-nums text-highlighted">#{{ profile.ladder.rank.toLocaleString() }}</p>
         <p v-if="top !== null" class="text-[10px] tabular-nums text-muted">{{ t('dash.seasons.top', { share: top }) }}</p>
       </div>
       <div v-if="profile.peak" class="rounded-lg bg-elevated/50 px-3 py-2 ring-1 ring-default">
-        <p class="text-[10px] uppercase tracking-wider text-dimmed">{{ t('dash.seasons.peak') }}</p>
+        <p class="stat-label">{{ t('dash.seasons.peak') }}</p>
         <p class="text-sm font-semibold" :style="{ color: TIER_COLOR[profile.peak.tier] }">{{ tierLabel(profile.peak) }}</p>
       </div>
     </div>
     <div v-if="profile.previousSeasons.length">
-      <p class="mb-1.5 text-[10px] uppercase tracking-wider text-dimmed">{{ t('dash.seasons.previous') }}</p>
+      <p class="mb-1.5 stat-label">{{ t('dash.seasons.previous') }}</p>
       <ul class="flex flex-wrap gap-1.5">
         <li
           v-for="season in profile.previousSeasons.slice(0, 8)"

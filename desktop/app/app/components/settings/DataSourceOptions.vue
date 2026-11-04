@@ -20,8 +20,8 @@ const EXPERIMENTAL: ReadonlySet<DataSource> = new Set(['lolalytics', 'tencent'])
       type="button"
       role="radio"
       :aria-checked="model === option"
-      class="flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors"
-      :class="model === option ? 'border-primary/60 bg-primary/10' : 'border-default hover:bg-accented/50'"
+      class="flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors"
+      :class="model === option ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/30 hover:bg-accented/60'"
       @click="model = option"
     >
       <span class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border" :class="model === option ? 'border-primary' : 'border-(--ui-border-accented)'">

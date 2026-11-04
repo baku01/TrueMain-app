@@ -65,7 +65,7 @@ const lit = (index: number, option: { note?: string }) => !!option.note || (prop
           @click="selectable && (selected = index)"
         >
           <UIcon v-if="option.note" name="i-lucide-sparkles" class="absolute -right-1 -top-1 size-3.5 rounded-full bg-default text-primary" />
-          <span class="flex items-center gap-1" :class="layout === 'rows' ? 'min-w-0 flex-1' : ''">
+          <span class="flex items-center gap-1" :class="layout === 'rows' ? 'shrink-0' : ''">
             <template v-for="(id, position) in option.itemIds ?? []" :key="`i-${position}`">
               <GameTooltipItemIcon :item="items?.[id] ?? null" :width="size" :height="size" class="shrink-0 rounded-md" :style="icon" />
               <UIcon v-if="arrows && position < (option.itemIds?.length ?? 0) - 1" name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
@@ -73,7 +73,7 @@ const lit = (index: number, option: { note?: string }) => !!option.note || (prop
             <GameTooltipSummonerSpellIcon v-for="id in option.spellIds ?? []" :key="`s-${id}`" :spell="summoners?.[id] ?? null" :width="size" :height="size" class="shrink-0 rounded-md" :style="icon" />
           </span>
           <!-- A row reads like Blitz's: the win rate in a chip, then the games and the share. -->
-          <span v-if="layout === 'rows'" class="flex shrink-0 items-center gap-2 whitespace-nowrap">
+          <span v-if="layout === 'rows'" class="ml-auto flex min-w-0 items-center gap-2 whitespace-nowrap">
             <span class="rounded px-1.5 py-0.5 text-xs font-bold tabular-nums" :class="chip(option.winRate)">{{ percent(option.winRate) }}</span>
             <span class="min-w-[4.75rem] text-right text-[11px] leading-tight tabular-nums text-muted">
               {{ t('panel.games', { games: compact.format(option.games) }) }}

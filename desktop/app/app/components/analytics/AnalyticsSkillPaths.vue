@@ -30,7 +30,7 @@ const COLORS: Record<string, string> = { Q: 'bg-orange-500/20 text-orange-300', 
     <div v-if="tab === 'overview'" class="grid gap-4 @4xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-[10px] uppercase tracking-[0.12em] text-dimmed"><th class="pb-2 text-left">{{ t('analytics.skills.priority') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.win') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.pick') }}</th></tr>
+          <tr class="stat-label"><th class="pb-2 text-left">{{ t('analytics.skills.priority') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.win') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.pick') }}</th></tr>
         </thead>
         <tbody class="divide-y divide-default/50">
           <tr v-for="path in paths.priority" :key="path.order.join('')" class="h-12">
@@ -52,7 +52,7 @@ const COLORS: Record<string, string> = { Q: 'bg-orange-500/20 text-orange-300', 
 
     <table v-else class="w-full text-sm">
       <thead>
-        <tr class="text-[10px] uppercase tracking-[0.12em] text-dimmed"><th class="pb-2 text-left">{{ t('analytics.skills.path') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.win') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.pick') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.games') }}</th></tr>
+        <tr class="stat-label"><th class="pb-2 text-left">{{ t('analytics.skills.path') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.win') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.pick') }}</th><th class="pb-2 text-right">{{ t('analytics.skills.games') }}</th></tr>
       </thead>
       <tbody class="divide-y divide-default/50">
         <tr v-for="(path, index) in paths[tab]" :key="index" class="h-10">

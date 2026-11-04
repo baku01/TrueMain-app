@@ -9,7 +9,7 @@ const { t } = useT()
 
 <template>
   <SharedPage :eyebrow="t('settings.eyebrow')" :title="t('settings.title')">
-    <div class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+    <div class="mx-auto tm-narrow space-y-5 p-6">
       <PageHeader :eyebrow="t('settings.eyebrow')" :title="t('settings.title')" />
       <SettingsDataSource />
       <SettingsDataWindow />

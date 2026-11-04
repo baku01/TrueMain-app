@@ -84,7 +84,7 @@ watch(sections, (list) => {
           <section
             v-for="section in sections"
             :key="section.id"
-            class="overflow-hidden rounded-xl border border-default bg-default/40"
+            class="overflow-hidden surface rounded-xl"
             :style="{ '--tree': section.color }"
           >
             <h2 class="flex items-center gap-2.5 border-b border-default px-3.5 py-2.5" :style="{ background: `linear-gradient(90deg, color-mix(in srgb, ${section.color} 18%, transparent), transparent)` }">

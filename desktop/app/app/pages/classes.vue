@@ -92,7 +92,7 @@ function alsoTitle(id: number, here: SubclassId) {
           v-for="group in visible"
           :key="group.class.id"
           :aria-labelledby="`class-${group.class.id}`"
-          class="rounded-2xl border border-default bg-elevated/30 p-4 md:p-5"
+          class="surface rounded-2xl p-4 md:p-5"
         >
           <header class="flex items-start gap-4">
             <span class="grid size-11 shrink-0 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
@@ -114,7 +114,7 @@ function alsoTitle(id: number, here: SubclassId) {
             <div
               v-for="sub in group.subclasses"
               :key="sub.subclass"
-              class="flex flex-col rounded-xl border border-default bg-default/60 p-3.5"
+              class="flex flex-col surface rounded-xl p-3.5"
             >
               <div v-if="group.class.subclasses.length > 1" class="mb-3">
                 <h3 class="flex items-center gap-2 text-sm font-semibold text-highlighted before:h-4 before:w-0.5 before:rounded-full before:bg-primary/70">

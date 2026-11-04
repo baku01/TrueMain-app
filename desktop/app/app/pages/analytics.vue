@@ -111,7 +111,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
       <p v-if="championId === null" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('analytics.pick') }}</p>
 
       <template v-else>
-        <header class="flex flex-wrap items-center gap-4 rounded-2xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
+        <header class="flex flex-wrap items-center gap-4 surface rounded-2xl bg-gradient-to-br from-primary/10 via-[var(--tm-pane)] to-[var(--tm-pane)] p-4">
           <img v-if="portraitOf(championId)" :src="portraitOf(championId)!" alt="" width="56" height="56" class="img-skeleton size-14 rounded-xl ring-1 ring-default">
           <div class="min-w-0">
             <h2 class="text-2xl font-semibold tracking-tight text-highlighted">{{ nameOf(championId) }}</h2>

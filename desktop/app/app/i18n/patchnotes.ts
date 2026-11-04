@@ -4,6 +4,7 @@ import type { MessageDictionary } from '#common/utils/i18n'
 export default {
   'en': {
     'patchnotes.title': 'Patch notes',
+    'patchnotes.description': 'Riot\'s patch notes, read in the app, buffs and nerfs apart.',
     'patchnotes.patch': 'Patch {version}',
     'patchnotes.pick': 'Choose a patch',
     'patchnotes.latest': 'Latest',
@@ -30,6 +31,7 @@ export default {
   },
   'pt-BR': {
     'patchnotes.title': 'Notas da atualização',
+    'patchnotes.description': 'As notas de atualização da Riot no app, com buffs e nerfs separados.',
     'patchnotes.patch': 'Patch {version}',
     'patchnotes.pick': 'Escolher um patch',
     'patchnotes.latest': 'Mais recente',

@@ -48,11 +48,9 @@ const updatedLabel = computed(() => (updatedAt.value ? new Intl.DateTimeFormat(g
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-5">
-    <div class="flex shrink-0 flex-wrap items-center gap-3">
-      <UIcon name="i-ph-scroll-light" class="size-6 text-primary" />
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ t('patchnotes.title') }}</h1>
-      <div class="ml-auto flex flex-wrap items-center gap-2">
+  <div class="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-6">
+    <PageHeader class="shrink-0" :title="t('patchnotes.title')" :description="t('patchnotes.description')">
+      <template #actions>
         <span v-if="updatedLabel" class="text-xs text-muted">{{ t('patchnotes.updated', { time: updatedLabel }) }}</span>
         <UButton
           icon="i-lucide-refresh-cw"
@@ -72,8 +70,8 @@ const updatedLabel = computed(() => (updatedAt.value ? new Intl.DateTimeFormat(g
           class="w-56"
           :aria-label="t('patchnotes.pick')"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div v-if="listStatus === 'error'" class="surface shrink-0 rounded-xl p-8 text-center">
       <p class="text-sm text-muted">{{ t('patchnotes.error') }}</p>
@@ -86,7 +84,7 @@ const updatedLabel = computed(() => (updatedAt.value ? new Intl.DateTimeFormat(g
     </div>
 
     <template v-else>
-      <header class="relative shrink-0 overflow-hidden rounded-xl border border-default bg-default">
+      <header class="surface relative shrink-0 overflow-hidden rounded-xl">
         <!-- The art on the right, whole in height and anchored to the top, where the subject's face is, fading into the card on its left. The text and the button sit on the plain side, never over the picture. -->
         <img
           v-if="selected.imageUrl"

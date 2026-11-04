@@ -18,7 +18,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
 <template>
   <table class="w-full text-sm">
     <thead>
-      <tr class="text-[10px] font-medium uppercase tracking-[0.12em] text-dimmed">
+      <tr class="stat-label">
         <th class="pb-2 text-left">{{ t('analytics.objectives.objective') }}</th>
         <th colspan="2" class="pb-2 text-right">{{ t('analytics.objectives.secured') }}</th>
         <th colspan="2" class="pb-2 text-right">{{ t('analytics.objectives.conceded') }}</th>

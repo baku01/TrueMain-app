@@ -71,7 +71,7 @@ watch(screen, (next, previous) => {
       <AppTopbar class="h-12 shrink-0 border-b border-default bg-elevated" />
       <div class="flex min-h-0 flex-1">
       <AppNav class="shrink-0" />
-      <main class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-muted">
+      <main class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-default">
         <!--
           `ready` covers the gap between mount and the first read of the Rust
           state. Rendering a page during it would tell the player their client

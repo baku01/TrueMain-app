@@ -43,7 +43,7 @@ withDefaults(defineProps<{
     <div class="grid gap-4 @4xl:grid-cols-[24rem_minmax(0,1fr)]">
       <!-- The runes, large — the part of a build most worth reading at a glance — and under them the small pieces. -->
       <div class="flex flex-col gap-4">
-        <div class="relative rounded-xl border border-default bg-default/40 p-4">
+        <div class="relative surface rounded-xl p-4">
           <div class="mx-auto w-full max-w-[22rem] overflow-hidden">
             <ChampionCoreRunes v-if="runePage && runeTree" :page="runePage" :tree="runeTree" :size="40" :keystone-size="48" />
             <p v-else-if="!runePage && noRunesMessage" class="text-sm text-muted">{{ noRunesMessage }}</p>
@@ -51,7 +51,7 @@ withDefaults(defineProps<{
           <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" class="absolute right-3 top-3" />
         </div>
 
-        <div class="grid flex-1 content-start gap-x-6 gap-y-5 rounded-xl border border-default bg-default/40 p-4 sm:grid-cols-2">
+        <div class="grid flex-1 content-start gap-x-6 gap-y-5 surface rounded-xl p-4 sm:grid-cols-2">
           <div class="relative">
             <ChampionCoreSpells :summoners="summonerSpells" :summoners-map="summonersMap" :summoners-pending="summonersPending" />
             <!-- A kit's spell import (#2185), in the summoners' corner as the runes' is in theirs. -->
@@ -65,7 +65,7 @@ withDefaults(defineProps<{
       </div>
 
       <!-- The build's item tree: the sequence the items are bought in, centred in a card as tall as the column beside it. -->
-      <div v-if="$slots.tree" class="order-first flex flex-col rounded-xl border border-default bg-default/40 p-4 @4xl:order-none">
+      <div v-if="$slots.tree" class="order-first flex flex-col surface rounded-xl p-4 @4xl:order-none">
         <h3 class="stat-label mb-3">{{ t('build.tree.title') }}</h3>
         <div class="flex flex-1 items-center justify-center">
           <div class="w-full"><slot name="tree" /></div>
@@ -74,7 +74,7 @@ withDefaults(defineProps<{
     </div>
 
     <!-- The skill order across the bottom: the priority and, beside it, the level-by-level grid. -->
-    <div v-if="championStatic" class="mt-4 rounded-xl border border-default bg-default/40 p-4">
+    <div v-if="championStatic" class="mt-4 surface rounded-xl p-4">
       <BuildSkillGrid :skill-order="skillOrder" :champion-static="championStatic" :champion-id="championId ?? null" />
     </div>
   </div>

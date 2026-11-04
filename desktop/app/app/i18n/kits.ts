@@ -5,6 +5,7 @@ export default {
   'en': {
     'kit.page.champion': 'Champion {id}',
     'kit.page.title': 'My kits',
+    'kit.page.description': 'Your own builds: runes, spells and an item tree, offered in champion select.',
     'kit.page.empty': 'No kit yet',
     'build.tree.title': 'Item sequence',
     'build.skillGrid.label': 'Skill order by level',
@@ -162,6 +163,7 @@ export default {
   'pt-BR': {
     'kit.page.champion': 'Campeão {id}',
     'kit.page.title': 'Meus kits',
+    'kit.page.description': 'Suas próprias builds: runas, feitiços e uma árvore de itens, oferecidas na seleção de campeões.',
     'kit.page.empty': 'Nenhum kit ainda',
     'build.tree.title': 'Sequência de itens',
     'build.skillGrid.label': 'Ordem de habilidades por nível',

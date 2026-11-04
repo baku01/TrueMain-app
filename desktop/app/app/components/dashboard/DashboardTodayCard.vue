@@ -17,7 +17,7 @@ const partial = computed(() => partialLpNote(props.summary))
 <template>
   <section v-if="summary" class="flex flex-col gap-2 surface rounded-lg px-4 py-3">
     <div class="flex items-baseline justify-between gap-2">
-      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
+      <h2 class="stat-label">
         {{ t('dash.today.title') }}
       </h2>
       <span class="text-xs tabular-nums text-muted">
