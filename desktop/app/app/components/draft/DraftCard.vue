@@ -66,7 +66,7 @@ const tierColor = computed(() => {
         :class="tentative && 'opacity-55 grayscale'"
       />
       <div class="card-floor pointer-events-none absolute inset-0" />
-      <TierBadge v-if="tier && !tentative" stacked :tier="tier" class="absolute bottom-2 left-2" />
+      <TierBadge v-if="tier && !tentative" stacked :caption="false" :size="30" :tier="tier" class="absolute bottom-2 left-2" />
       <span v-if="tentative" class="absolute inset-x-0 bottom-2 text-center stat-label text-muted!">{{ t('draft.card.hovering') }}</span>
     </template>
 

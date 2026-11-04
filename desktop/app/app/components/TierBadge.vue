@@ -1,86 +1,61 @@
 <script setup lang="ts">
 /**
- * The desktop app's tier mark: the S/A/B/C/D letter, one metal per tier —
- * blue steel for S, gold, silver, bronze, iron. In a list it is a flat outlined
- * square, nothing more; `stacked`, for a mark laid over champion art, is the
- * larger shield medal with a glow and a "tier" caption, which is what lets it
- * be read on any splash. It replaces the shared layer's bare coloured letter
- * for this app only (a component of the app wins over the layer's of the same
- * name); the props are the layer's.
+ * The desktop app's tier mark: the S/A/B/C/D letter cut into a small crest,
+ * one metal per tier — blue steel for S, gold, silver, bronze, iron —, a
+ * chevron under its point, drawn as one SVG so it stays crisp at any size.
+ * In a list it is the crest alone; `stacked`, for a mark laid over champion
+ * art, is a larger one with the metal's glow and a "tier" caption, which is
+ * what lets it be read on any splash. It replaces the shared layer's bare
+ * coloured letter for this app only (a component of the app wins over the
+ * layer's of the same name); the props are the layer's, plus `size`.
  */
 const props = defineProps<{
   /** Tier letter from the API: 'S' | 'A' | 'B' | 'C' | 'D'. */
   tier: string
   stacked?: boolean
+  /** The crest's side in pixels; 22 in a list, 44 stacked. */
+  size?: number
+  /** The "tier" caption under a stacked mark; off where the card is too small for it. */
+  caption?: boolean
 }>()
 
-// Per tier: the metal's light and dark edge, the letter's colour and the glow.
-const METALS: Record<string, { light: string, dark: string, letter: string, glow: string }> = {
-  S: { light: '#bfdbfe', dark: '#2563eb', letter: '#dbeafe', glow: 'rgb(96 165 250 / 0.65)' },
-  A: { light: '#f7dc8a', dark: '#b8862b', letter: '#fde9a8', glow: 'rgb(226 185 92 / 0.5)' },
-  B: { light: '#eef1f5', dark: '#8a94a3', letter: '#e6eaf0', glow: 'rgb(185 194 205 / 0.3)' },
-  C: { light: '#e3a468', dark: '#8a4f22', letter: '#f0c49a', glow: 'rgb(179 118 63 / 0.3)' },
-  D: { light: '#a59a9e', dark: '#5c5456', letter: '#bdb3b6', glow: 'transparent' },
+// Per tier: the metal's light and dark stops, its shine and its glow.
+const METALS: Record<string, { light: string, dark: string, shine: string, glow: string }> = {
+  S: { light: '#d6e8ff', dark: '#2f6fe4', shine: '#f2f8ff', glow: 'rgb(96 165 250 / 0.7)' },
+  A: { light: '#ffe7a0', dark: '#c8921f', shine: '#fff6d6', glow: 'rgb(226 185 92 / 0.55)' },
+  B: { light: '#f3f6fa', dark: '#97a2b2', shine: '#ffffff', glow: 'rgb(185 194 205 / 0.35)' },
+  C: { light: '#f3bf8c', dark: '#9b5a27', shine: '#ffe2c6', glow: 'rgb(179 118 63 / 0.35)' },
+  D: { light: '#a7a2a8', dark: '#56525a', shine: '#cfcbd0', glow: 'transparent' },
 }
 
 const { t } = useT()
+const uid = useId()
 const normalized = computed(() => props.tier?.toUpperCase() ?? '')
 const metal = computed(() => METALS[normalized.value] ?? null)
-const label = computed(() => (metal.value ? normalized.value : '–'))
+const side = computed(() => props.size ?? (props.stacked ? 44 : 22))
 const ariaLabel = computed(() => (metal.value ? tr('common.tierLetter', { tier: normalized.value }) : tr('common.tierUnknown')))
-const style = computed(() => (metal.value
-  ? {
-      '--light': metal.value.light,
-      '--dark': metal.value.dark,
-      '--letter': metal.value.letter,
-      '--glow': metal.value.glow,
-      'filter': props.stacked ? `drop-shadow(0 0 10px ${metal.value.glow})` : undefined,
-    }
-  : undefined))
+const glow = computed(() => (props.stacked && metal.value ? { filter: `drop-shadow(0 0 ${Math.round(side.value / 5)}px ${metal.value.glow})` } : undefined))
 </script>
 
 <template>
-  <span class="inline-flex flex-col items-center leading-none" :aria-label="ariaLabel">
-    <span
-      v-if="metal && stacked"
-      class="relative grid size-12 place-items-center"
-      :style="style"
-    >
-      <span class="medal absolute inset-0" />
-      <span class="medal-face absolute inset-[2px]" />
-      <span
-        class="relative font-mono text-xl font-extrabold tracking-tight [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]"
-        :style="{ color: 'var(--letter)' }"
-      >{{ label }}</span>
-    </span>
-    <span
-      v-else-if="metal"
-      class="tier-flat inline-grid size-6 place-items-center rounded-md border font-mono text-[13px] font-bold"
-      :style="style"
-    >{{ label }}</span>
+  <span class="inline-flex shrink-0 flex-col items-center leading-none" role="img" :aria-label="ariaLabel">
+    <svg v-if="metal" :width="side" :height="side" viewBox="0 0 28 28" fill="none" :style="glow" aria-hidden="true">
+      <defs>
+        <linearGradient :id="`${uid}-metal`" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" :stop-color="metal.light" />
+          <stop offset="1" :stop-color="metal.dark" />
+        </linearGradient>
+      </defs>
+      <!-- The dark rim that sets the crest off any background, art included. -->
+      <path d="M7.5 2.5h13A4 4 0 0 1 24.5 6.5v10.2a2 2 0 0 1-.9 1.66L14 24.6l-9.6-6.24a2 2 0 0 1-.9-1.66V6.5a4 4 0 0 1 4-4Z" fill="#0c0e13" />
+      <path d="M3.5 19.6 14 26.4l10.5-6.8v2.1L14 28.5 3.5 21.7Z" fill="#0c0e13" />
+      <!-- The face, the chevron under it, and the shine along the top edge. -->
+      <path d="M8 4.2h12A2.8 2.8 0 0 1 22.8 7v9.3a1 1 0 0 1-.45.84L14 22.6l-8.35-5.46a1 1 0 0 1-.45-.84V7A2.8 2.8 0 0 1 8 4.2Z" :fill="`url(#${uid}-metal)`" />
+      <path d="M5.2 19.9 14 25.6l8.8-5.7v1.1L14 26.7l-8.8-5.7Z" :fill="metal.dark" />
+      <path d="M7.2 4.9h13.6" :stroke="metal.shine" stroke-width="0.7" stroke-linecap="round" opacity="0.8" />
+      <text x="14" y="13.6" text-anchor="middle" dominant-baseline="central" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="800" fill="#0c0e13">{{ normalized }}</text>
+    </svg>
     <span v-else class="inline-flex h-6 min-w-7 items-center justify-center font-mono text-sm font-bold text-muted">–</span>
-    <span v-if="stacked" class="mt-1 text-[9px] font-medium uppercase tracking-[0.14em] text-default/80">{{ t('common.tier') }}</span>
+    <span v-if="stacked && caption !== false" class="mt-1 text-[9px] font-medium uppercase tracking-[0.14em] text-default/80">{{ t('common.tier') }}</span>
   </span>
 </template>
-
-<style scoped>
-/* A shield: wide shoulders, a pointed foot. The rim is the metal's gradient, the face a dark pane tinted with it. */
-.medal,
-.medal-face {
-  clip-path: polygon(50% 0%, 100% 14%, 100% 62%, 50% 100%, 0% 62%, 0% 14%);
-}
-.medal {
-  background: linear-gradient(160deg, var(--light), var(--dark));
-}
-.medal-face {
-  background:
-    linear-gradient(180deg, color-mix(in oklch, var(--dark) 38%, #0b0b0d), color-mix(in oklch, var(--dark) 14%, #0b0b0d));
-}
-
-/* Flat, in a list: the metal's light edge on a dark page (`main.css` swaps in the dark edge on a light one, where the light would vanish). */
-.tier-flat {
-  color: var(--light);
-  border-color: color-mix(in oklch, var(--light) 55%, transparent);
-  background: color-mix(in oklch, var(--light) 10%, transparent);
-}
-</style>

@@ -121,9 +121,23 @@ export const loadingOfAlias = (alias: string) =>
  * cropped, rotated by the day so the app does not open on the same picture
  * forever. Nothing else is derived from it.
  */
-const BACKDROPS = ['Ahri', 'Aatrox', 'Kaisa', 'Yone', 'Leona', 'Jinx', 'Sylas', 'Senna']
+const BACKDROPS = ['Ahri', 'Ezreal', 'Kaisa', 'Yone', 'Leona', 'Jinx', 'Sylas', 'Senna']
+
+/**
+ * Where each backdrop's subject sits, as the `object-position` height that
+ * keeps the face and shoulders in a short, wide band (measured on the
+ * splashes): every splash puts its face somewhere else, so no one position
+ * frames them all.
+ */
+const BACKDROP_FOCUS: Record<string, number> = { Ahri: 15, Ezreal: 16, Kaisa: 4, Yone: 0, Leona: 5, Jinx: 22, Sylas: 14, Senna: 8 }
 
 export function backdropAlias(): string {
   const day = Math.floor(Date.now() / 86_400_000)
   return BACKDROPS[day % BACKDROPS.length] ?? 'Ahri'
+}
+
+/** The day's backdrop and the `object-position` that frames its subject. */
+export function backdropFraming(): { alias: string, position: string } {
+  const alias = backdropAlias()
+  return { alias, position: `50% ${BACKDROP_FOCUS[alias] ?? 15}%` }
 }

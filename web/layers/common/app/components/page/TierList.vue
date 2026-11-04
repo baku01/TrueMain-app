@@ -154,7 +154,7 @@ await tierListFetch
           >
             <template #title>
               <div class="flex items-center gap-2">
-                <TierBadge :tier="group.tier" />
+                <TierBadge :tier="group.tier" :size="28" />
                 <span class="text-xs text-muted">{{ t('pages.tierlist.championsCount', { count: group.entries.length }) }}</span>
               </div>
             </template>

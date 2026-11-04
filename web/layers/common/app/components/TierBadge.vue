@@ -15,6 +15,10 @@ const props = defineProps<{
   tier: string
   /** The art-overlay form: a larger letter over a "tier" caption. */
   stacked?: boolean
+  /** The desktop app's crest size (its own `TierBadge`); the letter here keeps its type size. */
+  size?: number
+  /** The desktop app's caption switch; the site's stacked letter always has its caption. */
+  caption?: boolean
 }>()
 
 // Static per-letter class strings so Tailwind's scanner can see every

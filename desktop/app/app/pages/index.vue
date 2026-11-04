@@ -46,6 +46,7 @@ const refresh = (force = false) => (viewing.value ? other.refresh() : own.refres
 const championsById = useStaticChampionsById()
 const { items, summoners, runeTree } = useStaticData()
 const { aliasOf, patch } = useChampionStatics()
+const backdrop = backdropFraming()
 
 const filter = ref<QueueFilter>('all')
 const latest = computed(() => (viewing.value ? loadedGames.value : record.value?.games ?? []))
@@ -234,8 +235,10 @@ watch(() => state.value.phase, (next, previous) => {
 
     <template v-else>
       <section class="relative flex min-h-60 items-end overflow-hidden rounded-2xl border border-default p-7">
-        <!-- Anchored near the top of the splash, where its face is: a short band would otherwise show the chest. -->
-        <ChampionArt :alias="backdropAlias()" fade="x" position="70% 6%" />
+        <!-- The art on the right, fading into the text on its left: at the banner's whole width a splash shows only a quarter of its height, rarely the face. Each backdrop is framed on its own subject (`backdropFraming`). -->
+        <div class="absolute inset-y-0 right-0 w-[62%] [mask-image:linear-gradient(to_right,transparent,black_30%)]">
+          <ChampionArt :alias="backdrop.alias" fade="none" :position="backdrop.position" />
+        </div>
         <div class="relative flex max-w-lg flex-col gap-3">
           <span class="flex items-center gap-2">
             <span class="relative flex size-2">
