@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * The one page header of the desktop app, on Blitz's pattern: the page's
- * emblem on the left; over the title a breadcrumb saying where the page sits
+ * The one page header of the desktop app, on Blitz's pattern: over the title a breadcrumb saying where the page sits
  * (section / page); the title in the display face, with an optional muted
  * qualifier after it; a line saying what the page is for; the page's own
  * controls on the right (`#actions`); and under it all the page's tabs
@@ -9,41 +8,37 @@
  * shared layer's for this app only (a component of the app wins over the
  * layer's of the same name); the layer's props still work.
  */
-const props = defineProps<{
+defineProps<{
   /** Kept for the layer's callers: the breadcrumb says what the eyebrow did. */
   eyebrow?: string
   title: string
   /** A qualifier after the title, in a quieter tone (`· Mestre+`). */
   suffix?: string
   description?: string
-  /** An `i-…` icon name; by default the page's own, as the side menu shows it. */
+  /** Kept for callers that pass one: the header draws no emblem. */
   icon?: string
 }>()
 
 const { t } = useT()
 const route = useRoute()
 
-/** Each page's emblem and section, as the side menu files it (`AppNav`). */
+/** Each page's section, as the side menu files it (`AppNav`). */
 const PAGES: [string, string, string | null][] = [
-  ['/champions', 'i-ph-sword-light', 'nav.group.champions'], ['/tierlist', 'i-ph-ranking-light', 'nav.group.champions'],
-  ['/analytics', 'i-ph-chart-line-light', 'nav.group.champions'], ['/classes', 'i-ph-tree-structure-light', 'nav.group.champions'],
-  ['/matchup', 'i-ph-scales-light', 'nav.group.champions'], ['/probuild', 'i-ph-trophy-light', 'nav.group.builds'],
-  ['/kits', 'i-ph-backpack-light', 'nav.group.builds'], ['/items', 'i-ph-flask-light', 'nav.group.builds'],
-  ['/patchnotes', 'i-ph-scroll-light', 'nav.group.builds'], ['/draft', 'i-ph-users-three-light', 'nav.inGame'],
-  ['/game', 'i-ph-crosshair-simple-light', 'nav.inGame'], ['/overlay', 'i-ph-eye-light', 'nav.inGame'],
-  ['/favorites', 'i-ph-star-four-light', null], ['/settings', 'i-ph-gear-six-light', null],
+  ['/champions', 'i-game-icons-crossed-swords', 'nav.group.champions'], ['/tierlist', 'i-game-icons-podium', 'nav.group.champions'],
+  ['/analytics', 'i-game-icons-histogram', 'nav.group.champions'], ['/classes', 'i-game-icons-visored-helm', 'nav.group.champions'],
+  ['/matchup', 'i-game-icons-sword-clash', 'nav.group.champions'], ['/probuild', 'i-game-icons-laurels-trophy', 'nav.group.builds'],
+  ['/kits', 'i-game-icons-knapsack', 'nav.group.builds'], ['/items', 'i-game-icons-potion-ball', 'nav.group.builds'],
+  ['/patchnotes', 'i-game-icons-scroll-unfurled', 'nav.group.builds'], ['/draft', 'i-game-icons-rally-the-troops', 'nav.inGame'],
+  ['/game', 'i-game-icons-targeted', 'nav.inGame'], ['/overlay', 'i-game-icons-eye-target', 'nav.inGame'],
+  ['/favorites', 'i-game-icons-star-formation', null], ['/settings', 'i-game-icons-cog', null],
 ]
-const page = computed(() => PAGES.find(([path]) => route.path.startsWith(path)) ?? (route.path === '/' ? ['/', 'i-ph-castle-turret-light', null] : null))
-const emblem = computed(() => props.icon ?? page.value?.[1] ?? null)
+const page = computed(() => PAGES.find(([path]) => route.path.startsWith(path)) ?? (route.path === '/' ? ['/', 'i-game-icons-castle', null] : null))
 const section = computed(() => (page.value?.[2] ? t(page.value[2]) : null))
 </script>
 
 <template>
   <header class="space-y-5">
     <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
-      <span v-if="emblem" class="tm-emblem grid size-12 shrink-0 place-items-center rounded-xl text-primary">
-        <UIcon :name="emblem" class="size-6" />
-      </span>
       <div class="min-w-0 flex-1">
         <p class="flex items-center gap-1 text-xs text-dimmed">
           <span>TrueMain</span>

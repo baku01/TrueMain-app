@@ -74,7 +74,7 @@ async function saveEdited(kit: Kit) {
       </div>
     </div>
 
-    <EmptyState v-else icon="i-ph-backpack-light" :title="t('kit.page.empty')" :description="t('kit.empty.hint')">
+    <EmptyState v-else icon="i-game-icons-knapsack" :title="t('kit.page.empty')" :description="t('kit.empty.hint')">
       <UButton :label="t('kit.new.button')" icon="i-lucide-plus" @click="creating = true" />
     </EmptyState>
 

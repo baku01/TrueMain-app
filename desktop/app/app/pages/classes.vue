@@ -34,7 +34,7 @@ const empty = computed(() => visible.value.length === 0 && !showUnclassified.val
 /** The tabs count the whole roster, not the filter: a tab that vanished while typing would move under the cursor. */
 const totals = computed(() => groupChampions([...champions.value.keys()], () => 0).groups)
 const tabs = computed(() => [
-  { value: 'all' as const, label: t('classes.all'), icon: 'i-ph-squares-four-light', count: champions.value.size },
+  { value: 'all' as const, label: t('classes.all'), icon: 'i-game-icons-crossed-swords', count: champions.value.size },
   ...totals.value.map(group => ({ value: group.class.id, label: t(`class.${group.class.id}.name`), icon: group.class.icon, count: group.total })),
 ])
 
@@ -87,10 +87,9 @@ function alsoTitle(id: number, here: SubclassId) {
         >
           <!-- The class: its emblem, name and count, and what it does. -->
           <header class="surface flex flex-col gap-2 rounded-xl p-4">
-            <span class="tm-emblem grid size-11 place-items-center rounded-xl text-primary">
-              <UIcon :name="group.class.icon" class="size-6" />
-            </span>
-            <h2 :id="`class-${group.class.id}`" class="text-lg font-semibold leading-tight text-highlighted">{{ t(`class.${group.class.id}.name`) }}</h2>
+            <h2 :id="`class-${group.class.id}`" class="flex items-center gap-2 text-lg font-semibold leading-tight text-highlighted">
+              <UIcon :name="group.class.icon" class="size-5 text-primary" />{{ t(`class.${group.class.id}.name`) }}
+            </h2>
             <span class="text-xs tabular-nums text-dimmed">{{ count(group.total) }}</span>
             <p class="text-xs leading-relaxed text-muted">{{ t(`class.${group.class.id}.desc`) }}</p>
             <p v-if="group.class.id === 'marksman'" class="flex items-start gap-1.5 text-[11px] leading-relaxed text-dimmed">
