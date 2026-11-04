@@ -2,9 +2,6 @@
 
 Part of the [decision log](../decisions.md). Format: **Decision** — why — `source`.
 
-- **Language split**: talk to the user in French; everything committed or published (code, comments, commits,
-  issues, PR titles and bodies) is in English. (`docs/api.md` is in French, predating the rule.)
-
 - **`develop` is the default branch.** All PRs target it; the only PR allowed to target `master` is the release
   PR. Feature PRs are **squash**-merged; release PRs use a **merge commit**, because squashing there creates
   false conflicts on the next release. `develop` survives release merges and is never deleted.

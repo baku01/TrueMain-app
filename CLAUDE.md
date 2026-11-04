@@ -37,11 +37,6 @@ included, through the parent directory). Nothing that describes how to reach or 
 environment goes into a commit, an issue, a PR body or a `.claude/` file that is tracked; live prod metrics and
 infra details stay out of public GitHub artifacts too.
 
-## Language
-
-- Talk to the user in Brazilian Portuguese.
-- Everything committed or published — code, comments, commit messages, issues, PR titles/bodies — is in English.
-
 ## Git & PR workflow
 
 - Default branch: `develop`. All PRs target `develop`; the only PR allowed to target `master` is the release PR from `develop`.

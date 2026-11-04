@@ -492,7 +492,6 @@ Last verified against `develop` on 2026-09-02.
 
 ## Workflow conventions — [`decisions/workflow-conventions.md`](decisions/workflow-conventions.md)
 
-- Language split
 - `develop` is the default branch
 - Branch names
 - A PR is done

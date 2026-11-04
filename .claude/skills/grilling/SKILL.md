@@ -5,7 +5,7 @@ description: Interview the user relentlessly about a plan, feature or design unt
 
 Interview the user until you reach a shared understanding. Map the topic as a **design tree**: every decision branches into the decisions that hang off it.
 
-Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled — the questions you can ask _now_ without guessing at answers you haven't heard. Ask the whole frontier in one round, number each question, and give your recommended answer. Then wait for the answers. Talk to the user in French.
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled — the questions you can ask _now_ without guessing at answers you haven't heard. Ask the whole frontier in one round, number each question, and give your recommended answer. Then wait for the answers.
 
 ```
 ❓ **Q1** — **<titre>** : <question, options si utile>

@@ -23,7 +23,7 @@ The user asked for a **retrospective**: improve the agent's **environment** so t
    - **Information access** — a fact the agent needed and could not reach (a log, a metric, a preprod read) and how it could.
    - **Memory** — something the user had to repeat that belongs in a memory file, or a memory that proved wrong and must be deleted.
 
-4. Present the candidates to the user in French, **most severe first** (cost to the session × chance of recurring). For each: the moment it happened, the proposed change, and where it lands (file, check, skill, issue).
+4. Present the candidates to the user, **most severe first** (cost to the session × chance of recurring). For each: the moment it happened, the proposed change, and where it lands (file, check, skill, issue).
 
 5. Apply what the user accepts: small edits to `.claude/` and CLAUDE.md go in a PR (`ship`); anything larger becomes an issue (`new-issue`).
 
