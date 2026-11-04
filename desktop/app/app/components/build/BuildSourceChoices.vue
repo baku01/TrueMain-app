@@ -37,6 +37,8 @@ const percent = (value: number, digits = 1) => formatPercentage(value, digits)
 /** Hundreds of thousands of games read as `396.9K`: the figure is a sample size, not a count to read digit by digit. */
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
+/** The win rate's chip in a row: the accent above even, muted below. */
+const chip = (value: number) => (value >= 0.52 ? 'bg-primary/15 text-primary' : value < 0.48 ? 'bg-accented text-muted' : 'bg-accented text-highlighted')
 const lit = (index: number, option: { note?: string }) => !!option.note || (props.selectable && selected.value === index)
 </script>
 
@@ -55,7 +57,7 @@ const lit = (index: number, option: { note?: string }) => !!option.note || (prop
           :title="option.note || undefined"
           class="relative rounded-lg transition-colors"
           :class="[
-            layout === 'rows' ? 'flex w-full items-center gap-3 px-2 py-1.5 text-left' : 'flex flex-col items-center gap-1 px-2 pb-1.5 pt-2',
+            layout === 'rows' ? 'flex w-full items-center gap-3 px-2.5 py-2 text-left' : 'flex flex-col items-center gap-1 px-2 pb-1.5 pt-2',
             fill && layout !== 'rows' ? 'w-full px-1' : '',
             lit(index, option) ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : index === 0 && !selectable ? 'bg-accented/50' : 'bg-accented/20',
             selectable ? 'hover:bg-accented/60' : '',
@@ -70,7 +72,15 @@ const lit = (index: number, option: { note?: string }) => !!option.note || (prop
             </template>
             <GameTooltipSummonerSpellIcon v-for="id in option.spellIds ?? []" :key="`s-${id}`" :spell="summoners?.[id] ?? null" :width="size" :height="size" class="shrink-0 rounded-md" :style="icon" />
           </span>
-          <span class="whitespace-nowrap" :class="layout === 'rows' ? 'shrink-0 text-right' : 'text-center leading-tight'">
+          <!-- A row reads like Blitz's: the win rate in a chip, then the games and the share. -->
+          <span v-if="layout === 'rows'" class="flex shrink-0 items-center gap-2 whitespace-nowrap">
+            <span class="rounded px-1.5 py-0.5 text-xs font-bold tabular-nums" :class="chip(option.winRate)">{{ percent(option.winRate) }}</span>
+            <span class="min-w-[4.75rem] text-right text-[11px] leading-tight tabular-nums text-muted">
+              {{ t('panel.games', { games: compact.format(option.games) }) }}
+              <span class="block text-[10px] text-dimmed">{{ percent(option.pickRate, 0) }}</span>
+            </span>
+          </span>
+          <span v-else class="whitespace-nowrap text-center leading-tight">
             <span class="block text-[13px] font-semibold tabular-nums" :class="tone(option.winRate)">{{ percent(option.winRate) }}</span>
             <span class="block text-[10px] tabular-nums text-dimmed">{{ percent(option.pickRate, 0) }} · {{ compact.format(option.games) }}</span>
           </span>

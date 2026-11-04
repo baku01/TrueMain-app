@@ -634,6 +634,17 @@ a[href] {
   align-content: start;
 }
 
+/* Spells, starters and boots side by side as soon as each has a readable width: a row stretched across the pane reads its icons far from its numbers. */
+.blitz-small {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+@container (width >= 56rem) {
+  .blitz-build {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @container (width >= 48rem) {
   .blitz-grid {
     grid-template-columns: 23rem minmax(0, 1fr);
@@ -649,9 +660,5 @@ a[href] {
 
   .blitz-small {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .blitz-build {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

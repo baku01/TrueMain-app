@@ -90,7 +90,18 @@ watch([rawCores, () => props.initialCore, () => pushOf('build')?.itemId], ([list
   core.value = Math.max(0, recommended >= 0 ? recommended : picked)
 }, { immediate: true })
 
-const followUps = computed(() => options.value?.followUps(cores.value[core.value] ?? null) ?? [])
+/**
+ * What follows the picked core, slot by slot, without the options too thin
+ * to read: a handful of games makes a 100% that says nothing. Kept are the
+ * ones played in at least 2% of the core's games, and in twenty games.
+ */
+const followUps = computed(() => {
+  const picked = cores.value[core.value] ?? null
+  const floor = Math.max(20, (picked?.games ?? 0) * 0.02)
+  return (options.value?.followUps(picked) ?? [])
+    .map(group => ({ ...group, options: group.options.filter(option => option.games >= floor) }))
+    .filter(group => group.options.length > 0)
+})
 const skills = computed(() => options.value?.skills ?? [])
 const skill = ref(0)
 watch(options, () => (skill.value = 0))
@@ -122,20 +133,23 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
     <div class="blitz-grid">
       <BuildSourceRunes v-if="runeTree" :options="options" :tree="runeTree" :champion="championName" class="[grid-area:runes]" />
       <div class="blitz-small [grid-area:small]">
-        <BuildSourceChoices :title="t('panel.spells')" :options="options.spells" :summoners="summoners" />
-        <BuildSourceChoices :title="t('panel.starters')" :options="options.starters" :items="items" />
-        <BuildSourceChoices :title="t('panel.boots')" :options="boots" :items="items" />
+        <BuildSourceChoices :title="t('panel.spells')" :options="options.spells" :summoners="summoners" layout="rows" :icon-size="28" />
+        <BuildSourceChoices :title="t('panel.starters')" :options="options.starters" :items="items" layout="rows" :icon-size="28" />
+        <BuildSourceChoices :title="t('panel.boots')" :options="boots" :items="items" layout="rows" :icon-size="28" />
       </div>
 
       <!-- The cores and, beside them on a wide pane, what the picked one is followed by. -->
       <div class="blitz-build [grid-area:build]">
-        <BuildSourceChoices v-model:selected="core" :title="t('panel.cores')" :options="cores" :items="items" selectable arrows :icon-size="34" />
-        <section v-if="followUps.length" class="surface min-w-0 rounded-2xl p-3">
-          <!-- One column per group the source has: lolalytics measures two slots after the core, op.gg three. -->
-          <div class="grid gap-x-3 gap-y-3 @2xl:[grid-template-columns:repeat(var(--groups),minmax(0,1fr))]" :style="{ '--groups': followUps.length }">
-            <BuildSourceChoices v-for="group in followUps" :key="group.slot" :title="t(ORDINAL[group.slot]!)" :options="group.options.slice(0, 3)" :items="items" bare fill :icon-size="30" />
-          </div>
-        </section>
+        <div class="grid min-w-0 content-start gap-3">
+          <BuildSourceChoices v-model:selected="core" :title="t('panel.cores')" :options="cores" :items="items" selectable arrows layout="rows" :icon-size="30" />
+          <section v-if="followUps.length" class="surface min-w-0 rounded-2xl p-3">
+            <!-- One column per group the source has: lolalytics measures two slots after the core, op.gg three. -->
+            <div class="grid gap-x-3 gap-y-3 @2xl:[grid-template-columns:repeat(var(--groups),minmax(0,1fr))]" :style="{ '--groups': followUps.length }">
+              <BuildSourceChoices v-for="group in followUps" :key="group.slot" :title="t(ORDINAL[group.slot]!)" :options="group.options.slice(0, 3)" :items="items" bare layout="rows" :icon-size="28" />
+            </div>
+          </section>
+        </div>
+        <BuildSourceRecipe :champion-id="championId" :position="position" :core="cores[core] ?? null" :starter="options.starters[0] ?? null" :boots="boots" :follow-ups="followUps" :cores="cores" :items="items" />
       </div>
 
       <section v-if="championStatic && skills.length" class="surface rounded-2xl p-4 [grid-area:skills]">
