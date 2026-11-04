@@ -24,15 +24,15 @@ const route = useRoute()
 
 /** Each page's section, as the side menu files it (`AppNav`). */
 const PAGES: [string, string, string | null][] = [
-  ['/champions', 'i-game-icons-crossed-swords', 'nav.group.champions'], ['/tierlist', 'i-game-icons-podium', 'nav.group.champions'],
-  ['/analytics', 'i-game-icons-histogram', 'nav.group.champions'], ['/classes', 'i-game-icons-visored-helm', 'nav.group.champions'],
-  ['/matchup', 'i-game-icons-sword-clash', 'nav.group.champions'], ['/probuild', 'i-game-icons-laurels-trophy', 'nav.group.builds'],
-  ['/kits', 'i-game-icons-knapsack', 'nav.group.builds'], ['/items', 'i-game-icons-potion-ball', 'nav.group.builds'],
-  ['/patchnotes', 'i-game-icons-scroll-unfurled', 'nav.group.builds'], ['/draft', 'i-game-icons-rally-the-troops', 'nav.inGame'],
-  ['/game', 'i-game-icons-targeted', 'nav.inGame'], ['/overlay', 'i-game-icons-eye-target', 'nav.inGame'],
-  ['/favorites', 'i-game-icons-star-formation', null], ['/settings', 'i-game-icons-cog', null],
+  ['/champions', 'i-tabler-swords', 'nav.group.champions'], ['/tierlist', 'i-tabler-chart-bar', 'nav.group.champions'],
+  ['/analytics', 'i-tabler-chart-line', 'nav.group.champions'], ['/classes', 'i-tabler-hierarchy-2', 'nav.group.champions'],
+  ['/matchup', 'i-tabler-scale', 'nav.group.champions'], ['/probuild', 'i-tabler-trophy', 'nav.group.builds'],
+  ['/kits', 'i-tabler-backpack', 'nav.group.builds'], ['/items', 'i-tabler-flask', 'nav.group.builds'],
+  ['/patchnotes', 'i-tabler-news', 'nav.group.builds'], ['/draft', 'i-tabler-users-group', 'nav.inGame'],
+  ['/game', 'i-tabler-crosshair', 'nav.inGame'], ['/overlay', 'i-tabler-eye', 'nav.inGame'],
+  ['/favorites', 'i-tabler-star', null], ['/settings', 'i-tabler-settings', null],
 ]
-const page = computed(() => PAGES.find(([path]) => route.path.startsWith(path)) ?? (route.path === '/' ? ['/', 'i-game-icons-castle', null] : null))
+const page = computed(() => PAGES.find(([path]) => route.path.startsWith(path)) ?? (route.path === '/' ? ['/', 'i-tabler-home', null] : null))
 const section = computed(() => (page.value?.[2] ? t(page.value[2]) : null))
 </script>
 

@@ -15,7 +15,7 @@ const tab = computed({
   set: value => router.replace({ query: value === 'runes' ? { tab: 'runes' } : {} }),
 })
 const tabs = computed(() => [
-  { label: t('items.tab.items'), value: 'items', icon: 'i-game-icons-potion-ball' },
+  { label: t('items.tab.items'), value: 'items', icon: 'i-tabler-flask' },
   { label: t('items.tab.runes'), value: 'runes', icon: 'i-lucide-sparkles' },
 ])
 </script>

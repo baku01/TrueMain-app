@@ -44,9 +44,9 @@ const view = computed<View>({
   set: value => void router.replace({ query: { ...route.query, view: value === 'builds' ? undefined : value } }),
 })
 const views = computed(() => [
-  { label: t('dash.champion.builds'), value: 'builds', icon: 'i-game-icons-scroll-quill' },
-  { label: t('dash.champion.kits'), value: 'kits', icon: 'i-game-icons-knapsack' },
-  { label: t('abilities.tab'), value: 'abilities', icon: 'i-game-icons-spell-book' },
+  { label: t('dash.champion.builds'), value: 'builds', icon: 'i-tabler-list-details' },
+  { label: t('dash.champion.kits'), value: 'kits', icon: 'i-tabler-backpack' },
+  { label: t('abilities.tab'), value: 'abilities', icon: 'i-tabler-book-2' },
 ])
 
 // The banner's figures, as on the site: the lane's patch against the one before.

@@ -17,8 +17,6 @@ const { t } = useT()
       <SettingsGraphics />
       <!-- Riot's legal notice: here, once, rather than at every page's foot. -->
       <RiotDisclaimer compact class="pt-2 text-center" />
-      <!-- Game Icons' licence (CC BY 3.0) asks for the credit. -->
-      <p class="text-center text-[11px] text-dimmed">{{ t('settings.iconsCredit') }} <a href="https://game-icons.net" target="_blank" rel="noopener" class="underline hover:text-muted">game-icons.net</a> (CC BY 3.0)</p>
     </div>
   </SharedPage>
 </template>

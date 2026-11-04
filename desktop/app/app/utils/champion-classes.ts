@@ -32,13 +32,13 @@ export interface ClassDef {
 
 /** In the order the page lists them: from the front line to the back. */
 export const CLASSES: ClassDef[] = [
-  { id: 'tank', icon: 'i-game-icons-checked-shield', subclasses: ['vanguard', 'warden'] },
-  { id: 'fighter', icon: 'i-game-icons-broadsword', subclasses: ['diver', 'juggernaut'] },
-  { id: 'slayer', icon: 'i-game-icons-plain-dagger', subclasses: ['assassin', 'skirmisher'] },
-  { id: 'mage', icon: 'i-game-icons-wizard-staff', subclasses: ['burst', 'battlemage', 'artillery'] },
-  { id: 'marksman', icon: 'i-game-icons-bow-arrow', subclasses: ['hypercarry', 'lanebully', 'poke', 'utility', 'allin'] },
-  { id: 'controller', icon: 'i-game-icons-fairy-wand', subclasses: ['enchanter', 'catcher'] },
-  { id: 'specialist', icon: 'i-game-icons-magic-swirl', subclasses: ['specialist'] },
+  { id: 'tank', icon: 'i-tabler-shield', subclasses: ['vanguard', 'warden'] },
+  { id: 'fighter', icon: 'i-tabler-sword', subclasses: ['diver', 'juggernaut'] },
+  { id: 'slayer', icon: 'i-tabler-target-arrow', subclasses: ['assassin', 'skirmisher'] },
+  { id: 'mage', icon: 'i-tabler-wand', subclasses: ['burst', 'battlemage', 'artillery'] },
+  { id: 'marksman', icon: 'i-tabler-bow', subclasses: ['hypercarry', 'lanebully', 'poke', 'utility', 'allin'] },
+  { id: 'controller', icon: 'i-tabler-heart-handshake', subclasses: ['enchanter', 'catcher'] },
+  { id: 'specialist', icon: 'i-tabler-sparkles', subclasses: ['specialist'] },
 ]
 
 /** Champion id → its subclasses, comma-separated, the main one first. */

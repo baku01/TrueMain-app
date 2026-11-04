@@ -31,34 +31,34 @@ const live = computed(() => ({ dot: 'bg-primary', label: t('badge.live') }))
 
 const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
   { label: null, tabs: [
-    { label: t('nav.dashboard'), icon: 'i-game-icons-castle', to: '/', active: route.path === '/' },
+    { label: t('nav.dashboard'), icon: 'i-tabler-home', to: '/', active: route.path === '/' },
   ] },
   { label: t('nav.group.champions'), tabs: [
-    { label: t('nav.champions'), icon: 'i-game-icons-crossed-swords', to: '/champions', active: isActive('/champions') },
-    { label: t('nav.tierlist'), icon: 'i-game-icons-podium', to: '/tierlist', active: isActive('/tierlist') },
-    { label: t('nav.analytics'), icon: 'i-game-icons-histogram', to: '/analytics', active: isActive('/analytics') },
-    { label: t('nav.classes'), icon: 'i-game-icons-visored-helm', to: '/classes', active: isActive('/classes') },
-    { label: t('nav.matchup'), icon: 'i-game-icons-sword-clash', to: '/matchup', active: isActive('/matchup') },
+    { label: t('nav.champions'), icon: 'i-tabler-swords', to: '/champions', active: isActive('/champions') },
+    { label: t('nav.tierlist'), icon: 'i-tabler-chart-bar', to: '/tierlist', active: isActive('/tierlist') },
+    { label: t('nav.analytics'), icon: 'i-tabler-chart-line', to: '/analytics', active: isActive('/analytics') },
+    { label: t('nav.classes'), icon: 'i-tabler-hierarchy-2', to: '/classes', active: isActive('/classes') },
+    { label: t('nav.matchup'), icon: 'i-tabler-scale', to: '/matchup', active: isActive('/matchup') },
   ] },
   { label: t('nav.group.builds'), tabs: [
-    { label: t('nav.probuild'), icon: 'i-game-icons-laurels-trophy', to: '/probuild', active: isActive('/probuild') },
-    { label: t('nav.kits'), icon: 'i-game-icons-knapsack', to: '/kits', active: isActive('/kits') },
-    { label: t('nav.items'), icon: 'i-game-icons-potion-ball', to: '/items', active: isActive('/items') },
-    { label: t('nav.patchnotes'), icon: 'i-game-icons-scroll-unfurled', to: '/patchnotes', active: isActive('/patchnotes') },
+    { label: t('nav.probuild'), icon: 'i-tabler-trophy', to: '/probuild', active: isActive('/probuild') },
+    { label: t('nav.kits'), icon: 'i-tabler-backpack', to: '/kits', active: isActive('/kits') },
+    { label: t('nav.items'), icon: 'i-tabler-flask', to: '/items', active: isActive('/items') },
+    { label: t('nav.patchnotes'), icon: 'i-tabler-news', to: '/patchnotes', active: isActive('/patchnotes') },
   ] },
   { label: t('nav.inGame'), tabs: [
     // Lit while the client is in champion select, wherever the player is; the
     // rest of the time the page is a draft to play by hand.
-    { label: t('nav.champSelect'), icon: 'i-game-icons-rally-the-troops', to: '/draft', active: isActive('/draft'), lit: screen.value === 'draft' ? live.value : undefined },
+    { label: t('nav.champSelect'), icon: 'i-tabler-users-group', to: '/draft', active: isActive('/draft'), lit: screen.value === 'draft' ? live.value : undefined },
     // Lit while a game runs, wherever the player is.
-    { label: t('nav.game'), icon: 'i-game-icons-targeted', to: '/game', active: isActive('/game'), lit: screen.value === 'in-game' ? live.value : undefined },
-    { label: t('nav.overlay'), icon: 'i-game-icons-eye-target', to: '/overlay', active: route.path === '/overlay' },
+    { label: t('nav.game'), icon: 'i-tabler-crosshair', to: '/game', active: isActive('/game'), lit: screen.value === 'in-game' ? live.value : undefined },
+    { label: t('nav.overlay'), icon: 'i-tabler-eye', to: '/overlay', active: route.path === '/overlay' },
   ] },
 ])
 
 const foot = computed<Tab[]>(() => [
-  { label: t('nav.favorites'), icon: 'i-game-icons-star-formation', to: '/favorites', active: isActive('/favorites') },
-  { label: t('nav.settings'), icon: 'i-game-icons-cog', to: '/settings', active: isActive('/settings') },
+  { label: t('nav.favorites'), icon: 'i-tabler-star', to: '/favorites', active: isActive('/favorites') },
+  { label: t('nav.settings'), icon: 'i-tabler-settings', to: '/settings', active: isActive('/settings') },
 ])
 
 // Folded by the player (kept), or by a window too narrow for the names.

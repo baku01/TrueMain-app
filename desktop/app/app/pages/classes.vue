@@ -34,7 +34,7 @@ const empty = computed(() => visible.value.length === 0 && !showUnclassified.val
 /** The tabs count the whole roster, not the filter: a tab that vanished while typing would move under the cursor. */
 const totals = computed(() => groupChampions([...champions.value.keys()], () => 0).groups)
 const tabs = computed(() => [
-  { value: 'all' as const, label: t('classes.all'), icon: 'i-game-icons-crossed-swords', count: champions.value.size },
+  { value: 'all' as const, label: t('classes.all'), icon: 'i-tabler-swords', count: champions.value.size },
   ...totals.value.map(group => ({ value: group.class.id, label: t(`class.${group.class.id}.name`), icon: group.class.icon, count: group.total })),
 ])
 
