@@ -60,6 +60,14 @@ export async function setDataSource(next: DataSource) {
     // Storage unavailable: the choice holds until the window closes.
   }
   current.value = next
+  await clearSourceCache()
   await syncDataSourceWithShell(next)
   window.location.reload()
+}
+
+/** The shell's kept source answers dropped, so the reloaded window reads afresh (`sources.rs`). */
+async function clearSourceCache() {
+  if (!insideTauri()) return
+  const { invoke } = await import('@tauri-apps/api/core')
+  await invoke('clear_source_cache').catch(() => {})
 }

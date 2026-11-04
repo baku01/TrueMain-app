@@ -45,7 +45,7 @@ export function setDataWindow(next: DataWindow) {
     // Storage unavailable: the choice holds until the window closes.
   }
   current.value = next
-  window.location.reload()
+  void clearSourceCache().finally(() => window.location.reload())
 }
 
 /** The patches a specific one may be picked from, newest first: `16.22.1` → `16.22`, `16.21`, … */
@@ -60,4 +60,11 @@ export function previousPatch(version: string): string | null {
   const [major, minor] = version.split('.').map(Number)
   if (!major || !minor || minor <= 1) return null
   return `${major}.${minor - 1}`
+}
+
+/** The shell's kept source answers dropped, so the reloaded window reads afresh (`sources.rs`). */
+async function clearSourceCache() {
+  if (!insideTauri()) return
+  const { invoke } = await import('@tauri-apps/api/core')
+  await invoke('clear_source_cache').catch(() => {})
 }

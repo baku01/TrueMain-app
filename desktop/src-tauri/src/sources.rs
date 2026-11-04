@@ -18,7 +18,10 @@ use std::sync::{Arc, LazyLock, Mutex};
 use serde_json::value::RawValue;
 use std::time::{Duration, Instant};
 
-const TTL: Duration = Duration::from_secs(2 * 60 * 60);
+/// How long an answer is kept. Short enough that a source publishing a new
+/// patch (Blitz and op.gg switch over during the day) shows within the
+/// session, long enough that moving between pages does not ask again.
+const TTL: Duration = Duration::from_secs(20 * 60);
 const TIMEOUT: Duration = Duration::from_secs(30);
 const OPGG_MCP: &str = "https://mcp-api.op.gg/mcp";
 
@@ -83,6 +86,15 @@ fn url(source: &str, path: &str) -> Result<String, String> {
         return Err(format!("{path} is not a {source} path"));
     }
     Ok(format!("{base}{path}"))
+}
+
+/// Forget every kept answer: the next read asks the source again. Called when
+/// the player changes the source or the patch it is read at, so the window
+/// that reloads shows what they picked, never a cached older patch.
+#[tauri::command]
+pub fn clear_source_cache() -> Result<(), String> {
+    CACHE.lock().map_err(|e| e.to_string())?.clear();
+    Ok(())
 }
 
 fn cached(key: &str) -> Result<Option<Arc<str>>, String> {

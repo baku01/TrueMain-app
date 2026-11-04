@@ -362,6 +362,7 @@ pub fn run() {
             api_get,
             sources::source_get,
             sources::opgg_call,
+            sources::clear_source_cache,
             api_post,
             open_on_site,
             record::player_record,
