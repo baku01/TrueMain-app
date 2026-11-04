@@ -209,3 +209,71 @@ export function parsePatchNote(nextData: string): PatchNote {
   }
   return { intro, sections: sections.filter(entry => entry.blocks.length > 0) }
 }
+
+/** Whether a change helps the champion or item (`buff`), hurts it (`nerf`), or both, line by line (`adjust`). */
+export type ChangeKind = 'buff' | 'nerf' | 'adjust'
+
+/** What reads better lower — a cooldown, a cost, a cast time —: a smaller number there is a buff. */
+const LOWER_IS_BETTER = /recarga|cooldown|custo|cost\b|tempo de conjura|cast time|atraso|delay|recharge|penalidade|penalty|tempo de canaliza|channel time/i
+
+/**
+ * A side's values, group by group: a run of ranks (`50/75/100`), a range
+ * (`85 - 277`) or a lone number (`(+ 60% do PdH)`, `5s`) is one group, read
+ * as its mean. Decimal commas are points (`87,5`); a point before three
+ * digits is a thousands separator (`3.800`).
+ */
+function groupsOf(text: string): number[] {
+  const number = (value: string) => Number(value.replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'))
+  return (text.match(/\d+(?:[.,]\d+)*(?:\s*[/-]\s*\d+(?:[.,]\d+)*)*/g) ?? []).map((group) => {
+    const values = group.split(/\s*[/-]\s*/).map(number).filter(value => Number.isFinite(value))
+    return values.reduce((total, value) => total + value, 0) / (values.length || 1)
+  })
+}
+
+/**
+ * One line of a note, `Label: before ⇒ after`, read as a buff or a nerf: each
+ * group of values after against the one before it — the sides lined up from
+ * their ends, since Riot leaves out what did not change (`120/200/280
+ * (+ 35% AP) ⇒ (+ 40% AP)`) —, their relative changes added up, the sense
+ * turned for what reads better lower. Null for a line that changes no number
+ * (a rewrite, a removal).
+ */
+export function lineChange(text: string): Exclude<ChangeKind, 'adjust'> | null {
+  const [before, after] = text.split('⇒')
+  if (before === undefined || after === undefined) return null
+  const label = before.includes(':') ? before.slice(0, before.indexOf(':')) : ''
+  const from = groupsOf(before.slice(label.length))
+  const to = groupsOf(after)
+  if (!from.length || !to.length) return null
+  const length = Math.min(from.length, to.length)
+  let change = 0
+  for (let index = 1; index <= length; index++) {
+    const a = from[from.length - index]!
+    const b = to[to.length - index]!
+    change += a === 0 ? Math.sign(b) : (b - a) / Math.abs(a)
+  }
+  if (Math.abs(change) < 1e-9) return null
+  const up = LOWER_IS_BETTER.test(label) ? change < 0 : change > 0
+  return up ? 'buff' : 'nerf'
+}
+
+/** A card's changes taken together: only buffs, only nerfs, or some of each; null when no line moves a number. */
+export function blockChange(html: string): ChangeKind | null {
+  let buffs = 0
+  let nerfs = 0
+  for (const match of html.matchAll(/<(?:li|p)\b[^>]*>([\s\S]*?)<\/(?:li|p)>/g)) {
+    const kind = lineChange(match[1]!.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' '))
+    if (kind === 'buff') buffs++
+    if (kind === 'nerf') nerfs++
+  }
+  if (!buffs && !nerfs) return null
+  return buffs && nerfs ? 'adjust' : buffs ? 'buff' : 'nerf'
+}
+
+/** The card's html with each line marked buff or nerf (`change-buff`, `change-nerf`), for the view to colour. */
+export function markChanges(html: string): string {
+  return html.replace(/<(li|p)\b([^>]*)>([\s\S]*?)<\/\1>/g, (whole, tag: string, attributes: string, inner: string) => {
+    const kind = lineChange(inner.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' '))
+    return kind ? `<${tag}${attributes} class="change-${kind}">${inner}</${tag}>` : whole
+  })
+}
