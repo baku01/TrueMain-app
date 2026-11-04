@@ -70,3 +70,69 @@ async fn write(client: &SharedClient, draft: &ItemSetDraft) -> Result<(), String
         }
     }
 }
+
+/// Our recommended sets' file names in the game's `Config/Global/Recommended`:
+/// `!!!truemain-0.json` and on, sorted ahead of the game's own.
+const RECOMMENDED_PREFIX: &str = "!!!truemain-";
+/// The game ranks recommended sets by `sortrank`; Riot's own sit at 4 and
+/// 4999, so ours start far above them, the selected build first.
+const RECOMMENDED_RANK: i64 = 1_000_000_000;
+
+/// The automatic import's item sets (`useDraftAutoImport`), written the way
+/// Blitz writes its own: as recommended-set files in the game's
+/// `Config/Global/Recommended`, so the shop opens on them in game — the build
+/// selected in the draft first, the champion's other builds after it. Each
+/// set is the client's item set JSON (title, `championKey`, blocks); this
+/// fills in its rank. Only our own files (`!!!truemain-*.json`) are ever
+/// removed; the player's sets and other apps' files are left alone.
+#[tauri::command]
+pub async fn write_recommended_item_sets(
+    client: tauri::State<'_, SharedClient>,
+    sets: Vec<serde_json::Value>,
+) -> Result<(), String> {
+    let client = client
+        .read()
+        .expect("client lock poisoned")
+        .clone()
+        .ok_or_else(|| "the League client is not running".to_string())?;
+    // The client says where it is installed; a client that does not falls back to the default install.
+    let install = std::path::PathBuf::from(client.install_dir().await.unwrap_or_else(|_| {
+        if cfg!(target_os = "macos") {
+            "/Applications/League of Legends.app/Contents/LoL".to_string()
+        } else {
+            r"C:\Riot Games\League of Legends".to_string()
+        }
+    }));
+    // The game's config sits under the install directory; Garena's builds keep it in a sibling `Game` folder.
+    let roots = [install.join("Config"), install.join("../Game/Config")];
+    let mut written = false;
+    for root in roots.iter().filter(|root| root.is_dir()) {
+        let folder = root.join("Global").join("Recommended");
+        std::fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+        if let Ok(entries) = std::fs::read_dir(&folder) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(RECOMMENDED_PREFIX) && name.ends_with(".json") {
+                    let _ = std::fs::remove_file(entry.path());
+                }
+            }
+        }
+        for (index, set) in sets.iter().enumerate() {
+            let mut set = set.clone();
+            if let Some(object) = set.as_object_mut() {
+                object.insert("priority".into(), serde_json::Value::Bool(index == 0));
+                object.insert("sortrank".into(), serde_json::Value::from(RECOMMENDED_RANK - index as i64));
+            }
+            let path = folder.join(format!("{RECOMMENDED_PREFIX}{index}.json"));
+            std::fs::write(&path, serde_json::to_vec(&set).map_err(|error| error.to_string())?)
+                .map_err(|error| error.to_string())?;
+        }
+        written = true;
+    }
+    if written {
+        Ok(())
+    } else {
+        Err(format!("no game config folder under {}", install.display()))
+    }
+}

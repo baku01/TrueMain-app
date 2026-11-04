@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DraftSelection } from '~/composables/useDraftAutoImport'
 import type { DraftSuggestionItem } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { ViewedPick } from '~/composables/useDraftSubject'
@@ -70,6 +71,9 @@ const viewed = ref<ViewedPick | null>(null)
 const previewed = ref<number | null>(null)
 const { subject, shownView, duel } = useDraftSubject(draft, enemyLanes, viewed, previewed)
 const { build, pending: buildPending, error: buildError } = useDraftBuild(subject)
+// The build selected for our locked pick written into the client on its own, when Settings say so (`useAutoImport`).
+const importSelection = shallowRef<DraftSelection | null>(null)
+useDraftAutoImport(draft, importSelection)
 // The items this draft moves the build toward: shown over the build, and marked inside the Blitz build panel.
 const { pushes: itemAdvice, build: draftBuild, buildPending: draftBuildPending } = useDraftItemAdvice(subject)
 
@@ -216,6 +220,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         :kits="kits"
         :item-advice="itemAdvice"
         @update:kit-id="pickKit"
+        @selection="importSelection = shownView === null && previewed === null ? $event : importSelection"
       >
         <template #advice>
           <DraftItemAdvice :pushes="itemAdvice" :build="draftBuild" :pending="draftBuildPending" />

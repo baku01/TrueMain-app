@@ -12,6 +12,7 @@ const { t } = useT()
     <div class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
       <PageHeader :eyebrow="t('settings.eyebrow')" :title="t('settings.title')" />
       <SettingsDataSource />
+      <SettingsAutoImport />
       <SettingsGraphics />
       <!-- Riot's legal notice: here, once, rather than at every page's foot. -->
       <RiotDisclaimer compact class="pt-2 text-center" />

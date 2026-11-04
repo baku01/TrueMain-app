@@ -4,10 +4,10 @@
 //! `item_sets`, and champion select, `champ_select`), so it carries its own
 //! boundaries:
 //!
-//! * it runs on an explicit user click, never on a pick or a phase change.
-//!   Riot's player-facing policy forbids an application "taking actions on your
-//!   behalf", and the distance between importing runes on click and
-//!   auto-accepting a queue is the distance between a tool and a bannable one;
+//! * it runs on an explicit user click, or — when the player turns it on in
+//!   Settings — once at their own lock-in (`useDraftAutoImport`), the way the
+//!   major companion apps do. Never on a hover, never a pick or a queue
+//!   accepted for them: the player still makes every decision;
 //! * it never deletes a page it did not create. Overwriting somebody's own rune
 //!   pages because we ran out of slots would be an unforced disaster, so a full
 //!   page list with no page of ours is reported back, not resolved by deleting

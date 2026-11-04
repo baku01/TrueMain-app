@@ -138,9 +138,10 @@ export function cutAt(tree: KitNode[], depth: number): KitNode[] {
 
 /**
  * The branch the held items follow: at each level the node held, the earliest
- * completed when several are, until a level holds none of them. `order` is
- * the order the items were completed in; items held but missing from it count
- * after it.
+ * completed when several are; a level with none held is passed through toward
+ * an item held further down (bought out of the kit's order), and the walk
+ * ends where nothing below is held. `order` is the order the items were
+ * completed in; items held but missing from it count after it.
  */
 export function heldPath(tree: KitNode[], order: number[], held: number[]): KitNode[] {
   const rank = (itemId: number) => {
@@ -154,10 +155,24 @@ export function heldPath(tree: KitNode[], order: number[], held: number[]): KitN
     const matched = level
       .filter(node => holding.has(node.itemId))
       .sort((a, b) => rank(a.itemId) - rank(b.itemId))[0]
+      ?? level
+        .map(node => ({ node, below: heldBelow(node.children, holding, rank) }))
+        .filter(entry => entry.below !== null)
+        .sort((a, b) => a.below! - b.below!)[0]?.node
     if (!matched) return path
     path.push(matched)
     level = matched.children
   }
+}
+
+/** The earliest rank of an item held anywhere under `level`; null when none is. */
+function heldBelow(level: KitNode[], holding: Set<number>, rank: (itemId: number) => number): number | null {
+  let best: number | null = null
+  for (const node of level) {
+    const here = holding.has(node.itemId) ? rank(node.itemId) : heldBelow(node.children, holding, rank)
+    if (here !== null && (best === null || here < best)) best = here
+  }
+  return best
 }
 
 /** The next step of a kit in game: a node of its tree, else boots, else nothing — the kit is done. */
@@ -175,10 +190,9 @@ export interface KitStep {
  * TrueMain's answer.
  */
 export function nextKitStep(tree: KitNode[], boots: number[], order: number[], held: number[]): KitStep | null {
-  const path = heldPath(tree, order, held)
-  const level = path.at(-1)?.children ?? tree
-  const next = level[0]
-  if (next) return { itemId: next.itemId, isBoots: false }
+  // The first item of the branch not held: one skipped on the way to an item bought ahead of it comes first.
+  const next = kitChain(tree, order, held).find(itemId => !held.includes(itemId))
+  if (next !== undefined) return { itemId: next, isBoots: false }
   const firstBoots = boots[0]
   if (firstBoots && !boots.some(id => held.includes(id))) return { itemId: firstBoots, isBoots: true }
   return null
@@ -191,6 +205,20 @@ export function nextKitStep(tree: KitNode[], boots: number[], order: number[], h
  * the item set puts them too, ahead of the rest.
  */
 export function kitOrder(tree: KitNode[], boots: number[], order: number[], held: number[]): NextItemOrderStep[] {
+  const next = nextKitStep(tree, boots, order, held)
+  const stateOf = (itemId: number, done: boolean): NextItemOrderStep['state'] => {
+    if (done) return 'Completed'
+    return next?.itemId === itemId ? 'Next' : 'Upcoming'
+  }
+  // Done is held, wherever on the branch: an item bought out of order is marked, the one skipped stays to buy.
+  const steps: NextItemOrderStep[] = kitChain(tree, order, held).map(itemId => ({ itemId, isBoots: false, state: stateOf(itemId, held.includes(itemId)) }))
+  const shownBoots = boots.find(id => held.includes(id)) ?? boots[0]
+  if (shownBoots) steps.splice(Math.min(1, steps.length), 0, { itemId: shownBoots, isBoots: true, state: stateOf(shownBoots, held.includes(shownBoots)) })
+  return steps
+}
+
+/** The branch the held items follow, then its default continuation: the row the kit draws. */
+function kitChain(tree: KitNode[], order: number[], held: number[]): number[] {
   const path = heldPath(tree, order, held).map(node => node.itemId)
   let level = path.length === 0 ? tree : nodeAtItems(tree, path)
   const rest: number[] = []
@@ -198,15 +226,7 @@ export function kitOrder(tree: KitNode[], boots: number[], order: number[], held
     rest.push(level[0].itemId)
     level = level[0].children
   }
-  const next = nextKitStep(tree, boots, order, held)
-  const stateOf = (itemId: number, done: boolean): NextItemOrderStep['state'] => {
-    if (done) return 'Completed'
-    return next?.itemId === itemId ? 'Next' : 'Upcoming'
-  }
-  const steps: NextItemOrderStep[] = [...path, ...rest].map(itemId => ({ itemId, isBoots: false, state: stateOf(itemId, path.includes(itemId)) }))
-  const shownBoots = boots.find(id => held.includes(id)) ?? boots[0]
-  if (shownBoots) steps.splice(Math.min(1, steps.length), 0, { itemId: shownBoots, isBoots: true, state: stateOf(shownBoots, held.includes(shownBoots)) })
-  return steps
+  return [...path, ...rest]
 }
 
 /** The children under the path of items `items`, walked from the roots. */

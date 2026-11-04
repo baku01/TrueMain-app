@@ -104,8 +104,8 @@ export function nextItemRequest(
     championId,
     body: {
       position: me.position,
-      // What was completed, in order, then anything held the order missed.
-      items: [...order, ...held.filter(id => !order.includes(id))],
+      // What is held, in the order it was completed, then anything held the order missed: a sold or combined item is no longer there.
+      items: [...order.filter(id => held.includes(id)), ...held.filter(id => !order.includes(id))],
       allies,
       enemies,
     },

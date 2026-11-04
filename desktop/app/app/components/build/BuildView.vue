@@ -3,7 +3,11 @@ import type { BuildOption, CompositionBuildRequest } from '~/types/build'
 import type { DraftBuild } from '~/composables/useDraftBuild'
 import type { Kit } from '#shared/types/kit'
 import type { DraftItemPush } from '~/utils/draft-damage'
+import type { ImportChoice } from '~/composables/useDraftAutoImport'
+import type { ImportBuild } from '~/utils/recommended-item-set'
 import { externalSource, fromBlitz } from '~/utils/data-source'
+import { situationalFromTree } from '~/utils/item-set'
+import { kitPaths } from '~/utils/kit-tree'
 
 /**
  * A champion's build, laid out the way the reference client does after a pick
@@ -109,6 +113,48 @@ const itemSetSubject = computed(() => {
   const name = championStatic(props.championId)?.championName
   return shown.value && name ? { championId: props.championId, champion: name, position: props.position, build: shown.value } : null
 })
+/**
+ * What the draft's automatic import writes (`useDraftAutoImport`): the build
+ * on screen — a row, a pro's, a kit — and every other row, each as an item
+ * set. Told on every change, so another build picked is imported in turn.
+ */
+const emit = defineEmits<{ selection: [value: { championId: number, selected: ImportChoice | null, others: ImportBuild[] }] }>()
+const { nameOf } = useChampionStatics()
+function choiceOf(option: BuildOption, title: string): ImportChoice {
+  const path = option.core.itemPath?.itemIds ?? []
+  const spells = option.core.summonerSpells
+  return {
+    key: option.key,
+    title,
+    runePage: option.core.runePage,
+    spells: spells ? [spells.spell1Id, spells.spell2Id] : null,
+    starter: option.core.starterItems?.itemIds ?? [],
+    path,
+    boots: option.core.boots?.itemIds ?? [],
+    situational: situationalFromTree(option.buildTree, path),
+  }
+}
+function titleOf(option: BuildOption): string {
+  const champion = nameOf(props.championId)
+  if (option.key === 'draft') return props.draft?.opponentId ? `${champion} vs ${nameOf(props.draft.opponentId)}` : champion
+  const first = option.core.itemPath?.itemIds[0]
+  return first && items.value[first] ? `${champion} · ${items.value[first]!.name}` : champion
+}
+const selection = computed(() => {
+  const kit = kitShown.value
+  let chosen: ImportChoice | null = null
+  if (kit) {
+    const paths = kitPaths(kit.tree)
+    const path = paths[0] ?? []
+    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)) }
+  }
+  else if (shown.value) {
+    chosen = choiceOf(shown.value, selected.value === 'pro' && pro.value ? `${pro.value.player} ${nameOf(props.championId)}` : titleOf(shown.value))
+  }
+  return { championId: props.championId, selected: chosen, others: options.value.map(option => choiceOf(option, titleOf(option))) }
+})
+watch(() => JSON.stringify(selection.value), () => emit('selection', selection.value), { immediate: true })
+
 const waiting = computed(() => !shown.value && (lanePending.value || props.draft?.pending))
 const emptyMessage = computed(() => t('build.view.none'))
 </script>

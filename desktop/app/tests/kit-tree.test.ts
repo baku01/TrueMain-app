@@ -215,3 +215,15 @@ describe('the layout', () => {
     expect(layout.slots.map(({ x, y, branch }) => [x, y, branch])).toEqual([[5, 47, false], [17, 33, true], [17, 19, true], [17, 5, true]])
   })
 })
+
+describe('an item bought out of the kit\'s order', () => {
+  it('is marked done, and the item skipped stays next', () => {
+    expect(kitOrder(tree, [], [LICH], [LICH]).map(step => [step.itemId, step.state])).toEqual([[LUDENS, 'Next'], [LICH, 'Completed'], [RABADON, 'Upcoming']])
+    expect(nextKitStep(tree, [], [LICH], [LICH])).toEqual({ itemId: LUDENS, isBoots: false })
+  })
+
+  it('follows the branch the held item is on', () => {
+    expect(kitOrder(tree, [], [ZHONYA], [ZHONYA]).map(step => [step.itemId, step.state])).toEqual([[LUDENS, 'Next'], [SHADOWFLAME, 'Upcoming'], [ZHONYA, 'Completed']])
+    expect(nextKitStep(tree, [], [ZHONYA, LUDENS], [ZHONYA, LUDENS])).toEqual({ itemId: SHADOWFLAME, isBoots: false })
+  })
+})

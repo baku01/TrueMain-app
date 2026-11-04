@@ -29,6 +29,8 @@ export interface BlitzBuildDoc {
   coreItems: (Tally & { itemIds: string })[]
   itemsAfterCore: Record<string, Record<string, (Tally & { itemIds: number[] })[]>>
   skillOrders: (Tally & { skillOrder: number[] })[]
+  /** Each completed item's components in the order players buy them, most played first. */
+  itemOrders?: Record<string, (Tally & { items_order: number[], pick_rate_rank?: number })[]>
 }
 
 /** Builds kept per lane: the most played core paths, as many as TrueMain's page usually shows. */

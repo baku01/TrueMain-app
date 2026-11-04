@@ -75,6 +75,13 @@ impl LcuClient {
         serde_json::from_str(&body).map_err(|e| Error::Decode(e.to_string()))
     }
 
+    /// The client's install directory (`C:/Riot Games/League of Legends`,
+    /// `/Applications/League of Legends.app/Contents/LoL`): the game reads its
+    /// recommended item sets from the `Config` folder under it.
+    pub async fn install_dir(&self) -> Result<String> {
+        self.get_json("/data-store/v1/install-dir").await
+    }
+
     /// Where the player is. Answers a bare JSON string, not an object.
     pub async fn gameflow_phase(&self) -> Result<GameflowPhase> {
         let body = self.get_raw("/lol-gameflow/v1/gameflow-phase").await?;
