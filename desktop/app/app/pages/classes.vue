@@ -132,7 +132,7 @@ function alsoTitle(id: number, here: SubclassId) {
           </div>
         </section>
 
-        <section v-if="showUnclassified" aria-labelledby="class-unclassified" class="rounded-2xl border border-dashed border-default p-4 md:p-5">
+        <section v-if="showUnclassified" aria-labelledby="class-unclassified" class="surface rounded-2xl p-4 md:p-5">
           <h2 id="class-unclassified" class="flex items-baseline gap-2.5 text-base font-semibold text-highlighted">
             {{ t('classes.unclassified') }}
             <span class="text-sm font-normal text-dimmed">{{ count(tree.unclassified.length) }}</span>

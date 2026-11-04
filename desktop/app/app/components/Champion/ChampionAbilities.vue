@@ -51,7 +51,7 @@ const iconOf = (key: string) => championStatic(props.championId)?.championSpells
       <div class="space-y-2"><USkeleton v-for="row in 5" :key="row" class="h-16 w-full rounded-xl" /></div>
       <USkeleton class="h-96 w-full rounded-2xl" />
     </div>
-    <p v-else-if="status === 'error'" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('abilities.failed') }}</p>
+    <p v-else-if="status === 'error'" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('abilities.failed') }}</p>
 
     <template v-else>
       <div class="min-h-0 lg:overflow-y-auto">

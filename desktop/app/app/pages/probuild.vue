@@ -96,7 +96,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
           </ul>
         </div>
 
-        <p v-if="championId === null" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('probuild.champion.pick') }}</p>
+        <p v-if="championId === null" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('probuild.champion.pick') }}</p>
 
         <template v-else-if="result">
           <header class="flex flex-wrap items-center gap-4 rounded-xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
@@ -107,7 +107,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
             </div>
           </header>
 
-          <p v-if="result.games === 0" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('probuild.none') }}</p>
+          <p v-if="result.games === 0" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('probuild.none') }}</p>
 
           <template v-else>
             <p v-if="thin" class="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-default">

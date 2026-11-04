@@ -108,7 +108,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
         <UBadge :label="t('analytics.source', { source })" color="neutral" variant="subtle" class="ml-auto" />
       </div>
 
-      <p v-if="championId === null" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('analytics.pick') }}</p>
+      <p v-if="championId === null" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('analytics.pick') }}</p>
 
       <template v-else>
         <header class="flex flex-wrap items-center gap-4 rounded-2xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
@@ -136,7 +136,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
         </header>
 
         <div v-if="reading && !analytics" aria-busy="true" class="space-y-3"><USkeleton class="h-24 w-full" /><USkeleton class="h-96 w-full" /></div>
-        <p v-else-if="failed" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('analytics.failed') }}</p>
+        <p v-else-if="failed" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('analytics.failed') }}</p>
 
         <template v-else-if="analytics">
           <AnalyticsHeader v-if="analytics.header" :header="analytics.header" :damage="analytics.damage" />

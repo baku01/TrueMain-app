@@ -58,6 +58,28 @@
   --ui-bg-surface: color-mix(in oklch, #0d121c 70%, transparent);
   --ui-border: #1c2535;
   --ui-border-accented: #2d3a4f;
+  /* The pane every panel sits on: one step above the page, still the app's blue-black. */
+  --tm-pane: #101827;
+}
+
+/* The banners over champion art (the shared `PageHero`) lose their hairline too: the art is their edge. */
+:root.dark section.on-art {
+  border-color: transparent;
+}
+
+/* Tighter corners, as Blitz's: a 16px card read as a toy at this density. */
+@theme {
+  --radius-2xl: 0.75rem;
+  --radius-xl: 0.625rem;
+}
+
+/* Section titles in sentence case, a touch larger and lighter on the eye than the shouted small caps. */
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--ui-text-muted);
 }
 
 :root:not(.dark) {
@@ -474,9 +496,20 @@ a[href] {
   padding: 0.875rem 0 0;
 }
 
-/* Cards catch a little light on their top edge — the one detail that keeps a dark UI from reading as flat boxes. */
+/*
+ * Panels the way Blitz draws them, in TrueMain's own colours: a solid pane one
+ * step above the page, set apart by its tone alone — no hairline, no lit edge.
+ * Boxes inside boxes were what made the app read as a sketch; the tone ladder
+ * (page → pane → accented row) carries the structure instead.
+ */
 :root.dark .surface {
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  background-color: var(--tm-pane);
+  border-color: transparent;
+  box-shadow: none;
+}
+:root:not(.dark) .surface {
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
 }
 
 /*

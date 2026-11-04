@@ -85,7 +85,7 @@ const kda = (match: ProMatch) => `${match.kills} / ${match.deaths} / ${match.ass
     <div v-if="loading && !matches.length" aria-busy="true" class="space-y-2">
       <USkeleton v-for="row in 4" :key="row" class="h-16 w-full" />
     </div>
-    <p v-else-if="!shown.length" class="rounded-xl border border-dashed border-default px-4 py-8 text-center text-sm text-muted">{{ t('pro.none') }}</p>
+    <p v-else-if="!shown.length" class="surface rounded-xl px-4 py-8 text-center text-sm text-muted">{{ t('pro.none') }}</p>
 
     <ul v-else class="space-y-2">
       <li
