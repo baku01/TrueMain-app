@@ -61,4 +61,14 @@ describe('nextItemRequest', () => {
     expect(request?.body.enemies.map(enemy => enemy.items)).toEqual(enemies.map(enemy => enemy.items.map(item => item.itemId)))
     expect(request?.body.allies.every(ally => !('items' in ally))).toBe(true)
   })
+
+  it('sends what is held, in the order it was completed — a sold item is no longer bought', () => {
+    const game = sampleGame()
+    const me = game.players.find(player => player.isMe)!
+    const held = me.items.map(item => item.itemId)
+    const sold = 999999
+    const request = nextItemRequest(game, [sold, ...held.slice().reverse()], championIdOf)
+    expect(request?.body.items).not.toContain(sold)
+    expect(request?.body.items).toEqual(held.slice().reverse())
+  })
 })
