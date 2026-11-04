@@ -45,29 +45,31 @@ const iconOf = (key: string) => championStatic(props.championId)?.championSpells
 </script>
 
 <template>
-  <div class="min-h-0 space-y-6 overflow-y-auto">
-    <div v-if="status === 'pending'" aria-busy="true" class="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+  <!-- One screen: the abilities and the insights on the left, the picked ability on the right; a column that runs long scrolls on its own, never the page. -->
+  <div class="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+    <div v-if="status === 'pending'" aria-busy="true" class="contents">
       <div class="space-y-2"><USkeleton v-for="row in 5" :key="row" class="h-16 w-full rounded-xl" /></div>
       <USkeleton class="h-96 w-full rounded-2xl" />
     </div>
     <p v-else-if="status === 'error'" class="rounded-xl border border-dashed border-default px-4 py-10 text-center text-sm text-muted">{{ t('abilities.failed') }}</p>
 
-    <div v-else class="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-      <ul class="space-y-2 self-start lg:sticky lg:top-0" role="listbox" :aria-label="t('abilities.tab')">
+    <template v-else>
+      <div class="min-h-0 lg:overflow-y-auto">
+      <ul class="space-y-1.5" role="listbox" :aria-label="t('abilities.tab')">
         <li v-for="entry in abilities" :key="entry.key">
           <button
             type="button"
             role="option"
             :aria-selected="active === entry.key"
-            class="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition"
+            class="flex w-full items-center gap-3 rounded-xl border px-2.5 py-2 text-left transition"
             :class="active === entry.key ? 'border-primary/50 bg-primary/10' : 'border-default bg-elevated/40 hover:border-accented hover:bg-elevated'"
             @mouseenter="active = entry.key"
             @focus="active = entry.key"
             @click="active = entry.key"
           >
             <span class="relative shrink-0">
-              <img v-if="iconOf(entry.key)" :src="iconOf(entry.key)!" :alt="entry.name" width="44" height="44" class="size-11 rounded-lg ring-1 ring-default">
-              <span v-else class="block size-11 rounded-lg bg-accented" />
+              <img v-if="iconOf(entry.key)" :src="iconOf(entry.key)!" :alt="entry.name" width="36" height="36" class="size-9 rounded-lg ring-1 ring-default">
+              <span v-else class="block size-9 rounded-lg bg-accented" />
               <span class="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded bg-default text-[10px] font-extrabold" :class="COLORS[entry.key]">{{ entry.key }}</span>
             </span>
             <span class="min-w-0">
@@ -81,15 +83,16 @@ const iconOf = (key: string) => championStatic(props.championId)?.championSpells
         </li>
       </ul>
 
-      <article v-if="current" class="surface min-w-0 overflow-hidden rounded-2xl">
-        <AbilityClip :champion-id="championId" :ability="current" :icon-url="iconOf(current.key)" :resource="current.resource ?? championStatic(championId)?.partype ?? null" />
-      </article>
-    </div>
+      </div>
 
-    <!-- The champion's insights — strengths, weaknesses, tips — under its abilities. -->
-    <section class="space-y-3">
-      <h2 class="stat-label">{{ t('insights.tab') }}</h2>
-      <ChampionInsights :champion-id="championId" />
-    </section>
+      <article v-if="current" class="surface min-h-0 min-w-0 overflow-y-auto rounded-2xl">
+        <AbilityClip :champion-id="championId" :ability="current" :icon-url="iconOf(current.key)" :resource="current.resource ?? championStatic(championId)?.partype ?? null">
+          <!-- The champion's insights — strengths, weaknesses, tips — under the clip, where the pane has room for them. -->
+          <template #below>
+            <ChampionInsights :champion-id="championId" embedded />
+          </template>
+        </AbilityClip>
+      </article>
+    </template>
   </div>
 </template>

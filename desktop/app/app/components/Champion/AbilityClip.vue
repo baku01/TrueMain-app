@@ -44,17 +44,24 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
 </script>
 
 <template>
-  <div class="overflow-hidden">
-    <div class="relative aspect-video bg-black">
-      <video v-if="!failed" :key="`${championId}-${ability.key}`" autoplay muted loop playsinline class="size-full object-cover" @error="failed = true">
-        <source :src="clip('mp4')" type="video/mp4">
-        <source :src="clip('webm')" type="video/webm" @error="failed = true">
-      </video>
-      <div v-else class="grid size-full place-items-center text-sm text-muted">{{ t('abilities.noClip') }}</div>
-      <div class="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent" />
+  <!-- The clip beside the text where the pane is wide enough, over it where it is not. -->
+  <div class="@container">
+  <div class="grid @2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @2xl:items-start">
+    <!-- The clip, and under it what the page puts there (the insights), beside the text on a wide pane. -->
+    <div class="min-w-0 @2xl:p-4">
+      <div class="relative aspect-video bg-black @2xl:overflow-hidden @2xl:rounded-xl">
+        <video v-if="!failed" :key="`${championId}-${ability.key}`" autoplay muted loop playsinline class="size-full object-cover" @error="failed = true">
+          <source :src="clip('mp4')" type="video/mp4">
+          <source :src="clip('webm')" type="video/webm" @error="failed = true">
+        </video>
+        <div v-else class="grid size-full place-items-center text-sm text-muted">{{ t('abilities.noClip') }}</div>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent" />
+      </div>
+      <div v-if="$slots.below" class="p-5 pt-4 @2xl:px-0 @2xl:pb-0">
+        <slot name="below" />
+      </div>
     </div>
-
-    <div class="space-y-4 p-5">
+    <div class="space-y-4 p-5 @2xl:pl-1">
       <header class="flex items-center gap-3">
         <img v-if="iconUrl" :src="iconUrl" alt="" width="40" height="40" class="size-10 rounded-lg ring-1 ring-default">
         <div class="min-w-0">
@@ -89,6 +96,7 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
         </table>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
