@@ -37,6 +37,8 @@ import { tr } from '#common/utils/i18n'
  */
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000
+/** Bytes as the progress line writes them: `12.3`. */
+const megabytes = (bytes: number) => (bytes / 1024 / 1024).toFixed(1)
 // How long the launch check waits for the shell's first state before treating the phase as unknown.
 const STATE_WAIT_MS = 10 * 1000
 const BUSY_SCREENS: Screen[] = ['draft', 'in-game']
@@ -195,8 +197,28 @@ export function useAppUpdate() {
         }
         return
       }
-      if (manual) say({ title: tr('app.update.downloading', { version: update.version }), icon: 'i-lucide-download' })
-      await update.download()
+      // The download says where it is, in the corner, every time — held back only during champion select or a game (#1914).
+      const shown = () => manual || !BUSY_SCREENS.includes(screen.value)
+      if (shown()) say({ title: tr('app.update.downloading', { version: update.version }), description: tr('app.update.starting'), icon: 'i-lucide-download' })
+      let total = 0
+      let received = 0
+      let painted = 0
+      await update.download((event) => {
+        if (event.event === 'Started') total = event.data.contentLength ?? 0
+        else if (event.event === 'Progress') received += event.data.chunkLength
+        // A few repaints a second, not one per chunk.
+        const now = Date.now()
+        if (event.event !== 'Finished' && now - painted < 200) return
+        painted = now
+        if (!shown()) return
+        say({
+          title: tr('app.update.downloading', { version: update.version }),
+          description: total > 0
+            ? tr('app.update.progress', { done: megabytes(received), total: megabytes(total), percent: Math.min(100, Math.round(received / total * 100)) })
+            : tr('app.update.progressUnknown', { done: megabytes(received) }),
+          icon: 'i-lucide-download',
+        })
+      })
       if (trigger === 'launch' && await idle()) {
         say({ title: tr('app.update.updating', { version: update.version }), description: tr('app.update.updatingBody'), icon: 'i-lucide-download' })
         await install(update)
