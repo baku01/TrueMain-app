@@ -128,13 +128,13 @@ const builds = new Map<string, Promise<LolalyticsBuild | null>>()
 /** lolalytics' regions: `all` (global) or one server. */
 export const LOLALYTICS_REGIONS = ['all', 'br', 'na', 'euw', 'eune', 'kr', 'lan', 'las', 'oce', 'tr', 'ru', 'jp', 'vn', 'tw', 'sg', 'ph', 'th', 'me'] as const
 
-export function readLolalyticsBuild(championId: number, position: string, eloBracket?: unknown, region = 'all'): Promise<LolalyticsBuild | null> {
-  const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}:${region}`
+export function readLolalyticsBuild(championId: number, position: string, eloBracket?: unknown, region = 'all', patch?: string): Promise<LolalyticsBuild | null> {
+  const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}:${region}:${patch ?? ''}`
   let answer = builds.get(key)
   if (!answer) {
     answer = championSlug(championId).then(async (slug) => {
       if (!slug) return null
-      const read_ = await read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region })
+      const read_ = await read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region, ...(patch ? { patch } : {}) })
       return read_.header ? read_ : null
     })
     answer.catch(() => builds.delete(key))
@@ -292,25 +292,22 @@ export async function lolalyticsMatchups(championId: number, query: Record<strin
   return { championId, position, patch: build?.header.patch ?? null, matchups }
 }
 
-/** The trend by day, at the bracket asked when lolalytics charts it, every tier otherwise. */
+/**
+ * The champion's figures patch by patch, as the champion page reads them (its
+ * current point, and the one before for the change): the patch the window
+ * reads, whole — the same figures the tier list shows —, and the patch before
+ * it. lolalytics' own chart is by day; its last day is a few hundred games,
+ * no figure for a page to lead with.
+ */
 export async function lolalyticsTrend(championId: number, query: Record<string, unknown>): Promise<ChampionTrendResponse> {
   const position = typeof query.position === 'string' && query.position ? query.position : 'MIDDLE'
   const build = await readLolalyticsBuild(championId, position, query.eloBracket)
-  const graph = build?.graph
-  if (!graph) return { championId, position, points: [] }
-  const tier = lolalyticsTier(query.eloBracket)
-  const key = graph.wr[tier] ? tier : 'all'
-  return {
-    championId,
-    position,
-    points: graph.dates.map((date, index) => ({
-      patch: date,
-      winRate: rate(graph.wr[key]?.[index] ?? 0),
-      pickRate: rate(graph.pr[key]?.[index] ?? 0),
-      banRate: rate(graph.br[key]?.[index] ?? 0),
-      games: graph.n[key]?.[index] ?? 0,
-    })),
-  }
+  const header = build?.header
+  if (!header) return { championId, position, points: [] }
+  const point = (from: LolalyticsBuild['header']) => ({ patch: from.patch, winRate: rate(from.wr), pickRate: rate(from.pr), banRate: rate(from.br), games: from.n })
+  const before = String(header.patch).includes('.') ? previousPatch(`${header.patch}.1`) : null
+  const earlier = before ? await readLolalyticsBuild(championId, position, query.eloBracket, 'all', before).catch(() => null) : null
+  return { championId, position, points: [...(earlier?.header ? [point(earlier.header)] : []), point(header)] }
 }
 
 /** The allies on every lane (`build-team`): `[id, win rate, delta 1, delta 2, pick rate, games]` per lane. */
