@@ -1,7 +1,7 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevDecision, LaidBuild, Names } from '~/utils/jev-build'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { decide, firstSlots, laidBuild, laterSlot, laterSlotNumbers, questionsOf, stateOf } from '~/utils/jev-build'
+import { decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
 import { enemySituation } from '~/utils/draft-build'
 import { activeProvider } from '~/utils/sources'
 
@@ -76,9 +76,17 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         perk: id => tree?.perks[id]?.name ?? `Rune ${id}`,
         style: id => tree?.perkStyles[id]?.name ?? `Tree ${id}`,
         spell: id => summoners.value[id]?.name ?? `Spell ${id}`,
+        itemEffect: id => itemEffect(items.value[id]),
+        perkEffect: id => plainAbility(tree?.perks[id]?.shortDesc ?? tree?.perks[id]?.longDesc, 200),
+        spellEffect: id => plainAbility(summoners.value[id]?.description, 200),
+      }
+      // What every question is asked against: the lane opponent, and the enemy team in one line.
+      const ask = {
+        opponent: base.opponent ? `${base.opponent.name} (${(base.opponent.tags ?? []).join('/')})` : 'the lane opponent',
+        needs: draftNeeds(base.enemies),
       }
 
-      const first = firstSlots(options, names)
+      const first = firstSlots(options, names, ask)
       const firstAnswers = await askJev(stateOf(base), questionsOf(first))
       if (mine !== generation) return
       const made = first.map(slot => decide(slot, firstAnswers[slot.name]))
@@ -91,7 +99,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const heldBy = (side: 'jev' | 'standard') => made.flatMap(entry => (entry.slot.name === 'core' || entry.slot.name === 'boots' ? entry[side].itemIds : []))
       const jevLater: number[] = []
       for (const slotNumber of laterSlotNumbers(options, coreOf('jev'))) {
-        const slot = laterSlot(options, coreOf('jev'), slotNumber, [...heldBy('jev'), ...jevLater], names)
+        const slot = laterSlot(options, coreOf('jev'), slotNumber, [...heldBy('jev'), ...jevLater], names, ask)
         if (!slot) continue
         const answers = slot.options.length > 1
           ? await askJev(stateOf({ ...base, taken: [...heldBy('jev'), ...jevLater].map(names.item) }), questionsOf([slot]))
@@ -103,7 +111,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       }
       const standardLater: number[] = []
       for (const slotNumber of laterSlotNumbers(options, coreOf('standard'))) {
-        const slot = laterSlot(options, coreOf('standard'), slotNumber, [...heldBy('standard'), ...standardLater], names)
+        const slot = laterSlot(options, coreOf('standard'), slotNumber, [...heldBy('standard'), ...standardLater], names, ask)
         if (slot) standardLater.push(...slot.options[0]!.itemIds)
       }
 

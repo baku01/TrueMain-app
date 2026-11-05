@@ -20,7 +20,6 @@ watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { imm
 const kit = computed(() => championStatic(props.championId))
 
 const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
-const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
 const sides = computed(() => [
   { key: 'jev', title: t('jev.card.jevBuild'), build: jevBuild.value },
   { key: 'standard', title: t('jev.card.standardBuild'), build: standardBuild.value },
@@ -89,40 +88,15 @@ const sides = computed(() => [
         </div>
       </div>
 
-      <!-- Every choice, option by option. -->
-      <section class="surface flex flex-col gap-3 rounded-xl p-4">
-        <h3 class="text-sm font-semibold text-highlighted">{{ t('jev.card.choices') }}</h3>
-        <p class="-mt-2 text-xs text-muted">{{ t('jev.card.choicesHint') }}</p>
-        <div v-for="decision in decisions" :key="decision.slot.name" class="rounded-lg bg-elevated/40 p-3 ring-1 ring-default">
-          <div class="mb-2 flex flex-wrap items-center gap-2">
-            <span class="text-xs font-semibold uppercase tracking-wide text-muted">{{ slotLabel(decision.slot.name) }}</span>
-            <UBadge v-if="decision.jev.key !== decision.standard.key" :label="t('jev.card.differs')" color="primary" variant="subtle" size="sm" />
-            <span v-if="decision.answer" class="ml-auto text-xs tabular-nums text-muted">{{ t('jev.card.confidence', { value: percent(decision.answer.confidence) }) }}</span>
-            <span v-else class="ml-auto text-xs text-dimmed">{{ t('jev.card.onlyOption') }}</span>
-          </div>
-          <div class="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_8rem] items-center gap-x-3 gap-y-1.5 text-xs">
-            <span class="stat-label">{{ t('jev.card.option') }}</span>
-            <span class="stat-label text-right">{{ t('jev.card.pickRate') }}</span>
-            <span class="stat-label text-right">{{ t('jev.card.winRate') }}</span>
-            <span class="stat-label text-right">{{ t('jev.card.jevChance') }}</span>
-            <template v-for="option in decision.slot.options" :key="option.key">
-              <span class="flex min-w-0 items-center gap-1.5">
-                <GameTooltipItemIcon v-for="id in option.itemIds" :key="id" :item="items[id] ?? null" :width="22" :height="22" class="rounded" />
-                <span class="truncate" :class="option.key === decision.jev.key ? 'font-semibold text-highlighted' : 'text-default'">{{ option.label }}</span>
-                <UIcon v-if="option.key === decision.jev.key" name="i-tabler-sparkles" class="size-3.5 shrink-0 text-primary" :title="t('jev.card.jevPick')" />
-                <UIcon v-if="option.key === decision.standard.key" name="i-tabler-database" class="size-3.5 shrink-0 text-dimmed" :title="t('jev.card.standardPick')" />
-              </span>
-              <span class="text-right tabular-nums text-muted">{{ option.games ? percent(option.pickRate) : '—' }}</span>
-              <span class="text-right tabular-nums text-muted">{{ option.games ? percent(option.winRate) : '—' }}</span>
-              <span class="flex items-center justify-end gap-2">
-                <span class="h-1.5 w-12 overflow-hidden rounded-full bg-accented/70">
-                  <span class="block h-full rounded-full" :class="option.key === decision.jev.key ? 'bg-primary' : 'bg-(--ui-text-dimmed)'" :style="{ width: percent(decision.answer?.probabilities[option.key]) }" />
-                </span>
-                <span class="w-9 text-right tabular-nums" :class="option.key === decision.jev.key ? 'font-semibold text-primary' : 'text-muted'">{{ decision.answer ? percent(decision.answer.probabilities[option.key]) : '—' }}</span>
-              </span>
-            </template>
-          </div>
-        </div>
+      <!-- Every choice, option by option, as the analytics page lays a slot. -->
+      <section class="surface min-w-0 rounded-2xl p-4">
+        <header class="mb-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <h3 class="stat-label">{{ t('jev.card.choices') }}</h3>
+          <span class="flex items-center gap-1 text-[11px] text-muted"><UIcon name="i-tabler-sparkles" class="size-3.5 text-primary" />{{ t('jev.card.jevPick') }}</span>
+          <span class="flex items-center gap-1 text-[11px] text-muted"><UIcon name="i-tabler-database" class="size-3.5" />{{ t('jev.card.standardPick') }}</span>
+        </header>
+        <p class="mb-3 text-xs text-muted">{{ t('jev.card.choicesHint') }}</p>
+        <JevChoices :decisions="decisions" />
       </section>
     </template>
   </section>

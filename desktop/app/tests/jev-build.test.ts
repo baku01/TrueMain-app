@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { JevSlot } from '~/utils/jev-build'
-import { decide, laidBuild, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
+import { decide, draftNeeds, itemEffect, laidBuild, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
 
 const items = {
   3075: { id: 3075, name: 'Thornmail', tags: ['Armor', 'Health'] },
@@ -71,5 +71,28 @@ describe('stateOf', () => {
 
   it('cuts a long ability to its limit', () => {
     expect(plainAbility('a'.repeat(50), 10)).toBe(`${'a'.repeat(9)}…`)
+  })
+})
+
+describe('itemEffect', () => {
+  it('reads an item\'s stats and effects out of Data Dragon and says what it answers', () => {
+    const effect = itemEffect({
+      description: '<mainText><stats><attention>350</attention> Health<br><attention>55</attention> Magic Resist</stats><br><br><passive>Steadfast</passive><br>Taking magic damage grants stacks.</mainText>',
+      plaintext: 'Grants magic resist and health',
+      tags: ['Health', 'SpellBlock'],
+    })
+    expect(effect).toBe('stats: 350 Health, 55 Magic Resist; effects: Steadfast; Grants magic resist and health; answers magic damage')
+  })
+
+  it('names anti-heal by its Grievous Wounds', () => {
+    expect(itemEffect({ description: '<passive>Rend</passive> applies Grievous Wounds', tags: ['Damage'] })).toContain('answers healing')
+  })
+})
+
+describe('draftNeeds', () => {
+  it('sums the enemy team up in one line: damage split, crowd control, frontline, healing', () => {
+    const champion = (alias: string, attack: number, magic: number, tags: string[]) => ({ id: alias.length, alias, name: alias, tags, info: { attack, magic, defense: 5 } })
+    expect(draftNeeds([champion('Lux', 2, 9, ['Mage', 'Support']), champion('Soraka', 2, 7, ['Support']), champion('Ornn', 5, 3, ['Tank']), champion('Jinx', 9, 2, ['Marksman'])]))
+      .toBe('50% magic and 50% physical damage, heavy crowd control from Lux, Soraka, Ornn, a frontline of Ornn, healing from Soraka')
   })
 })

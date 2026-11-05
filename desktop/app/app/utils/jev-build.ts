@@ -24,6 +24,8 @@ export interface JevOption extends Measure {
   order?: string[]
   /** For the boots' timing: how many core items come before the boots. */
   after?: number
+  /** What the option does, in words Jev can weigh: stats, effects, what it answers. */
+  effect?: string
 }
 
 export interface JevSlot {
@@ -52,61 +54,115 @@ export interface Names {
   perk: (id: number) => string
   style: (id: number) => string
   spell: (id: number) => string
+  /** What an item gives and what it answers (`itemEffect`), for Jev to tell options apart. */
+  itemEffect: (id: number) => string
+  /** A rune's or a summoner spell's one-line effect. */
+  perkEffect: (id: number) => string
+  spellEffect: (id: number) => string
 }
+
+const plain = (html: string | undefined) => (html ?? '').replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').replace(/(, )+/g, ', ').replace(/^, |, $/g, '').trim()
+const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+
+/** What each defensive or utility tag answers on the enemy side. */
+const ANSWERS: [string, string][] = [
+  ['SpellBlock', 'magic damage'],
+  ['Armor', 'physical damage'],
+  ['Tenacity', 'crowd control'],
+  ['MagicPenetration', 'magic resist stacking and tanks'],
+  ['ArmorPenetration', 'armor stacking and tanks'],
+  ['LifeSteal', 'long fights'],
+  ['SpellVamp', 'long fights'],
+]
+const ANTI_HEAL_NAMES = /grievous|feridas graves|anti-?heal/i
+
+/**
+ * An item as Jev can weigh it: its stats and passives out of Data Dragon's
+ * description, and what it answers by its tags ("answers magic damage").
+ */
+export function itemEffect(item: { description?: string, plaintext?: string, tags?: string[] } | undefined, max = 260): string {
+  if (!item) return ''
+  const description = item.description ?? ''
+  const stats = plain(/<stats>([\s\S]*?)<\/stats>/i.exec(description)?.[1])
+  const passives = [...description.matchAll(/<(?:passive|active)>([\s\S]*?)<\/(?:passive|active)>/gi)].map(match => plain(match[1])).filter(Boolean)
+  const answers = ANSWERS.filter(([tag]) => item.tags?.includes(tag)).map(([, what]) => what)
+  if (ANTI_HEAL_NAMES.test(description)) answers.push('healing')
+  const parts = [
+    stats && `stats: ${stats}`,
+    passives.length ? `effects: ${passives.join(', ')}` : '',
+    item.plaintext ? plain(item.plaintext) : '',
+    answers.length ? `answers ${[...new Set(answers)].join(', ')}` : '',
+  ].filter(Boolean)
+  return cut(parts.join('; '), max)
+}
+
 
 const pathOf = (core: ItemOption) => core.itemIds.filter(id => !isBoots(id))
 
+/**
+ * What the slots are asked against: the lane opponent, and in one line what
+ * the enemy team demands (`draftNeeds`), named in each question so Jev weighs
+ * the options against it rather than against "this draft" in general.
+ */
+export interface Ask { opponent: string, needs: string }
+
 /** The first call's slots: runes, spells, starter, skills, boots and their timing, the core path. */
-export function firstSlots(options: BuildOptions, names: Names): JevSlot[] {
+export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSlot[] {
   return [
     {
       name: 'runes',
-      instructions: 'Which full rune page suits this draft best, for the lane opponent and the enemy team',
-      options: keyed(options.pages, 4, page => ({ ...measured(page), itemIds: [], page: page.page, label: `${names.perk(page.page.primaryKeystoneId)}, ${[page.page.primaryPerk1Id, page.page.primaryPerk2Id, page.page.primaryPerk3Id].map(names.perk).join(', ')} (${names.style(page.page.primaryStyleId)}) + ${[page.page.secondaryPerk1Id, page.page.secondaryPerk2Id].map(names.perk).join(', ')} (${names.style(page.page.secondaryStyleId)})` })),
+      instructions: `Pick the rune page that wins the lane against ${ask.opponent} and keeps its value in teamfights against an enemy team with ${ask.needs}`,
+      options: keyed(options.pages, 4, page => ({
+        ...measured(page),
+        itemIds: [],
+        page: page.page,
+        label: `${names.perk(page.page.primaryKeystoneId)}, ${[page.page.primaryPerk1Id, page.page.primaryPerk2Id, page.page.primaryPerk3Id].map(names.perk).join(', ')} (${names.style(page.page.primaryStyleId)}) + ${[page.page.secondaryPerk1Id, page.page.secondaryPerk2Id].map(names.perk).join(', ')} (${names.style(page.page.secondaryStyleId)})`,
+        effect: [page.page.primaryKeystoneId, page.page.primaryPerk1Id, page.page.primaryPerk2Id, page.page.primaryPerk3Id, page.page.secondaryPerk1Id, page.page.secondaryPerk2Id].map(id => `${names.perk(id)}: ${cut(names.perkEffect(id), 90)}`).join(' | '),
+      })),
     },
     {
       name: 'spells',
-      instructions: 'Which summoner spells suit this draft best',
-      options: keyed(options.spells, 3, spell => ({ ...measured(spell), itemIds: [], spellIds: spell.spellIds, label: spell.spellIds.map(names.spell).join(' + ') })),
+      instructions: `Pick the summoner spells that best survive and threaten ${ask.opponent} in lane and the enemy team's crowd control and engage (${ask.needs})`,
+      options: keyed(options.spells, 3, spell => ({ ...measured(spell), itemIds: [], spellIds: spell.spellIds, label: spell.spellIds.map(names.spell).join(' + '), effect: spell.spellIds.map(id => `${names.spell(id)}: ${cut(names.spellEffect(id), 110)}`).join(' | ') })),
     },
     {
       name: 'starter',
-      instructions: 'Which starting items suit the laning phase against this lane opponent best',
-      options: keyed(options.starters, 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
+      instructions: `Pick the starting items that best trade with or sustain against ${ask.opponent} in the first levels`,
+      options: keyed(options.starters, 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + '), effect: starter.itemIds.map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
     },
     {
       name: 'skills',
-      instructions: 'Which ability max order suits this matchup and draft best',
+      instructions: `Pick the ability max order that best wins the trades against ${ask.opponent} and the fights after the lane`,
       options: keyed(options.skills, 3, skill => ({ ...measured(skill), itemIds: [], order: skill.order, label: skill.order.join(' > ') })),
     },
     {
       name: 'boots',
-      instructions: 'Which boots suit this draft best: bought in the laning phase against the lane opponent, then kept for the teamfights against the whole enemy team',
-      options: keyed(options.boots, 3, boots => ({ ...measured(boots), itemIds: boots.itemIds.slice(0, 1), label: names.item(boots.itemIds[0]!) })),
+      instructions: `Pick the boots that best defend against what this draft throws at us: ${ask.needs}. They are bought while laning against ${ask.opponent} and kept for the teamfights`,
+      options: keyed(options.boots, 3, boots => ({ ...measured(boots), itemIds: boots.itemIds.slice(0, 1), label: names.item(boots.itemIds[0]!), effect: names.itemEffect(boots.itemIds[0]!) })),
     },
     {
       name: 'bootsAfter',
-      instructions: 'When to finish the boots in the build order, given the lane opponent and the enemy team',
+      instructions: `Pick when to finish the boots: early when the lane against ${ask.opponent} needs their defense or mobility now, later when the first item's power matters more`,
       options: [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], games: 0, pickRate: 0, winRate: 0, label: after === 0 ? 'before the first core item' : `after core item ${after}` })),
     },
     {
       name: 'core',
-      instructions: 'Which core item path (the first completed items, in order) suits this draft best: its first item is bought during the laning phase, so it must hold the lane against the lane opponent too',
-      options: keyed(options.cores, 4, core => ({ ...measured(core), itemIds: pathOf(core), label: pathOf(core).map(names.item).join(' > ') })),
+      instructions: `Pick the core item path whose first item holds the lane against ${ask.opponent} and whose items fit an enemy team with ${ask.needs}, without giving up our champion's damage`,
+      options: keyed(options.cores, 4, core => ({ ...measured(core), itemIds: pathOf(core), label: pathOf(core).map(names.item).join(' > '), effect: pathOf(core).map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
     },
   ].filter(slot => slot.options.length > 0)
 }
 
 /** One later item slot: what the source measured there after `core`, without an item already in the build. */
-export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names): JevSlot | null {
+export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, ask: Ask): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
   const open = group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id)))
   if (!open.length) return null
   return {
     name: `item${slot}`,
-    instructions: `Which item suits this draft best as item number ${slot}: bought after the laning phase, against the whole enemy team's damage, crowd control and healing`,
-    options: keyed(open, 4, option => ({ ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!) })),
+    instructions: `Pick item number ${slot}: the one that best protects against or punishes what the enemy team brings (${ask.needs}) without giving up our champion's damage. It is bought after the laning phase`,
+    options: keyed(open, 4, option => ({ ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!), effect: names.itemEffect(option.itemIds[0]!) })),
   }
 }
 
@@ -117,9 +173,11 @@ export function questionsOf(slots: JevSlot[]): Record<string, JevChoiceQuestion>
   return Object.fromEntries(slots.filter(slot => slot.options.length > 1).map(slot => [slot.name, {
     type: 'choice' as const,
     instructions: slot.instructions,
-    criteria: Object.fromEntries(slot.options.map(option => [option.key, option.games
-      ? `${option.label} (${option.games} games, ${percent(option.pickRate)} pick rate, ${percent(option.winRate)} win rate)`
-      : option.label])),
+    criteria: Object.fromEntries(slot.options.map(option => [option.key, [
+      option.label,
+      option.effect ? `— ${option.effect}` : '',
+      option.games ? `(${option.games} games, ${percent(option.pickRate)} pick rate, ${percent(option.winRate)} win rate)` : '',
+    ].filter(Boolean).join(' ')])),
   }]))
 }
 
@@ -164,6 +222,30 @@ export function laidBuild(decisions: JevDecision[], side: 'jev' | 'standard', la
   }
 }
 
+/** Healers by Data Dragon alias: the champions whose kit heals enough that the enemy builds anti-heal. */
+const HEALERS = new Set(['Aatrox', 'Briar', 'DrMundo', 'Fiddlesticks', 'Illaoi', 'Kayn', 'Nami', 'Olaf', 'Renekton', 'Senna', 'Seraphine', 'Sona', 'Soraka', 'Swain', 'Sylas', 'Vladimir', 'Volibear', 'Warwick', 'Yuumi', 'Zac', 'Maokai', 'Nasus', 'Trundle'])
+
+/**
+ * What the enemy team demands, in one line: its damage split (each champion's
+ * 0–10 attack against magic ratings), its crowd control, frontline and healers.
+ */
+export function draftNeeds(enemies: Champion[]): string {
+  if (!enemies.length) return 'an unknown team'
+  const magic = enemies.reduce((sum, champion) => {
+    const skew = champion.info ? champion.info.magic - champion.info.attack : 0
+    return sum + (skew >= 2 ? 1 : skew <= -2 ? 0 : 0.5)
+  }, 0) / enemies.length
+  const cc = enemies.filter(champion => champion.tags?.some(tag => tag === 'Tank' || tag === 'Support')).map(champion => champion.name)
+  const front = enemies.filter(champion => champion.tags?.includes('Tank')).map(champion => champion.name)
+  const healers = enemies.filter(champion => HEALERS.has(champion.alias)).map(champion => champion.name)
+  return [
+    `${Math.round(magic * 100)}% magic and ${Math.round((1 - magic) * 100)}% physical damage`,
+    cc.length ? `heavy crowd control from ${cc.join(', ')}` : 'little crowd control',
+    front.length ? `a frontline of ${front.join(', ')}` : 'no real frontline',
+    healers.length ? `healing from ${healers.join(', ')}` : 'no notable healing',
+  ].join(', ')
+}
+
 const KIND = (champion: Champion) => {
   const skew = champion.info ? champion.info.magic - champion.info.attack : 0
   return skew >= 2 ? 'magic damage' : skew <= -2 ? 'physical damage' : 'mixed damage'
@@ -201,6 +283,7 @@ export function stateOf(input: {
     input.opponent ? `Lane opponent: ${describe(input.opponent)}.` : 'Lane opponent: unknown.',
     `Enemy team: ${input.enemies.map(describe).join('; ') || 'unknown'}.`,
     `Our team: ${input.allies.map(describe).join('; ') || 'unknown'}.`,
+    `What the enemy team demands: ${draftNeeds(input.enemies)}.`,
     `Read of the enemy team: ${input.situations.map(s => `${s.axis} ${s.bucket}${s.strength !== undefined ? ` (strength ${s.strength.toFixed(2)})` : ''}`).join(', ') || 'no clear lean'}.`,
     `Every option below was measured on ${input.games} games of this champion in this role; prefer what answers this specific lane and enemy team, weighing win rate and sample size.`,
   ]
