@@ -201,6 +201,9 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
       />
     </div>
 
+    <!-- Both teams' damage split, as Blitz shows it under the board. -->
+    <DraftTeamDamageMeter :allies="allyDamagePicks" :enemies="enemyDamagePicks" class="surface rounded-xl px-4 py-3" />
+
     <div class="min-h-0 flex-1">
       <DraftSuggestions
         v-if="mode === 'pick' || mode === 'ban'"

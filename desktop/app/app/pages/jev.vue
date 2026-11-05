@@ -68,6 +68,7 @@ const request = computed<CompositionBuildRequest | null>(() => {
         @clear="allySlots = emptySlots(); enemySlots = emptySlots()"
       />
 
+      <DraftTeamDamageMeter v-if="request && playedChampionId !== null" :allies="[{ championId: playedChampionId, position: request.position }, ...request.allies]" :enemies="request.enemies" class="surface rounded-xl px-4 py-3" />
       <JevBuildAdvice v-if="request && playedChampionId !== null" :champion-id="playedChampionId" :request="request" />
       <p v-else class="surface rounded-xl p-6 text-center text-sm text-muted">{{ t('jev.page.pick') }}</p>
     </div>

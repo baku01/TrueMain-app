@@ -5,7 +5,7 @@ import type { ExternalSource } from '~/utils/data-source'
 import type { BuildOptions } from '~/utils/sources/model'
 import type { CompositionBuildRequest } from '#shared/types/composition'
 import { readBlitzBuild } from '~/utils/blitz/builds'
-import { matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
+import { damageProfilesFromBlitz, matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
 import { directoryFromBlitz } from '~/utils/blitz/directory'
 import { blitzOptions } from '~/utils/sources/blitz'
 import { compositionFromSource, compositionGamesFromBlitz } from '~/utils/sources/composition'
@@ -137,10 +137,11 @@ export function answerFromSource(path: string, query: Record<string, unknown>): 
   if (trend) return provider.trend(Number(trend[1]), query)
   // TrueMain's situational reading of each item — its model's, which no other
   // source has: none, rather than TrueMain's beside another source's build.
-  // Every champion's damage split, for the draft's team bars: Riot's own 0–10
+  // Every champion's damage split for the team bars: Blitz's measured split
+  // (`damageProfilesFromBlitz`); where it cannot be read, Riot's own 0–10
   // attack and magic ratings (Data Dragon) as the split, the same weight each.
   if (path === '/champions/damage-profiles') {
-    return championTraits().then(traits => ({
+    return damageProfilesFromBlitz().catch(() => championTraits().then(traits => ({
       patch: null,
       profiles: [...traits.values()].filter(champion => champion.info).map((champion) => {
         const total = Math.max(1, champion.info!.attack + champion.info!.magic)
@@ -160,7 +161,7 @@ export function answerFromSource(path: string, query: Record<string, unknown>): 
           flexDamage: false,
         }
       }),
-    }))
+    })))
   }
   // The shop's classes are TrueMain's reading of the client: none from another source.
   if (path === '/items/classes') return Promise.resolve({ patch: String(query.patch ?? ''), items: [] })
