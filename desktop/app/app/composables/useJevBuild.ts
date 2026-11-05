@@ -1,7 +1,7 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevDecision, LaidBuild, Names } from '~/utils/jev-build'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
+import { closestCore, coreSlots, decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, standardCore, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { answers, enemySituation } from '~/utils/draft-build'
 import { activeProvider } from '~/utils/sources'
@@ -11,8 +11,8 @@ export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noSource' | 'n
 /**
  * The Jev matchup page's build (`utils/jev-build`), asked on the player's click
  * — each ask is paid. One call for the runes, spells, starter, skills, boots,
- * when to buy them and the core path; then one for every item after the core
- * Jev picked, told what is already in the build. Jev's picks are taken as they
+ * when to buy them and the core item by item; then one for every item after
+ * the core Jev picked, told what is already in the build. Jev's picks are taken as they
  * are; beside them, the source's most played option of every slot.
  */
 export function useJevBuild(subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>) {
@@ -91,21 +91,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         needs: draftNeeds(base.enemies),
       }
 
-      const first = withItemStats(firstSlots(options, names, ask), laneStats, versusStats)
-      const firstAnswers = await askJev(stateOf(base), questionsOf(first, ask))
-      if (mine !== generation) return
-      const made = first.map(slot => decide(slot, firstAnswers))
-
-      // The items after the core, slot by slot, each asked knowing what Jev has put in the build so far.
-      const coreOf = (side: 'jev' | 'standard') => {
-        const core = made.find(entry => entry.slot.name === 'core')
-        return core ? options.cores[Number(core[side].key.slice(1))] ?? null : null
-      }
-      const heldBy = (side: 'jev' | 'standard') => made.flatMap(entry => (entry.slot.name === 'core' || entry.slot.name === 'boots' ? entry[side].itemIds : []))
-      // Every later slot's candidates checked in one call (TypeSafe: ask all you may need at once),
-      // then each slot settled in order, an item already in the build left out.
-      const jevLater: number[] = []
-      // A slot's measured options, and the items of the champion's measured pool that answer this draft.
+      // The champion's measured items, and which of them answer this draft: the situational options.
       const completed = (id: number) => {
         const item = items.value[id]
         return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
@@ -114,11 +100,37 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         pool: statsPool(laneStats, measuredPool(options), completed),
         answersDraft: (id: number) => answers(id, base.situations, items.value) !== null,
       }
-      const laterSlots = withItemStats(laterSlotNumbers(options, coreOf('jev'))
-        .map(slotNumber => laterSlot(options, coreOf('jev'), slotNumber, heldBy('jev'), names, ask, situational))
+
+      // First call: runes, spells, starter, skills, boots and their timing, and the core item by item.
+      const firstChoices = firstSlots(options, names, ask)
+      const core = coreSlots(options, names, ask, situational)
+      const first = withItemStats([...firstChoices, ...core], laneStats, versusStats)
+      const firstAnswers = await askJev(stateOf(base), questionsOf(first, ask))
+      if (mine !== generation) return
+      const made = first.filter(slot => !slot.name.startsWith('item')).map(slot => decide(slot, firstAnswers))
+      const boots = made.find(entry => entry.slot.name === 'boots')
+
+      // The core settled slot by slot, an item already in the build left out.
+      const jevCore: number[] = []
+      for (const slot of first.filter(entry => entry.name.startsWith('item'))) {
+        const open = slot.options.filter(option => !option.itemIds.some(id => jevCore.includes(id)))
+        if (!open.length) continue
+        const decision = decide({ ...slot, options: open }, firstAnswers)
+        jevCore.push(...decision.jev.itemIds)
+        made.push(decision)
+      }
+      const sourceCore = standardCore(options.cores)
+      const held = { jev: [...jevCore, ...(boots?.jev.itemIds ?? [])], standard: [...sourceCore, ...(boots?.standard.itemIds ?? [])] }
+
+      // Second call: every later slot's candidates, after the measured core closest to Jev's
+      // (TypeSafe: ask all you may need at once), then each slot settled in order.
+      const jevFollows = closestCore(options.cores, jevCore)
+      const jevLater: number[] = []
+      const laterSlots = withItemStats(laterSlotNumbers(options, jevFollows)
+        .map(slotNumber => laterSlot(options, jevFollows, slotNumber, held.jev, names, ask, situational))
         .filter(slot => slot !== null), laneStats, versusStats)
       const laterAnswers = laterSlots.length
-        ? await askJev(stateOf({ ...base, taken: heldBy('jev').map(names.item) }), questionsOf(laterSlots, ask))
+        ? await askJev(stateOf({ ...base, taken: held.jev.map(names.item) }), questionsOf(laterSlots, ask))
         : {}
       if (mine !== generation) return
       for (const slot of laterSlots) {
@@ -128,15 +140,16 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         jevLater.push(...decision.jev.itemIds)
         made.push(decision)
       }
+      const standardFollows = closestCore(options.cores, sourceCore)
       const standardLater: number[] = []
-      for (const slotNumber of laterSlotNumbers(options, coreOf('standard'))) {
-        const slot = laterSlot(options, coreOf('standard'), slotNumber, [...heldBy('standard'), ...standardLater], names, ask)
+      for (const slotNumber of laterSlotNumbers(options, standardFollows)) {
+        const slot = laterSlot(options, standardFollows, slotNumber, [...held.standard, ...standardLater], names, ask)
         if (slot) standardLater.push(...slot.options[0]!.itemIds)
       }
 
       decisions.value = made
-      jevBuild.value = laidBuild(made, 'jev', jevLater)
-      standardBuild.value = laidBuild(made, 'standard', standardLater)
+      jevBuild.value = laidBuild(made, 'jev', jevCore, jevLater)
+      standardBuild.value = laidBuild(made, 'standard', sourceCore, standardLater)
       elapsedMs.value = Math.round(performance.now() - started)
       status.value = 'ready'
     }

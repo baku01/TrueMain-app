@@ -201,14 +201,55 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
       instructions: `Pick when to finish the boots: early when the lane against ${ask.opponent} needs their defense or mobility now, later when the first item's power matters more`,
       options: [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], games: 0, pickRate: 0, winRate: 0, label: after === 0 ? 'before the first core item' : `after core item ${after}` })),
     },
-    {
-      name: 'core',
-      kind: 'checks' as const,
-      lane: true,
-      instructions: `Pick the core item path whose first item holds the lane against ${ask.opponent} and whose items fit an enemy team with ${ask.needs}, without giving up our champion's damage`,
-      options: keyed(reliable(options.cores), 4, core => ({ ...measured(core), itemIds: pathOf(core), label: pathOf(core).map(names.item).join(' > '), effect: pathOf(core).map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
-    },
   ].filter(slot => slot.options.length > 0)
+}
+
+/** How many completed items the core runs to: each one its own slot. */
+export const CORE_ITEMS = 3
+
+/**
+ * The core, item by item rather than as whole paths: the first, second and
+ * third completed item are each a slot of the items the source measured at
+ * that place of a core (their games added up over every core that has them
+ * there), so a draft can change the second item without having to find a
+ * whole measured path that does — plus, from the second on, the champion's
+ * measured items that answer the draft (`situational`).
+ */
+export function coreSlots(options: BuildOptions, names: Names, ask: Ask, situational?: Situational): JevSlot[] {
+  return Array.from({ length: CORE_ITEMS }, (_, index) => {
+    const at = new Map<number, { games: number, wins: number }>()
+    for (const core of options.cores) {
+      const id = pathOf(core)[index]
+      if (id === undefined) continue
+      const known = at.get(id) ?? { games: 0, wins: 0 }
+      at.set(id, { games: known.games + core.games, wins: known.wins + core.winRate * core.games })
+    }
+    const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
+    const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 })))
+    const open = index === 0 ? measuredHere : withSituational(measuredHere, [], situational)
+    return {
+      name: `item${index + 1}`,
+      kind: 'checks' as const,
+      lane: index === 0,
+      instructions: index === 0
+        ? `Pick the first completed item: it is bought while laning against ${ask.opponent}, and it starts our champion's build`
+        : `Pick completed item number ${index + 1}: it should fit an enemy team with ${ask.needs} without giving up our champion's damage`,
+      options: keyed(open, 4 + (open.length - Math.min(open.length, measuredHere.length)), option => ({ ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!), effect: names.itemEffect(option.itemIds[0]!), situational: 'situational' in option })),
+    }
+  }).filter(slot => slot.options.length > 0)
+}
+
+/** The measured core whose path shares the most items with `chosen`, the most played on a tie: whose follow-ups come next. */
+export function closestCore(cores: ItemOption[], chosen: number[]): ItemOption | null {
+  return [...cores]
+    .map(core => ({ core, shared: pathOf(core).filter(id => chosen.includes(id)).length }))
+    .sort((a, b) => b.shared - a.shared || b.core.games - a.core.games)[0]?.core ?? null
+}
+
+/** The source's most played core path. */
+export const standardCore = (cores: ItemOption[]): number[] => {
+  const top = [...cores].sort((a, b) => b.games - a.games)[0]
+  return top ? pathOf(top).slice(0, CORE_ITEMS) : []
 }
 
 /**
@@ -267,8 +308,27 @@ export function withItemStats(slots: JevSlot[], lane: Map<number, ItemStat>, ver
 
 const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 
-/** How many of the draft's answers a later slot may add to what the source measured in it. */
+/** How many of the draft's answers a slot may add to what the source measured in it. */
 const SITUATIONAL = 2
+
+/** The champion's measured items and the test of which answer this draft. */
+export interface Situational { pool: ItemOption[], answersDraft: (id: number) => boolean }
+
+/**
+ * A slot's measured options, then up to `SITUATIONAL` items of the champion's
+ * measured pool that answer the draft (one when the slot already has such an
+ * answer), none already in the build, marked situational.
+ */
+function withSituational(measuredHere: ItemOption[], held: number[], situational?: Situational): (ItemOption & { situational?: true })[] {
+  if (!situational) return measuredHere
+  const here = new Set(measuredHere.flatMap(option => option.itemIds))
+  const extra = situational.pool
+    .filter(option => option.games >= MIN_GAMES && !here.has(option.itemIds[0]!) && !held.includes(option.itemIds[0]!) && situational.answersDraft(option.itemIds[0]!))
+    .sort((a, b) => b.games - a.games)
+    .slice(0, measuredHere.some(option => situational.answersDraft(option.itemIds[0]!)) ? 1 : SITUATIONAL)
+  return [...measuredHere, ...extra.map(option => ({ ...option, situational: true as const }))]
+}
+
 
 /**
  * One later item slot: what the source measured there after `core`, without
@@ -277,18 +337,12 @@ const SITUATIONAL = 2
  * (`answersDraft`: armour penetration against a frontline, magic resist
  * against magic damage, anti-heal against healers…), marked situational.
  */
-export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, ask: Ask, situational?: { pool: ItemOption[], answersDraft: (id: number) => boolean }): JevSlot | null {
+export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, ask: Ask, situational?: Situational): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
   const measuredHere = reliable(group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id))))
-  const here = new Set(measuredHere.flatMap(option => option.itemIds))
-  const extra = situational
-    ? situational.pool
-        .filter(option => option.games >= MIN_GAMES && !here.has(option.itemIds[0]!) && !held.includes(option.itemIds[0]!) && situational.answersDraft(option.itemIds[0]!))
-        .sort((a, b) => b.games - a.games)
-        .slice(0, measuredHere.some(option => situational.answersDraft(option.itemIds[0]!)) ? 1 : SITUATIONAL)
-    : []
-  const open = [...measuredHere, ...extra.map(option => ({ ...option, situational: true }))]
+  const open = withSituational(measuredHere, held, situational)
+  const extra = open.slice(measuredHere.length)
   if (!open.length) return null
   return {
     name: `item${slot}`,
@@ -433,7 +487,7 @@ export interface LaidBuild {
 }
 
 /** One side of the comparison, read off the decisions: Jev's picks, or the source's most played. */
-export function laidBuild(decisions: JevDecision[], side: 'jev' | 'standard', later: number[]): LaidBuild {
+export function laidBuild(decisions: JevDecision[], side: 'jev' | 'standard', core: number[], later: number[]): LaidBuild {
   const pick = (name: string) => {
     const decision = decisions.find(entry => entry.slot.name === name)
     return decision ? decision[side] : null
@@ -443,7 +497,6 @@ export function laidBuild(decisions: JevDecision[], side: 'jev' | 'standard', la
   const starter = pick('starter')
   const skills = pick('skills')
   const boots = pick('boots')
-  const core = pick('core')?.itemIds ?? []
   const after = Math.min(pick('bootsAfter')?.after ?? 1, core.length)
   const order = [...core.slice(0, after), ...(boots?.itemIds ?? []), ...core.slice(after), ...later]
   return {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { JevSlot } from '~/utils/jev-build'
-import { confidenceOf, decide, draftNeeds, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, questionsOf, reliable, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
+import { closestCore, confidenceOf, coreSlots, decide, draftNeeds, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, questionsOf, reliable, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
 
 const items = {
   3075: { id: 3075, name: 'Thornmail', tags: ['Armor', 'Health'] },
@@ -35,13 +35,13 @@ describe('decide and laidBuild', () => {
     const boots: JevSlot = { name: 'boots', instructions: '', options: [{ key: 'o0', itemIds: [3047], label: 'Steelcaps', games: 800, pickRate: 0.6, winRate: 0.47 }, { key: 'o1', itemIds: [3111], label: 'Mercury', games: 400, pickRate: 0.3, winRate: 0.5 }] }
     const timing: JevSlot = { name: 'bootsAfter', instructions: '', options: [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], label: String(after), games: 0, pickRate: 0, winRate: 0 })) }
     const decisions = [
-      decide(core, { core: answer({ o0: 0.2, o1: 0.8 }) }),
       decide(boots, { boots: answer({ o0: 0.1, o1: 0.9 }) }),
       decide(timing, { bootsAfter: answer({ o0: 0.7, o1: 0.2, o2: 0.1 }) }),
     ]
-    expect(decisions.map(entry => [entry.jev.key, entry.standard.key])).toEqual([['o1', 'o0'], ['o1', 'o0'], ['o0', 'o0']])
-    expect(laidBuild(decisions, 'jev', [4401]).order).toEqual([3111, 3143, 3075, 4401])
-    expect(laidBuild(decisions, 'standard', [3065]).order).toEqual([3047, 3071, 6333, 3065])
+    expect(decisions.map(entry => [entry.jev.key, entry.standard.key])).toEqual([['o1', 'o0'], ['o0', 'o0']])
+    expect(core.options).toHaveLength(2)
+    expect(laidBuild(decisions, 'jev', [3143, 3075], [4401]).order).toEqual([3111, 3143, 3075, 4401])
+    expect(laidBuild(decisions, 'standard', [3071, 6333], [3065]).order).toEqual([3047, 3071, 6333, 3065])
   })
 
   it('takes a single option when Jev was not asked', () => {
@@ -168,5 +168,26 @@ describe('win probability added', () => {
   it('joins the item stats to the measured pool, completed items only', () => {
     const pool = statsPool(new Map([[3071, stat(0.02, 108)], [1036, stat(0.1, 500)]]), [{ itemIds: [6694], games: 300, winRate: 0.5, pickRate: 0.1 }], id => id !== 1036)
     expect(pool.map(option => option.itemIds[0])).toEqual([6694, 3071])
+  })
+})
+
+describe('the core item by item', () => {
+  const m = (games: number, itemIds: number[]) => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
+  const options = {
+    patch: null, games: 5000, pages: [], shares: null, spells: [], starters: [], boots: [], skills: [],
+    cores: [m(600, [6692, 3142, 6694]), m(300, [6692, 6676, 3142]), m(200, [3142, 6692, 3814])],
+    followUps: () => [],
+  }
+  const names = { item: (id: number) => `#${id}`, perk: String, style: String, spell: String, itemEffect: () => '', perkEffect: () => '', spellEffect: () => '' }
+
+  it('makes each place of the core a slot of the items measured there, games added up, the draft\'s answers from the second on', () => {
+    const slots = coreSlots(options, names, ask, { pool: [m(108, [3071])], answersDraft: id => id === 3071 })
+    expect(slots.map(slot => slot.name)).toEqual(['item1', 'item2', 'item3'])
+    expect(slots[0]!.options.map(option => [option.itemIds[0], option.games])).toEqual([[6692, 900], [3142, 200]])
+    expect(slots[1]!.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3142, false], [6676, false], [6692, false], [3071, true]])
+  })
+
+  it('follows the measured core closest to the one Jev put together', () => {
+    expect(closestCore(options.cores, [6692, 6676, 3071])?.games).toBe(300)
   })
 })
