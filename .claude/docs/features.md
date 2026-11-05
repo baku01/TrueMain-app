@@ -285,8 +285,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), the recommended and the most played build side by side as compact
   cards (`JevBuildSummary`: runes, spells, starter, max order with an 18-level strip, buy order), then every slot's
-  options with their measures, score parts and answered needs (`JevChoices`: rune pages across, the other lane
-  choices and the items in two stacked columns).
+  options as a table (`JevChoices`: a panel per slot, a row per option best score first, the same columns everywhere —
+  option, score, win rate, pick rate and games, WPA, score parts in fixed places, answered needs).
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no
