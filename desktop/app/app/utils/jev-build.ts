@@ -22,6 +22,8 @@ export interface JevOption extends Measure {
   spellIds?: number[]
   page?: RunePageIds
   order?: string[]
+  /** For a skill order: the first three levels, which tell apart orders that max alike. */
+  opening?: string[]
   /** For the boots' timing: how many core items come before the boots. */
   after?: number
   /** What the option does, in words Jev can weigh: stats, effects, what it answers. */
@@ -133,7 +135,7 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
     {
       name: 'skills',
       instructions: `Pick the ability max order that best wins the trades against ${ask.opponent} and the fights after the lane`,
-      options: keyed(options.skills, 3, skill => ({ ...measured(skill), itemIds: [], order: skill.order, label: skill.order.join(' > ') })),
+      options: keyed(options.skills, 3, skill => ({ ...measured(skill), itemIds: [], order: skill.order, opening: skill.opening, label: `max ${skill.order.join(' > ')}, levels 1-3 ${skill.opening.join(' ')}` })),
     },
     {
       name: 'boots',

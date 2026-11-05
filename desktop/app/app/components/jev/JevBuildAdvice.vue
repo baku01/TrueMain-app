@@ -19,7 +19,6 @@ const { status, error, decisions, jevBuild, standardBuild, elapsedMs, ask } = us
 watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { immediate: true })
 const kit = computed(() => championStatic(props.championId))
 
-const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
 const sides = computed(() => [
   { key: 'jev', title: t('jev.card.jevBuild'), build: jevBuild.value },
   { key: 'standard', title: t('jev.card.standardBuild'), build: standardBuild.value },
@@ -96,7 +95,7 @@ const sides = computed(() => [
           <span class="flex items-center gap-1 text-[11px] text-muted"><UIcon name="i-tabler-database" class="size-3.5" />{{ t('jev.card.standardPick') }}</span>
         </header>
         <p class="mb-3 text-xs text-muted">{{ t('jev.card.choicesHint') }}</p>
-        <JevChoices :decisions="decisions" />
+        <JevChoices :decisions="decisions" :champion-id="championId" />
       </section>
     </template>
   </section>
