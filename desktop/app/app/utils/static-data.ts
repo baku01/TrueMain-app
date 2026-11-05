@@ -110,6 +110,7 @@ interface CdragonPerkRow {
   iconPath: string
   shortDesc?: string
   longDesc?: string
+  endOfGameStatDescs?: string[]
 }
 
 interface CdragonPerkStyleRow {
@@ -150,6 +151,7 @@ async function fetchRuneTreeAt(patch: string | null): Promise<RuneTreeResponse> 
     iconUrl: rewriteCdragonAsset(perk.iconPath, patch),
     shortDesc: perk.shortDesc,
     longDesc: perk.longDesc,
+    endOfGameStatDescs: perk.endOfGameStatDescs,
   }]))
   const perkStyleMap: Record<number, StaticPerkStyleData> = Object.fromEntries(perkStyles.styles.map(style => [style.id, {
     id: style.id,

@@ -126,7 +126,7 @@ export interface Participant {
   doubleKills?: number
   /** Riot's per-game challenges: rates and counts the scoreboard does not carry. */
   challenges?: Record<string, number>
-  perks?: { statPerks?: { offense: number, flex: number, defense: number }, styles?: { style: number, selections: { perk: number }[] }[] }
+  perks?: { statPerks?: { offense: number, flex: number, defense: number }, styles?: { style: number, selections: { perk: number, var1?: number, var2?: number, var3?: number }[] }[] }
 }
 
 interface MatchTeam {

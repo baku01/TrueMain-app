@@ -88,6 +88,8 @@ export interface StaticPerkData {
   shortDesc?: string
   /** Full description from CDragon `perk.longDesc` (HTML with inline tags). */
   longDesc?: string
+  /** CDragon's end-of-game stat lines, `@eogvar1@`… standing for the game's `var1..3`. */
+  endOfGameStatDescs?: string[]
 }
 
 /**

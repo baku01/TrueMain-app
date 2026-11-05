@@ -132,6 +132,11 @@ export interface MatchDetailRune {
   styleId: number
   selectionIndex: number
   perkId: number
+  /**
+   * Desktop only: what the rune did over the game (Riot's `var1..3`), in the
+   * order of the perk's `endOfGameStatDescs` — its damage, healing, shield…
+   */
+  vars?: number[]
 }
 
 export interface MatchDetailItemEvent {

@@ -33,6 +33,9 @@ const pills = computed(() => props.badges.map((badge) => {
     tip: t(`match.badge.${badge.kind}.tip`, { value: badge.value?.toLocaleString() ?? '', target: badge.target?.toLocaleString() ?? '' }),
   }
 }))
+/** Nuxt UI's tooltip is one 24 px line: a title over a sentence needs its height. */
+const TOOLTIP_UI = { content: 'h-auto max-w-72 flex-col items-start gap-0.5 px-3 py-2 whitespace-normal' }
+
 const visible = computed(() => pills.value.slice(0, props.shown))
 const hidden = computed(() => pills.value.slice(props.shown))
 </script>
@@ -40,7 +43,7 @@ const hidden = computed(() => pills.value.slice(props.shown))
 <template>
   <ul class="flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-2.5">
     <li v-for="pill in visible" :key="pill.kind">
-      <UTooltip :content="{ side: 'top' }">
+      <UTooltip :content="{ side: 'top' }" :ui="TOOLTIP_UI">
         <span class="badge-pill pl-[1.375rem]" :style="{ '--badge': pill.color }" :aria-label="`${pill.label}: ${pill.tip}`">
           <span class="badge-medal" aria-hidden="true">
             <UIcon :name="pill.icon" class="size-3" />
@@ -48,7 +51,7 @@ const hidden = computed(() => pills.value.slice(props.shown))
           <span class="relative z-[2]">{{ pill.label }}</span>
         </span>
         <template #content>
-          <div class="max-w-64 space-y-0.5 px-1 py-0.5">
+          <div class="space-y-0.5">
             <p class="text-sm font-semibold text-highlighted">{{ pill.label }}</p>
             <p class="text-xs text-muted">{{ pill.tip }}</p>
           </div>
@@ -56,12 +59,12 @@ const hidden = computed(() => pills.value.slice(props.shown))
       </UTooltip>
     </li>
     <li v-if="hidden.length">
-      <UTooltip :content="{ side: 'top' }">
+      <UTooltip :content="{ side: 'top' }" :ui="TOOLTIP_UI">
         <span class="badge-pill -ml-2 px-2" :style="{ '--badge': hidden[0]!.color }">
           <span class="relative z-[2]">{{ t('match.badge.more', { count: hidden.length }) }}</span>
         </span>
         <template #content>
-          <ul class="max-w-64 space-y-1.5 px-1 py-0.5">
+          <ul class="space-y-1.5">
             <li v-for="pill in hidden" :key="pill.kind">
               <p class="text-sm font-semibold text-highlighted">{{ pill.label }}</p>
               <p class="text-xs text-muted">{{ pill.tip }}</p>

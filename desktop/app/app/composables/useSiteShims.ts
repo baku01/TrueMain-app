@@ -148,14 +148,16 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
     }
     notFound.value = !data.value
     isLoading.value = false
-    // TrueMain's copy carries no curve and no team objectives: the client's does.
+    // TrueMain's copy carries no curve, no team objectives and no rune stats: the client's does.
     if (data.value && (!data.value.winProbabilityTimeline || !data.value.teams?.length) && insideTauri()) {
       const client = await readClientDetail(id).catch(() => null)
       if (client && toValue(matchId) === id && data.value) {
+        const runesOf = new Map(client.participants.map(p => [p.participantId, p.runes]))
         data.value = {
           ...data.value,
           winProbabilityTimeline: data.value.winProbabilityTimeline ?? client.winProbabilityTimeline,
           teams: data.value.teams?.length ? data.value.teams : client.teams,
+          participants: data.value.participants.map(p => (p.runes.some(rune => rune.vars) ? p : { ...p, runes: runesOf.get(p.participantId) ?? p.runes })),
         }
       }
     }

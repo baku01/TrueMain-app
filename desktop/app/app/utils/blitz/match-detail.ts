@@ -64,7 +64,7 @@ export async function blitzMatchDetail(matchId: string, withEvents = true): Prom
       isAce: false,
       laning15: null,
       firstToLevelTwo: null,
-      runes: [primary, secondary].flatMap(style => (style?.selections ?? []).map((selection, index) => ({ styleId: style!.style, selectionIndex: index, perkId: selection.perk }))),
+      runes: [primary, secondary].flatMap(style => (style?.selections ?? []).map((selection, index) => ({ styleId: style!.style, selectionIndex: index, perkId: selection.perk, vars: [selection.var1 ?? 0, selection.var2 ?? 0, selection.var3 ?? 0] }))),
       statPerkOffense: p.perks?.statPerks?.offense ?? 0,
       statPerkFlex: p.perks?.statPerks?.flex ?? 0,
       statPerkDefense: p.perks?.statPerks?.defense ?? 0,

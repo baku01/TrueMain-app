@@ -2,11 +2,16 @@
 import type { MatchDetailParticipant } from '#shared/types/match-detail'
 import type { ChampionStaticListItem, RuneTreeResponse } from '#shared/types/static-data'
 import { championDisplayName } from '#shared/utils/champion-name'
+import { runeStats } from '#common/utils/rune-stats'
+
+const { t } = useT()
 
 /**
  * Compact per-player rune summary tile, laid out in a 10-up grid on the Runes
  * tab: champion portrait with its keystone badge, then the primary minor runes,
- * the secondary runes and the stat shards — the scannable OP.GG-style card.
+ * the secondary runes and the stat shards — the scannable OP.GG-style card —
+ * and, where the source carried the runes' end-of-game stats (the app's), the
+ * damage they dealt, every rune's line in its tooltip.
  */
 const props = defineProps<{
   participant: MatchDetailParticipant
@@ -32,6 +37,9 @@ const shards = computed(() =>
 const keystone = computed(() =>
   props.participant.keystoneId ? props.runeTree.perks[props.participant.keystoneId] ?? null : null,
 )
+const stats = computed(() => runeStats(props.participant.runes, props.runeTree.perks))
+const STATS_TOOLTIP = { content: 'h-auto max-w-72 flex-col items-start gap-0.5 px-3 py-2 whitespace-normal' }
+
 function perk(id: number) {
   return props.runeTree.perks[id] ?? null
 }
@@ -62,6 +70,20 @@ function perk(id: number) {
     <p class="mt-1 max-w-full truncate text-[11px] font-medium text-default">
       {{ participant.gameName ?? participant.summonerName }}
     </p>
+
+    <UTooltip v-if="stats.damage !== null" :content="{ side: 'top' }" :ui="STATS_TOOLTIP">
+      <p class="cursor-help text-center leading-tight">
+        <span class="block text-sm font-semibold tabular-nums text-highlighted">{{ stats.damage.toLocaleString() }}</span>
+        <span class="text-[10px] uppercase tracking-wide text-muted">{{ t('match.runes.damage') }}</span>
+      </p>
+      <template #content>
+        <p class="text-sm font-semibold text-highlighted">{{ t('match.runes.stats') }}</p>
+        <p v-for="(line, index) in stats.lines" :key="index" class="flex items-center gap-1.5 text-xs text-muted">
+          <img v-if="perk(line.perkId)" :src="perk(line.perkId)!.iconUrl" alt="" class="size-4 rounded-full">
+          {{ line.text }}
+        </p>
+      </template>
+    </UTooltip>
 
     <!-- Primary minors -->
     <div class="flex items-center gap-1">
