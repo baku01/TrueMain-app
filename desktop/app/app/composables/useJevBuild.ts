@@ -1,8 +1,7 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevPick } from '~/utils/jev-build'
 import type { SourceBuildStep } from '~/utils/draft-build'
-import type { JevCallTrace } from '~/utils/jev'
-import { askJev, jevKeyStatus, jevTrace } from '~/utils/jev'
+import { askJev, jevKeyStatus } from '~/utils/jev'
 import { firstSlots, laterSlots, questionsOf, settle, stateOf } from '~/utils/jev-build'
 import { draftBuildFromOptions, enemySituation } from '~/utils/draft-build'
 import { activeProvider } from '~/utils/sources'
@@ -24,8 +23,6 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
   const picks = ref<JevPick[]>([])
   const rules = ref<SourceBuildStep[]>([])
   const elapsedMs = ref<number | null>(null)
-  /** This ask's calls, as TypeSafe answered them. */
-  const calls = ref<JevCallTrace[]>([])
   let generation = 0
 
   // A new draft drops the last answer: it was for another board.
@@ -45,7 +42,6 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     if (!(await jevKeyStatus().catch(() => ({ set: false }))).set) return void (status.value = 'noKey')
     status.value = 'loading'
     error.value = null
-    const traced = jevTrace.length
     const started = performance.now()
     try {
       const { request, championId } = current
@@ -91,7 +87,6 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         : {}
       if (mine !== generation) return
       picks.value = [...firstPicks, ...settle(later, laterAnswers, items.value, taken)]
-      calls.value = jevTrace.slice(traced)
       elapsedMs.value = Math.round(performance.now() - started)
       status.value = 'ready'
     }
@@ -102,5 +97,5 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     }
   }
 
-  return { status, error, picks, rules, elapsedMs, calls, ask }
+  return { status, error, picks, rules, elapsedMs, ask }
 }

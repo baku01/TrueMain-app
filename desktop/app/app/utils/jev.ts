@@ -49,18 +49,6 @@ export async function setJevKey(key: string | null): Promise<JevKeyStatus> {
   return jevKeyStatus()
 }
 
-/** What a call says of itself: the model that answered, and the usage when TypeSafe reports it. */
-export interface JevCallTrace {
-  model: string | null
-  usage: unknown
-  /** Characters of the request sent, a rough measure of its tokens (about four characters each). */
-  requestChars: number
-  ms: number
-}
-
-/** Every call made this session, newest last: the proof a call went out, and what it cost. */
-export const jevTrace: JevCallTrace[] = []
-
 /** Ask every question about `state` in one call; the answers by question name. */
 export async function askJev(state: string, questions: Record<string, JevChoiceQuestion>): Promise<Record<string, JevChoiceAnswer>> {
   const started = performance.now()
@@ -72,14 +60,7 @@ export async function askJev(state: string, questions: Record<string, JevChoiceQ
         body,
         headers: { Authorization: `Bearer ${globalThis.sessionStorage?.getItem(DEV_KEY) ?? ''}` },
       })
-  const trace: JevCallTrace = {
-    model: typeof answer.model === 'string' ? answer.model : null,
-    usage: answer.usage ?? null,
-    requestChars: JSON.stringify(body).length,
-    ms: Math.round(performance.now() - started),
-  }
-  jevTrace.push(trace)
-  console.info('[jev] call answered', trace, answer)
+  console.info('[jev] call answered', { ms: Math.round(performance.now() - started) }, answer)
   // The answers sit under `answers` by question name; a bare map is read the same.
   return ((answer.answers ?? answer) as Record<string, JevChoiceAnswer>)
 }
