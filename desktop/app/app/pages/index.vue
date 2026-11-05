@@ -5,7 +5,8 @@ import { QUEUE_FILTERS, championLines, counted, gamesIn, laneLines, mainLane } f
 import { toMatchSummary, toProfileRanked } from '~/utils/match-summary'
 import { activityFromGames } from '~/utils/activity-from-games'
 import { dailyStandings, latestLpMoves } from '~/utils/lp-history'
-import { readChampionMastery, regionOfPlatform } from '~/utils/blitz/player'
+import { platformOf, readChampionMastery, regionOfPlatform } from '~/utils/blitz/player'
+import { readMasteryPoints } from '~/utils/sources/championmastery'
 
 /**
  * Home: the player, read from their own client, on the profile page the site
@@ -83,14 +84,16 @@ const identity = computed(() => ({
 }))
 const level = computed(() => (viewing.value ? other.account.value?.level ?? null : state.value.summonerLevel))
 
-// Another player's mastery, from Blitz; the player's own comes with the client's state.
+// Another player's mastery with its exact points (championmastery.gg), Blitz's levels
+// where that page has none; the player's own comes with the client's state.
 const viewedMastery = ref<ChampionMastery[]>([])
 watch(() => (viewing.value && other.account.value ? `${other.region.value}/${other.account.value.gameName}#${other.account.value.tagLine}` : null), async (key) => {
   viewedMastery.value = []
   const account = other.account.value
   const region = other.region.value
   if (!key || !account || !region) return
-  const mastery = await readChampionMastery(region, account.gameName, account.tagLine).catch(() => [])
+  const points = await readMasteryPoints(platformOf(region), account.gameName, account.tagLine).catch(() => [])
+  const mastery = points.length ? points : await readChampionMastery(region, account.gameName, account.tagLine).catch(() => [])
   if (other.account.value === account) viewedMastery.value = mastery
 }, { immediate: true })
 
@@ -201,7 +204,7 @@ watch(() => state.value.phase, (next, previous) => {
         </template>
 
         <template #history>
-          <DashboardDetailedStats :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
+          <DashboardDetailedStats :games="historyGames" :champions="champions" :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
           <DashboardMatchHistory
             :games="historyGames"
             :all-games="loadedGames"

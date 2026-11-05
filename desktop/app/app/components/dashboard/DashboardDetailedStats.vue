@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { DetailedStats, StatLine } from '~/utils/player-stats'
 import type { FormBenchmarkResponse } from '~/utils/form-benchmark'
+import type { ChampionStaticListItem } from '#shared/types/static-data'
+import type { PlayerGame } from '~/types/record'
 import DashboardEloLadder from '~/components/dashboard/DashboardEloLadder.vue'
 
 /**
@@ -10,7 +12,8 @@ import DashboardEloLadder from '~/components/dashboard/DashboardEloLadder.vue'
  * the accent where the player does better and left in red where they do
  * worse, the gap in percent, and the opponents' figure under it. Each group
  * (combat, laning, vision, objectives, survival) sums its lines into one
- * verdict. Hovering a line shows it in the wins and in the losses.
+ * verdict. Hovering a line shows it in the wins and in the losses. The
+ * player's analysis (`DashboardAnalysis`, folding on its own) opens the panel.
  */
 const props = defineProps<{
   stats: DetailedStats | null
@@ -18,6 +21,9 @@ const props = defineProps<{
   /** The tiers' medians on the player's main role, for the elo ladder; null leaves it out. */
   benchmark?: FormBenchmarkResponse | null
   tier?: string | null
+  /** The games on screen and the champions, for the analysis' picks. */
+  games: PlayerGame[]
+  champions: ChampionStaticListItem[]
 }>()
 
 const { t } = useT()
@@ -78,6 +84,7 @@ const TONE_BAR = { good: 'bg-primary', bad: 'bg-error', even: 'bg-(--ui-text-dim
       </div>
       <p v-else-if="!stats" class="py-4 text-center text-sm text-muted">{{ t('dash.stats.none') }}</p>
       <template v-else>
+        <DashboardAnalysis :stats="stats" :loading="loading" :games="games" :champions="champions" class="mb-3" />
         <DashboardEloLadder :stats="stats" :benchmark="benchmark ?? null" :tier="tier ?? null" class="mb-3" />
         <p class="mb-3 flex items-center gap-1.5 text-[11px] text-muted">
           <UIcon name="i-lucide-swords" class="size-3.5 text-dimmed" />{{ t('dash.stats.against') }}

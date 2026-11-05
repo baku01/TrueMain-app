@@ -53,6 +53,9 @@ fn base(source: &str) -> Option<&'static str> {
         "lolalytics" => Some("https://a1.lolalytics.com/mega/"),
         // The guides lol.qq.com's own pages load: scripts (`var X = {…};`), read as their object.
         "tencent" => Some("https://lol.qq.com/act/lbp/common/guides/"),
+        // Any player's mastery points per champion, which Blitz does not keep:
+        // the page itself, handed over as text for the app to read.
+        "championmastery" => Some("https://championmastery.gg/"),
         _ => None,
     }
 }
@@ -155,6 +158,8 @@ pub async fn source_get(
         .map_err(|error| error.to_string())?;
     let value = if source == "tencent" {
         script_object(&text)
+    } else if source == "championmastery" {
+        serde_json::value::to_raw_value(&text).map_err(|error| error.to_string())
     } else {
         RawValue::from_string(text).map_err(|error| error.to_string())
     }?;

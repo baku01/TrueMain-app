@@ -5,11 +5,11 @@ import { championDisplayName } from '#shared/utils/champion-name'
 import { formatRelativeTime } from '#common/utils/relativeTime'
 
 /**
- * A player's champion mastery: each champion's mastery level (the client's
- * crest from level 4, the number below it) and its points — the logged-in
- * player's from their client (`championMastery`, most points first), another's
- * from Blitz, which keeps no points: when it was last played stands in. Five at
- * first, the rest on "Show more".
+ * A player's top five champions by mastery: each one's level (the client's
+ * crest from level 4, the number below it) and its exact points — the
+ * logged-in player's from their client (`championMastery`), another's from
+ * championmastery.gg. Where only Blitz answered, which keeps no points, when it
+ * was last played stands in.
  */
 const props = defineProps<{
   mastery: ChampionMastery[]
@@ -18,7 +18,6 @@ const props = defineProps<{
 
 const { t } = useT()
 const SHOWN = 5
-const expanded = ref(false)
 const championById = computed(() => new Map(props.champions.map(c => [c.championId, c])))
 const canonicalIcon = useCanonicalIcon()
 
@@ -28,7 +27,7 @@ function crestOf(level: number): string | null {
   return `https://raw.communitydragon.org/latest/game/assets/ux/mastery/legendarychampionmastery/masterycrest_level${Math.min(level, 10)}_minis.png`
 }
 
-const rows = computed(() => (expanded.value ? props.mastery : props.mastery.slice(0, SHOWN)).map(entry => ({
+const rows = computed(() => props.mastery.slice(0, SHOWN).map(entry => ({
   ...entry,
   name: championDisplayName(entry.championId, championById.value.get(entry.championId)),
   icon: canonicalIcon(championById.value.get(entry.championId)?.iconUrl),
@@ -56,15 +55,6 @@ const rows = computed(() => (expanded.value ? props.mastery : props.mastery.slic
           </div>
         </li>
       </ul>
-      <button
-        v-if="mastery.length > SHOWN"
-        type="button"
-        class="flex w-full items-center justify-center gap-1 border-t border-default/40 py-2 text-xs font-medium text-muted transition-colors hover:bg-elevated/40 hover:text-highlighted"
-        @click="expanded = !expanded"
-      >
-        {{ expanded ? t('dash.mastery.less') : t('dash.mastery.more') }}
-        <UIcon name="i-lucide-chevron-down" class="size-3.5 transition-transform" :class="expanded && 'rotate-180'" />
-      </button>
     </div>
   </section>
 </template>
