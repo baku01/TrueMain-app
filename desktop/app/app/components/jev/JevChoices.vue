@@ -65,7 +65,7 @@ const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5re
           >
             <!-- Marks: recommended, most played. -->
             <span class="flex flex-col items-center gap-0.5">
-              <UIcon v-if="option.key === entry.pick.key" name="i-tabler-sparkles" class="size-4 text-primary" :aria-label="t('jev.card.jevPick')" />
+              <UIcon v-if="option.key === entry.pick.key" name="i-tabler-chess-knight" class="size-4 text-primary" :aria-label="t('jev.card.jevPick')" />
               <UIcon v-if="option.key === entry.standard.key" name="i-tabler-database" class="size-3.5 text-dimmed" :aria-label="t('jev.card.standardPick')" />
             </span>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { JevOption } from '~/utils/jev-build'
+import type { ItemSetBlocks } from '~/composables/useItemSetImport'
+import type { JevOption, LaidBuild } from '~/utils/jev-build'
 import type { RankedSlot } from '~/utils/jev-recommend'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
@@ -13,13 +14,15 @@ import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
  * added, the slot's other options small under it with their scores. The steps
  * share the width the same way in both builds, so the two stacked line up step
  * for step. A click
- * on a step selects it: the page opens every option of it below.
+ * on a step selects it: the page opens every option of it below. The header's
+ * buttons put the build's rune page and item set into the client.
  */
 export interface OpenedStep { name: string, label: string }
 
-const props = defineProps<{ ranked: RankedSlot[], championId: number, order: number[], side: 'jev' | 'standard' }>()
+const props = defineProps<{ ranked: RankedSlot[], championId: number, build: LaidBuild, side: 'jev' | 'standard' }>()
 const opened = defineModel<OpenedStep | null>('opened', { default: null })
 const { t } = useT()
+const { nameOf } = useChampionStatics()
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
 const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
@@ -47,13 +50,32 @@ const setup = computed(() => SETUP.flatMap(({ name, width }) => {
 const path = computed(() => {
   const taken = new Set<string>()
   let count = 0
-  return props.order.flatMap((id): Step[] => {
+  return props.build.order.flatMap((id): Step[] => {
     const entry = props.ranked.find(candidate => (candidate.slot.kind === 'item' || candidate.slot.kind === 'boots') && !taken.has(candidate.slot.name) && candidate.slot.options.some(option => option.itemIds[0] === id))
     if (!entry) return []
     taken.add(entry.slot.name)
     const option = entry.slot.options.find(candidate => candidate.itemIds[0] === id)!
     return [{ entry, option, label: entry.slot.kind === 'boots' ? t('jev.slot.boots') : t('jev.slot.item', { slot: ++count }) }]
   })
+})
+/**
+ * The build as the client's item set: its starter, its boots, its items in buy
+ * order, then as situational every other item its slots offered, best score
+ * first — what to turn to when the game asks for it.
+ */
+const itemSet = computed((): ItemSetBlocks => {
+  const boots = props.build.boots?.itemIds ?? []
+  const core = props.build.order.filter(id => !boots.includes(id))
+  const offered = props.ranked
+    .filter(entry => entry.slot.kind === 'item')
+    .flatMap(entry => entry.slot.options.map(option => ({ id: option.itemIds[0]!, score: entry.scored[option.key]?.total ?? 0 })))
+    .filter(option => !core.includes(option.id))
+    .sort((a, b) => b.score - a.score)
+  return {
+    championId: props.championId,
+    champion: nameOf(props.championId),
+    blocks: { starter: props.build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))] },
+  }
 })
 const others = (step: Step) => step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => score(step.entry, b) - score(step.entry, a))
 
@@ -70,8 +92,13 @@ const levelsOf = (option: JevOption) => {
 <template>
   <section class="surface flex flex-col gap-3 rounded-2xl p-4" :class="recommended ? 'ring-1 ring-primary/30' : ''">
     <header class="flex items-center gap-2">
-      <UIcon :name="recommended ? 'i-tabler-sparkles' : 'i-tabler-database'" class="size-4" :class="recommended ? 'text-primary' : 'text-muted'" />
+      <UIcon :name="recommended ? 'i-tabler-chess-knight' : 'i-tabler-database'" class="size-4" :class="recommended ? 'text-primary' : 'text-muted'" />
       <h3 class="text-sm font-semibold" :class="recommended ? 'text-primary' : 'text-highlighted'">{{ recommended ? t('jev.card.jevBuild') : t('jev.card.standardBuild') }}</h3>
+      <!-- Into the client, on a click: this build's rune page and its item set. -->
+      <span class="ml-auto flex items-center gap-1.5">
+        <BuildRuneImport v-if="build.runePage" :page="build.runePage" :champion="nameOf(championId)" labeled />
+        <BuildItemSetImport :subject="itemSet" labeled />
+      </span>
     </header>
 
     <div v-for="row in [{ key: 'setup', label: t('jev.path.setup'), steps: setup }, { key: 'items', label: t('jev.card.order'), steps: path }]" :key="row.key" class="flex flex-col gap-1.5">
@@ -90,7 +117,7 @@ const levelsOf = (option: JevOption) => {
               <span class="flex w-full items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
                 {{ step.label }}
                 <UIcon v-if="recommended && step.option.key === step.entry.standard.key" name="i-tabler-database" class="size-3 text-dimmed" :aria-label="t('jev.card.standardPick')" />
-                <UIcon v-else-if="!recommended && step.option.key === step.entry.pick.key" name="i-tabler-sparkles" class="size-3 text-primary" :aria-label="t('jev.card.jevPick')" />
+                <UIcon v-else-if="!recommended && step.option.key === step.entry.pick.key" name="i-tabler-chess-knight" class="size-3 text-primary" :aria-label="t('jev.card.jevPick')" />
                 <span v-else-if="recommended" class="size-1.5 rounded-full bg-primary" :title="t('jev.card.differs')" />
               </span>
 
@@ -118,7 +145,7 @@ const levelsOf = (option: JevOption) => {
                 <span v-for="option in others(step)" :key="option.key" class="flex flex-col items-center gap-0.5" :class="step.entry.scored[option.key]?.misfit ? 'opacity-50' : ''">
                   <JevOptionVisual :option="option" :champion-id="championId" size="sm" class="justify-center" />
                   <span class="flex items-center gap-0.5 text-[10px] tabular-nums text-muted">
-                    <UIcon v-if="option.key === step.entry.pick.key" name="i-tabler-sparkles" class="size-3 text-primary" :aria-label="t('jev.card.jevPick')" />
+                    <UIcon v-if="option.key === step.entry.pick.key" name="i-tabler-chess-knight" class="size-3 text-primary" :aria-label="t('jev.card.jevPick')" />
                     <UIcon v-else-if="option.key === step.entry.standard.key" name="i-tabler-database" class="size-3 text-dimmed" :aria-label="t('jev.card.standardPick')" />
                     {{ score(step.entry, option) }}
                   </span>

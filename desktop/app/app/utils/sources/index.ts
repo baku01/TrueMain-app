@@ -122,6 +122,15 @@ export function activeProvider(): Provider | null {
 }
 
 /**
+ * lolalytics, then Blitz for what it does not have, whatever source Settings
+ * picked: the Jev matchup page's reads, which pool those two (`combineOptions`)
+ * and so read the rest from them too.
+ */
+export function lolalyticsThenBlitz(): Provider {
+  return firstAnswering([lolalyticsProvider, blitzProvider])
+}
+
+/**
  * The TrueMain reads the picked source answers, by path, in TrueMain's own
  * shapes. `undefined`: TrueMain is the source, or the path has no counterpart
  * there, and the read goes to TrueMain as always.

@@ -36,7 +36,7 @@ async function save(key: string | null) {
 <template>
   <section class="space-y-4 surface rounded-xl p-5">
     <header class="flex items-center gap-2">
-      <UIcon name="i-tabler-sparkles" class="size-5 text-primary" />
+      <UIcon name="i-tabler-chess-knight" class="size-5 text-primary" />
       <h2 class="text-sm font-semibold text-highlighted">{{ t('jev.settings.title') }}</h2>
     </header>
     <p class="text-sm text-muted">{{ t('jev.settings.description') }}</p>

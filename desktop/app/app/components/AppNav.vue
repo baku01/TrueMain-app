@@ -39,7 +39,7 @@ const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
     { label: t('nav.analytics'), icon: 'i-tabler-chart-line', to: '/analytics', active: isActive('/analytics') },
     { label: t('nav.classes'), icon: 'i-tabler-hierarchy-2', to: '/classes', active: isActive('/classes') },
     { label: t('nav.matchup'), icon: 'i-tabler-scale', to: '/matchup', active: isActive('/matchup') },
-    { label: t('nav.jev'), icon: 'i-tabler-sparkles', to: '/jev', active: isActive('/jev') },
+    { label: t('nav.jev'), icon: 'i-tabler-chess-knight', to: '/jev', active: isActive('/jev') },
   ] },
   { label: t('nav.group.builds'), tabs: [
     { label: t('nav.probuild'), icon: 'i-tabler-trophy', to: '/probuild', active: isActive('/probuild') },

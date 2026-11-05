@@ -292,6 +292,12 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   options small under it with their scores; steps share the width the same way in both, so they line up. A click on
   a step opens every option of it below as a table (`JevChoices`: option, score, win rate, pick rate and games, WPA,
   score parts, answered needs).
+  Each build's header imports it into the client on a click: its rune page (`BuildRuneImport`) and its item set
+  (`BuildItemSetImport` with the build already in blocks — starter, boots, items in buy order, the slots' other
+  options as situational, best score first), both labelled here. In champion select the board fills itself from the
+  client (`useJevClientDraft`): our champion, hovered or locked, and lane, the allies on theirs, the enemies on their
+  likeliest lanes (`enemyLanesFromSource`, lolalytics then Blitz); a "Follow the client" switch stops it. Jev is never
+  asked on its own. The page's icon is a chess knight.
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no
