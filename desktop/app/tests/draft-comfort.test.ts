@@ -61,7 +61,7 @@ const teamFit: DraftReason = {
 
 beforeEach(() => {
   vi.stubGlobal('computed', computed)
-  vi.stubGlobal('useChampionStatics', () => ({ nameOf: () => 'Ahri' }))
+  vi.stubGlobal('useChampionStatics', () => ({ nameOf: () => 'Ahri', portraitOf: () => null }))
   vi.stubGlobal('describeReason', describeReason)
   vi.stubGlobal('winRateTone', winRateTone)
 })
@@ -69,7 +69,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('DraftSuggestionCard', () => {
-  const props = { championId: 103, thin: false, position: 'MIDDLE', entry: null, focused: true, height: 1 }
+  const props = { championId: 103, thin: false, position: 'MIDDLE', entry: null, focused: true, rank: 1 }
 
   it('leads with its first reason and says the comfort line on hover', () => {
     const wrapper = mount(DraftSuggestionCard, {
@@ -120,7 +120,7 @@ describe('DraftSuggestions', () => {
   async function mountStrip(mode: 'pick' | 'ban') {
     const { ref } = await import('vue')
     vi.stubGlobal('ref', ref)
-    vi.stubGlobal('useChampionStatics', () => ({ nameOf: (id: number) => (id === 103 ? 'Ahri' : 'Zed'), champions: ref(new Map()) }))
+    vi.stubGlobal('useChampionStatics', () => ({ nameOf: (id: number) => (id === 103 ? 'Ahri' : 'Zed'), portraitOf: () => null, champions: ref(new Map()) }))
     vi.stubGlobal('useChampSelectActions', () => ({ writable: ref(true) }))
     vi.stubGlobal('useTierList', () => ({ entryOf: () => null, status: ref('ready') }))
     vi.stubGlobal('useDamageProfiles', () => ({ profileOf: () => null }))

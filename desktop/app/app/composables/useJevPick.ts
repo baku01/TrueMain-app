@@ -1,7 +1,8 @@
+import type { EnemyAssessment } from '~/composables/useJevEnemies'
 import type { PickRead } from '~/utils/jev-read'
 import type { RankedPick } from '~/utils/jev-recommend'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { batches, pickRequest, readPick } from '~/utils/jev-read'
+import { batches, enemyRequest, pickRequest, readPick } from '~/utils/jev-read'
 import { rankPicks } from '~/utils/jev-recommend'
 
 /** The draft a pick is chosen for. */
@@ -9,7 +10,8 @@ export interface PickSubject {
   position: string
   opponentId: number | null
   allies: number[]
-  enemies: number[]
+  /** The enemies so far, each on the lane the draft reads it on. */
+  enemies: { championId: number, position: string | null }[]
   /** The source's candidates for our lane, best first, with its ranking key. */
   candidates: { championId: number, score: number }[]
 }
@@ -24,10 +26,13 @@ const ASKED = 8
  * paid. The source's best candidates for our lane are read by Jev against the
  * lane opponent, with our team and against the enemy team
  * (`utils/jev-read`'s `pickRequest`), and ranked with the source's own
- * ranking (`rankPicks`). A new draft drops the last answer.
+ * ranking (`rankPicks`); the enemy kits are read too, for what the enemy team
+ * throws at us (`useJevEnemies`). A new draft drops the last answer.
  */
 export function useJevPick(subject: Ref<PickSubject | null>) {
   const { textOf, loadAll } = useChampionTexts()
+  const reader = useJevEnemies()
+  const assessment = ref<EnemyAssessment | null>(null)
   const status = ref<JevPickStatus>('idle')
   const error = ref<string | null>(null)
   const ranked = ref<RankedPick[]>([])
@@ -38,6 +43,7 @@ export function useJevPick(subject: Ref<PickSubject | null>) {
     generation++
     status.value = 'idle'
     ranked.value = []
+    assessment.value = null
   })
 
   async function ask() {
@@ -50,22 +56,27 @@ export function useJevPick(subject: Ref<PickSubject | null>) {
     status.value = 'loading'
     error.value = null
     try {
-      await loadAll([...candidates.map(candidate => candidate.championId), ...current.allies, ...current.enemies])
+      const enemyIds = current.enemies.map(enemy => enemy.championId)
+      await Promise.all([loadAll([...candidates.map(candidate => candidate.championId), ...current.allies, ...enemyIds]), reader.load()])
       const texts = (ids: number[], chars: number) => ids.map(id => textOf(id, chars)).filter(text => !!text)
       const request = pickRequest({
         position: current.position,
         opponent: current.opponentId ? textOf(current.opponentId, 220) : null,
         allies: texts(current.allies, 140),
-        enemies: texts(current.enemies.filter(id => id !== current.opponentId), 160),
+        enemies: texts(enemyIds.filter(id => id !== current.opponentId), 160),
         candidates: texts(candidates.map(candidate => candidate.championId), 220),
       })
-      const answers = Object.assign({}, ...await Promise.all(batches(request).map(part => askJev(part.state, part.questions))))
+      // The enemy kits too, the ones not read this patch: what the team throws at us is half of the screen.
+      const unread = reader.unread(enemyIds)
+      const answers = Object.assign({}, ...await Promise.all([...batches(request), ...batches(enemyRequest(unread))].map(part => askJev(part.state, part.questions))))
       if (mine !== generation) return
       const read = new Map(candidates.flatMap(candidate => {
         const pick = readPick(candidate.championId, answers)
         return pick ? [[candidate.championId, pick] as [number, PickRead]] : []
       }))
       ranked.value = rankPicks(candidates, read)
+      reader.keep(answers, unread)
+      assessment.value = reader.assess(current.enemies, current.opponentId)
       status.value = 'ready'
     }
     catch (failure) {
@@ -75,5 +86,5 @@ export function useJevPick(subject: Ref<PickSubject | null>) {
     }
   }
 
-  return { status, error, ranked, ask }
+  return { status, error, ranked, assessment, ask }
 }

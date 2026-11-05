@@ -3,8 +3,8 @@ import type { Lane, TeamRow } from '~/types/draft'
 import type { EnemyCounter } from '~/utils/draft-counters'
 
 /**
- * One side of the board: its five picks over their lanes, and the side's damage
- * mix under them. The enemy side's lanes can be corrected by drag; once they
+ * One side of the board: its five picks over their lanes, under its name in
+ * the side's colour (the damage mix is the screen's own section). The enemy side's lanes can be corrected by drag; once they
  * have been, a reset puts the guesser's answer back.
  */
 defineProps<{
@@ -18,7 +18,6 @@ defineProps<{
   correctable?: boolean
   /** The player moved an enemy lane by hand: the reset is offered. */
   hasCorrections?: boolean
-  damagePicks: { championId: number, position: string | null, preview?: boolean }[]
   /** By enemy champion: who beats it on its lane (the enemy side). */
   counters?: Map<number, EnemyCounter[]> | null
 }>()
@@ -29,6 +28,7 @@ const { t } = useT()
 
 <template>
   <div class="flex flex-col gap-1.5">
+    <p class="stat-label flex items-center gap-1.5"><span class="size-2 rounded-full" :class="team === 'ally' ? 'bg-ally' : 'bg-enemy'" />{{ team === 'ally' ? t('draft.team.ours') : t('draft.team.theirs') }}</p>
     <div class="relative">
       <DraftTeam
         :team="team"
@@ -52,9 +52,5 @@ const { t } = useT()
         @click="emit('reset')"
       />
     </div>
-    <DraftDamageBar
-      :team="team"
-      :picks="damagePicks"
-    />
   </div>
 </template>

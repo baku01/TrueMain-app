@@ -1,12 +1,12 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevAnswer } from '~/utils/jev'
 import type { LaidBuild, Names } from '~/utils/jev-build'
-import type { ChampionRead, FitRead, ItemRead, Request } from '~/utils/jev-read'
-import type { EnemyLine, Needs, RankedSlot } from '~/utils/jev-recommend'
+import type { FitRead, ItemRead, Request } from '~/utils/jev-read'
+import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import { candidateItems, closestCore, coreSlots, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, standardCore, statsPool, withItemStats } from '~/utils/jev-build'
-import { batches, championReadKey, enemyRequest, itemReadKey, itemRequest, keepChampionRead, keepItemRead, knownChampionRead, knownItemRead, laneRequest, readChampion, readItem, scoreOf } from '~/utils/jev-read'
-import { answersDraft, laneNeeds, needsOf, rankSlot } from '~/utils/jev-recommend'
+import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
+import { answersDraft, rankSlot } from '~/utils/jev-recommend'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { combineOptions } from '~/utils/sources/combined'
 import { lolalyticsOptions } from '~/utils/sources/lolalytics'
@@ -14,8 +14,7 @@ import { blitzOptions } from '~/utils/sources/blitz'
 
 export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noOptions' | 'error'
 
-/** An enemy as the page shows Jev's reading of it. */
-export interface EnemyReading { id: number, name: string, opponent: boolean, read: ChampionRead }
+export type { EnemyReading } from '~/composables/useJevEnemies'
 
 /**
  * The Jev matchup page's recommendation, on the player's click — Jev's calls
@@ -35,10 +34,10 @@ export interface EnemyReading { id: number, name: string, opponent: boolean, rea
  * Beside it, the most played option of every slot, for comparison.
  */
 export function useJevBuild(subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>) {
-  const { champions, patch } = useChampionStatics()
+  const { patch } = useChampionStatics()
   const { items, summoners, runeTree } = useStaticData()
   const { textOf, loadAll } = useChampionTexts()
-  const damage = useDamageProfiles()
+  const reader = useJevEnemies()
   const status = ref<JevStatus>('idle')
   const error = ref<string | null>(null)
   const ranked = ref<RankedSlot[]>([])
@@ -83,7 +82,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         readItemStats(championId, position).catch(() => new Map()),
         opponentId ? readItemStats(championId, position, opponentId).catch(() => new Map()) : new Map(),
         loadAll([championId, ...enemyIds]),
-        damage.load(),
+        reader.load(),
       ])
       if (mine !== generation) return
       if (!options || !options.cores.length) return void (status.value = 'noOptions')
@@ -109,8 +108,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const opponent = opponentId ? textOf(opponentId) : null
       if (!ours) throw new Error('our champion is not known yet')
       const version = patch.value || 'live'
-      const enemyTexts = enemyIds.map(id => textOf(id)).filter(text => !!text)
-      const unreadEnemies = enemyTexts.filter(enemy => !knownChampionRead(championReadKey(version, enemy.id)))
+      const unreadEnemies = reader.unread(enemyIds)
       const candidates = candidateItems(options, pool).filter(id => items.value[id])
       const unreadItems = candidates.filter(id => !knownItemRead(itemReadKey(version, championId, position, id)))
       const perkText = (id: number) => `${names.perk(id)}: ${plainAbility(tree?.perks[id]?.shortDesc ?? tree?.perks[id]?.longDesc, 140)}`
@@ -135,10 +133,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const answers: Record<string, JevAnswer> = Object.assign({}, ...await Promise.all(requests.map(part => askJev(part.state, part.questions))))
       if (mine !== generation) return
 
-      for (const enemy of unreadEnemies) {
-        const read = readChampion(enemy.id, answers)
-        if (read) keepChampionRead(championReadKey(version, enemy.id), read)
-      }
+      reader.keep(answers, unreadEnemies)
       for (const id of unreadItems) {
         const read = readItem(id, answers)
         if (read) keepItemRead(itemReadKey(version, championId, position, id), read)
@@ -156,25 +151,8 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const urgency = scoreOf(answers.bootsTiming)?.value ?? null
 
       // 3. The ranking: the team's needs, then every slot.
-      const lineOf = (id: number): EnemyLine | null => {
-        const read = knownChampionRead(championReadKey(version, id))
-        if (!read) return null
-        const slotPosition = request.enemies.find(enemy => enemy.championId === id)?.position ?? null
-        const profile = damage.profileOf(id, slotPosition)
-        const info = champions.value.get(id)?.info
-        const rated = info ? info.magic / Math.max(1, info.magic + info.attack) : 0.5
-        return {
-          id,
-          read,
-          physical: profile?.physicalShare ?? 1 - rated,
-          magic: profile?.magicShare ?? rated,
-          weight: profile?.damagePerGame ?? 1,
-        }
-      }
-      const lines = enemyIds.map(lineOf).filter(line => !!line)
-      const team = needsOf(lines)
-      const opponentLine = opponentId ? lines.find(line => line.id === opponentId) ?? null : null
-      const laneOf = laneNeeds(team, opponentLine ? needsOf([opponentLine]) : null)
+      const assessment = reader.assess(request.enemies, opponentId)
+      const { team, lane: laneOf } = assessment
       const context = { team, lane: laneOf, itemReads, tags, fits, urgency }
       const situational = { pool, answersDraft: (id: number) => answersDraft(id, team, itemReads, tags) }
 
@@ -209,7 +187,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const pickOf = (side: 'pick' | 'standard') => (name: string) => result.find(entry => entry.slot.name === name)?.[side] ?? null
       ranked.value = result
       needs.value = { team, lane: laneOf }
-      enemies.value = lines.map(line => ({ id: line.id, name: champions.value.get(line.id)?.name ?? String(line.id), opponent: line.id === opponentId, read: line.read }))
+      enemies.value = assessment.readings
       jevBuild.value = laidBuild(pickOf('pick'), jevCore, jevLater)
       standardBuild.value = laidBuild(pickOf('standard'), sourceCore, standardLater)
       elapsedMs.value = Math.round(performance.now() - started)

@@ -31,6 +31,8 @@ const props = defineProps<{
   note?: string | null
   /** The champion, when the caller knows it: each ability's icon then shows its clip and figures under the pointer (`AbilityHover`). */
   championId?: number | null
+  /** The max order alone, left-aligned, without the level-by-level grid — where the pane is tight (champion select). */
+  priorityOnly?: boolean
 }>()
 
 const { t } = useT()
@@ -69,8 +71,8 @@ function warm() {
   <!-- Side by side and centred where there is room; the max order over the grid, both centred, where there is not. -->
   <!-- The pointer reaching the skill order starts the clips downloading: by the time it rests on an icon, its clip is there. -->
   <div class="@container w-full" @pointerenter.once="warm">
-    <div class="flex flex-col items-center gap-5 @3xl:flex-row @3xl:justify-center @3xl:gap-10">
-      <div v-if="!gridOnly" class="flex shrink-0 flex-col items-center gap-3 text-center @3xl:items-start @3xl:text-left">
+    <div class="flex flex-col gap-5" :class="priorityOnly ? 'items-start' : 'items-center @3xl:flex-row @3xl:justify-center @3xl:gap-10'">
+      <div v-if="!gridOnly" class="flex shrink-0 flex-col gap-3" :class="priorityOnly ? 'items-start text-left' : 'items-center text-center @3xl:items-start @3xl:text-left'">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('build.skillGrid.maxOrder') }}</h3>
         <p v-if="skillOrder && skillOrder.games > 0" class="flex items-center gap-2 text-xs">
           <span class="rounded bg-accented/60 px-1.5 py-0.5 font-bold tabular-nums" :class="winRateTone(skillOrder.winRate)">{{ formatPercentage(skillOrder.winRate, 1) }}</span>
@@ -91,7 +93,7 @@ function warm() {
         <p v-else class="text-sm text-muted">{{ t('common.noData') }}</p>
       </div>
 
-      <div v-if="grid" class="w-full min-w-0 max-w-[60rem] overflow-x-auto @3xl:flex-1">
+      <div v-if="grid && !priorityOnly" class="w-full min-w-0 max-w-[60rem] overflow-x-auto @3xl:flex-1">
         <div
           class="mx-auto grid w-full min-w-[23rem] grid-flow-row gap-1 text-[10px] font-bold @lg:text-[11px] @xl:gap-1.5 @xl:text-xs"
           style="grid-template-columns: 1.75rem repeat(18, minmax(1rem, 1fr))"
@@ -120,7 +122,7 @@ function warm() {
       </div>
     </div>
     <!-- What the numbers count, centred under the whole block, as the header over it is. -->
-    <p v-if="note" class="mx-auto mt-4 max-w-[48rem] text-center text-[11px] leading-relaxed text-dimmed">{{ note }}</p>
-    <p v-else-if="grid && !measured" class="mx-auto mt-3 text-center text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
+    <p v-if="note && !priorityOnly" class="mx-auto mt-4 max-w-[48rem] text-center text-[11px] leading-relaxed text-dimmed">{{ note }}</p>
+    <p v-else-if="grid && !measured && !priorityOnly" class="mx-auto mt-3 text-center text-[11px] text-dimmed">{{ t('build.skillGrid.derived') }}</p>
   </div>
 </template>
