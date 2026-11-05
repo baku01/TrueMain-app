@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { JevOption } from '~/utils/jev-build'
 import type { Parts, RankedSlot } from '~/utils/jev-recommend'
 import { formatPercentage } from '#shared/utils/ddragon'
 
@@ -15,14 +14,12 @@ import { formatPercentage } from '#shared/utils/ddragon'
  */
 const props = defineProps<{ ranked: RankedSlot[], championId: number }>()
 const { t } = useT()
-const { items, summoners, championStatic } = useStaticData()
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
 const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
 const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 const wpaTone = (value: number) => (value >= 0.01 ? 'text-primary' : value <= -0.01 ? 'text-error' : 'text-muted')
 const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
-const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first') : t('jev.after.item', { item: option.after ?? 0 }))
 /** The parts in three fixed places, so they line up down the table: the statistics, the team or the lane, the kit. */
 const partsOf = (parts: Parts) => ([['stats'], ['draft', 'lane'], ['kit']] as (keyof Parts)[][]).map((places) => {
   const part = places.find(name => parts[name] !== undefined)
@@ -55,7 +52,7 @@ const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5re
       </div>
 
       <section v-for="{ entry, options } in rows" :key="entry.slot.name" class="rounded-xl bg-accented/15 p-1.5">
-        <header class="flex items-center gap-2 px-2 pb-1 pt-0.5">
+        <header v-if="ranked.length > 1" class="flex items-center gap-2 px-2 pb-1 pt-0.5">
           <h4 class="text-sm font-semibold text-highlighted">{{ slotLabel(entry.slot.name) }}</h4>
           <UBadge v-if="entry.pick.key !== entry.standard.key" :label="t('jev.card.differs')" color="primary" variant="soft" size="sm" />
         </header>
@@ -74,24 +71,7 @@ const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5re
 
             <!-- The option itself, every icon with its tooltip. -->
             <span class="flex min-w-0 flex-wrap items-center gap-1">
-              <template v-if="option.itemIds.length">
-                <GameTooltipItemIcon v-for="id in option.itemIds" :key="id" :item="items[id] ?? null" :width="30" :height="30" class="rounded-md" />
-              </template>
-              <JevRunePage v-else-if="option.page" :page="option.page" />
-              <template v-else-if="option.spellIds">
-                <GameTooltipSummonerSpellIcon v-for="id in option.spellIds" :key="id" :spell="summoners[id] ?? null" :width="30" :height="30" class="size-[30px] rounded-md" />
-              </template>
-              <template v-else-if="option.order">
-                <span v-for="(key, index) in option.order" :key="key" class="flex items-center gap-0.5">
-                  <UIcon v-if="index > 0" name="i-lucide-chevron-right" class="size-3 text-dimmed" />
-                  <span class="relative size-6">
-                    <GameTooltipChampionSpellIcon :spell="championStatic(championId)?.championSpells[key] ?? null" :width="24" :height="24" :fallback-label="key" class="size-6 rounded" />
-                    <span class="absolute -bottom-1 -right-1 rounded bg-default px-0.5 text-[9px] font-bold text-highlighted">{{ key }}</span>
-                  </span>
-                </span>
-                <span v-if="option.opening" class="ml-1 text-[10px] tabular-nums text-muted">{{ t('jev.card.opening', { keys: option.opening.join(' ') }) }}</span>
-              </template>
-              <span v-else-if="option.after !== undefined" class="text-xs font-semibold text-highlighted">{{ timing(option) }}</span>
+              <JevOptionVisual :option="option" :champion-id="championId" />
               <UBadge v-if="option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" />
               <UBadge v-if="entry.scored[option.key]?.misfit" :label="t('jev.card.misfit')" color="error" variant="subtle" size="xs" :title="t('jev.card.misfitHint')" />
             </span>
