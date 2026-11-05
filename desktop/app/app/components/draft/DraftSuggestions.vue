@@ -6,8 +6,7 @@ import { damageNote } from '~/utils/draft-damage'
 
 /**
  * "Your pick" or "Your ban": what the draft endpoints ranked for our lane,
- * best first, as Blitz lays its suggestions — a grid of three, the best six,
- * the rest on demand — each with the reason that carries it (#1906), or
+ * best first, as a grid of posters, all of them — each with the reason that carries it (#1906), or
  * Jev's score when Jev ranked them. A click on one opens its build against this draft. The app never
  * picks or bans on its own: each card carries a separate "Hover" (or, on our
  * ban, "Ban") control the player clicks (#1909), and the search reaches every
@@ -116,17 +115,15 @@ const empty = computed(() => {
   return { icon: 'i-lucide-search-x', text: t('draft.sugg.noneOnLane') }
 })
 
-/** Six cards, as Blitz shows them; the rest on demand. */
-const SHOWN = 6
-const expanded = ref(false)
-const cards = computed(() => (expanded.value ? shown.value : shown.value.slice(0, SHOWN)))
+/** Every suggestion, always open: the card scrolls when they outgrow it. */
+const cards = computed(() => shown.value)
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col gap-4">
+  <section class="@container flex min-w-0 flex-col gap-4">
     <header class="flex flex-wrap items-start gap-x-6 gap-y-2">
       <div class="min-w-0 flex-1">
-        <h2 class="text-base font-bold text-highlighted">{{ mode === 'ban' ? t('draft.sugg.yourBan') : t('draft.sugg.yourPick') }}</h2>
+        <h2 class="font-display text-lg font-bold tracking-tight text-highlighted">{{ mode === 'ban' ? t('draft.sugg.yourBan') : t('draft.sugg.yourPick') }}</h2>
         <p class="text-xs text-muted">
           <UTooltip v-if="targetLabel" :text="t('draft.sugg.neverAlly')"><span>{{ targetLabel }}</span></UTooltip>
           <template v-else>{{ subtitle }}</template>
@@ -143,7 +140,7 @@ const cards = computed(() => (expanded.value ? shown.value : shown.value.slice(0
     </header>
 
     <template v-if="shown.length || others.length">
-      <ol v-if="cards.length" class="grid grid-cols-2 gap-3 lg:grid-cols-3" @mouseleave="hovered = null">
+      <ol v-if="cards.length" class="grid grid-cols-2 gap-2.5 @lg:grid-cols-3 @5xl:grid-cols-4" @mouseleave="hovered = null">
         <li v-for="(item, index) in cards" :key="item.championId" class="relative" @mouseenter="hovered = item.championId">
           <DraftSuggestionCard
             :champion-id="item.championId"
@@ -171,11 +168,10 @@ const cards = computed(() => (expanded.value ? shown.value : shown.value.slice(0
           </DraftSuggestionCard>
         </li>
       </ol>
-      <UButton v-if="shown.length > SHOWN" block size="sm" color="neutral" variant="soft" :icon="expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" :label="expanded ? t('draft.sugg.showLess') : t('draft.sugg.showMore', { n: shown.length - SHOWN })" @click="expanded = !expanded" />
 
       <div v-if="others.length" class="flex flex-col gap-1.5">
         <span class="stat-label">{{ t('draft.sugg.notRanked') }}</span>
-        <div class="grid grid-cols-2 gap-1.5 lg:grid-cols-3">
+        <div class="grid grid-cols-2 gap-1.5 @2xl:grid-cols-3">
           <div v-for="champion in others" :key="champion.id" class="flex items-center gap-2 rounded-lg bg-elevated p-1.5 ring-1 ring-default">
             <ChampionPortrait :champion-id="champion.id" size="sm" class="size-8! rounded-md!" />
             <span class="min-w-0 flex-1 truncate text-xs font-semibold text-highlighted">{{ champion.name }}</span>

@@ -18,6 +18,19 @@ import type { ChampionStaticData, RuneTreeResponse, StaticItemData, StaticSummon
  */
 const { t } = useT()
 
+/** The compact layout's runes grow with their card: about a seventh of its width, between 40 and 76 pixels. */
+const runesBox = ref<HTMLElement | null>(null)
+const runesWidth = ref(0)
+let observer: ResizeObserver | null = null
+watch(runesBox, (box) => {
+  observer?.disconnect()
+  if (!box || typeof ResizeObserver === 'undefined') return
+  observer = new ResizeObserver(([entry]) => (runesWidth.value = entry?.contentRect.width ?? 0))
+  observer.observe(box)
+}, { immediate: true })
+onBeforeUnmount(() => observer?.disconnect())
+const runeSize = computed(() => Math.round(Math.min(76, Math.max(40, runesWidth.value / 7))))
+
 withDefaults(defineProps<{
   summonerSpells: BuildSummonerSpells | null
   starterItems: BuildItemSet | null
@@ -51,8 +64,8 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div v-if="compact" class="@container">
-    <div class="grid gap-4 @3xl:grid-cols-2">
+  <div v-if="compact" class="@container flex h-full min-h-0 flex-col">
+    <div class="grid flex-1 gap-4 @3xl:grid-cols-2">
       <!-- The runes, whole. -->
       <div class="surface flex flex-col rounded-xl p-4">
         <div class="mb-3 flex items-center gap-3">
@@ -60,8 +73,8 @@ withDefaults(defineProps<{
           <span v-if="runePage && runePage.games > 0" class="text-xs text-muted">{{ formatPercentage(runePage.winRate, 1) }} · {{ t('build.skillGrid.games', { games: formatCount(runePage.games) }) }}</span>
           <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" labeled class="ml-auto" />
         </div>
-        <div class="flex w-full flex-1 items-center justify-center overflow-hidden">
-          <ChampionCoreRunes v-if="runePage && runeTree" :page="runePage" :tree="runeTree" :size="48" :keystone-size="60" />
+        <div ref="runesBox" class="flex w-full flex-1 items-center justify-center overflow-hidden">
+          <ChampionCoreRunes v-if="runePage && runeTree" :page="runePage" :tree="runeTree" :size="runeSize" :keystone-size="Math.round(runeSize * 1.3)" />
           <p v-else-if="!runePage && noRunesMessage" class="text-sm text-muted">{{ noRunesMessage }}</p>
         </div>
       </div>

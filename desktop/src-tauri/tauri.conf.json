@@ -23,6 +23,7 @@
         "visible": false,
         "decorations": true,
         "dragDropEnabled": false,
+        "zoomHotkeysEnabled": true,
         "theme": "Dark",
         "backgroundColor": "#131a27"
       }

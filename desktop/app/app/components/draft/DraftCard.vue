@@ -27,6 +27,8 @@ const props = withDefaults(defineProps<{
   dropTarget?: boolean
   /** Portraits to suggest in our own empty slot. */
   suggested?: number[]
+  /** One line — portrait, name, tier — for a team drawn as a column. */
+  row?: boolean
 }>(), { championId: null, tier: null, lane: null, suggested: () => [] })
 
 const { nameOf, portraitOf } = useChampionStatics()
@@ -41,7 +43,47 @@ const ring = computed(() => {
 </script>
 
 <template>
+  <!-- A broadcast band: the splash across the row, the side's colour on its outer edge, the name in capitals. -->
   <div
+    v-if="row"
+    class="draft-band relative flex size-full items-center gap-3 overflow-hidden rounded-md px-3 transition-[box-shadow,opacity]"
+    :class="[team === 'enemy' && 'flex-row-reverse text-right', selected ? 'ring-2 ring-primary' : opponent ? 'ring-1 ring-primary/40' : '']"
+    :title="championId ? nameOf(championId) : undefined"
+  >
+    <span class="absolute inset-y-0 w-1" :class="team === 'ally' ? 'left-0 bg-ally' : 'right-0 bg-enemy'" />
+    <template v-if="championId">
+      <ChampionArt
+        :champion-id="championId"
+        kind="splash"
+        fade="none"
+        :position="team === 'ally' ? '30% 22%' : '70% 22%'"
+        class="absolute inset-0 transition duration-300"
+        :class="tentative ? 'opacity-25 grayscale' : 'opacity-60'"
+      />
+      <span class="absolute inset-0" :class="team === 'ally' ? 'bg-gradient-to-r from-ink-950/95 via-ink-950/70 to-ink-950/10' : 'bg-gradient-to-l from-ink-950/95 via-ink-950/70 to-ink-950/10'" />
+      <span class="relative min-w-0 flex-1" :class="team === 'enemy' ? 'text-right' : ''">
+        <span class="block truncate font-display text-[13px] font-bold uppercase tracking-[0.08em] text-highlighted">{{ nameOf(championId) }}</span>
+        <span v-if="tentative" class="block text-[10px] font-semibold uppercase tracking-widest text-muted">{{ t('draft.card.hovering') }}</span>
+      </span>
+      <TierBadge v-if="tier && !tentative" :caption="false" :size="20" :tier="tier" class="relative shrink-0" />
+    </template>
+    <template v-else>
+      <span class="absolute inset-0 bg-[repeating-linear-gradient(135deg,transparent_0_8px,rgb(255_255_255/0.025)_8px_9px)]" />
+      <img v-if="lane" :src="getPositionIconUrl(lane)" alt="" class="relative size-5 opacity-25">
+      <div v-if="suggested.length" class="relative flex min-w-0 items-center gap-1.5">
+        <span class="text-[10px] font-semibold uppercase tracking-widest text-dimmed">{{ t('draft.card.suggested') }}</span>
+        <div class="flex -space-x-1">
+          <template v-for="id in suggested.slice(0, 3)" :key="id">
+            <img v-if="portraitOf(id)" :src="portraitOf(id)!" :alt="nameOf(id)" class="img-skeleton size-5 rounded-full ring-1 ring-ink-950">
+          </template>
+        </div>
+      </div>
+    </template>
+    <slot />
+  </div>
+
+  <div
+    v-else
     class="relative flex size-full flex-col items-center justify-end gap-1.5 overflow-hidden rounded-2xl bg-elevated px-1.5 pb-2.5 transition-[box-shadow,opacity]"
     :class="ring"
     :title="championId ? nameOf(championId) : undefined"

@@ -28,7 +28,9 @@ const props = withDefaults(defineProps<{
   correctable?: boolean
   /** By enemy champion: who beats it on its lane. Absent on a side that shows no counters. */
   counters?: Map<number, EnemyCounter[]> | null
-}>(), { selectedCell: null, opponentCell: null, suggested: () => [], correctable: false, counters: null })
+  /** One pick a line, top to bottom: a team drawn as a column beside the screen's card. */
+  vertical?: boolean
+}>(), { selectedCell: null, opponentCell: null, suggested: () => [], correctable: false, counters: null, vertical: false })
 
 const emit = defineEmits<{ view: [championId: number], swap: [from: Lane, to: Lane] }>()
 
@@ -102,7 +104,71 @@ function label(row: TeamRow) {
 </script>
 
 <template>
-  <div class="grid grid-cols-5 gap-1.5">
+  <div v-if="vertical" class="flex flex-col gap-1.5">
+    <div
+      v-for="(row, index) in rows"
+      :key="`${team}-${index}`"
+      class="flex min-w-0 flex-col"
+      @dragover.prevent="onDragOver"
+      @drop.prevent="onDrop(row.lane)"
+    >
+      <div class="flex items-center gap-1" :class="team === 'enemy' && 'flex-row-reverse'">
+        <button
+          type="button"
+          class="block min-w-0 flex-1 rounded-md outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-primary enabled:hover:brightness-125 disabled:cursor-default"
+          :class="counters && countersOf(row).length ? 'h-[5.5rem]' : 'h-16'"
+          :disabled="!readable(row)"
+          :draggable="correctable && row.championId !== null"
+          :aria-label="label(row)"
+          @click="emit('view', row.championId!)"
+          @dragstart="onDragStart($event, row.lane)"
+          @dragend="dragging = null"
+        >
+          <DraftCard
+            row
+            :team="team"
+            :champion-id="row.championId"
+            :tier="tierOf(row)"
+            :lane="row.lane"
+            :selected="selectedCell === index"
+            :opponent="opponentCell === index"
+            :tentative="row.championId !== null && !row.locked"
+            :drop-target="dragging !== null && row.lane !== null && dragging !== row.lane"
+            :suggested="row.me ? suggested : []"
+            :class="counters && countersOf(row).length ? 'items-start! pt-2.5' : ''"
+          >
+            <!-- Who beats this enemy on its lane, on the band's inner side. -->
+            <span v-if="counters && countersOf(row).length" class="absolute bottom-2 z-10 flex items-center gap-3.5" :class="team === 'enemy' ? 'right-3' : 'left-3'" :title="t('draft.counters.label')">
+              <span v-for="counter in countersOf(row)" :key="counter.championId" class="flex items-center gap-1.5" :title="counterTip(counter, row.championId!)">
+                <img v-if="portraitOf(counter.championId)" :src="portraitOf(counter.championId)!" :alt="nameOf(counter.championId)" class="img-skeleton size-6 rounded ring-1 ring-white/15">
+                <span class="text-[11px] font-bold leading-none tabular-nums text-data-good">{{ Math.round(counter.winRate * 100) }}%</span>
+              </span>
+            </span>
+          </DraftCard>
+        </button>
+        <UDropdownMenu
+          v-if="correctable && row.lane && row.championId !== null"
+          :items="laneChoices(row)"
+          :content="{ align: 'center' }"
+          :ui="{ itemLeadingAvatar: 'size-4 rounded-none bg-transparent' }"
+        >
+          <button
+            type="button"
+            class="flex size-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            :aria-label="t('draft.team.change', { name: nameOf(row.championId), lane: positionLabel(row.lane, { short: true }) })"
+            :title="t('draft.team.clickToChange', { lane: positionLabel(row.lane, { short: true }) })"
+          >
+            <img :src="getPositionIconUrl(row.lane)" alt="" class="size-4">
+          </button>
+        </UDropdownMenu>
+        <span v-else class="flex size-7 shrink-0 items-center justify-center">
+          <img v-if="row.lane" :src="getPositionIconUrl(row.lane)" :alt="positionLabel(row.lane, { short: true }) ?? ''" class="size-4">
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="grid grid-cols-5 gap-1.5">
     <div
       v-for="(row, index) in rows"
       :key="`${team}-${index}`"

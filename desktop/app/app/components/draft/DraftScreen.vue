@@ -6,12 +6,13 @@ import type { ViewedPick } from '~/composables/useDraftSubject'
 import type { PickSubject } from '~/composables/useJevPick'
 
 /**
- * Champion select, composed as Blitz composes it, top to bottom: each side's
- * bans and the clock; a tabbed card — Suggestions while our pick or ban is
+ * Champion select on one screen, no page scroll: each side's bans and the
+ * clock over three columns — our team and its damage split, a tabbed card,
+ * theirs with who counters each. The card, as Blitz tabs it: — Suggestions while our pick or ban is
  * open (the side lists beside the grid of suggestions), Builds once there is
  * a build to show — whose header holds who ranks (the source or Jev), our
- * lane's duel and the lock; both teams' damage split; then the two teams, ours
- * over theirs. Jev reorders the same suggestions and lays the build in the
+ * lane's duel and the lock; only its body scrolls when it outgrows the
+ * window. Jev reorders the same suggestions and lays the build in the
  * same card, on the player's click.
  */
 const props = defineProps<{
@@ -212,14 +213,37 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto">
-    <div class="mx-auto flex max-w-[70rem] flex-col gap-5 px-4 pb-6 pt-3">
+  <!-- One screen, no page scroll: the bans and clock over three columns — our team, the card, theirs. -->
+  <div class="relative isolate flex h-full flex-col gap-3 overflow-hidden px-4 pb-3 pt-3">
+    <!-- The room: our champion's splash far behind, the two sides' colours rising from their edges. -->
+    <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+      <ChampionArt v-if="duel.championId" :key="duel.championId" :champion-id="duel.championId" kind="splash" fade="none" position="50% 25%" class="absolute inset-0 scale-110 opacity-[0.09] blur-2xl transition-opacity duration-700" />
+      <div class="absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-ally/[0.09] to-transparent" />
+      <div class="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-enemy/[0.09] to-transparent" />
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--ui-bg)_100%)]" />
+    </div>
       <DraftTopStrip :ally-bans="draft.allyBans" :enemy-bans="draft.enemyBans" :seconds-left="draft.secondsLeft" :label="turnLabel ?? label ?? t('draft.screen.title')" />
 
+    <div class="grid min-h-0 flex-1 grid-cols-[minmax(12rem,19%)_minmax(0,1fr)_minmax(12rem,19%)] gap-3">
+      <aside class="flex min-h-0 flex-col gap-3">
+        <DraftTeamColumn
+          team="ally"
+          vertical
+          :rows="allyRows"
+          :selected-cell="selectedCell.ally"
+          :opponent-cell="opponentCell.ally"
+          :suggested="suggested"
+          :counters="null"
+          :damage-picks="allyDamagePicks"
+          @view="view('ally', $event)"
+        />
+        <DraftSideLists class="min-h-0 flex-1" :groups="['tiers']" :position="draft.myPosition" :opponent-id="duel.opponentId" :opponent-counters="[]" :jev-readings="null" @preview="previewed = $event" />
+      </aside>
+
       <!-- The card the draft is for, as Blitz tabs it: suggestions while our pick or ban is open, the build once there is one. -->
-      <section class="surface rounded-2xl">
-        <header class="flex flex-wrap items-center justify-between gap-3 p-3 pb-0">
-          <div class="flex overflow-hidden rounded-lg ring-1 ring-inset ring-default" role="tablist">
+      <section class="flex min-h-0 flex-col rounded-xl bg-default/60 ring-1 ring-white/[0.06] backdrop-blur-md">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-4">
+          <div class="flex gap-5 self-stretch" role="tablist">
             <button
               v-for="entry in ([{ key: 'suggestions', icon: 'i-lucide-sparkle', label: t('draft.tab.suggestions'), disabled: !byLane }, { key: 'builds', icon: 'i-lucide-scroll-text', label: t('draft.tab.builds'), disabled: !subject && draft.myChampion === null }] as const)"
               :key="entry.key"
@@ -227,15 +251,15 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
               role="tab"
               :aria-selected="tab === entry.key"
               :disabled="entry.disabled"
-              class="flex h-9 items-center gap-1.5 border-default pl-2.5 pr-3.5 text-sm font-semibold transition-colors not-first:border-l disabled:opacity-40"
-              :class="tab === entry.key ? 'bg-accented/70 text-highlighted' : 'text-muted hover:text-highlighted'"
+              class="-mb-px flex h-11 items-center gap-1.5 border-b-2 font-display text-[13px] font-bold uppercase tracking-[0.12em] transition-colors disabled:opacity-40"
+              :class="tab === entry.key ? 'border-primary text-highlighted' : 'border-transparent text-muted hover:text-highlighted'"
               @click="openTab(entry.key)"
             >
               <UIcon :name="entry.icon" class="size-4" />{{ entry.label }}
             </button>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2 py-2">
             <!-- Who ranks and builds: the source, or Jev. -->
             <div class="flex overflow-hidden rounded-lg ring-1 ring-inset ring-default">
               <button
@@ -276,17 +300,9 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
           </div>
         </header>
 
-        <!-- Suggestions: the side lists beside the grid. -->
-        <div v-if="tab === 'suggestions'" class="grid gap-3 p-3 lg:grid-cols-[minmax(15rem,1fr)_minmax(0,2.15fr)]">
-          <DraftSideLists
-            class="max-h-[38rem] overflow-y-auto"
-            :position="draft.myPosition"
-            :opponent-id="duel.opponentId"
-            :opponent-counters="duel.opponentId !== null ? enemyCounters.get(duel.opponentId) ?? [] : []"
-            :jev-readings="jevReadings"
-            @preview="previewed = $event"
-          />
-          <div class="rounded-xl bg-accented/10 p-5">
+        <!-- Suggestions: the grid; the side lists live under the teams. -->
+        <div v-if="tab === 'suggestions'" class="@container min-h-0 flex-1 overflow-y-auto p-4">
+          <div class="min-w-0">
             <UAlert v-if="withJev && jevStatus === 'noKey'" class="mb-4" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
             <UAlert v-else-if="withJev && jevStatus === 'error'" class="mb-4" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" />
             <DraftSuggestions
@@ -307,7 +323,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         </div>
 
         <!-- Builds: Jev's, or the source's. -->
-        <div v-else class="p-4">
+        <div v-else class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
           <template v-if="withJev">
             <UAlert v-if="jevStatus === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
             <UAlert v-else-if="jevStatus === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="jevBuild.error.value ?? undefined" />
@@ -339,6 +355,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
             :kits="kits"
             :item-advice="itemAdvice"
             compact
+            class="flex-1"
             @update:kit-id="pickKit"
             @selection="importSelection = shownView === null && previewed === null ? $event : importSelection"
           >
@@ -362,33 +379,31 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         </div>
       </section>
 
-      <!-- Both teams' damage split, as Blitz shows it between the card and the teams. -->
-      <DraftTeamDamageMeter :allies="allyDamagePicks" :enemies="enemyDamagePicks" class="surface rounded-2xl px-4 py-3" />
-
-      <!-- The teams, ours over theirs. -->
-      <div class="flex flex-col gap-4">
-        <DraftTeamColumn
-          team="ally"
-          :rows="allyRows"
-          :selected-cell="selectedCell.ally"
-          :opponent-cell="opponentCell.ally"
-          :suggested="suggested"
-          :counters="null"
-          @view="view('ally', $event)"
-        />
+      <aside class="flex min-h-0 flex-col gap-3">
         <DraftTeamColumn
           team="enemy"
+          vertical
           :rows="enemyRows"
           :selected-cell="selectedCell.enemy"
           :opponent-cell="opponentCell.enemy"
           :correctable="recommendation !== null"
           :has-corrections="hasCorrections"
           :counters="enemyCounters"
+          :damage-picks="enemyDamagePicks"
           @view="view('enemy', $event)"
           @swap="swap"
           @reset="reset"
         />
-      </div>
+        <DraftSideLists
+          class="min-h-0 flex-1"
+          :groups="['counters', 'jev']"
+          :position="draft.myPosition"
+          :opponent-id="duel.opponentId"
+          :opponent-counters="duel.opponentId !== null ? enemyCounters.get(duel.opponentId) ?? [] : []"
+          :jev-readings="jevReadings"
+          @preview="previewed = $event"
+        />
+      </aside>
     </div>
   </div>
 </template>

@@ -8,9 +8,9 @@ import type { RankedPick } from '~/utils/jev-recommend'
 import { PICK_WEIGHTS } from '~/utils/jev-recommend'
 
 /**
- * One suggested pick or ban, as Blitz draws a suggestion: the champion's
- * square portrait ringed in its tier's colour, its tier over the portrait's
- * edge, its name, its rank and its leading reason, the splash faint behind;
+ * One suggested pick or ban as a poster (the splash, framed on the face, the rank a large numeral, the name in capitals over the floor): the champion's loading art whole,
+ * its rank as a large faint numeral, its tier, name and leading reason over
+ * the art's floor;
  * the leading reason's figure in the corner, every reason on hover (#1906) —
  * or, when Jev ranked it, Jev's score in a ring with its breakdown on hover. The figures are the draft
  * endpoint's — a measured delta in win-rate points or a rate, never the
@@ -43,7 +43,7 @@ const props = defineProps<{
   comfort?: string | null
 }>()
 
-const { nameOf, portraitOf } = useChampionStatics()
+const { nameOf } = useChampionStatics()
 const { t } = useT()
 
 const texts = computed(() => props.reasons.map(reason => describeReason(reason, nameOf, props.position)))
@@ -66,11 +66,6 @@ const why = computed(() => {
   return [...texts.value.map(text => text.full), props.thin ? t('draft.card.fewGamesBehind') : null, note, comfort].filter(Boolean).join('\n')
 })
 
-const tierColor = computed(() => {
-  const letter = props.entry?.tier?.toLowerCase()
-  return letter && 'sabcd'.includes(letter) ? `var(--color-tier-${letter})` : 'transparent'
-})
-
 /** Jev's score, part by part: each part's share of the weight that counted, and the points it brings. */
 const breakdown = computed(() => {
   const parts = props.jev?.parts
@@ -83,19 +78,20 @@ const breakdown = computed(() => {
 
 <template>
   <div
-    class="group relative flex h-full flex-col items-center gap-1 overflow-hidden rounded-2xl bg-elevated px-2 pb-4 pt-7 text-center transition-[box-shadow,opacity]"
-    :class="focused ? 'ring-2 ring-primary' : 'ring-1 ring-white/5'"
+    class="group relative h-52 overflow-hidden rounded-lg @5xl:h-64 bg-elevated transition-[box-shadow,transform] duration-300 [animation:tm-rise_420ms_var(--tm-ease)_backwards] hover:-translate-y-0.5"
+    :class="focused ? 'ring-2 ring-primary shadow-[0_12px_40px_-16px_var(--ui-primary)]' : 'ring-1 ring-white/8'"
+    :style="{ animationDelay: `${(rank - 1) * 55}ms` }"
     :title="why"
   >
-    <!-- The splash, blurred and faint, behind the card. -->
-    <ChampionArt :champion-id="championId" kind="splash" fade="none" position="50% 20%" class="absolute inset-0 scale-110 opacity-15 blur-[10px]" />
+    <ChampionArt :champion-id="championId" kind="splash" fade="none" position="50% 18%" class="absolute inset-0 transition duration-500 group-hover:scale-[1.04]" :class="thin && 'opacity-70'" />
+    <div class="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/55 via-40% to-transparent to-75%" />
 
-    <!-- The score in the corner: Jev's in its ring, its breakdown on hover; else the leading reason's figure. -->
+    <!-- The score: Jev's in its ring, its breakdown on hover; else the leading reason's figure. -->
     <div class="absolute right-2 top-2 z-10">
       <UTooltip v-if="jev" :content="{ side: 'top' }" :delay-duration="100">
-        <span class="flex items-center gap-1 rounded-md bg-ink-950/50 px-1.5 py-0.5">
+        <span class="flex items-center gap-1 rounded-md bg-ink-950/70 px-1.5 py-1 ring-1 ring-white/10 backdrop-blur">
           <svg viewBox="0 0 20 20" class="size-4 -rotate-90"><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" class="stroke-white/15" /><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" stroke-linecap="round" class="stroke-primary" :stroke-dasharray="`${50.27 * jev.total} 50.27`" /></svg>
-          <span class="text-xs font-bold tabular-nums text-highlighted">{{ Math.round(jev.total * 100) }}</span>
+          <span class="font-display text-xs font-bold tabular-nums text-white">{{ Math.round(jev.total * 100) }}</span>
         </span>
         <template #content>
           <div class="flex w-64 flex-col gap-1.5 rounded-md bg-default p-2 ring-1 ring-default">
@@ -114,29 +110,30 @@ const breakdown = computed(() => {
           </div>
         </template>
       </UTooltip>
-      <span v-else-if="lead" class="text-sm font-bold tabular-nums" :class="tone">{{ lead.headline }}<span class="text-[10px]"> {{ lead.unit }}</span></span>
-      <span v-else-if="entry" class="text-sm font-bold tabular-nums" :class="tone">{{ formatPercentage(entry.winRate) }}<span class="text-[10px]"> {{ t('draft.card.wr') }}</span></span>
+      <span v-else-if="lead" class="block rounded-md bg-ink-950/70 px-1.5 py-1 font-display text-xs font-bold tabular-nums ring-1 ring-white/10 backdrop-blur" :class="tone">{{ lead.headline }}<span class="text-[9px]"> {{ lead.unit }}</span></span>
+      <span v-else-if="entry" class="block rounded-md bg-ink-950/70 px-1.5 py-1 font-display text-xs font-bold tabular-nums ring-1 ring-white/10 backdrop-blur" :class="tone">{{ formatPercentage(entry.winRate) }}</span>
     </div>
     <div v-if="$slots.action" class="absolute left-2 top-2 z-10">
       <slot name="action" />
     </div>
 
-    <span class="relative">
-      <img v-if="portraitOf(championId)" :src="portraitOf(championId)!" :alt="nameOf(championId)" class="img-skeleton size-14 rounded-2xl ring-2" :class="thin && 'opacity-70'" :style="{ '--tw-ring-color': tierColor }">
-      <TierBadge v-if="entry" :caption="false" :size="24" :tier="entry.tier" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2" />
-    </span>
-    <p class="relative mt-2.5 w-full truncate text-base font-semibold text-highlighted">{{ nameOf(championId) }}</p>
-    <p class="relative text-[11px] text-muted">{{ t('draft.card.rank', { n: rank }) }}</p>
-    <p v-if="lead && !jev" class="relative w-full truncate text-[11px] leading-tight text-dimmed">{{ lead.short }}</p>
-    <UBadge v-if="lead && thin" color="neutral" variant="soft" size="sm" class="relative">{{ t('draft.card.fewGames') }}</UBadge>
-    <span
-      v-if="note"
-      class="relative flex items-center gap-1 whitespace-nowrap rounded bg-ink-950/70 px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-white/10"
-      :class="note.adds === 'magic' ? 'text-stat-mr' : 'text-stat-ad'"
-    >
-      <UIcon name="i-lucide-plus" class="size-2.5" />{{ note.adds === 'magic' ? t('draft.card.addsMagic') : t('draft.card.addsPhysical') }}
-    </span>
-    <p class="relative mt-auto pt-1 text-xs font-semibold text-dimmed transition-colors group-hover:text-highlighted">{{ t('draft.card.cta') }}</p>
+    <!-- The rank, large and faint, behind the name. -->
+    <span class="pointer-events-none absolute -right-1 bottom-6 font-display text-[4.5rem] font-extrabold leading-none tracking-tighter text-white/[0.07] tabular-nums">{{ String(rank).padStart(2, '0') }}</span>
+
+    <div class="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-3">
+      <div class="flex items-center gap-1.5">
+        <TierBadge v-if="entry" :caption="false" :size="18" :tier="entry.tier" />
+        <p class="min-w-0 flex-1 truncate font-display text-[13px] font-bold uppercase tracking-[0.06em] text-white">{{ nameOf(championId) }}</p>
+      </div>
+      <p v-if="lead && !jev" class="truncate text-[11px] leading-tight text-white/60">{{ lead.short }}</p>
+      <div v-if="(lead && thin) || note" class="flex flex-wrap gap-1">
+        <UBadge v-if="lead && thin" color="neutral" variant="soft" size="sm">{{ t('draft.card.fewGames') }}</UBadge>
+        <span v-if="note" class="flex items-center gap-1 whitespace-nowrap rounded bg-ink-950/70 px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-white/10" :class="note.adds === 'magic' ? 'text-stat-mr' : 'text-stat-ad'">
+          <UIcon name="i-lucide-plus" class="size-2.5" />{{ note.adds === 'magic' ? t('draft.card.addsMagic') : t('draft.card.addsPhysical') }}
+        </span>
+      </div>
+      <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/0 transition-colors duration-200 group-hover:text-primary">{{ t('draft.card.cta') }}</p>
+    </div>
     <slot />
   </div>
 </template>

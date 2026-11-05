@@ -172,7 +172,7 @@ const emptyMessage = computed(() => t('build.view.none'))
 
 <template>
   <!-- Champion select's card, as Blitz lays a build there: one header — whose build, which build, how it does — over the runes beside spells and build. -->
-  <div v-if="compact" class="flex flex-col gap-3">
+  <div v-if="compact" class="flex h-full min-h-0 flex-col gap-3">
     <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-default pb-3">
       <div class="min-w-48"><slot name="header" /></div>
       <div class="flex flex-wrap gap-1.5">

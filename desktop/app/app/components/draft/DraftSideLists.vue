@@ -10,7 +10,7 @@ import { positionLabel } from '#common/utils/positions'
  * grid: folding groups of compact rows — who beats our lane opponent, the
  * lane's tier list, and, once Jev has read them, the enemies' kits. A row's
  * click opens that champion's build; its control hovers (or bans) it in the
- * client. Three rows a group, the rest on demand.
+ * client. Each group scrolls on its own rather than stretch the screen.
  */
 const props = defineProps<{
   position: string
@@ -19,6 +19,8 @@ const props = defineProps<{
   opponentCounters: EnemyCounter[]
   /** The enemies as Jev read them; null until Jev is asked. */
   jevReadings: EnemyReading[] | null
+  /** Which groups this column shows. */
+  groups: ('counters' | 'tiers' | 'jev')[]
 }>()
 const emit = defineEmits<{ preview: [championId: number] }>()
 const { t } = useT()
@@ -26,26 +28,24 @@ const { nameOf } = useChampionStatics()
 const { laneEntries } = useTierList()
 
 const tierList = computed(() => laneEntries(props.position))
-const open = reactive<Record<string, boolean>>({})
-const rowsOf = <T,>(key: string, list: T[], base: number) => (open[key] ? list : list.slice(0, base))
 
 const FACTS = ['cc', 'heal', 'burst', 'autos', 'tank'] as const
 const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fact] >= 0.34).sort((a, b) => reading.read[b] - reading.read[a])
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-3">
+  <div class="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto">
     <!-- Who beats our lane opponent. -->
-    <details v-if="opponentId !== null && opponentCounters.length" open class="rounded-lg bg-accented/20">
+    <details v-if="groups.includes('counters') && opponentId !== null && opponentCounters.length" open class="rounded-lg bg-accented/20">
       <summary class="flex cursor-pointer items-center gap-2 px-2.5 py-2 text-sm font-semibold text-data-good">
         <ChampionPortrait :champion-id="opponentId" size="sm" class="size-6! rounded-md!" />
         {{ t('draft.side.counters', { name: nameOf(opponentId) }) }}
         <span class="ml-auto text-xs font-normal text-dimmed">{{ opponentCounters.length }}</span>
       </summary>
       <ul class="flex flex-col px-1.5 pb-1.5">
-        <li v-for="counter in rowsOf('counters', opponentCounters, 3)" :key="counter.championId" class="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accented/40">
+        <li v-for="counter in opponentCounters" :key="counter.championId" class="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accented/40">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-left" @click="emit('preview', counter.championId)">
-            <ChampionPortrait :champion-id="counter.championId" size="sm" class="size-10! rounded-lg!" />
+            <ChampionPortrait :champion-id="counter.championId" size="sm" class="size-8! rounded-md!" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-xs font-semibold text-highlighted">{{ nameOf(counter.championId) }}</span>
               <span class="text-[10px] text-dimmed">{{ t('draft.side.games', { games: formatCount(counter.games) }) }}</span>
@@ -55,21 +55,18 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
           <DraftChampionAction :champion-id="counter.championId" compact class="opacity-0 transition-opacity group-hover:opacity-100" />
         </li>
       </ul>
-      <button v-if="opponentCounters.length > 3" type="button" class="w-full rounded-b-lg bg-accented/30 py-1 text-[11px] font-semibold text-muted hover:text-highlighted" @click="open.counters = !open.counters">
-        {{ open.counters ? t('draft.side.collapse') : t('draft.side.more') }}
-      </button>
     </details>
 
     <!-- The lane's tier list. -->
-    <details v-if="tierList.length" open class="rounded-lg bg-accented/20">
+    <details v-if="groups.includes('tiers') && tierList.length" open class="rounded-lg bg-accented/20">
       <summary class="flex cursor-pointer items-center gap-2 px-2.5 py-2 text-sm font-semibold text-highlighted">
         <img :src="getPositionIconUrl(position)" alt="" class="size-5">
         {{ t('draft.side.tierList', { lane: positionLabel(position, { short: true }) ?? '' }) }}
       </summary>
       <ul class="flex flex-col px-1.5 pb-1.5">
-        <li v-for="entry in rowsOf('tiers', tierList, 5)" :key="entry.championId" class="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accented/40">
+        <li v-for="entry in tierList" :key="entry.championId" class="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accented/40">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-left" @click="emit('preview', entry.championId)">
-            <ChampionPortrait :champion-id="entry.championId" size="sm" class="size-10! rounded-lg!" />
+            <ChampionPortrait :champion-id="entry.championId" size="sm" class="size-8! rounded-md!" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-xs font-semibold text-highlighted">{{ nameOf(entry.championId) }}</span>
               <span class="flex items-center gap-1 text-[10px] text-dimmed"><TierBadge :caption="false" :size="14" :tier="entry.tier" />{{ formatPercentage(entry.pickRate) }}</span>
@@ -79,13 +76,10 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
           <DraftChampionAction :champion-id="entry.championId" compact class="opacity-0 transition-opacity group-hover:opacity-100" />
         </li>
       </ul>
-      <button v-if="tierList.length > 5" type="button" class="w-full rounded-b-lg bg-accented/30 py-1 text-[11px] font-semibold text-muted hover:text-highlighted" @click="open.tiers = !open.tiers">
-        {{ open.tiers ? t('draft.side.collapse') : t('draft.side.more') }}
-      </button>
     </details>
 
     <!-- The enemies as Jev read their kits. -->
-    <details v-if="jevReadings?.length" open class="rounded-lg bg-accented/20">
+    <details v-if="groups.includes('jev') && jevReadings?.length" open class="rounded-lg bg-accented/20">
       <summary class="flex cursor-pointer items-center gap-2 px-2.5 py-2 text-sm font-semibold text-data-bad">
         <UIcon name="i-tabler-chess-knight" class="size-5 text-primary" />
         {{ t('draft.side.jevEnemies') }}
@@ -101,6 +95,6 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
       </ul>
     </details>
 
-    <p v-if="!tierList.length" class="text-xs text-dimmed">{{ t('draft.sugg.tierListLoading') }}</p>
+    <p v-if="groups.includes('tiers') && !tierList.length" class="text-xs text-dimmed">{{ t('draft.sugg.tierListLoading') }}</p>
   </div>
 </template>
