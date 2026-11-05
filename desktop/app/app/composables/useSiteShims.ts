@@ -4,6 +4,7 @@ import type { WinProbabilityTimeline } from '#shared/types/win-probability'
 import { gradeDetail } from '~/utils/match-summary'
 import { matchEvents } from '~/utils/blitz/player'
 import { blitzMatchDetail, withRanks } from '~/utils/blitz/match-detail'
+import { externalSource } from '~/utils/data-source'
 
 /**
  * The app's side of the composables the twinned site components call, so the
@@ -163,7 +164,8 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
     isLoading.value = true
     try {
       const known = matchDetails.get(id)
-      const truemain = known ?? await readTruemainDetail(toValue(nameTag), record.value?.platformId ?? null, id)
+      // TrueMain's copy only where TrueMain is the source Settings picked.
+      const truemain = known ?? (externalSource() ? null : await readTruemainDetail(toValue(nameTag), record.value?.platformId ?? null, id))
       if (truemain) matchDetails.set(id, truemain)
       // The client's fallback is cached by the shell; TrueMain is asked again
       // next time, since it may have ingested the game since.

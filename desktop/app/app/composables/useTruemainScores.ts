@@ -1,5 +1,6 @@
 import type { MatchSummariesResponse } from '#shared/types/matches'
 import type { GameScore } from '~/utils/match-summary'
+import { externalSource } from '~/utils/data-source'
 
 /** TrueMain's page size ceiling for a player's matches. */
 const MATCHES_PAGE = 50
@@ -17,7 +18,8 @@ export function useTruemainScores(nameTag: MaybeRefOrGetter<string>) {
   const scores = useState<Record<string, Record<string, GameScore>>>('truemain-scores', () => ({}))
 
   watch(() => [toValue(nameTag), record.value?.platformId ?? null] as const, async ([tag, platformId]) => {
-    if (!tag || !platformId || scores.value[tag]) return
+    // TrueMain's scores only where TrueMain is the source: otherwise the client's games are graded here.
+    if (!tag || !platformId || scores.value[tag] || externalSource()) return
     scores.value = { ...scores.value, [tag]: {} }
     try {
       const answer = await apiGet<MatchSummariesResponse>(
