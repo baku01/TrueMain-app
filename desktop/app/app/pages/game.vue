@@ -13,7 +13,7 @@ import { OVERLAY_PANEL_INFO, OVERLAY_PANELS, PANEL_KEY } from '~/types/overlay'
  * here: the page that shows the same panels in this window.
  */
 const { state, screen } = useLcuState()
-const { game, syncedAt } = useLiveGame()
+const { game, sync } = useLiveGame()
 const { view: loading } = useLoadingPlayers()
 /** Each lane's edge (#1863), drawn on the board while the game loads. */
 const edges = useLaneEdges(() => loading.value.players)
@@ -56,7 +56,7 @@ const waiting = computed(() => {
 
 <template>
   <div class="h-full">
-    <GameScreen v-if="screen === 'in-game' && game" :game="game" :synced-at="syncedAt" :lines="loading.players">
+    <GameScreen v-if="screen === 'in-game' && game" :game="game" :sync="sync" :lines="loading.players">
       <template #actions>
         <UButton icon="i-lucide-layers" color="neutral" variant="ghost" size="sm" to="/overlay" :aria-label="t('game.overlay.settings')" :title="t('game.overlay.settings')" />
       </template>

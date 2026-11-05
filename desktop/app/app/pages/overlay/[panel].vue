@@ -48,7 +48,7 @@ const placeholder = computed(() => {
   return key ? t(key) : ''
 })
 
-const { game, syncedAt } = useLiveGame()
+const { game, sync } = useLiveGame()
 const { view, fit } = useGameOverlay()
 /** The chord that brings this panel up in game, marked in the preview (#1915). */
 const chord = computed(() => view.value?.chords[panel.value]?.label ?? null)
@@ -122,9 +122,9 @@ useHead({
       <div :key="playing ? 'live' : preview ? 'sample' : 'idle'" class="animate-overlay-in">
         <template v-if="playing">
           <OverlayNextItem v-if="panel === 'next-item'" :game="playing" />
-          <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="playing" :synced-at="syncedAt" />
+          <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="playing" :sync="sync" />
           <OverlayStats v-else-if="panel === 'stats'" :game="playing" :reference="paceReference" />
-          <OverlayObjectives v-else-if="panel === 'objectives'" :game="playing" :synced-at="syncedAt" />
+          <OverlayObjectives v-else-if="panel === 'objectives'" :game="playing" :sync="sync" />
           <OverlayItemValue v-else :game="playing" :lanes="!settings?.laneGold.enabled" />
         </template>
         <OverlayPanelSample v-else-if="preview" :panel="panel" />

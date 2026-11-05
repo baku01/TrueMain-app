@@ -37,6 +37,10 @@ pub enum Emission {
     /// Boxed: a whole game is much larger than an update.
     Snapshot(Option<Box<GameState>>),
     Update(GameUpdate),
+    /// A reading in which nothing shown moved but the clock: its game time,
+    /// so the frontend's clock is set right every reading, not only at the
+    /// next change — minutes can pass without one.
+    Clock(f64),
 }
 
 #[derive(Debug, Default)]
@@ -63,8 +67,8 @@ impl GameFeed {
     }
 
     /// Take one `allgamedata` reading. `None` when there is nothing to send:
-    /// no game running, a payload that describes no game yet, or a reading in
-    /// which nothing the app shows moved.
+    /// no game running, or a payload that describes no game yet; a reading in
+    /// which nothing the app shows moved sends its clock only.
     pub fn ingest(&mut self, payload: &serde_json::Value) -> Option<Emission> {
         if !self.active {
             return None;
@@ -80,11 +84,11 @@ impl GameFeed {
 
         if let Some(current) = &mut self.current {
             if let Some(changes) = current.diff(&next) {
-                // The clock moves on every reading, but is sent only with a
-                // change or a snapshot: the frontend runs its own between them.
+                // The clock moves on every reading: sent alone when nothing
+                // else did, the frontend running its own between readings.
                 current.game_time = next.game_time;
                 if changes.is_empty() {
-                    return None;
+                    return Some(Emission::Clock(next.game_time));
                 }
                 self.revision += 1;
                 current.apply(&changes);
@@ -131,10 +135,12 @@ mod tests {
             .collect()
     }
 
+    /// What a reading sends beside the clock alone.
     fn played(feed: &mut GameFeed, readings: &[serde_json::Value]) -> Vec<Emission> {
         readings
             .iter()
             .filter_map(|reading| feed.ingest(reading))
+            .filter(|emission| !matches!(emission, Emission::Clock(_)))
             .collect()
     }
 
@@ -185,7 +191,7 @@ mod tests {
             .into_iter()
             .filter_map(|emission| match emission {
                 Emission::Update(update) => Some(update.changes),
-                Emission::Snapshot(_) => None,
+                Emission::Snapshot(_) | Emission::Clock(_) => None,
             })
             .flatten()
             .collect();
@@ -217,6 +223,7 @@ mod tests {
                     state.revision = update.revision;
                     state.game_time = update.game_time;
                 }
+                Emission::Clock(_) => unreachable!("`played` leaves the clock out"),
             }
         }
 
@@ -246,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn a_reading_that_changes_nothing_shown_sends_nothing_but_moves_the_clock() {
+    fn a_reading_that_changes_nothing_shown_sends_its_clock_only() {
         let readings = fixture();
         let mut feed = GameFeed::default();
         feed.follow(true);
@@ -254,7 +261,7 @@ mod tests {
         let mut later = readings[0].clone();
         later["gameData"]["gameTime"] = serde_json::json!(16.2);
         later["allPlayers"][2]["scores"]["wardScore"] = serde_json::json!(1.5);
-        assert_eq!(feed.ingest(&later), None);
+        assert_eq!(feed.ingest(&later), Some(Emission::Clock(16.2)));
         assert_eq!(feed.current().unwrap().game_time, 16.2);
     }
 

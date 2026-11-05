@@ -17,6 +17,8 @@ use tokio::task::JoinHandle;
 pub const SNAPSHOT_EVENT: &str = "game://snapshot";
 /// The changes one reading brought (`live_client::GameUpdate`).
 pub const UPDATE_EVENT: &str = "game://update";
+/// The game time of a reading that changed nothing else, every couple of seconds.
+pub const CLOCK_EVENT: &str = "game://clock";
 
 pub type SharedGame = Arc<Mutex<GameFeed>>;
 
@@ -34,6 +36,9 @@ fn step(app: &AppHandle, run: impl FnOnce(&mut GameFeed) -> Option<Emission>) {
         }
         Some(Emission::Update(update)) => {
             let _ = app.emit(UPDATE_EVENT, update);
+        }
+        Some(Emission::Clock(game_time)) => {
+            let _ = app.emit(CLOCK_EVENT, game_time);
         }
         None => {}
     }
