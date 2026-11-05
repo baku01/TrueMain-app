@@ -42,6 +42,17 @@ export interface RuneShares {
 
 export interface SlotGroup { slot: number, options: ItemOption[] }
 
+/**
+ * Whether the champion buys boots on the lane: its pairs' games at least
+ * `BOOTS_SHARE` of its games. The sources count unlike — op.gg lists its most
+ * played pair only (Aatrox: 0.47 of his games), Tencent counts a pair per
+ * purchase (3.1) — but a champion that buys boots reads 0.3 or more on every
+ * one, and Yuumi, who plays without, 0.02 to 0.08.
+ */
+const BOOTS_SHARE = 0.15
+export const buysBoots = (options: BuildOptions): boolean =>
+  options.boots.reduce((sum, option) => sum + option.games, 0) >= options.games * BOOTS_SHARE
+
 export interface BuildOptions {
   patch: string | null
   games: number

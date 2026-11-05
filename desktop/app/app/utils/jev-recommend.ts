@@ -53,17 +53,21 @@ const clamp = (value: number) => Math.min(1, Math.max(0, value))
  * What a usual team of five holds, summed as Jev reads it, and how much more
  * makes a need full: every team has some crowd control, a healer or a
  * fighter that sustains, someone durable — a need is what stands out of that,
- * or every defensive item would answer every draft.
+ * or every defensive item would answer every draft. Measured (16.22): the 173
+ * champions played on a lane in Emerald+ read by Jev, 20,000 solo-queue teams
+ * drawn one champion per lane — a team's usual sum is the median, a need full
+ * at the 97th percentile. Guessed before (burst usual at 1), burst read full
+ * in nearly every draft and a defensive item answered all of them.
  */
 const USUAL: Record<'cc' | 'heal' | 'burst' | 'tank', { usual: number, more: number }> = {
-  cc: { usual: 2, more: 1.5 },
-  heal: { usual: 1, more: 1.5 },
-  burst: { usual: 1, more: 1.5 },
-  tank: { usual: 1, more: 1.5 },
+  cc: { usual: 2.2, more: 0.8 },
+  heal: { usual: 0.85, more: 0.8 },
+  burst: { usual: 2.45, more: 0.7 },
+  tank: { usual: 1.65, more: 1.15 },
 }
 
-/** The share of damage dealt with basic attacks a usual team has, and how much more makes the need full. */
-const USUAL_AUTOS = { usual: 0.25, more: 0.5 }
+/** The share of damage dealt with basic attacks a usual team has, and how much more makes the need full: measured as `USUAL`. */
+const USUAL_AUTOS = { usual: 0.43, more: 0.15 }
 
 /**
  * What a team throws at us, each 0–1: the damage split weighed by what each

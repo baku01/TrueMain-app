@@ -1,6 +1,7 @@
 import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells, BuildTreeNode, ChampionBuild, ChampionBuildResponse } from '~/types/build'
 import { SOLO_QUEUE, blitzRole, blitzRows } from '~/utils/blitz/client'
 import { keepBounded } from '~/utils/bounded'
+import { BOOTS } from '~/utils/item-groups'
 
 /**
  * A champion's lane build as Blitz measures it (`champion_builds_tags`), in
@@ -38,8 +39,7 @@ export interface BlitzBuildDoc {
 /** Builds kept per lane: the most played core paths, as many as TrueMain's page usually shows. */
 const MAX_BUILDS = 4
 
-/** Tier-2 boots and their upgrades: a core path's boots are drawn apart from its items. */
-const BOOTS = new Set([1001, 2422, 3006, 3009, 3010, 3013, 3020, 3047, 3111, 3117, 3158, 3170, 3171, 3172, 3173, 3174, 3175, 3176])
+/** Boots and their upgrades (the game's own group, `item-groups.ts`): a core path's boots are drawn apart from its items. */
 export const isBoots = (itemId: number) => BOOTS.has(itemId)
 
 export const most = <T extends { games: number }>(list: readonly T[] | undefined): T | undefined =>

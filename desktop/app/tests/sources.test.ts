@@ -115,6 +115,14 @@ describe('lolalytics', () => {
     expect(options.skills[0]).toMatchObject({ order: ['Q', 'W', 'E'], opening: ['W', 'Q', 'E'] })
   })
 
+  it('offers no boots to a champion whose games mostly go without (lolalytics\' 9999), and never 9999 as a pair', async () => {
+    const { lolalyticsOptionsOf } = await import('~/utils/sources/lolalytics')
+    const yuumi = await lolalyticsOptionsOf({ ...build, boots: [[9999, 49.7, 96.9, 969], [3158, 48, 1.8, 18]] })
+    expect(yuumi.boots).toEqual([])
+    const usual = await lolalyticsOptionsOf({ ...build, boots: [[3020, 53.8, 57.7, 577], [9999, 40, 3, 30]] })
+    expect(usual.boots.map(option => option.itemIds)).toEqual([[3020]])
+  })
+
   it('reads TrueMain\'s brackets as lolalytics tiers', async () => {
     const { lolalyticsTier } = await import('~/utils/sources/lolalytics')
     expect(lolalyticsTier('MASTER_PLUS')).toBe('master_plus')

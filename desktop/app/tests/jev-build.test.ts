@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
-import { closestCore, coreSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, standardCore, statsPool, withItemStats } from '~/utils/jev-build'
+import { closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool, withItemStats } from '~/utils/jev-build'
 
 const m = (games: number, itemIds: number[]): ItemOption => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
 const names = { item: (id: number) => `#${id}`, perk: String, style: String, spell: String }
@@ -30,20 +30,50 @@ describe('texts for Jev', () => {
   })
 })
 
+describe('the starting sets and the boots', () => {
+  const consumable = (id: number) => [2003, 2031, 2055].includes(id)
+  const set = (itemIds: number[], games: number, winRate = 0.5) => ({ itemIds, games, winRate, pickRate: 0 })
+
+  it('reads sets that differ only by potions as one start, the most played shown', () => {
+    const sets = startingSets([set([1055, 2003], 14835, 0.525), set([1055], 2442, 0.57), set([1054, 2003], 9414)], consumable)
+    expect(sets.map(entry => [entry.itemIds, entry.games])).toEqual([[[1055, 2003], 17277], [[1054, 2003], 9414]])
+    expect(sets[0]!.winRate).toBeCloseTo((0.525 * 14835 + 0.57 * 2442) / 17277)
+  })
+
+  it('takes no set of potions alone for a start while another holds an item (Blitz leaves out a support\'s World Atlas)', () => {
+    expect(startingSets([set([2003, 2003], 9000), set([3865, 2003, 2003], 6066)], consumable).map(entry => entry.itemIds)).toEqual([[3865, 2003, 2003]])
+  })
+
+  it('takes no start without the support item where the most played holds it (Blitz\'s Ruby Crystal on a support Tahm Kench)', () => {
+    expect(startingSets([set([3865, 2003, 2003], 6066, 0.5), set([1028, 2003], 47, 0.6)], consumable).map(entry => entry.itemIds)).toEqual([[3865, 2003, 2003]])
+    expect(startingSets([set([1055, 2003], 900), set([1028, 2003], 47)], consumable)).toHaveLength(2)
+  })
+
+  it('offers no boots to a champion that plays without, nor their timing', () => {
+    const yuumi = { ...optionsOf([m(800, [3504])]), boots: [m(198, [3158])], games: 8774 }
+    expect(firstSlots(yuumi, names, consumable).map(slot => slot.name)).not.toContain('boots')
+    expect(firstSlots(yuumi, names, consumable).map(slot => slot.name)).not.toContain('bootsAfter')
+  })
+
+  it('leaves the support item a slot of the six', () => {
+    expect(roomFor([3865, 2003])).toBe(5)
+    expect(roomFor([1055, 2003])).toBe(6)
+  })
+})
+
 describe('the core item by item', () => {
   const options = optionsOf([m(600, [6692, 3142, 6694]), m(300, [6692, 6676, 3142]), m(200, [3142, 6692, 3814])])
 
-  it('makes each place of the core a slot of the items measured there, games added up, the draft\'s answers from the second on', () => {
-    const slots = coreSlots(options, names, { pool: [m(108, [3071])], answersDraft: id => id === 3071 })
+  it('makes each place of the core a slot of the items measured there, games added up, and nothing else: the draft\'s answers come after it', () => {
+    const slots = coreSlots(options, names)
     expect(slots.map(slot => [slot.name, slot.lane])).toEqual([['item1', true], ['item2', false], ['item3', false]])
     expect(slots[0]!.options.map(option => [option.itemIds[0], option.games])).toEqual([[6692, 900], [3142, 200]])
-    expect(slots[1]!.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3142, false], [6676, false], [6692, false], [3071, true]])
+    expect(slots[1]!.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3142, false], [6676, false], [6692, false]])
   })
 
   it('opens no place of the core a source did not measure: cores carrying the boots run two items, whatever answers the draft', () => {
     const withBoots = optionsOf([m(600, [6692, 3047, 6610]), m(300, [3047, 6692, 3161])])
-    const slots = coreSlots(withBoots, names, { pool: [m(500, [6333])], answersDraft: () => true })
-    expect(slots.map(slot => slot.name)).toEqual(['item1', 'item2'])
+    expect(coreSlots(withBoots, names).map(slot => slot.name)).toEqual(['item1', 'item2'])
   })
 
   it('follows the measured core closest to the one chosen, and knows the most played', () => {
@@ -58,6 +88,23 @@ describe('situational answers', () => {
     const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [6694]), m(200, [3814])] }, { slot: 5, options: [m(150, [3071])] }])
     const slot = laterSlot(options, core, 4, [3142, 6691], names, { pool: measuredPool(options), answersDraft: id => id === 3071 || id === 3142 })!
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[6694, false], [3814, false], [3071, true]])
+  })
+
+  it('offers no answer of the other kind of damage than the core\'s: no Zhonya\'s Hourglass on a build of attack damage', () => {
+    const core = m(900, [3153, 6672])
+    const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [3031])] }])
+    const tags: Record<number, string[]> = { 3157: ['Armor', 'SpellDamage'], 3026: ['Armor', 'Damage'], 3091: ['SpellBlock', 'AttackSpeed'] }
+    const suits = (id: number) => damageKind(tags[id] ?? []) !== 'ap'
+    const slot = laterSlot(options, core, 4, [3153, 6672], names, { pool: [m(900, [3157]), m(800, [3026]), m(700, [3091])], answersDraft: id => id !== 3031, suits })!
+    expect(slot.options.map(option => option.itemIds[0])).toEqual([3031, 3026, 3091])
+    expect([damageKind(['Damage', 'AttackSpeed', 'SpellDamage']), damageKind(['Health', 'Armor']), damageKind(['SpellDamage'])]).toEqual([null, null, 'ap'])
+  })
+
+  it('offers nothing the inventory cannot hold beside the build: a second Lifeline or Last Whisper item', () => {
+    const core = m(900, [3142, 3053])
+    const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [3156]), m(250, [3031]), m(200, [3036])] }])
+    const slot = laterSlot(options, core, 4, [3142, 3053, 6694], names, { pool: [m(500, [3071])], answersDraft: () => true })!
+    expect(slot.options.map(option => option.itemIds[0])).toEqual([3031])
   })
 })
 

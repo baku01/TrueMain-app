@@ -187,6 +187,18 @@ function sharesOf(build: LolalyticsBuild): RuneShares {
 const itemRows = (rows: Row[] | undefined): ItemOption[] =>
   (rows ?? []).filter(row => Number(row[0]) > 0).map(row => ({ ...option(row[1], row[2], row[3]), itemIds: [Number(row[0])] }))
 
+/**
+ * lolalytics counts the games without boots as an item of its own, `9999`:
+ * not an item to buy. When it is the most played (Yuumi, Cassiopeia), the
+ * champion buys none, and no pair is offered.
+ */
+const NO_BOOTS = 9999
+const bootsRows = (rows: Row[] | undefined): ItemOption[] => {
+  const options = itemRows(rows)
+  if ([...options].sort((a, b) => b.games - a.games)[0]?.itemIds[0] === NO_BOOTS) return []
+  return ranked(options.filter(option => option.itemIds[0] !== NO_BOOTS), 3)
+}
+
 const setRows = (rows: [string, number, number, number][] | undefined): ItemOption[] =>
   (rows ?? []).map(row => ({ ...option(row[1], row[2], row[3]), itemIds: String(row[0]).split('_').map(Number).filter(Boolean) }))
 
@@ -210,7 +222,7 @@ export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<Build
     shares: () => shares,
     spells: ranked((build.spells ?? []).map(row => ({ ...option(row[1], row[2], row[3]), spellIds: row[0].split('_').map(Number) })), 3),
     starters: ranked(setRows(build.startSet), 3),
-    boots: ranked(itemRows(build.boots), 3),
+    boots: bootsRows(build.boots),
     cores: ranked(setRows(build.builtBootSet3), 5),
     followUps: () => slots,
     skills: ranked((build.skill15 ?? []).map(row => skillOption(String(row[0]).split('').map(Number), option(row[1], row[2], row[3]))), 3),

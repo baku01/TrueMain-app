@@ -23,11 +23,14 @@ describe('needsOf', () => {
 
   it('reads the kits\' facts as what stands out of a usual team', () => {
     const line = (id: number, fields: Partial<EnemyLine['read']>): EnemyLine => ({ id, read: read(fields), physical: 0.5, magic: 0.5, weight: 1 })
-    const usual = [1, 2, 3, 4, 5].map(id => line(id, { cc: 0.4, tank: 0.2, autos: 0.25 }))
-    expect(needsOf(usual)).toMatchObject({ cc: 0, tanks: 0, autos: 0 })
-    const lockdown = [line(1, { cc: 1 }), line(2, { cc: 1 }), line(3, { cc: 0.4 }), line(4, { cc: 0.4 }), line(5, { cc: 0.4 })]
-    expect(needsOf(lockdown).cc).toBeCloseTo(0.8)
-    expect(needsOf([line(1, { cc: 0.5 })]).cc).toBeCloseTo(0.2)
+    // A team as solo queue draws them: every fact near the champions' average, no need.
+    const usual = [1, 2, 3, 4, 5].map(id => line(id, { cc: 0.44, heal: 0.17, burst: 0.49, tank: 0.33, autos: 0.43 }))
+    for (const need of ['cc', 'heal', 'burst', 'tanks', 'autos'] as const) expect(needsOf(usual)[need]).toBeCloseTo(0)
+    const lockdown = [line(1, { cc: 1 }), line(2, { cc: 0.6 }), line(3, { cc: 0.44 }), line(4, { cc: 0.44 }), line(5, { cc: 0.44 })]
+    expect(needsOf(lockdown).cc).toBeCloseTo(0.9)
+    const assassins = [line(1, { burst: 1 }), line(2, { burst: 1 }), line(3, { burst: 0.5 }), line(4, { burst: 0.5 }), line(5, { burst: 0.5 })]
+    expect(needsOf(assassins).burst).toBe(1)
+    expect(needsOf([line(1, { cc: 0.5 })]).cc).toBeCloseTo(0.12)
     expect(needsOf([line(1, { cc: 1 })]).cc).toBe(1)
   })
 
