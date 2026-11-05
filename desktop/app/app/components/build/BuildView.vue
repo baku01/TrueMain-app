@@ -44,6 +44,9 @@ const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) 
 
 const { t } = useT()
 const { response, pending: lanePending } = useChampionBuilds(toRef(props, 'championId'), toRef(props, 'position'))
+/** Blitz measures builds by lane matchup: against the draft's lane opponent, its builds in those games (Blitz's "matchup builds"). */
+const versusOpponent = computed(() => (fromBlitz() ? props.draft?.opponentId ?? null : null))
+const { response: versusResponse } = useChampionBuilds(toRef(props, 'championId'), toRef(props, 'position'), versusOpponent)
 const { items, summoners, runeTree, pending: staticPending, loadChampion, championStatic } = useStaticData()
 const { patch } = useChampionStatics()
 
@@ -65,10 +68,13 @@ const options = computed<BuildOption[]>(() => {
       standard: draftBuild.source === 'standard',
     })
   }
-  for (const build of response.value?.builds ?? []) {
+  const versus = versusResponse.value?.championId === props.championId && versusOpponent.value ? versusResponse.value.builds : []
+  const rows = [...versus.map(build => ['versus', build] as const), ...(response.value?.builds ?? []).map(build => ['lane', build] as const)]
+  for (const [group, build] of rows) {
+    if (group === 'versus' && build.games <= 0) continue
     list.push({
       // The whole path: two builds may open on the same item with the same keystone (another source's cores do).
-      key: `lane-${build.firstItemId}-${build.primaryKeystoneId}-${(build.core.itemPath?.itemIds ?? []).join('_')}-${(build.core.boots?.itemIds ?? []).join('_')}`,
+      key: `${group}-${build.firstItemId}-${build.primaryKeystoneId}-${(build.core.itemPath?.itemIds ?? []).join('_')}-${(build.core.boots?.itemIds ?? []).join('_')}`,
       core: build.core,
       firstItemId: build.firstItemId,
       keystoneId: build.primaryKeystoneId,
@@ -138,7 +144,8 @@ function titleOf(option: BuildOption): string {
   const champion = nameOf(props.championId)
   if (option.key === 'draft') return props.draft?.opponentId ? `${champion} vs ${nameOf(props.draft.opponentId)}` : champion
   const first = option.core.itemPath?.itemIds[0]
-  return first && items.value[first] ? `${champion} · ${items.value[first]!.name}` : champion
+  const name = option.key.startsWith('versus-') && versusOpponent.value ? `${champion} vs ${nameOf(versusOpponent.value)}` : champion
+  return first && items.value[first] ? `${name} · ${items.value[first]!.name}` : name
 }
 const selection = computed(() => {
   const kit = kitShown.value
@@ -177,6 +184,7 @@ const emptyMessage = computed(() => t('build.view.none'))
           :pending="lanePending || !!draft?.pending"
           :draft-label="draft?.label"
           :draft-opponent="draft?.opponentId ?? null"
+          :versus-opponent="versusOpponent"
           @update:model-value="selected = $event; kitId = null"
         />
         <section v-if="kits?.length">

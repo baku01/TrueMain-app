@@ -9,7 +9,8 @@ import type { BuildOption } from '~/types/build'
  * `leaderboard/ChampionBuild`), the first three items, the win rate over the
  * games. An item's name spelled out said less than its icon and took the
  * width the build itself needs. The build computed for this draft comes first,
- * under its own heading ("vs Zed"), then the champion's lane builds.
+ * under its own heading ("vs Zed"), then the builds played in that matchup
+ * when the source measures them (Blitz), then the champion's lane builds.
  */
 const props = defineProps<{
   options: BuildOption[]
@@ -18,6 +19,8 @@ const props = defineProps<{
   draftLabel?: string
   /** The champion the draft's build faces on its lane: its heading is "VS" and that champion's icon. */
   draftOpponent?: number | null
+  /** The lane opponent the `versus-` rows were measured against: they list under "Matchup builds vs" and its portrait. */
+  versusOpponent?: number | null
 }>()
 
 const selected = defineModel<string | null>({ default: null })
@@ -28,17 +31,22 @@ const { nameOf, portraitOf } = useChampionStatics()
 const { perk, perkStyle, item } = useBuildResolvers(runeTree, items)
 
 const draftOption = computed(() => props.options.find(option => option.key === 'draft') ?? null)
-const laneOptions = computed(() => props.options.filter(option => option.key !== 'draft'))
+const versusOptions = computed(() => props.options.filter(option => option.key.startsWith('versus-')))
+const laneOptions = computed(() => props.options.filter(option => option.key !== 'draft' && !option.key.startsWith('versus-')))
 
 const groups = computed(() => [
   ...(draftOption.value
     ? [{
         label: draftOption.value.standard ? t('build.list.standard') : (props.draftLabel ?? t('build.list.thisDraft')),
         opponent: draftOption.value.standard ? null : props.draftOpponent ?? null,
+        versus: t('build.list.versus'),
         options: [draftOption.value],
       }]
     : []),
-  ...(laneOptions.value.length ? [{ label: draftOption.value ? t('build.list.onLane') : t('build.list.builds'), opponent: null, options: laneOptions.value }] : []),
+  ...(versusOptions.value.length && props.versusOpponent
+    ? [{ label: 'matchup', opponent: props.versusOpponent, versus: t('build.list.matchup'), options: versusOptions.value }]
+    : []),
+  ...(laneOptions.value.length ? [{ label: draftOption.value || versusOptions.value.length ? t('build.list.onLane') : t('build.list.builds'), opponent: null, versus: '', options: laneOptions.value }] : []),
 ])
 </script>
 
@@ -46,7 +54,7 @@ const groups = computed(() => [
   <div class="flex flex-col gap-3">
     <div v-for="group in groups" :key="group.label" class="flex flex-col gap-0.5">
       <h3 v-if="group.opponent" class="flex items-center gap-1.5 px-2 pb-1 stat-label">
-        {{ t('build.list.versus') }}
+        {{ group.versus }}
         <img v-if="portraitOf(group.opponent)" :src="portraitOf(group.opponent)!" :alt="nameOf(group.opponent)" :title="nameOf(group.opponent)" class="img-skeleton size-4 rounded">
       </h3>
       <h3 v-else class="truncate px-2 pb-1 stat-label">{{ group.label }}</h3>

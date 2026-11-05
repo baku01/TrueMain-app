@@ -6,17 +6,26 @@ import type { ChampionBuildResponse } from '~/types/build'
  * session: the builds move with a patch, and flicking between champions in a
  * draft should not ask twice for the same one.
  */
-export function useChampionBuilds(championId: Ref<number | null>, position: Ref<string | null>) {
+export function useChampionBuilds(
+  championId: Ref<number | null>,
+  position: Ref<string | null>,
+  /** Given, the builds against this lane opponent only — none read while it is null. */
+  opponent?: Ref<number | null>,
+) {
   const cache = useState<Record<string, ChampionBuildResponse>>('champion-builds', () => ({}))
   const pending = ref(false)
   const error = ref<string | null>(null)
 
-  const key = computed(() => (championId.value && position.value ? `${championId.value}:${position.value}` : null))
+  const key = computed(() => {
+    if (!championId.value || !position.value) return null
+    if (!opponent) return `${championId.value}:${position.value}`
+    return opponent.value ? `${championId.value}:${position.value}:vs${opponent.value}` : null
+  })
   const response = computed(() => (key.value ? cache.value[key.value] ?? null : null))
 
   let latest = 0
 
-  const fetchBuilds = (champion: number, lane: string) => readChampionBuild(champion, lane)
+  const fetchBuilds = (champion: number, lane: string) => readChampionBuild(champion, lane, { opponentChampionId: opponent?.value ?? null })
 
   watch(key, async (next) => {
     error.value = null
