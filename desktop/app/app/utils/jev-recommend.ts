@@ -147,6 +147,14 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
       autos: read?.vsAutos ?? 0,
       tanks: read?.vsTanks ?? 0,
     }
+    // An item that resists only the damage the team does not deal guards against nothing it throws: its
+    // protection against burst or basic attacks is that resistance's (Maw of Malmortius shields magic
+    // damage only), so it answers neither — a damage item too, though it is never a misfit.
+    const offKind = (has.physical && !has.magic && needs.physical < LITTLE) || (has.magic && !has.physical && needs.magic < LITTLE)
+    if (offKind) {
+      has.burst = 0
+      has.autos = 0
+    }
     const defensiveOnly = (has.physical || has.magic) && !own.some(tag => OFFENSIVE.includes(tag))
     const misfit = defensiveOnly && (
       (has.physical && !has.magic && needs.physical < LITTLE)

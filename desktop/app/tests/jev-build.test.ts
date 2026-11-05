@@ -40,6 +40,12 @@ describe('the core item by item', () => {
     expect(slots[1]!.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3142, false], [6676, false], [6692, false], [3071, true]])
   })
 
+  it('opens no place of the core a source did not measure: cores carrying the boots run two items, whatever answers the draft', () => {
+    const withBoots = optionsOf([m(600, [6692, 3047, 6610]), m(300, [3047, 6692, 3161])])
+    const slots = coreSlots(withBoots, names, { pool: [m(500, [6333])], answersDraft: () => true })
+    expect(slots.map(slot => slot.name)).toEqual(['item1', 'item2'])
+  })
+
   it('follows the measured core closest to the one chosen, and knows the most played', () => {
     expect(closestCore(options.cores, [6692, 6676, 3071])?.games).toBe(300)
     expect(standardCore(options.cores)).toEqual([6692, 3142, 6694])

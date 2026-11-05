@@ -58,6 +58,13 @@ describe('fitOf', () => {
     expect(fitOf([6333], needs({ physical: 0.1, magic: 0.9 }), reads, tags).misfit).toBe(false)
   })
 
+  it('does not take Maw of Malmortius\'s shield for an answer to a physical team\'s burst: it shields magic damage only', () => {
+    const maw = new Map([[3156, item({ antiBurst: 0.9 })]])
+    const mawTags = (id: number) => (id === 3156 ? ['Damage', 'SpellBlock'] : tags(id))
+    expect(fitOf([3156], needs({ physical: 0.83, magic: 0.05, burst: 1 }), maw, mawTags)).toMatchObject({ misfit: false, answers: [] })
+    expect(fitOf([3156], needs({ physical: 0.07, magic: 0.87, burst: 1 }), maw, mawTags).answers.map(answer => answer.need)).toEqual(['magic', 'burst'])
+  })
+
   it('offers where it was not measured only what answers the draft', () => {
     const magic = needs({ physical: 0.2, magic: 0.8 })
     expect(answersDraft(3065, magic, reads, tags)).toBe(true)

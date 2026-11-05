@@ -168,7 +168,11 @@ const itemOptions = (open: (ItemOption & { situational?: true })[], names: Names
  * a slot of the items measured at that place of a core (their games added up
  * over every core that has them there), so a draft can change the second item
  * without a whole measured path that does — plus, from the second on, the
- * champion's measured items that answer the draft.
+ * champion's measured items that answer the draft. Only a place some core
+ * measured is a slot: the sources' cores mostly carry the boots (Eclipse,
+ * Plated Steelcaps, Sundered Sky), so their third place is the items after
+ * them, and a draft's answer alone opening one made the build an item longer
+ * into one team than into another.
  */
 export function coreSlots(options: BuildOptions, names: Names, situational?: Situational): JevSlot[] {
   return Array.from({ length: CORE_ITEMS }, (_, index): JevSlot => {
@@ -181,7 +185,7 @@ export function coreSlots(options: BuildOptions, names: Names, situational?: Sit
     }
     const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
     const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
-    const open = index === 0 ? measuredHere : withSituational(measuredHere, [], situational)
+    const open = index === 0 || !measuredHere.length ? measuredHere : withSituational(measuredHere, [], situational)
     return { name: `item${index + 1}`, kind: 'item', lane: index === 0, options: itemOptions(open, names) }
   }).filter(slot => slot.options.length > 0)
 }
