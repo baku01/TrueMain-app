@@ -3,18 +3,17 @@ import type { CompositionBuildRequest } from '~/types/build'
 import type { LaidBuild } from '~/utils/jev-build'
 
 /**
- * The Jev matchup page's build (`useJevBuild`): on a click, Jev's whole build
- * — runes, spells, starter, skill order, boots and their timing, the items in
- * the order to buy them — beside the selected source's most played, then every
- * choice option by option: the source's pick rate and win rate, Jev's
- * probability, which one Jev took and which one the source leads with.
+ * The Jev matchup page's recommendation (`useJevBuild`), on a click: first
+ * what it is built against — the enemy team's needs and Jev's reading of each
+ * kit (`JevEnemyRead`) — then the recommended build beside the most played
+ * one, then every choice option by option, its score in parts (`JevChoices`).
  */
 const props = defineProps<{ championId: number, request: CompositionBuildRequest }>()
 const { t } = useT()
 const { items, summoners, runeTree, pending, loadChampion, championStatic } = useStaticData()
 const { nameOf } = useChampionStatics()
 const subject = computed(() => ({ championId: props.championId, request: props.request }))
-const { status, error, decisions, jevBuild, standardBuild, elapsedMs, ask } = useJevBuild(subject)
+const { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, ask } = useJevBuild(subject)
 
 watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { immediate: true })
 const kit = computed(() => championStatic(props.championId))
@@ -38,7 +37,6 @@ const sides = computed(() => [
     </header>
 
     <UAlert v-if="status === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
-    <UAlert v-else-if="status === 'noSource'" color="neutral" variant="subtle" icon="i-lucide-database" :title="t('jev.card.noSource')" />
     <UAlert v-else-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
     <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="error ?? undefined" />
 
@@ -47,6 +45,8 @@ const sides = computed(() => [
     </div>
 
     <template v-else-if="status === 'ready'">
+      <JevEnemyRead v-if="needs" :needs="needs" :enemies="enemies" />
+
       <!-- The two builds side by side: Jev's, and the source's most played. -->
       <div class="grid gap-4 2xl:grid-cols-2">
         <div v-for="side in sides" :key="side.key" class="flex flex-col gap-2">
@@ -95,7 +95,7 @@ const sides = computed(() => [
           <span class="flex items-center gap-1 text-[11px] text-muted"><UIcon name="i-tabler-database" class="size-3.5" />{{ t('jev.card.standardPick') }}</span>
         </header>
         <p class="mb-3 text-xs text-muted">{{ t('jev.card.choicesHint') }}</p>
-        <JevChoices :decisions="decisions" :champion-id="championId" />
+        <JevChoices :ranked="ranked" :champion-id="championId" />
       </section>
     </template>
   </section>

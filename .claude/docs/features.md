@@ -267,6 +267,24 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   subclasses as panels side by side; class tabs (counting the whole roster) stay pinned at the top while scrolling,
   and a filter beside the title narrows by name. A champion in two subclasses shows in both, its tooltip naming the
   other; a click opens its page.
+- **Confronto · Jev** (`/jev`, `pages/jev.vue`, key in `/settings` → `SettingsJev.vue`, kept by the shell in
+  `src-tauri/src/jev.rs`, file mode 0600, never returned to the webview) — the matchup board with a build ranked by
+  TypeSafe's Jev (`POST api.typesafe.ai/v1/systemone`, `jev-latest`) and statistics. Jev only reads texts, never
+  numbers: `utils/jev-read.ts` sends three requests at once, each a small object state — the enemy kits (five Score
+  scales each: crowd control, healing, burst, basic attacks, tankiness), the candidate items (five Noul facts each:
+  Grievous Wounds, Tenacity, anti-burst, anti-autoattack, anti-tank, plus a Score of how it suits our kit) and the
+  lane choices (rune pages, spells, starters, boots timing as Scores). Reads are cached per patch for the session.
+  `utils/jev-recommend.ts` does the arithmetic: the enemy team's needs (damage split from Blitz's measured profiles,
+  weighed by damage dealt; the kits' facts summed; the lane opponent 60% on laning slots), each option's fit to them
+  (armor/magic-resist tags against the split, Jev's facts against the rest; a defensive-only item against damage the
+  team barely deals is a misfit, halved — Mercury's Treads into a physical lane unless crowd control is heavy), its
+  statistics (lolalytics + Blitz pooled through `utils/sources/combined.ts`, the one pooled view in the app; win rate
+  shrunk toward its slot's plus Blitz's `champion_item_stats` WPA, the matchup's when it has 30 games), weighed
+  items 40% stats / 35% team / 25% kit, lane choices 50/50. `utils/jev-build.ts` lays the slots: runes, spells,
+  starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus
+  up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
+  needs and each enemy's reading (`JevEnemyRead`), the recommended and the most played build, then every slot's
+  options with their measures, score parts and answered needs (`JevChoices`).
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no

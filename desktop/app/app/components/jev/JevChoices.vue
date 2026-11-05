@@ -1,54 +1,52 @@
 <script setup lang="ts">
-import type { JevChecks, JevDecision, JevOption } from '~/utils/jev-build'
+import type { JevOption } from '~/utils/jev-build'
+import type { Parts, RankedSlot } from '~/utils/jev-recommend'
 import { formatPercentage } from '#shared/utils/ddragon'
 
 /**
- * Every choice of the Jev build laid out as the analytics page lays a slot: a
- * row per choice, a card per option centred under it — its icons, each with
- * its tooltip (item, rune, tree, summoner spell, ability), the source's win
- * rate, pick rate and games, and Jev's probability as a bar. Jev's pick stands
- * out in the accent, the source's most played carries its mark, and a row
- * where the two part says so.
+ * Every choice of the build laid out as the analytics page lays a slot: a row
+ * per choice, a card per option centred under it — its icons with their
+ * tooltips, what lolalytics and Blitz measured (win rate, pick rate, games,
+ * win probability added), the parts of its score (the statistics, the enemy
+ * team, our champion's kit, the lane) and the needs it answers, then its total.
+ * The recommended option stands out in the accent, the most played carries its
+ * mark, and a row where the two part says so.
  */
-defineProps<{ decisions: JevDecision[], championId: number }>()
+defineProps<{ ranked: RankedSlot[], championId: number }>()
 const { t } = useT()
 const { items, summoners, runeTree, championStatic } = useStaticData()
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
 const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
-const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
-const checksOf = (checks: JevChecks) => [
-  { key: 'draft', value: checks.draft },
-  { key: 'kit', value: checks.kit },
-  ...(checks.lane !== null ? [{ key: 'lane', value: checks.lane }] : []),
-]
 const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 const wpaTone = (value: number) => (value >= 0.01 ? 'bg-primary/15 text-primary' : value <= -0.01 ? 'bg-error/10 text-error' : 'bg-accented/50 text-muted')
+const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
 const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first') : t('jev.after.item', { item: option.after ?? 0 }))
+const PART_ORDER: (keyof Parts)[] = ['stats', 'draft', 'kit', 'lane']
+const partsOf = (parts: Parts) => PART_ORDER.filter(part => parts[part] !== undefined).map(part => ({ part, value: parts[part]! }))
+const barTone = (value: number) => (value >= 0.6 ? 'bg-primary' : value <= 0.35 ? 'bg-error/70' : 'bg-(--ui-text-dimmed)')
 </script>
 
 <template>
   <div class="space-y-2">
-    <div v-for="decision in decisions" :key="decision.slot.name" class="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 rounded-xl bg-accented/15 p-2">
+    <div v-for="entry in ranked" :key="entry.slot.name" class="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 rounded-xl bg-accented/15 p-2">
       <div class="flex flex-col items-center gap-1 text-center">
-        <p class="text-sm font-semibold leading-tight text-highlighted">{{ slotLabel(decision.slot.name) }}</p>
-        <p v-if="decision.answer" class="text-[11px] tabular-nums text-muted">{{ t('jev.card.confidence', { value: percent(decision.answer.confidence) }) }}</p>
-        <UBadge v-if="decision.jev.key !== decision.standard.key" :label="t('jev.card.differs')" color="primary" variant="soft" size="sm" />
+        <p class="text-sm font-semibold leading-tight text-highlighted">{{ slotLabel(entry.slot.name) }}</p>
+        <UBadge v-if="entry.pick.key !== entry.standard.key" :label="t('jev.card.differs')" color="primary" variant="soft" size="sm" />
       </div>
       <ul class="flex justify-center gap-1.5 overflow-x-auto pb-1">
         <li
-          v-for="option in decision.slot.options"
+          v-for="option in entry.slot.options"
           :key="option.key"
-          class="relative flex shrink-0 flex-col items-center gap-1 rounded-lg px-1.5 pb-2 pt-2.5 text-center leading-tight transition-colors"
-          :style="{ width: option.page ? '11rem' : '7.5rem' }"
-          :class="option.key === decision.jev.key ? 'bg-primary/12 ring-1 ring-primary/50' : 'bg-accented/25'"
+          class="relative flex shrink-0 flex-col items-center gap-1 rounded-lg px-2 pb-2 pt-2.5 text-center leading-tight transition-colors"
+          :style="{ width: option.page ? '11.5rem' : '8.5rem' }"
+          :class="option.key === entry.pick.key ? 'bg-primary/12 ring-1 ring-primary/50' : 'bg-accented/25'"
         >
-          <UIcon v-if="option.key === decision.jev.key" name="i-tabler-sparkles" class="absolute left-1.5 top-1.5 size-3.5 text-primary" :aria-label="t('jev.card.jevPick')" />
-          <UIcon v-if="option.key === decision.standard.key" name="i-tabler-database" class="absolute right-1.5 top-1.5 size-3.5 text-dimmed" :aria-label="t('jev.card.standardPick')" />
-          
-
+          <UIcon v-if="option.key === entry.pick.key" name="i-tabler-sparkles" class="absolute left-1.5 top-1.5 size-3.5 text-primary" :aria-label="t('jev.card.jevPick')" />
+          <UIcon v-if="option.key === entry.standard.key" name="i-tabler-database" class="absolute right-1.5 top-1.5 size-3.5 text-dimmed" :aria-label="t('jev.card.standardPick')" />
           <UBadge v-if="option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" class="-mt-1" />
-          <UBadge v-if="option.misfit" :label="t('jev.card.misfit')" color="error" variant="subtle" size="xs" class="-mt-1" :title="t('jev.card.misfitHint')" />
+          <UBadge v-if="entry.scored[option.key]?.misfit" :label="t('jev.card.misfit')" color="error" variant="subtle" size="xs" class="-mt-1" :title="t('jev.card.misfitHint')" />
+
           <!-- The option's own picture, every icon with its tooltip. -->
           <span class="flex min-h-9 items-center justify-center gap-0.5">
             <template v-if="option.itemIds.length">
@@ -83,24 +81,31 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
           </span>
           <span v-if="option.opening" class="text-[10px] tabular-nums text-muted">{{ t('jev.card.opening', { keys: option.opening.join(' ') }) }}</span>
 
+          <!-- What was measured: win rate, pick rate and games, win probability added. -->
           <span v-if="option.games" class="text-[13px] font-semibold tabular-nums" :class="tone(option.winRate)">{{ formatPercentage(option.winRate, 1) }}</span>
           <span v-if="option.games" class="whitespace-nowrap text-[10px] tabular-nums text-dimmed">{{ formatPercentage(option.pickRate, 1) }} · {{ compact.format(option.games) }}</span>
-          <!-- What the item adds to the win probability (Blitz): on the lane, and against the lane opponent. -->
           <span v-if="option.wpa !== null && option.wpa !== undefined" class="flex flex-wrap justify-center gap-1 text-[9px] font-semibold tabular-nums">
             <span class="rounded px-1 py-px" :class="wpaTone(option.wpa)" :title="t('jev.card.wpaHint')">WPA {{ signed(option.wpa) }}</span>
             <span v-if="option.vsWpa !== null && option.vsWpa !== undefined" class="rounded px-1 py-px" :class="wpaTone(option.vsWpa)" :title="t('jev.card.vsWpaHint', { games: option.vsGames ?? 0 })">{{ t('jev.card.vs') }} {{ signed(option.vsWpa) }}</span>
           </span>
-          <!-- Jev's yes/no checks of this option: its kit, the enemy team, the lane. -->
-          <span v-if="decision.answer?.checks?.[option.key]" class="flex flex-wrap justify-center gap-1 text-[9px] font-semibold tabular-nums">
-            <span v-for="check in checksOf(decision.answer.checks[option.key]!)" :key="check.key" class="rounded px-1 py-px" :class="check.value >= 0.6 ? 'bg-primary/15 text-primary' : check.value <= 0.35 ? 'bg-error/10 text-error' : 'bg-accented/50 text-muted'" :title="t(`jev.check.${check.key}.hint`)">
-              {{ t(`jev.check.${check.key}`) }} {{ percent(check.value) }}
+
+          <!-- The parts of the score, each 0–100, and the needs the option answers. -->
+          <span v-if="entry.scored[option.key]" class="flex w-full flex-col gap-0.5 pt-1">
+            <span v-for="part in partsOf(entry.scored[option.key]!.parts)" :key="part.part" class="grid grid-cols-[3.4rem_minmax(0,1fr)_1.6rem] items-center gap-1 text-[9px] tabular-nums" :title="t(`jev.part.${part.part}.hint`)">
+              <span class="truncate text-left text-muted">{{ t(`jev.part.${part.part}`) }}</span>
+              <span class="h-1 overflow-hidden rounded-full bg-accented/70"><span class="block h-full rounded-full" :class="barTone(part.value)" :style="{ width: percent(part.value) }" /></span>
+              <span class="text-right text-muted">{{ Math.round(part.value * 100) }}</span>
             </span>
           </span>
+          <span v-if="entry.scored[option.key]?.answers.length" class="flex flex-wrap justify-center gap-1 text-[9px] font-semibold">
+            <span v-for="answer in entry.scored[option.key]!.answers.slice(0, 3)" :key="answer.need" class="rounded bg-primary/15 px-1 py-px text-primary" :title="t('jev.card.answersHint')">{{ t(`jev.need.${answer.need}`) }}</span>
+          </span>
+
           <span class="mt-auto flex w-full items-center gap-1.5 pt-1">
             <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-accented/70">
-              <span class="block h-full rounded-full" :class="option.key === decision.jev.key ? 'bg-primary' : 'bg-(--ui-text-dimmed)'" :style="{ width: percent(decision.answer?.probabilities[option.key]) }" />
+              <span class="block h-full rounded-full" :class="option.key === entry.pick.key ? 'bg-primary' : 'bg-(--ui-text-dimmed)'" :style="{ width: percent(entry.scored[option.key]?.total) }" />
             </span>
-            <span class="text-[11px] font-semibold tabular-nums" :class="option.key === decision.jev.key ? 'text-primary' : 'text-muted'">{{ decision.answer ? percent(decision.answer.probabilities[option.key]) : '—' }}</span>
+            <span class="text-[11px] font-semibold tabular-nums" :class="option.key === entry.pick.key ? 'text-primary' : 'text-muted'" :title="t('jev.card.totalHint')">{{ Math.round((entry.scored[option.key]?.total ?? 0) * 100) }}</span>
           </span>
         </li>
       </ul>

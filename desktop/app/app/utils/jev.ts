@@ -27,7 +27,18 @@ export interface JevNoulQuestion {
   criteria?: { true: string, false: string }
 }
 
-export type JevQuestion = JevChoiceQuestion | JevNoulQuestion
+/**
+ * A position on an ordered scale (TypeSafe's "score"): `criteria` the levels,
+ * low to high, each describing a situation rather than a degree — the model
+ * sees neither a level's number nor its neighbours.
+ */
+export interface JevScoreQuestion {
+  type: 'score'
+  instructions: string
+  criteria: string[]
+}
+
+export type JevQuestion = JevChoiceQuestion | JevNoulQuestion | JevScoreQuestion
 
 export interface JevChoiceAnswer {
   type: 'choice'
@@ -41,7 +52,21 @@ export interface JevNoulAnswer {
   noul: number
 }
 
-export type JevAnswer = JevChoiceAnswer | JevNoulAnswer
+export interface JevScoreAnswer {
+  type: 'score'
+  /** The levels' numbers weighed by their probabilities: 0 … levels − 1. */
+  score: number
+  confidence: number
+  probabilities: Record<string, number>
+}
+
+export type JevAnswer = JevChoiceAnswer | JevNoulAnswer | JevScoreAnswer
+
+/**
+ * What the request is about. TypeSafe advises an object for most requests, each
+ * part under a descriptive name, and nothing the questions do not need.
+ */
+export type JevState = string | Record<string, unknown>
 
 export const JEV_MODEL = 'jev-latest'
 const DEV_KEY = 'truemain-jev-key'
@@ -66,7 +91,7 @@ export async function setJevKey(key: string | null): Promise<JevKeyStatus> {
 }
 
 /** Ask every question about `state` in one call; the answers by question name. */
-export async function askJev(state: string, questions: Record<string, JevQuestion>): Promise<Record<string, JevAnswer>> {
+export async function askJev(state: JevState, questions: Record<string, JevQuestion>): Promise<Record<string, JevAnswer>> {
   const started = performance.now()
   const body = { model: JEV_MODEL, state, questions }
   const answer = insideTauri()
