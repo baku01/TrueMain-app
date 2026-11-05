@@ -49,6 +49,31 @@ describe('enemySituation', () => {
 })
 
 describe('draftBuildFromOptions', () => {
+  it('Darius into an AD laner and four mages takes Mercury\'s Treads: the board outweighs the lane', () => {
+    const board = new Map([
+      ...champions,
+      [266, { id: 266, alias: 'Aatrox', name: 'Aatrox', tags: ['Fighter'], info: { attack: 8, magic: 3, defense: 4 }, attackRange: 175 }],
+    ])
+    const situation = enemySituation([266, 1, 2, 3, 6], board, 266)
+    const darius: BuildOptions = { ...options, boots: [{ games: 3805, winRate: 0.469, pickRate: 0.48, itemIds: [3047] }, { games: 2172, winRate: 0.498, pickRate: 0.28, itemIds: [3111] }] }
+    const boots = draftBuildFromOptions(darius, situation, items).find(step => step.isBoots)
+    expect(boots?.itemId).toBe(3111)
+    expect(boots?.reason?.axis).toBe('EnemyMagicDamage')
+  })
+
+  it('reads the board the same way for every item, not the boots alone: an AD laner into four mages buys no pure armour', () => {
+    const board = new Map([...champions, [266, { id: 266, alias: 'Aatrox', name: 'Aatrox', tags: ['Fighter'], info: { attack: 8, magic: 3, defense: 4 }, attackRange: 175 }]])
+    const ids = draftBuildFromOptions(options, enemySituation([266, 1, 2, 3, 6], board, 266), items).map(step => step.itemId)
+    expect(ids).not.toContain(3075)
+    expect(ids).toContain(3102)
+  })
+
+  it('an AD laner still decides the boots when the team leans no way', () => {
+    const board = new Map([...champions, [266, { id: 266, alias: 'Aatrox', name: 'Aatrox', tags: ['Fighter'], info: { attack: 8, magic: 3, defense: 4 }, attackRange: 175 }]])
+    const darius: BuildOptions = { ...options, boots: [{ games: 2000, winRate: 0.5, pickRate: 0.3, itemIds: [3111] }, { games: 1800, winRate: 0.5, pickRate: 0.27, itemIds: [3047] }] }
+    expect(draftBuildFromOptions(darius, enemySituation([266], board, 266), items).find(step => step.isBoots)?.itemId).toBe(3047)
+  })
+
   it('prefers boots that win over a slightly more popular pair that loses', () => {
     const lopsided: BuildOptions = {
       ...options,

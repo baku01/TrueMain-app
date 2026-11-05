@@ -104,7 +104,9 @@ export function enemySituation(enemyIds: number[], champions: Map<number, Champi
   const count = (test: (champion: Champion) => boolean) => enemies.filter(test).length
   // 58% one way reads as that damage; 80% is as far as a team goes.
   const strength = (share: number) => Math.min(1, (share - 0.58) / 0.22)
-  if (magicShare >= 0.58) situations.push({ axis: 'EnemyMagicDamage', bucket: 'High', strength: strength(magicShare) })
+  // Three or more mages are a magic board whatever the rest: the guides' "2–3+ AP threats".
+  const mages = enemies.filter(champion => kindOf(champion) === 1).length
+  if (magicShare >= 0.58 || mages >= 3) situations.push({ axis: 'EnemyMagicDamage', bucket: 'High', strength: Math.max(strength(magicShare), mages >= 3 ? 0.5 : 0) })
   if (magicShare <= 0.42) situations.push({ axis: 'EnemyPhysicalDamage', bucket: 'High', strength: strength(1 - magicShare) })
   if (count(champion => champion.tags?.includes('Tank') ?? false) >= 2) situations.push({ axis: 'EnemyFrontline', bucket: 'High' })
   if (count(champion => (champion.tags?.includes('Tank') || champion.tags?.includes('Support')) ?? false) >= 3) situations.push({ axis: 'EnemyCrowdControl', bucket: 'High' })
@@ -114,14 +116,24 @@ export function enemySituation(enemyIds: number[], champions: Map<number, Champi
   return situations
 }
 
+/**
+ * Whether the board as a whole reads one kind of damage. Then the lane
+ * opponent alone no longer decides the defences: an AD laner into four mages
+ * is still a magic board — Mercury's Treads, not Plated Steelcaps — as every
+ * guide tells it ("2–3 or more AP threats: Treads, even if your lane opponent
+ * is AD"). The lane opponent decides only where the team does not lean.
+ */
+const teamLeans = (situations: Situation[]) => situations.some(s => s.axis === 'EnemyMagicDamage' || s.axis === 'EnemyPhysicalDamage')
+
 /** The situation an item answers, if it answers one this draft has. */
 function answers(itemId: number, situations: Situation[], items: Record<number, StaticItemData>): Situation | null {
   const tags = items[itemId]?.tags ?? []
   const has = (axis: Axis, bucket: 'High' | 'Low' = 'High') => situations.find(situation => situation.axis === axis && situation.bucket === bucket) ?? null
-  const magicOpponent = has('OpponentMagicDamage')
-  const physicalOpponent = has('OpponentMagicDamage', 'Low')
+  const team = teamLeans(situations)
+  const magicOpponent = team ? null : has('OpponentMagicDamage')
+  const physicalOpponent = team ? null : has('OpponentMagicDamage', 'Low')
   if (ANTI_HEAL.has(itemId)) return has('EnemySustain')
-  if (itemId === MERCURY) return has('EnemyCrowdControl') ?? has('EnemyMagicDamage') ?? magicOpponent
+  if (itemId === MERCURY) return has('EnemyMagicDamage') ?? has('EnemyCrowdControl') ?? magicOpponent
   if (itemId === STEELCAPS) return has('EnemyPhysicalDamage') ?? has('EnemyMelee') ?? physicalOpponent
   if (tags.includes('SpellBlock')) return has('EnemyMagicDamage') ?? magicOpponent
   if (tags.includes('Armor')) return has('EnemyPhysicalDamage') ?? has('EnemyMelee') ?? physicalOpponent
@@ -165,8 +177,10 @@ const OFFENSIVE = ['Damage', 'SpellDamage', 'AttackSpeed', 'CriticalStrike', 'Ar
  */
 function misfits(itemId: number, situations: Situation[], items: Record<number, StaticItemData>): boolean {
   const tags = items[itemId]?.tags ?? []
-  const magicTeam = situations.some(s => s.axis === 'EnemyMagicDamage' || (s.axis === 'OpponentMagicDamage' && s.bucket === 'High'))
-  const physicalTeam = situations.some(s => s.axis === 'EnemyPhysicalDamage' || (s.axis === 'OpponentMagicDamage' && s.bucket === 'Low'))
+  // The team's lean when it has one (`teamLeans`), the lane opponent's otherwise.
+  const team = teamLeans(situations)
+  const magicTeam = situations.some(s => s.axis === 'EnemyMagicDamage' || (!team && s.axis === 'OpponentMagicDamage' && s.bucket === 'High'))
+  const physicalTeam = situations.some(s => s.axis === 'EnemyPhysicalDamage' || (!team && s.axis === 'OpponentMagicDamage' && s.bucket === 'Low'))
   const defensive = !tags.some(tag => OFFENSIVE.includes(tag))
   if (magicTeam && !physicalTeam) return itemId === STEELCAPS || (defensive && tags.includes('Armor') && !tags.includes('SpellBlock'))
   if (physicalTeam && !magicTeam) return (itemId === MERCURY && !situations.some(s => s.axis === 'EnemyCrowdControl')) || (defensive && tags.includes('SpellBlock') && !tags.includes('Armor'))
@@ -205,8 +219,11 @@ function pick(options: ItemOption[], situations: Situation[], items: Record<numb
   const usable = options.filter(option => ids(option).length && !ids(option).some(id => skip.has(id) || excluded(id, situations, items)))
   const top = [...usable].sort((a, b) => b.games - a.games)[0]
   if (!top) return null
+  // The source's own pick, before this board ruled anything out: a choice other than it says why.
+  const mostPlayed = [...options].filter(option => ids(option).length && !ids(option).some(id => skip.has(id))).sort((a, b) => b.games - a.games)[0]
+  const why = (option: ItemOption) => (option === mostPlayed ? null : ids(option).map(id => answers(id, situations, items)).find(Boolean) ?? null)
   const topMisfit = ids(top).some(id => misfits(id, situations, items)) ? MISFIT_WEIGHT : 1
-  let best = { option: top, score: top.games * topMisfit * proBoost(top) * wins(top), reason: null as Situation | null }
+  let best = { option: top, score: top.games * topMisfit * proBoost(top) * wins(top), reason: why(top) }
   for (const option of usable) {
     if (option.games < top.games * MIN_SHARE_OF_TOP) continue
     const reason = ids(option).map(id => answers(id, situations, items)).find(Boolean) ?? null
@@ -214,7 +231,7 @@ function pick(options: ItemOption[], situations: Situation[], items: Record<numb
     const answered = reason ? 1 + (answerWeight - 1) * (0.5 + 0.5 * (reason.strength ?? 1)) : 1
     const misfit = ids(option).some(id => misfits(id, situations, items)) ? MISFIT_WEIGHT : 1
     const score = option.games * answered * misfit * proBoost(option) * wins(option)
-    if (score > best.score) best = { option, score, reason: option === top ? null : reason }
+    if (score > best.score) best = { option, score, reason: option === mostPlayed ? null : reason }
   }
   return best
 }
