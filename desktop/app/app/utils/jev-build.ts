@@ -1,6 +1,7 @@
 import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells } from '#shared/types/champions'
 import type { BuildOptions, ItemOption, Measure, RunePageIds } from '~/utils/sources/model'
 import type { ItemStat } from '~/utils/blitz/item-stats'
+import type { ItemSetBuild } from '~/utils/item-set'
 import { isBoots } from '~/utils/blitz/builds'
 import { STARTER_LINE, fitsWith } from '~/utils/item-groups'
 import { buysBoots } from '~/utils/sources/model'
@@ -354,6 +355,16 @@ export interface LaidBuild {
   boots: BuildItemSet | null
   /** Every completed item in the order it is bought, the boots where they fall. */
   order: number[]
+}
+
+/**
+ * A build as the client's item set: its starter, its boots and every item in
+ * the order it is bought — the whole build, already read against the draft,
+ * so no situational block: the answers the draft calls for are in it.
+ */
+export function itemSetOf(build: LaidBuild): ItemSetBuild {
+  const boots = build.boots?.itemIds ?? []
+  return { starter: build.starterItems?.itemIds ?? [], boots, core: build.order.filter(id => !boots.includes(id)), situational: [] }
 }
 
 /** A build from one option per slot: the core and the items after it given apart, in order. */
