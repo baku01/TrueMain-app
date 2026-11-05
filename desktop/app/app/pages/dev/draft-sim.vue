@@ -100,7 +100,10 @@ onBeforeUnmount(() => channel?.close())
 
 let clock: ReturnType<typeof setInterval> | undefined
 let requests: ReturnType<typeof setInterval> | undefined
+const route = useRoute()
 onMounted(() => {
+  // Opened by `sim-lcu.sh` (`?start`): champion select is on at once, the app in the other tab follows it straight away.
+  if (route.query.start !== undefined) void start()
   clock = setInterval(() => {
     if (phase.value === 'ChampSelect') tick()
   }, 1000)
