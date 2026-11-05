@@ -6,7 +6,9 @@ use crate::champ_select::SpellSelection;
 use crate::credentials::Credentials;
 use crate::detail::GameTimeline;
 use crate::error::{Error, Result};
-use crate::item_sets::{decode_item_sets, plan_item_set_import, players_set_uids, ItemSetDraft};
+use crate::item_sets::{
+    decode_item_sets, is_ours, plan_item_set_import, players_set_uids, without_ours, ItemSetDraft,
+};
 use crate::model::{
     ChampSelectSession, ChampionMastery, CurrentSummoner, GameflowPhase, GameflowSession,
 };
@@ -291,19 +293,7 @@ impl LcuClient {
     /// [`Error::PlayerItemSetsChanged`]. A list that could not be read is
     /// [`Error::ItemSetsUnreadable`], and nothing is written.
     pub async fn import_item_set(&self, draft: &ItemSetDraft) -> Result<()> {
-        // Narrow on purpose: the summoner id is read here, at import time, and
-        // kept out of `CurrentSummoner`, whose readings tapes record.
-        #[derive(serde::Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Summoner {
-            summoner_id: i64,
-        }
-
-        let summoner_id = self
-            .get_json::<Summoner>("/lol-summoner/v1/current-summoner")
-            .await
-            .map_err(|error| Error::ItemSetsUnreadable(error.to_string()))?
-            .summoner_id;
+        let summoner_id = self.item_sets_owner().await?;
         let (mut document, existing) = self.item_sets(summoner_id).await?;
 
         let planned = plan_item_set_import(&existing, draft, &uuid::Uuid::new_v4().to_string());
@@ -329,6 +319,42 @@ impl LcuClient {
                 Ok(())
             }
         }
+    }
+}
+
+/// The item set's end (#1908): taken out when a game ends, as Blitz does, so
+/// the shop lists no TrueMain set between games.
+impl LcuClient {
+    /// The summoner whose item sets are read and written. Narrow on purpose:
+    /// read at the write, and kept out of `CurrentSummoner`, whose readings
+    /// tapes record.
+    async fn item_sets_owner(&self) -> Result<i64> {
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Summoner {
+            summoner_id: i64,
+        }
+        Ok(self
+            .get_json::<Summoner>("/lol-summoner/v1/current-summoner")
+            .await
+            .map_err(|error| Error::ItemSetsUnreadable(error.to_string()))?
+            .summoner_id)
+    }
+
+    /// Take this app's item sets out of the account's list, every set of the
+    /// player's written back as read (`without_ours`). False when there was
+    /// none to take out, and nothing was written; a list that could not be
+    /// read is [`Error::ItemSetsUnreadable`], and nothing is written either.
+    pub async fn remove_item_sets(&self) -> Result<bool> {
+        let summoner_id = self.item_sets_owner().await?;
+        let (mut document, existing) = self.item_sets(summoner_id).await?;
+        if !existing.iter().any(is_ours) {
+            return Ok(false);
+        }
+        document["itemSets"] = serde_json::Value::Array(without_ours(&existing));
+        self.put_json(&item_sets_path(summoner_id), &document)
+            .await?;
+        Ok(true)
     }
 }
 
