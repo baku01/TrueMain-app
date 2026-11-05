@@ -31,6 +31,8 @@ export interface JevOption extends Measure {
   situational?: boolean
   /** Win probability added on the lane (Blitz's item stats), the option's items averaged; null where unmeasured. */
   wpa?: number | null
+  /** The games behind `wpa`: the fewest of the option's items. */
+  wpaGames?: number
   /** The same against the lane opponent, when the matchup has the games. */
   vsWpa?: number | null
   vsGames?: number
@@ -271,7 +273,7 @@ export function withItemStats(slots: JevSlot[], lane: Map<number, ItemStat>, ver
         options: slot.options.map((option) => {
           const onLane = average(option.itemIds, lane)
           const against = average(option.itemIds, versus)
-          return { ...option, wpa: onLane?.wpa ?? null, vsWpa: against?.wpa ?? null, vsGames: against?.games ?? 0 }
+          return { ...option, wpa: onLane?.wpa ?? null, wpaGames: onLane?.games ?? 0, vsWpa: against?.wpa ?? null, vsGames: against?.games ?? 0 }
         }),
       }))
 }

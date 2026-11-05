@@ -8,16 +8,23 @@ import {
 import { firstParamValue } from '#common/utils/route-params'
 
 /**
- * @param options.defaultEloBracket Bracket used when `?elo=` is absent. Master+
- * on the global champion pages (`DEFAULT_ELO_BRACKET`); the player-scoped
- * champion page passes `ELO_BRACKET_ALL`, because its scope is already one
- * account and re-slicing that by rank empties the build of any truemain below
- * Master.
+ * The bracket the global champion pages open on: TrueMain's Master+
+ * (`DEFAULT_ELO_BRACKET`) unless the app says otherwise — the desktop app,
+ * reading another source, opens on that source's own default.
+ */
+export const usePageEloBracket = () => useState<string>('page-elo-bracket', () => DEFAULT_ELO_BRACKET)
+
+/**
+ * @param options.defaultEloBracket Bracket used when `?elo=` is absent. The
+ * page default (`usePageEloBracket`) on the global champion pages; the
+ * player-scoped champion page passes `ELO_BRACKET_ALL`, because its scope is
+ * already one account and re-slicing that by rank empties the build of any
+ * truemain below Master.
  */
 export function useChampionFilters(options: { defaultEloBracket?: string } = {}) {
   const route = useRoute()
   const router = useRouter()
-  const defaultEloBracket = options.defaultEloBracket ?? DEFAULT_ELO_BRACKET
+  const defaultEloBracket = options.defaultEloBracket ?? usePageEloBracket().value
 
   const filters = computed(() => {
     // Always resolves to a concrete bracket — never `undefined`. The page

@@ -41,6 +41,14 @@ export const fromBlitz = () => current.value === 'blitz'
 export const externalSource = (): ExternalSource | null => (current.value === 'truemain' ? null : current.value)
 
 /**
+ * The elo bracket another source reads when none is picked: the one its own
+ * site opens on (lolalytics, Blitz and op.gg all open on Emerald+), not
+ * TrueMain's Master+ — on lolalytics, Aatrox's top lane on one patch is 3,370
+ * games in Master+ and 18,877 in Emerald+.
+ */
+export const SOURCE_ELO_BRACKET = 'EMERALD_PLUS'
+
+/**
  * Tell the shell whether TrueMain is the source: with another one it refuses
  * every request to TrueMain's API, the ones it makes on its own included, and
  * keeps the choice for the next launch (`api.rs`).

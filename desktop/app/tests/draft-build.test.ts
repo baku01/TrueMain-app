@@ -103,6 +103,11 @@ describe('draftBuildFromOptions', () => {
     expect(steps.every(step => step.reason === null)).toBe(true)
   })
 
+  it('reads a later item\'s win rate against its own slot\'s, not the cores\': a sixth item wins more, the game having gone on', () => {
+    const late: BuildOptions = { ...options, followUps: () => options.followUps(null).map(group => (group.slot === 6 ? { ...group, options: group.options.map(option => ({ ...option, winRate: 0.75 })) } : group)) }
+    expect(draftBuildFromOptions(late, [], items).map(step => step.itemId)).toEqual([3118, 3020, 4645, 3089, 3135, 3075])
+  })
+
   it('against a magic team, drops the purely defensive armour for the answers the source measured, saying why', () => {
     const steps = draftBuildFromOptions(options, [{ axis: 'EnemyMagicDamage', bucket: 'High', strength: 1 }], items)
     const ids = steps.map(step => step.itemId)

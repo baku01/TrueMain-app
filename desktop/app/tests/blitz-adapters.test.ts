@@ -26,7 +26,7 @@ describe('Blitz words', () => {
     expect(blitzTier('MASTER_PLUS')).toBe('MASTER+')
     expect(blitzTier('GOLD')).toBe('GOLD')
     expect(blitzTier('ALL')).toBe('IRON+')
-    expect(blitzTier(undefined)).toBe('MASTER+')
+    expect(blitzTier(undefined)).toBe('EMERALD+')
   })
 
   it('names the lanes each side\'s way', () => {

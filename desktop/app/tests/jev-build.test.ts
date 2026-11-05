@@ -64,7 +64,7 @@ describe('win probability added', () => {
       { key: 'o1', itemIds: [3071], label: 'Black Cleaver', games: 400, pickRate: 0.2, winRate: 0.5 },
     ] }
     const [annotated] = withItemStats([slot], new Map([[6694, stat(-0.01)], [3071, stat(0.02)]]), new Map([[3071, stat(0.05, 90)]]))
-    expect(annotated!.options.map(option => [option.wpa, option.vsWpa, option.vsGames])).toEqual([[-0.01, null, 0], [0.02, 0.05, 90]])
+    expect(annotated!.options.map(option => [option.wpa, option.wpaGames, option.vsWpa, option.vsGames])).toEqual([[-0.01, 200, null, 0], [0.02, 200, 0.05, 90]])
   })
 
   it('joins the item stats to the measured pool, completed items only', () => {

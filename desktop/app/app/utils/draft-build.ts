@@ -259,14 +259,22 @@ export function draftBuildFromOptions(options: BuildOptions, situations: Situati
     .filter(core => core.games >= mostPlayed * 0.25)
     .map(core => ({ core, score: core.games * winRateFactor(core.winRate, core.games, baseline) }))
     .sort((a, b) => b.score - a.score)[0]?.core ?? null
+  // Each option's win rate is read against its own group's: a fourth or fifth
+  // item wins more than a core whatever it is, the game having gone on (on
+  // lolalytics, Aatrox's fifth items win 70% where his cores win 52%), so a
+  // later item's rate is not the cores' to compare with.
   const pool = new Map<number, { games: number, wins: number }>()
-  const add = (itemId: number, option: ItemOption) => {
+  const add = (itemId: number, option: ItemOption, groupRate: number) => {
     if (isBoots(itemId)) return
     const held = pool.get(itemId) ?? { games: 0, wins: 0 }
-    pool.set(itemId, { games: held.games + option.games, wins: held.wins + option.winRate * option.games })
+    pool.set(itemId, { games: held.games + option.games, wins: held.wins + (baseline + option.winRate - groupRate) * option.games })
   }
-  for (const core of options.cores) for (const itemId of core.itemIds) add(itemId, core)
-  for (const group of options.followUps(topCore)) for (const option of group.options) for (const itemId of option.itemIds) add(itemId, option)
+  for (const core of options.cores) for (const itemId of core.itemIds) add(itemId, core, baseline)
+  for (const group of options.followUps(topCore)) {
+    const games = group.options.reduce((sum, option) => sum + option.games, 0)
+    const groupRate = games ? group.options.reduce((sum, option) => sum + option.winRate * option.games, 0) / games : baseline
+    for (const option of group.options) for (const itemId of option.itemIds) add(itemId, option, groupRate)
+  }
 
   const steps: SourceBuildStep[] = []
   const chosen = new Set<number>()

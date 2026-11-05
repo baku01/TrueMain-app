@@ -5,6 +5,7 @@ import { assemblePage, buildsFromOptions, liveRuneTree, measure, ranked, skillOp
 import { championSlug, currentPatch } from '~/utils/sources/champions'
 import { keepBounded } from '~/utils/bounded'
 import { dataWindow, previousPatch } from '~/utils/data-window'
+import { SOURCE_ELO_BRACKET } from '~/utils/data-source'
 
 /**
  * lolalytics (experimental): the public endpoint its own pages read
@@ -78,9 +79,9 @@ const LANE: Record<string, string> = { TOP: 'top', JUNGLE: 'jungle', MIDDLE: 'mi
 const POSITION: Record<string, string> = { top: 'TOP', jungle: 'JUNGLE', middle: 'MIDDLE', bottom: 'BOTTOM', support: 'UTILITY' }
 export const lolalyticsLane = (position: string) => LANE[position] ?? 'middle'
 
-/** TrueMain's elo bracket as lolalytics' tier: `MASTER_PLUS` is `master_plus`, every tier is `all`; none reads Master+, TrueMain's default. */
+/** TrueMain's elo bracket as lolalytics' tier: `MASTER_PLUS` is `master_plus`, every tier is `all`; none reads lolalytics' own default, Emerald+ (`SOURCE_ELO_BRACKET`). */
 export function lolalyticsTier(eloBracket: unknown): string {
-  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket : 'MASTER_PLUS'
+  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket : SOURCE_ELO_BRACKET
   return bracket.toLowerCase()
 }
 

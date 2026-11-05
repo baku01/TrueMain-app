@@ -119,7 +119,7 @@ describe('lolalytics', () => {
     const { lolalyticsTier } = await import('~/utils/sources/lolalytics')
     expect(lolalyticsTier('MASTER_PLUS')).toBe('master_plus')
     expect(lolalyticsTier('ALL')).toBe('all')
-    expect(lolalyticsTier(undefined)).toBe('master_plus')
+    expect(lolalyticsTier(undefined)).toBe('emerald_plus')
   })
 
   it('makes TrueMain\'s lane builds from the options: one per core, boots apart, the first item the tree\'s root', async () => {
