@@ -31,7 +31,10 @@ const timing = computed(() => (props.option.after === 0 ? t('jev.after.first') :
       <GameTooltipSummonerSpellIcon v-for="id in option.spellIds" :key="id" :spell="summoners[id] ?? null" :width="size === 'sm' ? 20 : px - 6" :height="size === 'sm' ? 20 : px - 6" class="rounded-md" />
     </template>
     <template v-else-if="option.order">
-      <span v-if="size === 'sm'" class="text-[10px] font-bold tracking-wide text-highlighted">{{ option.order.join('›') }}</span>
+      <span v-if="size === 'sm'" class="flex flex-col items-center leading-tight">
+        <span class="text-[10px] font-bold tracking-wide text-highlighted">{{ option.order.join('›') }}</span>
+        <span v-if="option.opening" class="text-[9px] tabular-nums text-dimmed">{{ option.opening.join('') }}</span>
+      </span>
       <template v-else>
         <span v-for="(key, index) in option.order" :key="key" class="flex items-center gap-0.5">
           <UIcon v-if="index > 0" name="i-lucide-chevron-right" class="size-3 text-dimmed" />
