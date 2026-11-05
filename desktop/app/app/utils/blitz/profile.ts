@@ -1,6 +1,6 @@
 import type { PlayerGame, RankedQueue } from '~/types/record'
 import type { MatchAnswer, Participant, PlayerAccount } from '~/utils/blitz/player'
-import { readMatch, readPlayerMatchIds } from '~/utils/blitz/player'
+import { readMatch, readPlayerMatchIds, teamsOf } from '~/utils/blitz/player'
 
 /**
  * Any player's record as the dashboard draws one (`PlayerRecord`), read from
@@ -53,6 +53,8 @@ export function gameOf(answer: MatchAnswer, puuid: string): PlayerGame | null {
     damageToChampions: me.totalDamageDealtToChampions ?? 0,
     visionScore: me.visionScore ?? 0,
     largestMultiKill: me.largestMultiKill ?? 0,
+    multiKills: { double: me.doubleKills ?? 0, triple: me.tripleKills ?? 0, quadra: me.quadraKills ?? 0, penta: me.pentaKills ?? 0 },
+    firstBlood: Boolean(me.firstBloodKill || me.firstBloodAssist),
     items: [me.item0, me.item1, me.item2, me.item3, me.item4, me.item5],
     trinket: me.item6,
     roleBoundItem: me.roleBoundItem ?? 0,
@@ -77,8 +79,11 @@ export function gameOf(answer: MatchAnswer, puuid: string): PlayerGame | null {
       goldEarned: p.goldEarned ?? 0,
       damageToChampions: p.totalDamageDealtToChampions ?? 0,
       visionScore: p.visionScore ?? 0,
+      damageSelfMitigated: p.damageSelfMitigated ?? 0,
+      damageToTurrets: p.damageDealtToTurrets ?? 0,
       marks: [],
     })),
+    teams: teamsOf(info.teams),
   }
 }
 

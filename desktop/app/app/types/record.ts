@@ -1,3 +1,5 @@
+import type { MatchDetailTeam } from '#shared/types/match-detail'
+
 /** Mirrors `RankedQueue` in `crates/lcu/src/record.rs`. */
 export interface RankedQueue {
   /** `RANKED_SOLO_5x5` or `RANKED_FLEX_SR`. */
@@ -40,6 +42,10 @@ export interface PlayerGame {
   damageToChampions: number
   visionScore: number
   largestMultiKill: number
+  /** How many of each multi-kill the player scored; absent from games read before it was. */
+  multiKills?: { double: number, triple: number, quadra: number, penta: number }
+  /** Took part in first blood, killing or assisting. */
+  firstBlood?: boolean
   /** Inventory slots 0..5, zero where empty. */
   items: number[]
   trinket: number
@@ -54,6 +60,8 @@ export interface PlayerGame {
   teamDamageToChampions: number | null
   /** Both teams, from the scoreboard; empty when it could not be read. */
   participants: GameParticipant[]
+  /** Both sides' bans and objectives, from the scoreboard; empty or absent without it. */
+  teams?: MatchDetailTeam[]
 }
 
 /** Mirrors `TimelineMark` in `crates/lcu/src/marks.rs`: one player at one of the timeline's canonical marks. */
@@ -84,6 +92,8 @@ export interface GameParticipant {
   goldEarned: number
   damageToChampions: number
   visionScore: number
+  damageSelfMitigated?: number
+  damageToTurrets?: number
   /** Ascending; empty when the game's timeline could not be read. */
   marks: TimelineMark[]
 }

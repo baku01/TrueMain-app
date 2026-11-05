@@ -1,3 +1,4 @@
+import type { MatchDetailTeam } from '#shared/types/match-detail'
 import type { ProMatch } from '~/utils/blitz/pro'
 import { blitzGet } from '~/utils/blitz/client'
 import { keepBounded } from '~/utils/bounded'
@@ -108,6 +109,8 @@ export interface Participant {
   neutralMinionsKilled?: number
   roleBoundItem?: number
   largestMultiKill?: number
+  damageSelfMitigated?: number
+  damageDealtToTurrets?: number
   damageDealtToObjectives?: number
   timeCCingOthers?: number
   gameEndedInEarlySurrender?: boolean
@@ -126,9 +129,29 @@ export interface Participant {
   perks?: { statPerks?: { offense: number, flex: number, defense: number }, styles?: { style: number, selections: { perk: number }[] }[] }
 }
 
+interface MatchTeam {
+  teamId: number
+  bans?: { championId: number, pickTurn: number }[]
+  objectives?: Partial<Record<'tower' | 'inhibitor' | 'dragon' | 'baron' | 'riftHerald' | 'horde', { kills: number }>>
+}
+
+/** A match's sides as the scoreboard and the badges read them: bans in pick order, objectives taken. */
+export function teamsOf(teams: MatchTeam[] | undefined): MatchDetailTeam[] {
+  return (teams ?? []).map(team => ({
+    teamId: team.teamId,
+    bans: [...(team.bans ?? [])].sort((a, b) => a.pickTurn - b.pickTurn).map(ban => ban.championId).filter(id => id > 0),
+    towers: team.objectives?.tower?.kills ?? 0,
+    inhibitors: team.objectives?.inhibitor?.kills ?? 0,
+    dragons: team.objectives?.dragon?.kills ?? 0,
+    barons: team.objectives?.baron?.kills ?? 0,
+    heralds: team.objectives?.riftHerald?.kills ?? 0,
+    grubs: team.objectives?.horde?.kills ?? null,
+  }))
+}
+
 export interface MatchAnswer {
   metadata?: { matchId: string }
-  info?: { gameCreation: number, gameDuration: number, gameVersion: string, queueId: number, gameMode?: string, mapId?: number, platformId: string, participants: Participant[] }
+  info?: { gameCreation: number, gameDuration: number, gameVersion: string, queueId: number, gameMode?: string, mapId?: number, platformId: string, participants: Participant[], teams?: MatchTeam[] }
 }
 
 interface TimelineAnswer {

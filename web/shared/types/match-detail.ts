@@ -22,6 +22,26 @@ export interface MatchDetailResponse {
    * site's match detail has no Timeline tab.
    */
   winProbabilityTimeline?: WinProbabilityTimeline | null
+  /**
+   * Desktop only: each side's bans and the objectives it took, read from the
+   * client's game or from Blitz's copy (Riot's match-v5). The API sends none
+   * (#523), and the scoreboard's team headers then show only what the players'
+   * lines add up to.
+   */
+  teams?: MatchDetailTeam[]
+}
+
+export interface MatchDetailTeam {
+  teamId: number
+  /** Banned champions in pick order; no "no ban". */
+  bans: number[]
+  towers: number
+  inhibitors: number
+  dragons: number
+  barons: number
+  heralds: number
+  /** Voidgrubs; null where the source does not count them. */
+  grubs: number | null
 }
 
 export interface MatchDetailParticipant {

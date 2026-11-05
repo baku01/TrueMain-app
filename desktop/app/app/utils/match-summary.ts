@@ -76,6 +76,7 @@ export function gradeDetail(detail: MatchDetailResponse): MatchDetailResponse {
 const MAP_MODES: Record<number, string> = { 11: 'CLASSIC', 12: 'ARAM', 30: 'CHERRY' }
 
 export function toMatchSummary(game: PlayerGame, lpDelta: number | null, stored?: GameScore | null): MatchSummaryResponse {
+  const score = gameScore(game, stored)
   return {
     matchId: String(game.gameId),
     queueId: game.queueId,
@@ -102,10 +103,10 @@ export function toMatchSummary(game: PlayerGame, lpDelta: number | null, stored?
       position: game.position,
       win: game.win,
       lpDelta,
-      ...gameScore(game, stored),
+      ...score,
     },
     participants: game.participants,
-    badges: matchBadges(game),
+    badges: matchBadges(game, score),
   }
 }
 

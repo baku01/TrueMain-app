@@ -110,6 +110,30 @@ pub struct HistoryGame {
     pub game_version: String,
     pub participant_identities: Vec<HistoryIdentity>,
     pub participants: Vec<HistoryParticipant>,
+    /// Both sides' bans and objectives; empty in the history list.
+    pub teams: Vec<HistoryTeam>,
+}
+
+/// One side of a full game: what it banned and the objectives it took.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct HistoryTeam {
+    pub team_id: i64,
+    pub bans: Vec<HistoryBan>,
+    pub tower_kills: i64,
+    pub inhibitor_kills: i64,
+    pub dragon_kills: i64,
+    pub baron_kills: i64,
+    pub rift_herald_kills: i64,
+    /// Voidgrubs; absent from older clients' games.
+    pub horde_kills: Option<i64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct HistoryBan {
+    pub champion_id: i64,
+    pub pick_turn: i64,
 }
 
 impl HistoryGame {
@@ -197,6 +221,14 @@ pub struct HistoryStats {
     pub total_damage_dealt_to_champions: i64,
     pub vision_score: i64,
     pub largest_multi_kill: i64,
+    pub double_kills: i64,
+    pub triple_kills: i64,
+    pub quadra_kills: i64,
+    pub penta_kills: i64,
+    pub first_blood_kill: bool,
+    pub first_blood_assist: bool,
+    pub damage_self_mitigated: i64,
+    pub damage_dealt_to_turrets: i64,
     pub game_ended_in_early_surrender: bool,
     pub item0: i64,
     pub item1: i64,
@@ -266,6 +298,12 @@ pub struct PlayerGame {
     pub damage_to_champions: i64,
     pub vision_score: i64,
     pub largest_multi_kill: i64,
+    /// How many of each multi-kill the player scored.
+    #[serde(default)]
+    pub multi_kills: MultiKills,
+    /// The player took part in first blood, killing or assisting.
+    #[serde(default)]
+    pub first_blood: bool,
     /// The six inventory slots in order, zero where a slot is empty.
     pub items: Vec<i64>,
     pub trinket: i64,
@@ -283,6 +321,50 @@ pub struct PlayerGame {
     /// All ten, for the match row's team compositions and its performance
     /// score; empty without the scoreboard.
     pub participants: Vec<GameParticipant>,
+    /// Both sides' bans and objectives, from the scoreboard; empty without it.
+    #[serde(default)]
+    pub teams: Vec<GameTeam>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct MultiKills {
+    pub double: i64,
+    pub triple: i64,
+    pub quadra: i64,
+    pub penta: i64,
+}
+
+/// One side's bans, in pick order, and the objectives it took — for the
+/// scoreboard's team headers and the match badges (`MatchDetailTeam`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct GameTeam {
+    pub team_id: i64,
+    pub bans: Vec<i64>,
+    pub towers: i64,
+    pub inhibitors: i64,
+    pub dragons: i64,
+    pub barons: i64,
+    pub heralds: i64,
+    pub grubs: Option<i64>,
+}
+
+impl GameTeam {
+    pub fn from_team(team: &HistoryTeam) -> Self {
+        let mut bans: Vec<_> = team.bans.iter().filter(|ban| ban.champion_id > 0).collect();
+        bans.sort_by_key(|ban| ban.pick_turn);
+        Self {
+            team_id: team.team_id,
+            bans: bans.iter().map(|ban| ban.champion_id).collect(),
+            towers: team.tower_kills,
+            inhibitors: team.inhibitor_kills,
+            dragons: team.dragon_kills,
+            barons: team.baron_kills,
+            heralds: team.rift_herald_kills,
+            grubs: team.horde_kills,
+        }
+    }
 }
 
 /// One participant of a game: who played what, for a match row's composition
@@ -306,6 +388,8 @@ pub struct GameParticipant {
     pub gold_earned: i64,
     pub damage_to_champions: i64,
     pub vision_score: i64,
+    pub damage_self_mitigated: i64,
+    pub damage_to_turrets: i64,
     /// Ascending; empty when the game's timeline could not be read.
     pub marks: Vec<TimelineMark>,
 }
@@ -339,6 +423,13 @@ impl PlayerGame {
             damage_to_champions: stats.total_damage_dealt_to_champions,
             vision_score: stats.vision_score,
             largest_multi_kill: stats.largest_multi_kill,
+            multi_kills: MultiKills {
+                double: stats.double_kills,
+                triple: stats.triple_kills,
+                quadra: stats.quadra_kills,
+                penta: stats.penta_kills,
+            },
+            first_blood: stats.first_blood_kill || stats.first_blood_assist,
             items: vec![
                 stats.item0,
                 stats.item1,
@@ -356,6 +447,7 @@ impl PlayerGame {
             team_kills: None,
             team_damage_to_champions: None,
             participants: Vec::new(),
+            teams: Vec::new(),
         })
     }
 
@@ -365,6 +457,7 @@ impl PlayerGame {
             self.team_kills = Some(scoreboard.team_kills);
             self.team_damage_to_champions = Some(scoreboard.team_damage_to_champions);
             self.participants.clone_from(&scoreboard.participants);
+            self.teams.clone_from(&scoreboard.teams);
         }
         self
     }
@@ -377,6 +470,7 @@ pub struct Scoreboard {
     pub team_kills: i64,
     pub team_damage_to_champions: i64,
     pub participants: Vec<GameParticipant>,
+    pub teams: Vec<GameTeam>,
 }
 
 impl Scoreboard {
@@ -424,9 +518,12 @@ impl Scoreboard {
                     gold_earned: p.stats.gold_earned,
                     damage_to_champions: p.stats.total_damage_dealt_to_champions,
                     vision_score: p.stats.vision_score,
+                    damage_self_mitigated: p.stats.damage_self_mitigated,
+                    damage_to_turrets: p.stats.damage_dealt_to_turrets,
                     marks: marks.remove(&p.participant_id).unwrap_or_default(),
                 })
                 .collect(),
+            teams: game.teams.iter().map(GameTeam::from_team).collect(),
         })
     }
 }

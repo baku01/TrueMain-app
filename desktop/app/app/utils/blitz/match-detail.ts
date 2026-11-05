@@ -1,6 +1,6 @@
 import type { MatchDetailParticipant, MatchDetailResponse } from '#shared/types/match-detail'
 import { gradeDetail } from '~/utils/match-summary'
-import { matchEvents, readMatch } from '~/utils/blitz/player'
+import { matchEvents, readMatch, teamsOf } from '~/utils/blitz/player'
 
 /**
  * Any game Blitz keeps (`BR1_123`), in the shape the shared match detail panel
@@ -80,5 +80,6 @@ export async function blitzMatchDetail(matchId: string, withEvents = true): Prom
     gameDurationSeconds: info.gameDuration,
     gameVersion: info.gameVersion,
     participants,
+    teams: teamsOf(info.teams),
   })
 }

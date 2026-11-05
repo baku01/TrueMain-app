@@ -148,10 +148,15 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
     }
     notFound.value = !data.value
     isLoading.value = false
-    if (data.value && !data.value.winProbabilityTimeline && insideTauri()) {
+    // TrueMain's copy carries no curve and no team objectives: the client's does.
+    if (data.value && (!data.value.winProbabilityTimeline || !data.value.teams?.length) && insideTauri()) {
       const client = await readClientDetail(id).catch(() => null)
-      if (client?.winProbabilityTimeline && toValue(matchId) === id && data.value) {
-        data.value = { ...data.value, winProbabilityTimeline: client.winProbabilityTimeline }
+      if (client && toValue(matchId) === id && data.value) {
+        data.value = {
+          ...data.value,
+          winProbabilityTimeline: data.value.winProbabilityTimeline ?? client.winProbabilityTimeline,
+          teams: data.value.teams?.length ? data.value.teams : client.teams,
+        }
       }
     }
   }, { immediate: true })

@@ -18,19 +18,26 @@ export interface MatchSummaryResponse {
   badges?: MatchBadge[]
 }
 
+/** Blitz's match accolades, every one of them (`MatchRowBadges`, `#common/utils/match-badges`). */
 export type MatchBadgeKind =
-  | 'pentaKill' | 'quadraKill' | 'tripleKill'
-  | 'topDamage' | 'teamDamage'
-  | 'topGold'
+  | 'mvp' | 'svp' | 'second' | 'third'
+  | 'pentaKill' | 'quadraKill' | 'tripleKill' | 'doubleKill'
+  | 'filthyRich' | 'cashMoney' | 'goldDigger'
   | 'csGod' | 'csLegend' | 'csMaster'
-  | 'unkillable'
+  | 'unkillable' | 'stable'
   | 'allSeeing' | 'goodEye'
+  | 'trueSupport'
+  | 'firstBlood'
+  | 'topDamage' | 'goodDamage'
+  | 'bigChungus' | 'beefy'
+  | 'wreckingBall' | 'bulldozer'
+  | 'perfectGame'
 
 export interface MatchBadge {
   kind: MatchBadgeKind
-  /** The measure behind it, for its tooltip: DPM, gold, CS/min or vision score. */
+  /** The measure behind it, for its tooltip: a count, DPM, gold, CS/min, vision score, assists… */
   value?: number
-  /** The bar it cleared, when it is measured against the game's length: the vision score aimed for. */
+  /** A second measure: the vision score aimed for, or a support's KDA. */
   target?: number
 }
 

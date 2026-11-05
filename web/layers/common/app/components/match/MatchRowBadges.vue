@@ -1,60 +1,121 @@
 <script setup lang="ts">
-import type { MatchBadge, MatchBadgeKind } from '#shared/types/matches'
+import type { MatchBadge } from '#shared/types/matches'
+import type { BadgeTier } from '#common/utils/match-badges'
+import { BADGE_LOOK } from '#common/utils/match-badges'
 
 const { t } = useT()
 
-// The game's standouts as Blitz tags them on a match — "Top damage", "CS
-// master"… — one pill each, its tooltip saying why the game earned it (the
-// measure, and the bar it cleared). Gold for the rarer tier (the MVP crown's
-// token), the primary tint for the rest. The pills wrap over two lines at most
-// and whatever does not fit is clipped: the host orders them rarest first.
-const props = defineProps<{
+// The game's accolades as Blitz draws them on a match: a pill edged in its
+// tier's colour (gold, silver, bronze, or blue for the losing side's best),
+// a round medallion with the icon across its left edge, and a tooltip naming
+// it and saying why the game earned it. The first `shown` (the host orders
+// them heaviest first); the rest fold into a "+N" pill whose tooltip lists them.
+const props = withDefaults(defineProps<{
   badges: MatchBadge[]
-}>()
+  shown?: number
+}>(), { shown: 3 })
 
-interface BadgeLook { icon: string, gold: boolean }
-
-const LOOK: Record<MatchBadgeKind, BadgeLook> = {
-  pentaKill: { icon: 'i-lucide-swords', gold: true },
-  quadraKill: { icon: 'i-lucide-swords', gold: true },
-  tripleKill: { icon: 'i-lucide-swords', gold: false },
-  topDamage: { icon: 'i-lucide-flame', gold: true },
-  teamDamage: { icon: 'i-lucide-flame', gold: false },
-  topGold: { icon: 'i-lucide-coins', gold: true },
-  csGod: { icon: 'i-lucide-wheat', gold: true },
-  csLegend: { icon: 'i-lucide-wheat', gold: false },
-  csMaster: { icon: 'i-lucide-wheat', gold: false },
-  unkillable: { icon: 'i-lucide-shield', gold: true },
-  allSeeing: { icon: 'i-lucide-eye', gold: true },
-  goodEye: { icon: 'i-lucide-eye', gold: false },
+/** The tiers' colours: the app's own gold and primary, Blitz's silver and bronze. */
+const TIER_COLOR: Record<BadgeTier, string> = {
+  gold: 'var(--color-gold)',
+  silver: '#bfbfbf',
+  bronze: '#c79460',
+  blue: 'var(--ui-primary)',
 }
 
 const pills = computed(() => props.badges.map((badge) => {
-  const look = LOOK[badge.kind]
-  const value = badge.value?.toLocaleString()
+  const look = BADGE_LOOK[badge.kind]
   return {
     kind: badge.kind,
     icon: look.icon,
+    color: TIER_COLOR[look.tier],
     label: t(`match.badge.${badge.kind}`),
-    tip: t(`match.badge.${badge.kind}.tip`, { value: value ?? '', target: badge.target ?? '' }),
-    tone: look.gold ? 'bg-gold/12 text-gold ring-gold/25' : 'bg-primary/10 text-primary ring-primary/20',
+    tip: t(`match.badge.${badge.kind}.tip`, { value: badge.value?.toLocaleString() ?? '', target: badge.target?.toLocaleString() ?? '' }),
   }
 }))
+const visible = computed(() => pills.value.slice(0, props.shown))
+const hidden = computed(() => pills.value.slice(props.shown))
 </script>
 
 <template>
-  <ul class="flex max-h-[42px] flex-wrap content-center gap-1 overflow-hidden">
-    <li v-for="pill in pills" :key="pill.kind">
-      <UTooltip :text="pill.tip" :content="{ side: 'top' }">
-        <span
-          class="flex h-[19px] cursor-help items-center gap-1 rounded-full px-2 text-[10.5px] font-semibold whitespace-nowrap ring-1 ring-inset"
-          :class="pill.tone"
-          :aria-label="`${pill.label}: ${pill.tip}`"
-        >
-          <UIcon :name="pill.icon" class="size-3" aria-hidden="true" />
-          {{ pill.label }}
+  <ul class="flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-2.5">
+    <li v-for="pill in visible" :key="pill.kind">
+      <UTooltip :content="{ side: 'top' }">
+        <span class="badge-pill pl-[1.375rem]" :style="{ '--badge': pill.color }" :aria-label="`${pill.label}: ${pill.tip}`">
+          <span class="badge-medal" aria-hidden="true">
+            <UIcon :name="pill.icon" class="size-3" />
+          </span>
+          <span class="relative z-[2]">{{ pill.label }}</span>
         </span>
+        <template #content>
+          <div class="max-w-64 space-y-0.5 px-1 py-0.5">
+            <p class="text-sm font-semibold text-highlighted">{{ pill.label }}</p>
+            <p class="text-xs text-muted">{{ pill.tip }}</p>
+          </div>
+        </template>
+      </UTooltip>
+    </li>
+    <li v-if="hidden.length">
+      <UTooltip :content="{ side: 'top' }">
+        <span class="badge-pill -ml-2 px-2" :style="{ '--badge': hidden[0]!.color }">
+          <span class="relative z-[2]">{{ t('match.badge.more', { count: hidden.length }) }}</span>
+        </span>
+        <template #content>
+          <ul class="max-w-64 space-y-1.5 px-1 py-0.5">
+            <li v-for="pill in hidden" :key="pill.kind">
+              <p class="text-sm font-semibold text-highlighted">{{ pill.label }}</p>
+              <p class="text-xs text-muted">{{ pill.tip }}</p>
+            </li>
+          </ul>
+        </template>
       </UTooltip>
     </li>
   </ul>
 </template>
+
+<style scoped>
+/* Blitz's accolade: a 1 px edge in the tier's colour, brighter at the top
+   right, over a faint wash of it; the medallion straddles the left edge. */
+.badge-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 1.5rem;
+  padding-right: 0.5rem;
+  border-radius: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: help;
+  color: var(--badge);
+  background: linear-gradient(208deg, color-mix(in oklab, var(--badge) 60%, transparent), color-mix(in oklab, var(--badge) 20%, transparent) 65%);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.5);
+}
+.badge-pill::before,
+.badge-pill::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 4px;
+  z-index: 1;
+}
+.badge-pill::before { background: var(--ui-bg); }
+.badge-pill::after { background: linear-gradient(29deg, color-mix(in oklab, var(--badge) 17%, transparent), color-mix(in oklab, var(--badge) 6%, transparent)); }
+
+.badge-medal {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  translate: -30% -50%;
+  color: var(--ui-bg);
+  background: linear-gradient(to bottom, var(--badge), color-mix(in oklab, var(--badge) 45%, transparent), var(--badge));
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--ui-bg) 60%, transparent), 0 0 6px rgb(0 0 0 / 0.5);
+}
+</style>

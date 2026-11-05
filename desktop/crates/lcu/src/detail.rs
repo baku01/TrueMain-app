@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::marks::{marks_by_participant, TimelineMark};
-use crate::record::{HistoryGame, HistoryParticipant};
+use crate::record::{GameTeam, HistoryGame, HistoryParticipant};
 use crate::win_probability::WinProbabilityTimeline;
 
 /// `GET /lol-match-history/v1/game-timelines/{gameId}`: one frame a minute.
@@ -104,6 +104,8 @@ pub struct GameDetail {
     pub game_duration_seconds: i64,
     pub game_version: String,
     pub participants: Vec<DetailParticipant>,
+    /// Both sides' bans and objectives, for the scoreboard's team headers.
+    pub teams: Vec<GameTeam>,
     /// What the shared win-probability model reads (#1911); the app draws the
     /// curve from it. `None` without the timeline.
     pub win_probability_timeline: Option<WinProbabilityTimeline>,
@@ -301,6 +303,7 @@ impl GameDetail {
             game_duration_seconds: game.duration_seconds(),
             game_version: game.game_version.clone(),
             participants,
+            teams: game.teams.iter().map(GameTeam::from_team).collect(),
             win_probability_timeline: timeline
                 .map(|timeline| WinProbabilityTimeline::from_game(game, timeline)),
         }
@@ -441,6 +444,10 @@ mod tests {
                   "stats": { "item0": 3031, "item6": 3363, "roleBoundItem": 3006 } },
                 { "participantId": 6, "teamId": 200, "championId": 7, "timeline": { "lane": "MIDDLE", "role": "SOLO" },
                   "stats": { "kills": 3 } }
+              ],
+              "teams": [
+                { "teamId": 100, "towerKills": 9, "dragonKills": 3, "baronKills": 1, "inhibitorKills": 2, "riftHeraldKills": 1, "hordeKills": 4,
+                  "bans": [ { "championId": 238, "pickTurn": 3 }, { "championId": -1, "pickTurn": 1 }, { "championId": 157, "pickTurn": 2 } ] }
               ] }"#,
         )
         .unwrap()
@@ -485,6 +492,9 @@ mod tests {
         assert_eq!(adc.items[0], 3031);
         assert_eq!(adc.trinket_item_id, 3363);
         assert_eq!(adc.role_bound_item_id, 3006);
+        let blue = &detail.teams[0];
+        assert_eq!(blue.bans, vec![157, 238]);
+        assert_eq!((blue.towers, blue.dragons, blue.barons, blue.grubs), (9, 3, 1, Some(4)));
     }
 
     #[test]
