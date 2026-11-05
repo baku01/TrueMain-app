@@ -36,7 +36,7 @@ open_url() { if command -v open >/dev/null; then open "$1"; else xdg-open "$1" >
 open_url "http://localhost:$PORT/#/dev/draft-sim?start"
 sleep 1
 open_url "http://localhost:$PORT/#/draft"
-echo "Simulated client in champion select: http://localhost:$PORT/#/dev/draft-sim — click its slots to pick and ban; the app follows in the other tab."
+echo "Simulated client in champion select, both teams drawn: http://localhost:$PORT/#/dev/draft-sim — Random teams draws again, its slots change any pick; the app follows in the other tab."
 
 if [ -n "$DEV" ]; then
   echo "Ctrl+C stops the dev server."

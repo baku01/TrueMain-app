@@ -20,7 +20,7 @@ import { SIM_CHANNEL } from '~/composables/useLcuState'
  * channel, with nothing compiled (`sim-lcu.sh` at the repository root).
  */
 const { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, draftState, answer } = useLcuSimulator()
-const { laneEntries } = useTierList()
+const { laneEntries, status: tierListStatus, load: loadTierList } = useTierList()
 const { nameOf, portraitOf, champions } = useChampionStatics()
 
 type Phase = 'Lobby' | 'ChampSelect' | 'InProgress'
@@ -100,10 +100,35 @@ onBeforeUnmount(() => channel?.close())
 
 let clock: ReturnType<typeof setInterval> | undefined
 let requests: ReturnType<typeof setInterval> | undefined
+/**
+ * Both teams filled at once — the enemies, one of each lane in shuffled cells
+ * as the client gives them, and our allies on their lanes — each a champion
+ * often played there (the lane's ten most played), none twice; our own pick is
+ * left for the player, and what Jev or the draft suggests.
+ */
+async function randomTeams() {
+  if (phase.value !== 'ChampSelect') await start()
+  await loadTierList()
+  // A load already under way returns at once: wait for it, the lanes' champions come from it.
+  for (let tries = 0; tierListStatus.value === 'pending' && tries < 40; tries++) await new Promise(resolve => setTimeout(resolve, 250))
+  const used = new Set(taken.value)
+  const draw = (lane: Lane) => {
+    const pool = laneEntries(lane).slice(0, 10).map(entry => entry.championId).filter(id => !used.has(id))
+    const id = pool[Math.floor(Math.random() * pool.length)] ?? null
+    if (id !== null) used.add(id)
+    return id
+  }
+  for (const lane of POSITIONS) {
+    if (lane !== board.value.myLane) place({ kind: 'ally', lane }, draw(lane))
+  }
+  const enemies = POSITIONS.map(lane => draw(lane)).sort(() => Math.random() - 0.5)
+  enemies.forEach((id, index) => place({ kind: 'enemy', index }, id))
+}
+
 const route = useRoute()
 onMounted(() => {
-  // Opened by `sim-lcu.sh` (`?start`): champion select is on at once, the app in the other tab follows it straight away.
-  if (route.query.start !== undefined) void start()
+  // Opened by `sim-lcu.sh` (`?start`): champion select is on at once with both teams drawn, the app in the other tab following it.
+  if (route.query.start !== undefined) void randomTeams()
   clock = setInterval(() => {
     if (phase.value === 'ChampSelect') tick()
   }, 1000)
@@ -188,6 +213,7 @@ const mine = computed(() => board.value.allies[board.value.myLane])
         <UButton label="Game starts" icon="i-lucide-swords" color="neutral" variant="subtle" size="sm" @click="leave('InProgress')" />
         <UButton label="Dodge" icon="i-lucide-log-out" color="neutral" variant="ghost" size="sm" @click="leave('Lobby')" />
       </template>
+      <UButton icon="i-lucide-shuffle" label="Random teams" color="neutral" variant="subtle" size="sm" @click="randomTeams" />
       <UButton icon="i-lucide-rotate-ccw" label="Clear" color="neutral" variant="ghost" size="sm" @click="clear" />
     </header>
 
