@@ -1,4 +1,5 @@
 import type { Lane } from '~/types/draft'
+import type { DraftState } from '~/types/lcu'
 import { POSITIONS } from '#common/utils/positions'
 
 /**
@@ -224,5 +225,39 @@ export function useLcuSimulator() {
     }
   })
 
-  return { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, answer }
+  /**
+   * The board as the app's state reads it (`DraftState`), for the app open in
+   * a browser tab with no shell to derive it from the session (`/dev/draft-sim`
+   * broadcasts it, `useLcuState` takes it). Written to agree with what
+   * `crates/lcu` derives from `session`; the shell, under `npm run tauri:sim`,
+   * remains the authority.
+   */
+  const draftState = computed((): DraftState => {
+    const state = board.value
+    const myCell = POSITIONS.indexOf(state.myLane)
+    const mine = state.allies[state.myLane]
+    const picked = (ids: (number | null)[]) => ids.filter((id): id is number => id !== null)
+    const myAction = state.turn === 'pick' && !mine.locked
+      ? { id: pickActionId(myCell), kind: 'pick', championId: mine.championId, inProgress: true, completed: false }
+      : state.turn === 'ban' && state.allyBans[myCell] === null
+        ? { id: banActionId(myCell), kind: 'ban', championId: state.myBanHover, inProgress: true, completed: false }
+        : null
+    return {
+      myPosition: state.myLane,
+      myChampion: mine.championId,
+      myChampionLocked: mine.locked,
+      allyChampions: picked(POSITIONS.filter(lane => lane !== state.myLane).map(lane => state.allies[lane].championId)),
+      enemyChampions: picked(state.enemies),
+      myTeam: POSITIONS.map(lane => ({ championId: state.allies[lane].championId, position: lane, locked: state.allies[lane].locked, isMe: lane === state.myLane })),
+      allyBans: picked(state.allyBans),
+      enemyBans: picked(state.enemyBans),
+      secondsLeft: state.secondsLeft,
+      timerPhase: 'BAN_PICK',
+      myAction,
+      myNextAction: null,
+      turnsUntilMyAction: myAction ? 0 : null,
+    }
+  })
+
+  return { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, draftState, answer }
 }

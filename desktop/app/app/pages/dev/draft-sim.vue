@@ -4,6 +4,8 @@ import { POSITIONS, positionLabel } from '#common/utils/positions'
 import type { SimRequest, SimSlot, SimTurn } from '~/composables/useLcuSimulator'
 import type { Lane } from '~/types/draft'
 import type { ChampionPosition } from '#common/utils/positions'
+import type { AppState } from '~/types/lcu'
+import { SIM_CHANNEL } from '~/composables/useLcuState'
 
 /**
  * The draft simulator — development only, dropped from builds (nuxt.config).
@@ -13,9 +15,11 @@ import type { ChampionPosition } from '#common/utils/positions'
  * is sent as the client would send it — gameflow phase, a synthetic summoner,
  * a mastery list, and the champion select session — to the app's shell,
  * through the dev server's relay (`/__sim/lcu`). The app, started with
- * `npm run tauri:sim`, takes it for a real champion select and answers live.
+ * `npm run tauri:sim`, takes it for a real champion select and answers live;
+ * the app in another browser tab gets the same draft over a broadcast
+ * channel, with nothing compiled (`sim-lcu.sh` at the repository root).
  */
-const { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, answer } = useLcuSimulator()
+const { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, draftState, answer } = useLcuSimulator()
 const { laneEntries } = useTierList()
 const { nameOf, portraitOf, champions } = useChampionStatics()
 
@@ -66,6 +70,33 @@ async function leave(next: Phase) {
 watch(session, (next) => {
   if (phase.value === 'ChampSelect') void send({ op: 'push', readings: [event('/lol-champ-select/v1/session', next)] })
 }, { deep: true })
+
+// ─── The app in a browser tab, with no shell to compile (`sim-lcu.sh`) ──────
+
+/**
+ * The same draft for the app open in another tab of this browser: its state
+ * as the shell would push it, on every change, and again whenever a tab asks
+ * (one opened mid-draft). The relay above still serves `npm run tauri:sim`.
+ */
+const channel = import.meta.client ? new BroadcastChannel(SIM_CHANNEL) : null
+const appState = computed((): AppState => {
+  const pool = POSITIONS.flatMap(lane => laneEntries(lane).slice(0, 5).map(entry => entry.championId))
+  const mastery = [...new Set(pool)].map((championId, index) => ({ championId, championLevel: 7, championPoints: 200000 - index * 5000 }))
+  return {
+    connected: true,
+    phase: phase.value,
+    riotId: 'Simulated#DEV',
+    profileIconId: 29,
+    summonerLevel: 30,
+    championPool: mastery.map(entry => entry.championId),
+    championMastery: mastery,
+    draft: phase.value === 'ChampSelect' ? draftState.value : null,
+  }
+})
+const broadcast = () => channel?.postMessage({ state: JSON.parse(JSON.stringify(appState.value)) })
+watch(appState, broadcast, { deep: true })
+if (channel) channel.onmessage = event => event.data?.hello && broadcast()
+onBeforeUnmount(() => channel?.close())
 
 let clock: ReturnType<typeof setInterval> | undefined
 let requests: ReturnType<typeof setInterval> | undefined
@@ -146,7 +177,7 @@ const mine = computed(() => board.value.allies[board.value.myLane])
       <UIcon name="i-lucide-flask-conical" class="size-5 text-primary" />
       <div class="leading-tight">
         <h1 class="text-sm font-semibold text-highlighted">Draft simulator</h1>
-        <p class="text-xs text-muted">Development only. The app started with <code>npm run tauri:sim</code> follows this page as a League client.</p>
+        <p class="text-xs text-muted">Development only. The app follows this page as a League client: in another tab of this browser (<code>./sim-lcu.sh</code>), or started with <code>npm run tauri:sim</code>.</p>
       </div>
       <UBadge :color="phase === 'ChampSelect' ? 'primary' : 'neutral'" variant="subtle" class="ml-auto">{{ phase }}</UBadge>
       <UButton v-if="phase !== 'ChampSelect'" label="Start champion select" icon="i-lucide-play" size="sm" @click="start" />

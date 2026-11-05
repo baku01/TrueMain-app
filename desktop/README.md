@@ -449,6 +449,18 @@ what the window server does with it during a real game
 A champion select needs a real game. In development one can be played by hand
 instead, and the app takes it for a real one — navigation, parsing and all:
 
+Without compiling anything, from the repository root:
+
+```sh
+./sim-lcu.sh
+```
+
+starts the desktop dev server when none is running and opens two browser tabs:
+the simulator (below) and the app's draft screen, which follows it over a
+broadcast channel (`SIM_CHANNEL`, the board read as `DraftState` by
+`useLcuSimulator`). The app's own writes to the client — Hover, Ban, Lock in —
+need the shell; for those, and to exercise the Rust side:
+
 ```sh
 cd desktop/app && npm run tauri:sim
 ```

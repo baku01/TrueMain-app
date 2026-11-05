@@ -18,6 +18,9 @@ export function insideTauri() {
  * Runs in a plain browser too: `npm run dev` outside Tauri opens on a dev
  * scenario, which is how the UI is worked on without League installed.
  */
+/** The broadcast channel the draft simulator plays the client on, for the app in a browser tab (development only). */
+export const SIM_CHANNEL = 'truemain-lcu-sim'
+
 export function useLcuState() {
   const state = useState<AppState>('lcu-state', () => ({ ...EMPTY_STATE }))
   const ready = useState<boolean>('lcu-ready', () => false)
@@ -36,6 +39,13 @@ export function useLcuState() {
         const { load, select } = useDevScenarios()
         await load()
         select(new URLSearchParams(window.location.search).get('scenario') ?? '')
+        // The draft simulator open in another tab plays the client for this one (`/dev/draft-sim`) — not for itself.
+        if (window.location.hash.startsWith('#/dev/')) return void (ready.value = true)
+        const channel = new BroadcastChannel(SIM_CHANNEL)
+        channel.onmessage = (event) => {
+          if (event.data?.state) state.value = event.data.state as AppState
+        }
+        channel.postMessage({ hello: true })
       }
       ready.value = true
       return
