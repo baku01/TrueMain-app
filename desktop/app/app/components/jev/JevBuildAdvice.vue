@@ -11,7 +11,7 @@ const props = defineProps<{ championId: number, request: CompositionBuildRequest
 const { t } = useT()
 const { items } = useStaticData()
 const subject = computed(() => ({ championId: props.championId, request: props.request }))
-const { status, error, picks, rules, elapsedMs, ask } = useJevBuild(subject)
+const { status, error, picks, rules, elapsedMs, calls, ask } = useJevBuild(subject)
 
 const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
 const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
@@ -39,6 +39,14 @@ const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)
     </div>
 
     <div v-else-if="status === 'ready'" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+      <div class="flex flex-col gap-2">
+      <p class="rounded-lg bg-elevated/30 px-3 py-2 text-xs text-muted ring-1 ring-default">
+        <UIcon name="i-lucide-receipt" class="mr-1 inline size-3.5 align-[-2px] text-primary" />
+        {{ t('jev.card.calls', { count: calls.length, model: calls.find(call => call.model)?.model ?? '—', tokens: Math.round(calls.reduce((sum, call) => sum + call.requestChars, 0) / 4).toLocaleString() }) }}
+        <template v-for="(call, index) in calls" :key="index">
+          <span v-if="call.usage" class="block font-mono text-[10px] text-dimmed">{{ JSON.stringify(call.usage) }}</span>
+        </template>
+      </p>
       <ul class="flex flex-col gap-2">
         <li v-for="pick in picks" :key="pick.slot.name" class="rounded-lg bg-elevated/50 p-3 ring-1 ring-default">
           <div class="flex flex-wrap items-center gap-2">
@@ -64,6 +72,7 @@ const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)
           </ul>
         </li>
       </ul>
+      </div>
 
       <aside class="rounded-lg bg-elevated/30 p-3 ring-1 ring-default">
         <p class="text-sm font-semibold text-highlighted">{{ t('jev.card.rules') }}</p>
