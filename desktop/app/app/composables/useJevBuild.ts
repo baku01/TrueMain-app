@@ -1,9 +1,9 @@
 import type { CompositionBuildRequest } from '~/types/build'
-import type { JevDecision, LaidBuild, Names } from '~/utils/jev-build'
+import type { JevDecision, JevSlot, LaidBuild, Names } from '~/utils/jev-build'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import { closestCore, coreSlots, decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, standardCore, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
 import { readItemStats } from '~/utils/blitz/item-stats'
-import { answers, enemySituation } from '~/utils/draft-build'
+import { answers, enemySituation, misfits } from '~/utils/draft-build'
 import { PROVIDERS, activeProvider } from '~/utils/sources'
 import { combineOptions } from '~/utils/sources/combined'
 import { lolalyticsOptions } from '~/utils/sources/lolalytics'
@@ -111,7 +111,11 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       // First call: runes, spells, starter, skills, boots and their timing, and the core item by item.
       const firstChoices = firstSlots(options, names, ask)
       const core = coreSlots(options, names, ask, situational)
-      const first = withItemStats([...firstChoices, ...core], laneStats, versusStats)
+      // An option that guards only against the damage this draft does not deal is marked: the combination weighs it down.
+      const marked = (slots: JevSlot[]) => slots.map(slot => (slot.kind !== 'checks'
+        ? slot
+        : { ...slot, options: slot.options.map(option => ({ ...option, misfit: option.itemIds.some(id => misfits(id, base.situations, items.value)) })) }))
+      const first = marked(withItemStats([...firstChoices, ...core], laneStats, versusStats))
       const firstAnswers = await askJev(stateOf(base), questionsOf(first, ask))
       if (mine !== generation) return
       const made = first.filter(slot => !slot.name.startsWith('item')).map(slot => decide(slot, firstAnswers))
@@ -133,9 +137,9 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       // (TypeSafe: ask all you may need at once), then each slot settled in order.
       const jevFollows = closestCore(options.cores, jevCore)
       const jevLater: number[] = []
-      const laterSlots = withItemStats(laterSlotNumbers(options, jevFollows)
+      const laterSlots = marked(withItemStats(laterSlotNumbers(options, jevFollows)
         .map(slotNumber => laterSlot(options, jevFollows, slotNumber, held.jev, names, ask, situational))
-        .filter(slot => slot !== null), laneStats, versusStats)
+        .filter(slot => slot !== null), laneStats, versusStats))
       const laterAnswers = laterSlots.length
         ? await askJev(stateOf({ ...base, taken: held.jev.map(names.item) }), questionsOf(laterSlots, ask))
         : {}

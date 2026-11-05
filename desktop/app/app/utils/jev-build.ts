@@ -46,6 +46,8 @@ export interface JevOption extends Measure {
   /** The same against the lane opponent, when the matchup has the games. */
   vsWpa?: number | null
   vsGames?: number
+  /** It guards only against the kind of damage this draft does not deal (`misfits`): Mercury's into a physical board. */
+  misfit?: boolean
 }
 
 export interface JevSlot {
@@ -422,6 +424,13 @@ function wpaFactor(option: JevOption): number {
   return Math.min(1.6, Math.max(0.6, Math.exp(8 * wpa)))
 }
 
+/**
+ * What an option that defends against the wrong kind of damage keeps of its
+ * weight: the app's rule, not a guess of Jev's — Mercury's Treads or magic
+ * resist alone into a physical team, plate or armour alone into a magic one.
+ */
+const MISFIT = 0.35
+
 /** How many games a measure needs to be trusted half: the sample's weight is `games / (games + this)`. */
 const SAMPLE_HALF = 60
 
@@ -451,7 +460,7 @@ function verdictOfChecks(slot: JevSlot, answers: Record<string, JevAnswer>): Jev
     if (kit === null || draft === null) return 0
     checks[option.key] = { kit, draft, lane }
     const fit = lane === null ? 0.55 * draft + 0.45 * kit : 0.4 * draft + 0.35 * kit + 0.25 * lane
-    return fit * (option.games / (option.games + SAMPLE_HALF)) * wpaFactor(option)
+    return fit * (option.games / (option.games + SAMPLE_HALF)) * wpaFactor(option) * (option.misfit ? MISFIT : 1)
   })
   const total = scores.reduce((sum, score) => sum + score, 0)
   if (total <= 0) return null
@@ -522,7 +531,9 @@ export function draftNeeds(enemies: Champion[]): string {
     const skew = champion.info ? champion.info.magic - champion.info.attack : 0
     return sum + (skew >= 2 ? 1 : skew <= -2 ? 0 : 0.5)
   }, 0) / enemies.length
-  const cc = enemies.filter(champion => champion.tags?.some(tag => tag === 'Tank' || tag === 'Support')).map(champion => champion.name)
+  // A champion's first class is what it is (Darius is a Fighter that can tank): crowd control
+  // is read from tanks and supports by trade, the frontline from any champion that tanks.
+  const cc = enemies.filter(champion => champion.tags?.[0] === 'Tank' || champion.tags?.[0] === 'Support').map(champion => champion.name)
   const front = enemies.filter(champion => champion.tags?.includes('Tank')).map(champion => champion.name)
   const healers = enemies.filter(champion => HEALERS.has(champion.alias)).map(champion => champion.name)
   return [

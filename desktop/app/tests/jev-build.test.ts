@@ -95,7 +95,7 @@ describe('draftNeeds', () => {
   it('sums the enemy team up in one line: damage split, crowd control, frontline, healing', () => {
     const champion = (alias: string, attack: number, magic: number, tags: string[]) => ({ id: alias.length, alias, name: alias, tags, info: { attack, magic, defense: 5 } })
     expect(draftNeeds([champion('Lux', 2, 9, ['Mage', 'Support']), champion('Soraka', 2, 7, ['Support']), champion('Ornn', 5, 3, ['Tank']), champion('Jinx', 9, 2, ['Marksman'])]))
-      .toBe('50% magic and 50% physical damage, heavy crowd control from Lux, Soraka, Ornn, a frontline of Ornn, healing from Soraka')
+      .toBe('50% magic and 50% physical damage, heavy crowd control from Soraka, Ornn, a frontline of Ornn, healing from Soraka')
   })
 })
 
@@ -189,5 +189,25 @@ describe('the core item by item', () => {
 
   it('follows the measured core closest to the one Jev put together', () => {
     expect(closestCore(options.cores, [6692, 6676, 3071])?.games).toBe(300)
+  })
+})
+
+describe('the wrong kind of damage', () => {
+  it('weighs down Mercury\'s Treads into a lone physical laner, whatever Jev\'s checks say', () => {
+    const noul = (value: number) => ({ type: 'noul' as const, noul: value })
+    const bootsSlot: JevSlot = { name: 'boots', instructions: '', kind: 'checks', lane: true, options: [
+      { key: 'o0', itemIds: [3047], label: 'Plated Steelcaps', games: 900, pickRate: 0.5, winRate: 0.5 },
+      { key: 'o1', itemIds: [3111], label: 'Mercury\'s Treads', games: 900, pickRate: 0.4, winRate: 0.5, misfit: true },
+    ] }
+    const decision = decide(bootsSlot, {
+      boots__o0__kit: noul(0.6), boots__o0__draft: noul(0.6), boots__o0__lane: noul(0.6),
+      boots__o1__kit: noul(0.8), boots__o1__draft: noul(0.9), boots__o1__lane: noul(0.8),
+    })
+    expect(decision.jev.key).toBe('o0')
+  })
+
+  it('does not read a fighter that can tank as crowd control', () => {
+    expect(draftNeeds([{ id: 122, alias: 'Darius', name: 'Darius', tags: ['Fighter', 'Tank'], info: { attack: 9, magic: 0, defense: 5 } }]))
+      .toContain('little crowd control')
   })
 })

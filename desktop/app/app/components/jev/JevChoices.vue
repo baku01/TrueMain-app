@@ -48,6 +48,7 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
           
 
           <UBadge v-if="option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" class="-mt-1" />
+          <UBadge v-if="option.misfit" :label="t('jev.card.misfit')" color="error" variant="subtle" size="xs" class="-mt-1" :title="t('jev.card.misfitHint')" />
           <!-- The option's own picture, every icon with its tooltip. -->
           <span class="flex min-h-9 items-center justify-center gap-0.5">
             <template v-if="option.itemIds.length">

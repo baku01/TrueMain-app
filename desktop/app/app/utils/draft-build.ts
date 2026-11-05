@@ -175,7 +175,7 @@ const OFFENSIVE = ['Damage', 'SpellDamage', 'AttackSpeed', 'CriticalStrike', 'Ar
  * carry a resistance (Zhonya's Hourglass, Guardian Angel) is never one: it is
  * built for its damage.
  */
-function misfits(itemId: number, situations: Situation[], items: Record<number, StaticItemData>): boolean {
+export function misfits(itemId: number, situations: Situation[], items: Record<number, StaticItemData>): boolean {
   const tags = items[itemId]?.tags ?? []
   // The team's lean when it has one (`teamLeans`), the lane opponent's otherwise.
   const team = teamLeans(situations)
