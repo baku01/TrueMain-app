@@ -5,7 +5,7 @@ import type { RankedSlot } from '~/utils/jev-recommend'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
-import { itemSetOf } from '~/utils/jev-recommend'
+import { itemSetOf } from '~/utils/jev-build'
 
 /**
  * One build of the Jev page — the recommended or the most played — laid out
@@ -60,7 +60,7 @@ const path = computed(() => {
   })
 })
 /** The build as the client's item set (`itemSetOf`). */
-const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: nameOf(props.championId), blocks: itemSetOf(props.ranked, props.build) }))
+const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: nameOf(props.championId), blocks: itemSetOf(props.build) }))
 const others = (step: Step) => step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => score(step.entry, b) - score(step.entry, a))
 
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)

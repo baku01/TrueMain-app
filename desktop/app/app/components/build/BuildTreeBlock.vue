@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StaticItemData } from '#shared/types/static-data'
 import type { BuildOption } from '~/types/build'
-import type { ItemSetSubject } from '~/composables/useItemSetImport'
+import type { ItemSetBlocks, ItemSetSubject } from '~/composables/useItemSetImport'
 
 /**
  * The site's tree, drawn smaller and tighter to fit the pane. It is the build path too,
@@ -12,7 +12,7 @@ defineProps<{
   build: BuildOption
   items: Record<number, StaticItemData>
   /** What the item set button imports; no button without one. */
-  itemSetSubject: ItemSetSubject | null
+  itemSetSubject: ItemSetSubject | ItemSetBlocks | null
 }>()
 </script>
 

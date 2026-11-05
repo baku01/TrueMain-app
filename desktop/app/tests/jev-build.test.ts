@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
-import { closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool, withItemStats } from '~/utils/jev-build'
+import { closestCore, coreSlots, damageKind, firstSlots, itemEffect, itemSetOf, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool, withItemStats } from '~/utils/jev-build'
 
 const m = (games: number, itemIds: number[]): ItemOption => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
 const names = { item: (id: number) => `#${id}`, perk: String, style: String, spell: String }
@@ -134,5 +134,12 @@ describe('laidBuild', () => {
     expect(build.order).toEqual([6692, 3047, 3142, 6694, 3071])
     expect(build.summonerSpells).toMatchObject({ spell1Id: 4, spell2Id: 12 })
     expect(build.runePage).toBeNull()
+  })
+
+  it('imports the whole build in buying order, the boots apart, no situational block', () => {
+    const option = (fields: Partial<JevOption>): JevOption => ({ key: 'o0', label: '', itemIds: [], games: 100, pickRate: 0.1, winRate: 0.5, ...fields })
+    const picks: Record<string, JevOption> = { starter: option({ itemIds: [1055, 2003] }), boots: option({ itemIds: [3047] }), bootsAfter: option({ after: 1 }) }
+    const build = laidBuild(slot => picks[slot] ?? null, [6692, 3142], [6694, 3071, 3026])
+    expect(itemSetOf(build)).toEqual({ starter: [1055, 2003], boots: [3047], core: [6692, 3142, 6694, 3071, 3026], situational: [] })
   })
 })
