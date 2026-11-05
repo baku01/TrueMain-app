@@ -281,7 +281,8 @@ export interface LaidBuild {
   runePage: BuildRunePage | null
   summonerSpells: BuildSummonerSpells | null
   starterItems: BuildItemSet | null
-  skillOrder: BuildSkillOrder | null
+  /** With the first three levels, when measured: they tell apart orders that max alike. */
+  skillOrder: (BuildSkillOrder & { opening?: string[] }) | null
   boots: BuildItemSet | null
   /** Every completed item in the order it is bought, the boots where they fall. */
   order: number[]
@@ -300,7 +301,7 @@ export function laidBuild(pick: (slot: string) => JevOption | null, core: number
     runePage: page?.page ? { ...page.page, ...measured(page) } : null,
     summonerSpells: spells?.spellIds && spells.spellIds.length >= 2 ? { spell1Id: spells.spellIds[0]!, spell2Id: spells.spellIds[1]!, ...measured(spells) } : null,
     starterItems: starter ? { itemIds: starter.itemIds, ...measured(starter) } : null,
-    skillOrder: skills?.order ? { sequence: skills.order, ...measured(skills) } : null,
+    skillOrder: skills?.order ? { sequence: skills.order, opening: skills.opening, ...measured(skills) } : null,
     boots: boots ? { itemIds: boots.itemIds, ...measured(boots) } : null,
     order,
   }

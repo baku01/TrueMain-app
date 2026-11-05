@@ -283,8 +283,10 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   items 40% stats / 35% team / 25% kit, lane choices 50/50. `utils/jev-build.ts` lays the slots: runes, spells,
   starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus
   up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
-  needs and each enemy's reading (`JevEnemyRead`), the recommended and the most played build, then every slot's
-  options with their measures, score parts and answered needs (`JevChoices`).
+  needs and each enemy's reading (`JevEnemyRead`), the recommended and the most played build side by side as compact
+  cards (`JevBuildSummary`: runes, spells, starter, max order with an 18-level strip, buy order), then every slot's
+  options with their measures, score parts and answered needs (`JevChoices`: rune pages across, the other lane
+  choices and the items in two stacked columns).
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no
