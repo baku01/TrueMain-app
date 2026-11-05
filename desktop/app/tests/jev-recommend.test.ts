@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { answersDraft, fitOf, laneNeeds, needsOf, rankSlot, statsOf, wpaOf } from '~/utils/jev-recommend'
+import { answersDraft, fitOf, laneNeeds, needsOf, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, heal: 0, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
@@ -43,6 +43,10 @@ describe('fitOf', () => {
     expect(fitOf([3111], needs({ physical: 0.8, magic: 0.2, cc: 0.7 }), reads, tags).misfit).toBe(false)
   })
 
+  it('calls Mercury\'s Treads a misfit into a lone physical laner, whatever its crowd control', () => {
+    expect(fitOf([3111], laneNeeds(needs({ physical: 0.9, magic: 0.05, cc: 0.5 }), needs({ physical: 0.9, magic: 0.05, cc: 0.5 })), reads, tags).misfit).toBe(true)
+  })
+
   it('never calls a damage item with resistances a misfit', () => {
     expect(fitOf([6333], needs({ physical: 0.1, magic: 0.9 }), reads, tags).misfit).toBe(false)
   })
@@ -63,9 +67,15 @@ describe('statistics', () => {
     expect(stats.o3).toBeNull()
   })
 
-  it('takes the matchup\'s WPA when it has the games', () => {
-    expect(wpaOf(option('o0', [1], { wpa: 0.01, vsWpa: 0.06, vsGames: 90 }))).toBeCloseTo(0.04)
-    expect(wpaOf(option('o0', [1], { wpa: 0.01, vsWpa: 0.06, vsGames: 10 }))).toBe(0.01)
+  it('weighs the matchup\'s WPA only when every option has its games, centred on the slot', () => {
+    const both = slotWpa([option('o0', [1], { wpa: 0.01, vsWpa: 0.06, vsGames: 90 }), option('o1', [2], { wpa: 0.01, vsWpa: 0.0, vsGames: 90 })])!
+    expect(both(option('o0', [1], { wpa: 0.01, vsWpa: 0.06, vsGames: 90 }))).toBeCloseTo(0.018)
+    const thin = slotWpa([option('o0', [1], { wpa: 0.03, vsWpa: 0.06, vsGames: 90 }), option('o1', [2], { wpa: 0.01, vsWpa: 0.0, vsGames: 10 })])!
+    expect(thin(option('o0', [1], { wpa: 0.03 }))).toBeCloseTo(0.01)
+  })
+
+  it('leaves WPA out of a slot where an option was not measured on it', () => {
+    expect(slotWpa([option('o0', [3047], { wpa: -0.059 }), option('o1', [3111])])).toBeNull()
   })
 })
 
@@ -78,6 +88,16 @@ describe('rankSlot', () => {
     expect(ranked.pick.key).toBe('o1')
     expect(ranked.standard.key).toBe('o0')
     expect(ranked.scored.o0!.misfit).toBe(true)
+  })
+
+  it('does not let boots Blitz did not measure beat the measured ones on WPA (Aatrox into Ambessa)', () => {
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [
+      option('o0', [3047], { winRate: 0.5, wpa: -0.059 }),
+      option('o1', [3111], { winRate: 0.505, games: 600 }),
+    ] }
+    const ambessa = needs({ physical: 0.9, magic: 0.05, cc: 0.5, autos: 0.5 })
+    const ranked = rankSlot(boots, context(ambessa, new Map([[3111, item({ tenacity: 0.97, kit: 0.7 })], [3047, item({ vsAutos: 0.9, kit: 0.7 })]])))
+    expect(ranked.pick.itemIds).toEqual([3047])
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {

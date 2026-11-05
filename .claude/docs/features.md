@@ -279,7 +279,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (armor/magic-resist tags against the split, Jev's facts against the rest; a defensive-only item against damage the
   team barely deals is a misfit, halved — Mercury's Treads into a physical lane unless crowd control is heavy), its
   statistics (lolalytics + Blitz pooled through `utils/sources/combined.ts`, the one pooled view in the app; win rate
-  shrunk toward its slot's plus Blitz's `champion_item_stats` WPA, the matchup's when it has 30 games), weighed
+  shrunk toward its slot's plus Blitz's `champion_item_stats` WPA over the slot's, only where every option has it, the
+  matchup's when every option has 30 games there), weighed
   items 40% stats / 35% team / 25% kit, lane choices 50/50. `utils/jev-build.ts` lays the slots: runes, spells,
   starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus
   up to two situational items from the champion's measured pool that answer the draft. The page shows the team's

@@ -19,8 +19,8 @@ import { MIN_GAMES } from '~/utils/jev-build'
  *    Grievous Wounds against healing…). An item that defends only against the
  *    damage the team does not deal is a misfit, and weighs half.
  * 3. Each option's measured signal: its win rate shrunk toward its slot's by
- *    its sample, and what Blitz measures it adds to the win probability,
- *    against the lane opponent when the matchup has the games.
+ *    its sample, and what Blitz measures it adds to the win probability over
+ *    the slot's — only where every option of the slot was measured so.
  * 4. The total: statistics, the draft and how well it suits our champion's
  *    kit, weighed as `WEIGHTS` says; the slot takes the highest.
  */
@@ -97,6 +97,13 @@ const OFFENSIVE = ['Damage', 'SpellDamage', 'AttackSpeed', 'CriticalStrike', 'Ar
 /** Below this share, a team does not deal that kind of damage to speak of. */
 const LITTLE = 0.3
 
+/**
+ * Crowd control heavy enough to buy Tenacity on magic resist into physical
+ * damage: more than one heavy crowd-controller. A lone lane opponent never
+ * reaches it — into a physical laner, resist its damage.
+ */
+const HEAVY_CC = 0.6
+
 /** How well items answer the needs: Riot's resistance tags against the damage split, Jev's facts against the rest. */
 export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRead>, tags: (id: number) => string[]): Fit {
   if (!itemIds.length) return { fit: 0, answers: [], misfit: false }
@@ -115,7 +122,7 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
     const defensiveOnly = (has.physical || has.magic) && !own.some(tag => OFFENSIVE.includes(tag))
     const misfit = defensiveOnly && (
       (has.physical && !has.magic && needs.physical < LITTLE)
-      || (has.magic && !has.physical && needs.magic < LITTLE && !(has.cc > 0.5 && needs.cc >= 0.4))
+      || (has.magic && !has.physical && needs.magic < LITTLE && !(has.cc > 0.5 && needs.cc >= HEAVY_CC))
     )
     return { has, misfit: !!misfit }
   })
@@ -127,32 +134,50 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
   return { fit: 1 - Math.exp(-1.6 * raw), answers, misfit: per.some(item => item.misfit) }
 }
 
-/** Win probability added blended for an option: against the lane opponent when the matchup has the games, with the lane's. */
-export function wpaOf(option: JevOption): number | null {
-  const versus = option.vsWpa !== null && option.vsWpa !== undefined && (option.vsGames ?? 0) >= MIN_GAMES ? option.vsWpa : null
-  const lane = option.wpa ?? null
-  if (versus !== null) return lane !== null ? 0.6 * versus + 0.4 * lane : versus
-  return lane
+const known = (value: number | null | undefined): value is number => value !== null && value !== undefined
+
+/**
+ * The win probability added each option of a slot is weighed by, or null when
+ * the slot cannot be compared on it: only when every measured option has it
+ * (an option Blitz did not measure would otherwise read as even, and beat
+ * every option measured below even — boots all read negative), against the
+ * lane opponent only when every one has the matchup's games, blended 60/40
+ * with the lane's; centred on the slot's own average, so what a slot's items
+ * share (every boots' timing) does not count.
+ */
+export function slotWpa(options: JevOption[]): ((option: JevOption) => number) | null {
+  const measuredOptions = options.filter(option => option.games > 0)
+  if (!measuredOptions.length || !measuredOptions.every(option => known(option.wpa))) return null
+  const versus = measuredOptions.every(option => known(option.vsWpa) && (option.vsGames ?? 0) >= MIN_GAMES)
+  const raw = (option: JevOption) => (versus ? 0.6 * option.vsWpa! + 0.4 * option.wpa! : option.wpa!)
+  const games = measuredOptions.reduce((sum, option) => sum + option.games, 0)
+  const mean = measuredOptions.reduce((sum, option) => sum + raw(option) * option.games, 0) / games
+  return option => (known(option.wpa) ? raw(option) - mean : 0)
 }
 
 /** Games of the slot's own win rate an option's is pulled toward. */
 const PRIOR_GAMES = 150
 
+/** How far over its slot an option's signal must be to read about 0.73: three points of win rate. */
+const SPREAD = 0.03
+
 /**
  * Each option's measured signal on 0–1 (0.5 even with its slot): its win rate
- * shrunk toward the slot's by its sample, plus half its win probability added;
- * two points over the slot read about 0.73. Null for a slot nothing measured.
+ * shrunk toward the slot's by its sample, plus half its win probability added
+ * over the slot's (`slotWpa`); three points over the slot read about 0.73.
+ * Null for an option nothing measured.
  */
 export function statsOf(options: JevOption[]): Record<string, number | null> {
   const measuredOptions = options.filter(option => option.games > 0)
   const games = measuredOptions.reduce((sum, option) => sum + option.games, 0)
   if (!games) return Object.fromEntries(options.map(option => [option.key, null]))
   const average = measuredOptions.reduce((sum, option) => sum + option.winRate * option.games, 0) / games
+  const wpa = slotWpa(options)
   return Object.fromEntries(options.map((option) => {
     if (!option.games) return [option.key, null]
     const shrunk = (option.winRate * option.games + average * PRIOR_GAMES) / (option.games + PRIOR_GAMES)
-    const signal = shrunk - average + 0.5 * (wpaOf(option) ?? 0)
-    return [option.key, 1 / (1 + Math.exp(-signal / 0.02))]
+    const signal = shrunk - average + 0.5 * (wpa ? wpa(option) : 0)
+    return [option.key, 1 / (1 + Math.exp(-signal / SPREAD))]
   }))
 }
 
