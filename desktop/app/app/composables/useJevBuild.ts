@@ -4,7 +4,10 @@ import { askJev, jevKeyStatus } from '~/utils/jev'
 import { closestCore, coreSlots, decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, standardCore, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { answers, enemySituation } from '~/utils/draft-build'
-import { activeProvider } from '~/utils/sources'
+import { PROVIDERS, activeProvider } from '~/utils/sources'
+import { combineOptions } from '~/utils/sources/combined'
+import { lolalyticsOptions } from '~/utils/sources/lolalytics'
+import { blitzOptions } from '~/utils/sources/blitz'
 
 export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noSource' | 'noOptions' | 'error'
 
@@ -39,8 +42,8 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     const current = subject.value
     if (!current) return
     const mine = ++generation
-    const provider = activeProvider()
-    if (!provider) return void (status.value = 'noSource')
+    // The matchup's lane read from the picked source, Blitz when TrueMain is picked.
+    const provider = activeProvider() ?? PROVIDERS.blitz
     if (!(await jevKeyStatus().catch(() => ({ set: false }))).set) return void (status.value = 'noKey')
     status.value = 'loading'
     error.value = null
@@ -50,7 +53,11 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const opponentId = request.enemies.find(enemy => enemy.position === request.position)?.championId ?? null
       const enemyIds = request.enemies.map(enemy => enemy.championId)
       const [options, matchups, laneStats, versusStats] = await Promise.all([
-        provider.options(championId, request.position, opponentId),
+        // lolalytics and Blitz pooled game by game: what the build's ranking reads.
+        Promise.all([
+          lolalyticsOptions(championId, request.position).catch(() => null),
+          blitzOptions(championId, request.position).catch(() => null),
+        ]).then(([lolalytics, blitz]) => combineOptions(lolalytics, blitz)),
         opponentId ? provider.matchups(championId, { position: request.position, opponent: opponentId }).catch(() => null) : null,
         // What each item adds to the win probability, on the lane and against the lane opponent (Blitz's item stats).
         readItemStats(championId, request.position).catch(() => new Map()),
