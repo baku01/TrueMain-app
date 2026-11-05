@@ -331,7 +331,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   heading, and the dashboard carries no Riot legal line (the app's other pages keep it, `SharedPage`). The goals card (#1913)
   was removed in #2074 at the product owner's request. With no client: a waiting banner over the patch's best picks by lane.
 - **Draft** (`/draft`) — bans and phase clock, both teams as tall pick cards with their tier on their lane, enemy lanes
-  guessed and correctable (the lane icon under an enemy is a menu of lanes, or drag one onto another), the lane duel (lane win rate). While our pick is open: the ranked picks ("My pool" =
+  guessed and correctable (the lane icon under an enemy is a menu of lanes, or drag one onto another), under each placed enemy its **counters** on its lane (`useEnemyCounters`, `utils/draft-counters.ts`: the enemy's own matchups from the active source read from the other side, ≥ 40 games, ranked on the enemy's Wilson ceiling, picked and banned champions left out — the top three with their win rate, games in the tooltip), the lane duel (lane win rate). The draft's item build weighs each item's games by its win rate shrunk toward the lane's (`winRateFactor` in `utils/draft-build.ts`, both the other-source build and TrueMain's step-by-step `next-item` read), opens on the core that wins most for its games, and reads a healer on the enemy team (`EnemySustain`) to take the anti-heal the source measured. While our pick is open: the ranked picks ("My pool" =
   ten most-mastered champions on the lane, or every champion on the lane), in the endpoint's order — blind safety before
   our lane opponent shows — each card leading with its strongest reason's figure (a delta in points or a rate, never the
   score) and that reason in one line under the name ("Safe blind", "vs Zed (likely)", "With Lulu (hover)"), every reason
@@ -659,6 +659,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   ranked only / every game, resolution (Native, 1440p, 1080p, 720p) and 30 / 60 fps with the shell's estimated size of
   an hour (labelled an estimate; none for Native), the disk budget (slider from the shell's minimum, space used) and the
   folder (shown, with a button to show it). Saved as changed, in order.
+- **Match badges** (dashboard match rows) — Blitz's tags graded from the game's scoreboard (`utils/match-badges.ts` → `MatchSummaryResponse.badges`, drawn by the shared `MatchRowBadges` between the build and the teams, rows 64 px with the kill participation under the KDA): Top damage / Team carry (DPM), Filthy rich, Penta/Quadra/Triple kill, CS god/legend/master (10/9/8 CS/min), Unkillable, All-seeing/Good eye (vision 2.5×/2× the minutes); none on a remake. The site sends no badges and draws none.
 - **Watch** (dashboard match rows) — on a game the library holds: its recap, or its clips once the full game is gone.
 - **Site sections** — the tier list, the champion directory, the matchup page, the truemains leaderboard and the
   favorites are **the site's own pages** (`PageTierList`, `PageChampions`, `PageMatchup`, `PageTruemains`,

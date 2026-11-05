@@ -12,7 +12,10 @@ import { isBoots } from '~/utils/blitz/builds'
  * and each step takes the item the source measured most, with weight added to
  * the ones that answer the team — magic resist against magic damage, armour
  * against physical, penetration against a frontline, Mercury's Treads against
- * crowd control. Only items the source measured for the champion are ever
+ * crowd control, anti-heal against a healer. An item's games are weighed by how
+ * it wins, too: its win rate against the lane's, shrunk toward the lane's by
+ * its sample, so a popular item that loses gives way to one that wins and a
+ * handful of lucky games moves nothing. Only items the source measured for the champion are ever
  * picked: the draft reorders the source's build, it never invents one.
  *
  * The pros weigh in too: the share of the latest pro and high-elo games on the
@@ -20,7 +23,7 @@ import { isBoots } from '~/utils/blitz/builds'
  * the same lane opponent counting double — adds weight to the items they build.
  */
 
-export type Axis = 'EnemyMagicDamage' | 'EnemyPhysicalDamage' | 'EnemyFrontline' | 'EnemyCrowdControl' | 'EnemyMelee' | 'OpponentMagicDamage'
+export type Axis = 'EnemyMagicDamage' | 'EnemyPhysicalDamage' | 'EnemyFrontline' | 'EnemyCrowdControl' | 'EnemyMelee' | 'EnemySustain' | 'OpponentMagicDamage'
 export interface Situation {
   axis: Axis
   bucket: 'High' | 'Low'
@@ -48,7 +51,29 @@ const PRO_WEIGHT = 0.4
  */
 const MISFIT_WEIGHT = 0.45
 /** An alternative is only considered with at least this share of the most played one's games: a handful of games is not a build. */
-const MIN_SHARE_OF_TOP = 0.06
+const MIN_SHARE_OF_TOP = 0.1
+/**
+ * The win rate's pull: an item's rate is shrunk toward the lane's by this many
+ * games of the lane's rate, then each point above it multiplies the weight by
+ * about `e^(WIN_RATE_WEIGHT/100)` — three points over the lane, ×1.3.
+ */
+const WIN_RATE_PRIOR = 250
+const WIN_RATE_WEIGHT = 9
+
+/** The win-rate factor of an option measured over `games` at `winRate`, against the lane's `baseline`. */
+export function winRateFactor(winRate: number, games: number, baseline: number): number {
+  if (!(games > 0) || !(winRate > 0)) return 1
+  const shrunk = (winRate * games + baseline * WIN_RATE_PRIOR) / (games + WIN_RATE_PRIOR)
+  return Math.exp(WIN_RATE_WEIGHT * (shrunk - baseline))
+}
+
+/** Champions whose kit heals enough that the enemy builds anti-heal into them, by Data Dragon alias. */
+const HEALERS = new Set([
+  'Aatrox', 'Briar', 'DrMundo', 'Fiddlesticks', 'Illaoi', 'Kayn', 'Nami', 'Olaf', 'Renekton', 'Senna', 'Seraphine',
+  'Sona', 'Soraka', 'Swain', 'Sylas', 'Vladimir', 'Volibear', 'Warwick', 'Yuumi', 'Zac', 'Maokai', 'Nasus', 'Trundle',
+])
+/** The finished items that carry Grievous Wounds. */
+const ANTI_HEAL = new Set([3033, 3075, 3165, 6609])
 
 const MERCURY = 3111
 const STEELCAPS = 3047
@@ -84,6 +109,8 @@ export function enemySituation(enemyIds: number[], champions: Map<number, Champi
   if (count(champion => champion.tags?.includes('Tank') ?? false) >= 2) situations.push({ axis: 'EnemyFrontline', bucket: 'High' })
   if (count(champion => (champion.tags?.includes('Tank') || champion.tags?.includes('Support')) ?? false) >= 3) situations.push({ axis: 'EnemyCrowdControl', bucket: 'High' })
   if (count(champion => (champion.attackRange ?? 500) <= 200) >= 4) situations.push({ axis: 'EnemyMelee', bucket: 'High' })
+  const healers = count(champion => HEALERS.has(champion.alias))
+  if (healers >= 1) situations.push({ axis: 'EnemySustain', bucket: 'High', strength: Math.min(1, healers / 2) })
   return situations
 }
 
@@ -93,6 +120,7 @@ function answers(itemId: number, situations: Situation[], items: Record<number, 
   const has = (axis: Axis, bucket: 'High' | 'Low' = 'High') => situations.find(situation => situation.axis === axis && situation.bucket === bucket) ?? null
   const magicOpponent = has('OpponentMagicDamage')
   const physicalOpponent = has('OpponentMagicDamage', 'Low')
+  if (ANTI_HEAL.has(itemId)) return has('EnemySustain')
   if (itemId === MERCURY) return has('EnemyCrowdControl') ?? has('EnemyMagicDamage') ?? magicOpponent
   if (itemId === STEELCAPS) return has('EnemyPhysicalDamage') ?? has('EnemyMelee') ?? physicalOpponent
   if (tags.includes('SpellBlock')) return has('EnemyMagicDamage') ?? magicOpponent
@@ -168,7 +196,8 @@ export interface SourceBuildStep {
 }
 
 /** The option the step settles on: the most played, unless one that answers the team, weighted, beats it. */
-function pick(options: ItemOption[], situations: Situation[], items: Record<number, StaticItemData>, skip: ReadonlySet<number>, ids: (option: ItemOption) => number[], pros: Map<number, number>, answerWeight = ANSWER_WEIGHT) {
+function pick(options: ItemOption[], situations: Situation[], items: Record<number, StaticItemData>, skip: ReadonlySet<number>, ids: (option: ItemOption) => number[], pros: Map<number, number>, baseline: number, answerWeight = ANSWER_WEIGHT) {
+  const wins = (option: ItemOption) => winRateFactor(option.winRate, option.games, baseline)
   const proBoost = (option: ItemOption) => {
     const shares = ids(option).map(id => pros.get(id) ?? 0)
     return 1 + PRO_WEIGHT * (shares.length ? shares.reduce((sum, share) => sum + share, 0) / shares.length : 0)
@@ -177,14 +206,14 @@ function pick(options: ItemOption[], situations: Situation[], items: Record<numb
   const top = [...usable].sort((a, b) => b.games - a.games)[0]
   if (!top) return null
   const topMisfit = ids(top).some(id => misfits(id, situations, items)) ? MISFIT_WEIGHT : 1
-  let best = { option: top, score: top.games * topMisfit * proBoost(top), reason: null as Situation | null }
+  let best = { option: top, score: top.games * topMisfit * proBoost(top) * wins(top), reason: null as Situation | null }
   for (const option of usable) {
     if (option.games < top.games * MIN_SHARE_OF_TOP) continue
     const reason = ids(option).map(id => answers(id, situations, items)).find(Boolean) ?? null
     // The answer weighs more the more one-sided the board: a barely-magic team adds half of it.
     const answered = reason ? 1 + (answerWeight - 1) * (0.5 + 0.5 * (reason.strength ?? 1)) : 1
     const misfit = ids(option).some(id => misfits(id, situations, items)) ? MISFIT_WEIGHT : 1
-    const score = option.games * answered * misfit * proBoost(option)
+    const score = option.games * answered * misfit * proBoost(option) * wins(option)
     if (score > best.score) best = { option, score, reason: option === top ? null : reason }
   }
   return best
@@ -195,7 +224,10 @@ const BUILD_ITEMS = 5
 
 export function draftBuildFromOptions(options: BuildOptions, situations: Situation[], items: Record<number, StaticItemData>, pros: Map<number, number> = new Map()): SourceBuildStep[] {
   const proOf = (itemId: number) => (pros.size ? pros.get(itemId) ?? 0 : null)
-  const boots = pick(options.boots, situations, items, new Set(), option => option.itemIds.slice(0, 1), pros, BOOTS_ANSWER_WEIGHT)
+  // The lane's win rate, as the cores measured it: what an item's is read against.
+  const coreGames = options.cores.reduce((sum, core) => sum + core.games, 0)
+  const baseline = coreGames ? options.cores.reduce((sum, core) => sum + core.winRate * core.games, 0) / coreGames : 0.5
+  const boots = pick(options.boots, situations, items, new Set(), option => option.itemIds.slice(0, 1), pros, baseline, BOOTS_ANSWER_WEIGHT)
 
   // Every completed item the source measured on the lane, with the games
   // behind it: the cores' items (a source's core can carry the boots —
@@ -203,13 +235,21 @@ export function draftBuildFromOptions(options: BuildOptions, situations: Situati
   // items it measured after them. The build is chosen from all of them, so an
   // item of the most played core that guards against the wrong damage can
   // give way to one the source measured later that answers the board.
-  const topCore = [...options.cores].sort((a, b) => b.games - a.games)[0] ?? null
-  const pool = new Map<number, number>()
-  const add = (itemId: number, games: number) => {
-    if (!isBoots(itemId)) pool.set(itemId, (pool.get(itemId) ?? 0) + games)
+  // The core the build opens on: among the ones played enough to be a build,
+  // the one whose games, weighed by how it wins, count the most.
+  const mostPlayed = Math.max(0, ...options.cores.map(core => core.games))
+  const topCore = options.cores
+    .filter(core => core.games >= mostPlayed * 0.25)
+    .map(core => ({ core, score: core.games * winRateFactor(core.winRate, core.games, baseline) }))
+    .sort((a, b) => b.score - a.score)[0]?.core ?? null
+  const pool = new Map<number, { games: number, wins: number }>()
+  const add = (itemId: number, option: ItemOption) => {
+    if (isBoots(itemId)) return
+    const held = pool.get(itemId) ?? { games: 0, wins: 0 }
+    pool.set(itemId, { games: held.games + option.games, wins: held.wins + option.winRate * option.games })
   }
-  for (const core of options.cores) for (const itemId of core.itemIds) add(itemId, core.games)
-  for (const group of options.followUps(topCore)) for (const option of group.options) for (const itemId of option.itemIds) add(itemId, option.games)
+  for (const core of options.cores) for (const itemId of core.itemIds) add(itemId, core)
+  for (const group of options.followUps(topCore)) for (const option of group.options) for (const itemId of option.itemIds) add(itemId, option)
 
   const steps: SourceBuildStep[] = []
   const chosen = new Set<number>()
@@ -218,12 +258,12 @@ export function draftBuildFromOptions(options: BuildOptions, situations: Situati
   const first = topCore?.itemIds.find(itemId => !isBoots(itemId) && !misfits(itemId, situations, items))
   if (first !== undefined) {
     chosen.add(first)
-    steps.push({ itemId: first, isBoots: false, games: pool.get(first) ?? topCore!.games, pros: proOf(first), reason: null })
+    steps.push({ itemId: first, isBoots: false, games: pool.get(first)?.games ?? topCore!.games, pros: proOf(first), reason: null })
   }
   const opensWithCore = first !== undefined
-  const candidates: ItemOption[] = [...pool].map(([itemId, games]) => ({ itemId, games, itemIds: [itemId], pickRate: 0, winRate: 0 } as ItemOption & { itemId: number }))
+  const candidates: ItemOption[] = [...pool].map(([itemId, { games, wins }]) => ({ itemIds: [itemId], games, pickRate: 0, winRate: games ? wins / games : 0 }))
   while (steps.length < BUILD_ITEMS) {
-    const next = pick(candidates, situations, items, chosen, option => option.itemIds, pros)
+    const next = pick(candidates, situations, items, chosen, option => option.itemIds, pros, baseline)
     if (!next) break
     const itemId = next.option.itemIds[0]!
     chosen.add(itemId)

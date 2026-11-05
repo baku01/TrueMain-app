@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { BuildOptions } from '~/utils/sources/model'
-import { draftBuildFromOptions, enemySituation, proShares } from '~/utils/draft-build'
+import { draftBuildFromOptions, enemySituation, proShares, winRateFactor } from '~/utils/draft-build'
 
 /**
  * The draft's build from another source (`utils/draft-build.ts`): the source's
@@ -49,6 +49,28 @@ describe('enemySituation', () => {
 })
 
 describe('draftBuildFromOptions', () => {
+  it('prefers boots that win over a slightly more popular pair that loses', () => {
+    const lopsided: BuildOptions = {
+      ...options,
+      boots: [{ games: 6000, winRate: 0.47, pickRate: 0.5, itemIds: [3020] }, { games: 5000, winRate: 0.54, pickRate: 0.4, itemIds: [3111] }],
+    }
+    expect(draftBuildFromOptions(lopsided, [], items).find(step => step.isBoots)?.itemId).toBe(3111)
+  })
+
+  it('does not trust a handful of lucky games', () => {
+    expect(winRateFactor(0.8, 20, 0.5)).toBeLessThan(1.3)
+    expect(winRateFactor(0.53, 5000, 0.5)).toBeGreaterThan(winRateFactor(0.6, 60, 0.5))
+    expect(winRateFactor(0.5, 1000, 0.5)).toBe(1)
+  })
+
+  it('reads a healer on the enemy team and takes the anti-heal the source measured', () => {
+    const healers = new Map([...champions, [9, { id: 9, alias: 'Soraka', name: 'Soraka', tags: ['Support'], info: { attack: 2, magic: 7, defense: 5 } }]])
+    const situation = enemySituation([4, 9], healers)
+    expect(situation.map(entry => entry.axis)).toContain('EnemySustain')
+    const steps = draftBuildFromOptions(options, [{ axis: 'EnemySustain', bucket: 'High', strength: 1 }], items)
+    expect(steps.find(step => step.itemId === 3075)?.reason?.axis).toBe('EnemySustain')
+  })
+
   it('keeps the source\'s most played items, in the order it measures them, when the draft asks nothing of it', () => {
     const steps = draftBuildFromOptions(options, [], items)
     // The most played core first, the boots second, then the items measured fourth, fifth, sixth.
