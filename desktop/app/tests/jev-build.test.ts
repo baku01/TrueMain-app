@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { JevSlot } from '~/utils/jev-build'
-import { plainAbility, questionsOf, settle, stateOf } from '~/utils/jev-build'
+import { decide, laidBuild, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
 
 const items = {
   3075: { id: 3075, name: 'Thornmail', tags: ['Armor', 'Health'] },
@@ -15,7 +15,7 @@ const items = {
 const slot = (name: string, ids: number[]): JevSlot => ({
   name,
   instructions: name,
-  options: ids.map((id, index) => ({ key: `o${index}`, itemIds: [id], label: items[id]?.name ?? String(id), games: 100, winRate: 0.5 })),
+  options: ids.map((id, index) => ({ key: `o${index}`, itemIds: [id], label: items[id]?.name ?? String(id), games: 100, pickRate: 0.1, winRate: 0.5 })),
 })
 const answer = (probabilities: Record<string, number>) => ({ type: 'choice' as const, choice: Object.entries(probabilities).sort((a, b) => b[1] - a[1])[0]![0], confidence: 0.6, probabilities })
 
@@ -23,20 +23,27 @@ describe('questionsOf', () => {
   it('asks each slot with more than one option, every option with its measure', () => {
     const questions = questionsOf([slot('item4', [3075, 3065]), slot('item5', [3071])])
     expect(Object.keys(questions)).toEqual(['item4'])
-    expect(questions.item4!.criteria.o1).toBe('Spirit Visage (100 games, 50.0% win rate)')
+    expect(questions.item4!.criteria.o1).toBe('Spirit Visage (100 games, 10.0% pick rate, 50.0% win rate)')
   })
 })
 
-describe('settle', () => {
-  it('takes Jev\'s pick, the next most probable when it repeats an item or is a fourth pure defence', () => {
-    const picks = settle(
-      [slot('item4', [4401, 3065]), slot('item5', [4401, 3071]), slot('item6', [3143, 6333])],
-      { item4: answer({ o0: 0.7, o1: 0.3 }), item5: answer({ o0: 0.8, o1: 0.2 }), item6: answer({ o0: 0.9, o1: 0.1 }) },
-      items,
-      [3075, 3065],
-    )
-    expect(picks.map(pick => pick.option.itemIds[0])).toEqual([4401, 3071, 6333])
-    expect(picks.map(pick => pick.overruled)).toEqual([false, true, true])
+describe('decide and laidBuild', () => {
+  it('takes Jev\'s pick as it is, keeps the source\'s most played beside it, and lays the boots where Jev times them', () => {
+    const core: JevSlot = { name: 'core', instructions: '', options: [{ key: 'o0', itemIds: [3071, 6333], label: 'BC > DD', games: 900, pickRate: 0.4, winRate: 0.5 }, { key: 'o1', itemIds: [3143, 3075], label: 'R > T', games: 50, pickRate: 0.02, winRate: 0.55 }] }
+    const boots: JevSlot = { name: 'boots', instructions: '', options: [{ key: 'o0', itemIds: [3047], label: 'Steelcaps', games: 800, pickRate: 0.6, winRate: 0.47 }, { key: 'o1', itemIds: [3111], label: 'Mercury', games: 400, pickRate: 0.3, winRate: 0.5 }] }
+    const timing: JevSlot = { name: 'bootsAfter', instructions: '', options: [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], label: String(after), games: 0, pickRate: 0, winRate: 0 })) }
+    const decisions = [
+      decide(core, answer({ o0: 0.2, o1: 0.8 })),
+      decide(boots, answer({ o0: 0.1, o1: 0.9 })),
+      decide(timing, answer({ o0: 0.7, o1: 0.2, o2: 0.1 })),
+    ]
+    expect(decisions.map(entry => [entry.jev.key, entry.standard.key])).toEqual([['o1', 'o0'], ['o1', 'o0'], ['o0', 'o0']])
+    expect(laidBuild(decisions, 'jev', [4401]).order).toEqual([3111, 3143, 3075, 4401])
+    expect(laidBuild(decisions, 'standard', [3065]).order).toEqual([3047, 3071, 6333, 3065])
+  })
+
+  it('takes a single option when Jev was not asked', () => {
+    expect(decide(slot('item4', [4401]), undefined).jev.itemIds).toEqual([4401])
   })
 })
 
@@ -56,7 +63,7 @@ describe('stateOf', () => {
       abilities: new Map([[266, [{ key: 'Q', name: 'The Darkin Blade', description: 'Deals <physicalDamage>physical damage</physicalDamage>.' }]], [99, [{ key: 'Q', name: 'Light Binding', description: 'Roots two enemies.' }]]]),
       lane: { games: 900, winRate: 0.48, laneWinRate: 0.45, goldDiffAt15: -210 },
     })
-    expect(state).toContain('Laning phase: the boots and the first item are bought while laning against Aatrox')
+    expect(state).toContain('Laning phase: the starter, the boots and the first item are bought while laning against Aatrox')
     expect(state).toContain('Q The Darkin Blade: Deals physical damage.')
     expect(state).toContain('900 games, 48.0% game win rate, 45.0% of decided lanes won, -210 gold difference at 15 minutes')
     expect(state).toContain('Lux:\n  Q Light Binding: Roots two enemies.')

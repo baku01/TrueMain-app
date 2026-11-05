@@ -1,27 +1,27 @@
 import type { CompositionBuildRequest } from '~/types/build'
-import type { JevPick } from '~/utils/jev-build'
-import type { SourceBuildStep } from '~/utils/draft-build'
+import type { JevDecision, LaidBuild, Names } from '~/utils/jev-build'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { firstSlots, laterSlots, questionsOf, settle, stateOf } from '~/utils/jev-build'
-import { draftBuildFromOptions, enemySituation } from '~/utils/draft-build'
+import { decide, firstSlots, laidBuild, laterSlot, laterSlotNumbers, questionsOf, stateOf } from '~/utils/jev-build'
+import { enemySituation } from '~/utils/draft-build'
 import { activeProvider } from '~/utils/sources'
 
 export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noSource' | 'noOptions' | 'error'
 
 /**
- * The Jev matchup page's build and runes for a draft (`utils/jev-build`), asked
- * on the player's click — each ask is a paid call. Two calls: the core, boots,
- * runes and spells first; then the items after the core it picked, told what
- * is already in the build. Beside it, the app's own rules on the same options
- * (`draftBuildFromOptions`), to compare.
+ * The Jev matchup page's build (`utils/jev-build`), asked on the player's click
+ * — each ask is paid. One call for the runes, spells, starter, skills, boots,
+ * when to buy them and the core path; then one per item after the core Jev
+ * picked, told what is already in the build. Jev's picks are taken as they
+ * are; beside them, the source's most played option of every slot.
  */
 export function useJevBuild(subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>) {
   const { champions } = useChampionStatics()
   const { items, summoners, runeTree, loadChampion, championStatic } = useStaticData()
   const status = ref<JevStatus>('idle')
   const error = ref<string | null>(null)
-  const picks = ref<JevPick[]>([])
-  const rules = ref<SourceBuildStep[]>([])
+  const decisions = ref<JevDecision[]>([])
+  const jevBuild = ref<LaidBuild | null>(null)
+  const standardBuild = ref<LaidBuild | null>(null)
   const elapsedMs = ref<number | null>(null)
   let generation = 0
 
@@ -29,8 +29,9 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
   watch(subject, () => {
     generation++
     status.value = 'idle'
-    picks.value = []
-    rules.value = []
+    decisions.value = []
+    jevBuild.value = null
+    standardBuild.value = null
   }, { deep: true })
 
   async function ask() {
@@ -53,40 +54,62 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         Promise.all(enemyIds.map(id => loadChampion(id).catch(() => {}))),
       ])
       if (mine !== generation) return
-      // Each enemy's passive and abilities, as Data Dragon words them: what they deal, how they lock down.
-      const abilities = new Map(enemyIds.map(id => [id, Object.values(championStatic(id)?.championSpells ?? {}).map(spell => ({ key: spell.key, name: spell.name, description: spell.description ?? '' }))]))
-      const versus = matchups?.matchups.find(row => row.opponentChampionId === opponentId) ?? null
-      const lane = versus ? { games: versus.games, winRate: versus.winRate, laneWinRate: versus.laneWinRate, goldDiffAt15: versus.averageGoldDiffAt15 } : null
       if (!options || !options.cores.length) return void (status.value = 'noOptions')
 
       const byId = (id: number) => champions.value.get(id)
-      const enemies = request.enemies.map(enemy => byId(enemy.championId)).filter(champion => !!champion)
-      const allies = request.allies.map(ally => byId(ally.championId)).filter(champion => !!champion)
-      const situations = enemySituation(request.enemies.map(enemy => enemy.championId), champions.value, opponentId)
-      rules.value = draftBuildFromOptions(options, situations, items.value)
-
-      const tree = runeTree.value
-      const names = {
-        perk: (id: number) => tree?.perks[id]?.name ?? `Rune ${id}`,
-        style: (id: number) => tree?.perkStyles[id]?.name ?? `Tree ${id}`,
-        spell: (id: number) => summoners.value[id]?.name ?? `Spell ${id}`,
+      const versus = matchups?.matchups.find(row => row.opponentChampionId === opponentId) ?? null
+      const base = {
+        champion: byId(championId),
+        position: request.position,
+        opponent: opponentId ? byId(opponentId) : undefined,
+        enemies: enemyIds.map(byId).filter(champion => !!champion),
+        allies: request.allies.map(ally => byId(ally.championId)).filter(champion => !!champion),
+        situations: enemySituation(enemyIds, champions.value, opponentId),
+        games: options.games,
+        // Each enemy's passive and abilities, as Data Dragon words them.
+        abilities: new Map(enemyIds.map(id => [id, Object.values(championStatic(id)?.championSpells ?? {}).map(spell => ({ key: spell.key, name: spell.name, description: spell.description ?? '' }))])),
+        lane: versus ? { games: versus.games, winRate: versus.winRate, laneWinRate: versus.laneWinRate, goldDiffAt15: versus.averageGoldDiffAt15 } : null,
       }
-      const base = { champion: byId(championId), position: request.position, opponent: opponentId ? byId(opponentId) : undefined, enemies, allies, situations, games: options.games, abilities, lane }
+      const tree = runeTree.value
+      const names: Names = {
+        item: id => items.value[id]?.name ?? `Item ${id}`,
+        perk: id => tree?.perks[id]?.name ?? `Rune ${id}`,
+        style: id => tree?.perkStyles[id]?.name ?? `Tree ${id}`,
+        spell: id => summoners.value[id]?.name ?? `Spell ${id}`,
+      }
 
-      const first = firstSlots(options, items.value, names)
+      const first = firstSlots(options, names)
       const firstAnswers = await askJev(stateOf(base), questionsOf(first))
       if (mine !== generation) return
-      const firstPicks = settle(first, firstAnswers, items.value)
+      const made = first.map(slot => decide(slot, firstAnswers[slot.name]))
 
-      const coreSlot = firstPicks.find(pick => pick.slot.name === 'core')
-      const core = coreSlot ? options.cores[Number(coreSlot.option.key.slice(1))] ?? null : null
-      const taken = firstPicks.flatMap(pick => pick.option.itemIds)
-      const later = laterSlots(options, core, taken, items.value)
-      const laterAnswers = later.length
-        ? await askJev(stateOf({ ...base, taken: firstPicks.filter(pick => pick.option.itemIds.length).map(pick => pick.option.label) }), questionsOf(later))
-        : {}
-      if (mine !== generation) return
-      picks.value = [...firstPicks, ...settle(later, laterAnswers, items.value, taken)]
+      // The items after the core, slot by slot, each asked knowing what Jev has put in the build so far.
+      const coreOf = (side: 'jev' | 'standard') => {
+        const core = made.find(entry => entry.slot.name === 'core')
+        return core ? options.cores[Number(core[side].key.slice(1))] ?? null : null
+      }
+      const heldBy = (side: 'jev' | 'standard') => made.flatMap(entry => (entry.slot.name === 'core' || entry.slot.name === 'boots' ? entry[side].itemIds : []))
+      const jevLater: number[] = []
+      for (const slotNumber of laterSlotNumbers(options, coreOf('jev'))) {
+        const slot = laterSlot(options, coreOf('jev'), slotNumber, [...heldBy('jev'), ...jevLater], names)
+        if (!slot) continue
+        const answers = slot.options.length > 1
+          ? await askJev(stateOf({ ...base, taken: [...heldBy('jev'), ...jevLater].map(names.item) }), questionsOf([slot]))
+          : {}
+        if (mine !== generation) return
+        const decision = decide(slot, answers[slot.name])
+        jevLater.push(...decision.jev.itemIds)
+        made.push(decision)
+      }
+      const standardLater: number[] = []
+      for (const slotNumber of laterSlotNumbers(options, coreOf('standard'))) {
+        const slot = laterSlot(options, coreOf('standard'), slotNumber, [...heldBy('standard'), ...standardLater], names)
+        if (slot) standardLater.push(...slot.options[0]!.itemIds)
+      }
+
+      decisions.value = made
+      jevBuild.value = laidBuild(made, 'jev', jevLater)
+      standardBuild.value = laidBuild(made, 'standard', standardLater)
       elapsedMs.value = Math.round(performance.now() - started)
       status.value = 'ready'
     }
@@ -97,5 +120,5 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     }
   }
 
-  return { status, error, picks, rules, elapsedMs, ask }
+  return { status, error, decisions, jevBuild, standardBuild, elapsedMs, ask }
 }
