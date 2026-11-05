@@ -6,7 +6,7 @@
 //! read, nothing written after a failed read — live in `lcu::item_sets` and
 //! `LcuClient::import_item_set`; this is the command the button calls.
 
-use lcu::{BuildItems, Error, ItemSetDraft, NamedBlock};
+use lcu::{BuildItems, Error, ItemSetDraft, LcuClient, NamedBlock};
 
 use crate::record::SharedClient;
 
@@ -78,6 +78,53 @@ const RECOMMENDED_PREFIX: &str = "!!!truemain-";
 /// 4999, so ours start far above them, the selected build first.
 const RECOMMENDED_RANK: i64 = 1_000_000_000;
 
+/// The game's `Config/Global/Recommended` folders, where the game is: the
+/// client says where it is installed (a client that does not falls back to
+/// the default install), and Garena's builds keep the config in a sibling
+/// `Game` folder.
+async fn recommended_folders(client: &LcuClient) -> Vec<std::path::PathBuf> {
+    let install = std::path::PathBuf::from(client.install_dir().await.unwrap_or_else(|_| {
+        if cfg!(target_os = "macos") {
+            "/Applications/League of Legends.app/Contents/LoL".to_string()
+        } else {
+            r"C:\Riot Games\League of Legends".to_string()
+        }
+    }));
+    [install.join("Config"), install.join("../Game/Config")]
+        .into_iter()
+        .filter(|root| root.is_dir())
+        .map(|root| root.join("Global").join("Recommended"))
+        .collect()
+}
+
+/// Our own recommended files out of `folder` (`!!!truemain-*.json`); the
+/// player's sets and other apps' files stay.
+fn remove_recommended(folder: &std::path::Path) {
+    if let Ok(entries) = std::fs::read_dir(folder) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with(RECOMMENDED_PREFIX) && name.ends_with(".json") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
+/// When a game ends, the item sets this app wrote for it go, as Blitz's do:
+/// the TrueMain set in the account's list (`LcuClient::remove_item_sets`)
+/// and the automatic import's recommended files. The next draft writes its
+/// own; between games the shop lists none of ours.
+pub async fn clear_after_game(client: std::sync::Arc<LcuClient>) {
+    match client.remove_item_sets().await {
+        Ok(removed) => tracing::debug!(removed, "item set cleared after the game"),
+        Err(error) => tracing::warn!(%error, "could not clear the item set after the game"),
+    }
+    for folder in recommended_folders(&client).await {
+        remove_recommended(&folder);
+    }
+}
+
 /// The automatic import's item sets (`useDraftAutoImport`), written the way
 /// Blitz writes its own: as recommended-set files in the game's
 /// `Config/Global/Recommended`, so the shop opens on them in game — the build
@@ -95,29 +142,10 @@ pub async fn write_recommended_item_sets(
         .expect("client lock poisoned")
         .clone()
         .ok_or_else(|| "the League client is not running".to_string())?;
-    // The client says where it is installed; a client that does not falls back to the default install.
-    let install = std::path::PathBuf::from(client.install_dir().await.unwrap_or_else(|_| {
-        if cfg!(target_os = "macos") {
-            "/Applications/League of Legends.app/Contents/LoL".to_string()
-        } else {
-            r"C:\Riot Games\League of Legends".to_string()
-        }
-    }));
-    // The game's config sits under the install directory; Garena's builds keep it in a sibling `Game` folder.
-    let roots = [install.join("Config"), install.join("../Game/Config")];
     let mut written = false;
-    for root in roots.iter().filter(|root| root.is_dir()) {
-        let folder = root.join("Global").join("Recommended");
+    for folder in recommended_folders(&client).await {
         std::fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
-        if let Ok(entries) = std::fs::read_dir(&folder) {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let name = name.to_string_lossy();
-                if name.starts_with(RECOMMENDED_PREFIX) && name.ends_with(".json") {
-                    let _ = std::fs::remove_file(entry.path());
-                }
-            }
-        }
+        remove_recommended(&folder);
         for (index, set) in sets.iter().enumerate() {
             let mut set = set.clone();
             if let Some(object) = set.as_object_mut() {
@@ -139,6 +167,6 @@ pub async fn write_recommended_item_sets(
     if written {
         Ok(())
     } else {
-        Err(format!("no game config folder under {}", install.display()))
+        Err("no game config folder in the League install".to_string())
     }
 }

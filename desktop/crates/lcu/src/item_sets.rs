@@ -230,6 +230,16 @@ pub fn plan_item_set_import(
     planned
 }
 
+/// The list with our sets taken out, every other set as read and where it
+/// was: what the end of a game writes back (`LcuClient::remove_item_sets`).
+pub fn without_ours(existing: &[Value]) -> Vec<Value> {
+    existing
+        .iter()
+        .filter(|set| !is_ours(set))
+        .cloned()
+        .collect()
+}
+
 /// The uids of the player's own sets, in order — what must read the same
 /// before and after an import.
 pub fn players_set_uids(sets: &[Value]) -> Vec<Option<String>> {
@@ -416,6 +426,18 @@ mod tests {
         let planned = plan_item_set_import(&existing, &draft(), "fresh");
         assert_eq!(&planned[..4], &existing[..]);
         assert_eq!(players_set_uids(&planned), players_set_uids(&existing));
+    }
+
+    #[test]
+    fn clearing_takes_out_only_our_sets_and_keeps_the_players_in_place() {
+        let existing = vec![
+            json!({ "uid": "a", "title": "Mine" }),
+            json!({ "uid": "ours", "title": "TrueMain: Ahri", "blocks": [] }),
+            json!({ "uid": "b", "title": "Also mine", "blocks": [{ "type": "x" }] }),
+        ];
+        let cleared = without_ours(&existing);
+        assert_eq!(cleared, vec![existing[0].clone(), existing[2].clone()]);
+        assert_eq!(players_set_uids(&cleared), players_set_uids(&existing));
     }
 
     #[test]

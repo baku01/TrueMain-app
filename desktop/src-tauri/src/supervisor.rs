@@ -79,6 +79,16 @@ fn in_game(state: &AppState) -> bool {
     state.screen() == Screen::InGame
 }
 
+/// Whether the phase left a running game for its end: the moment the item
+/// sets written for that game are taken out (`itemsets::clear_after_game`).
+fn game_ended(before: GameflowPhase, after: GameflowPhase) -> bool {
+    before == GameflowPhase::InProgress
+        && matches!(
+            after,
+            GameflowPhase::WaitingForStats | GameflowPhase::PreEndOfGame | GameflowPhase::EndOfGame
+        )
+}
+
 /// Run until the app exits.
 pub async fn run(app: AppHandle, shared: SharedState, client: SharedClient) {
     // Development only: a champion select played by hand on the dev server's
@@ -201,7 +211,11 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
             }
         };
         let Some(event) = event else { break };
+        let before = state.phase;
         let mut changed = state.apply(&event);
+        if game_ended(before, state.phase) {
+            tokio::spawn(crate::itemsets::clear_after_game(client.clone()));
+        }
 
         // Recorded before the `changed` test: an event the state ignores today
         // is still part of what the client sent, and a tape that dropped it
@@ -388,4 +402,33 @@ fn replay_speed() -> f64 {
         .and_then(|raw| raw.parse::<f64>().ok())
         .filter(|speed| *speed >= 0.0)
         .unwrap_or(1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_game_ends_when_the_phase_leaves_it_for_its_end_only() {
+        assert!(game_ended(
+            GameflowPhase::InProgress,
+            GameflowPhase::WaitingForStats
+        ));
+        assert!(game_ended(
+            GameflowPhase::InProgress,
+            GameflowPhase::EndOfGame
+        ));
+        assert!(!game_ended(
+            GameflowPhase::InProgress,
+            GameflowPhase::InProgress
+        ));
+        assert!(!game_ended(
+            GameflowPhase::ChampSelect,
+            GameflowPhase::InProgress
+        ));
+        assert!(!game_ended(
+            GameflowPhase::WaitingForStats,
+            GameflowPhase::EndOfGame
+        ));
+    }
 }
