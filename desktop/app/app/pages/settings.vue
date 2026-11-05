@@ -15,6 +15,7 @@ const { t } = useT()
       <SettingsDataWindow />
       <SettingsAutoImport />
       <SettingsGraphics />
+      <SettingsJev />
       <!-- Riot's legal notice: here, once, rather than at every page's foot. -->
       <RiotDisclaimer compact class="pt-2 text-center" />
     </div>
