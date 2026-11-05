@@ -22,6 +22,8 @@ const checksOf = (checks: JevChecks) => [
   { key: 'kit', value: checks.kit },
   ...(checks.lane !== null ? [{ key: 'lane', value: checks.lane }] : []),
 ]
+const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
+const wpaTone = (value: number) => (value >= 0.01 ? 'bg-primary/15 text-primary' : value <= -0.01 ? 'bg-error/10 text-error' : 'bg-accented/50 text-muted')
 const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first') : t('jev.after.item', { item: option.after ?? 0 }))
 </script>
 
@@ -81,6 +83,11 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
 
           <span v-if="option.games" class="text-[13px] font-semibold tabular-nums" :class="tone(option.winRate)">{{ formatPercentage(option.winRate, 1) }}</span>
           <span v-if="option.games" class="whitespace-nowrap text-[10px] tabular-nums text-dimmed">{{ formatPercentage(option.pickRate, 1) }} · {{ compact.format(option.games) }}</span>
+          <!-- What the item adds to the win probability (Blitz): on the lane, and against the lane opponent. -->
+          <span v-if="option.wpa !== null && option.wpa !== undefined" class="flex flex-wrap justify-center gap-1 text-[9px] font-semibold tabular-nums">
+            <span class="rounded px-1 py-px" :class="wpaTone(option.wpa)" :title="t('jev.card.wpaHint')">WPA {{ signed(option.wpa) }}</span>
+            <span v-if="option.vsWpa !== null && option.vsWpa !== undefined" class="rounded px-1 py-px" :class="wpaTone(option.vsWpa)" :title="t('jev.card.vsWpaHint', { games: option.vsGames ?? 0 })">{{ t('jev.card.vs') }} {{ signed(option.vsWpa) }}</span>
+          </span>
           <!-- Jev's yes/no checks of this option: its kit, the enemy team, the lane. -->
           <span v-if="decision.answer?.checks?.[option.key]" class="flex flex-wrap justify-center gap-1 text-[9px] font-semibold tabular-nums">
             <span v-for="check in checksOf(decision.answer.checks[option.key]!)" :key="check.key" class="rounded px-1 py-px" :class="check.value >= 0.6 ? 'bg-primary/15 text-primary' : check.value <= 0.35 ? 'bg-error/10 text-error' : 'bg-accented/50 text-muted'" :title="t(`jev.check.${check.key}.hint`)">

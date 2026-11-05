@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { JevSlot } from '~/utils/jev-build'
-import { confidenceOf, decide, draftNeeds, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, questionsOf, reliable, stateOf } from '~/utils/jev-build'
+import { confidenceOf, decide, draftNeeds, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, questionsOf, reliable, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
 
 const items = {
   3075: { id: 3075, name: 'Thornmail', tags: ['Armor', 'Health'] },
@@ -142,5 +142,31 @@ describe('situational answers', () => {
     const names = { item: (id: number) => `#${id}`, perk: String, style: String, spell: String, itemEffect: () => '', perkEffect: () => '', spellEffect: () => '' }
     const slot = laterSlot(options, core, 4, [3142, 6691], names, ask, { pool: measuredPool(options), answersDraft: id => id === 3071 })!
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[6694, false], [3814, false], [3071, true]])
+  })
+})
+
+describe('win probability added', () => {
+  const two: JevSlot = { name: 'item4', instructions: '', kind: 'checks', lane: false, options: [
+    { key: 'o0', itemIds: [6694], label: 'Serylda', games: 400, pickRate: 0.3, winRate: 0.5 },
+    { key: 'o1', itemIds: [3071], label: 'Black Cleaver', games: 400, pickRate: 0.2, winRate: 0.5 },
+  ] }
+  const stat = (wpa: number, games = 200) => ({ games, winRate: 0.5, wpa })
+  const noul = (value: number) => ({ type: 'noul' as const, noul: value })
+  const even = { item4__o0__kit: noul(0.7), item4__o0__draft: noul(0.7), item4__o1__kit: noul(0.7), item4__o1__draft: noul(0.7) }
+
+  it('annotates each item option with its lane and matchup WPA, and tells Jev', () => {
+    const [slot] = withItemStats([two], new Map([[6694, stat(-0.01)], [3071, stat(0.02)]]), new Map([[3071, stat(0.05, 90)]]))
+    expect(slot!.options.map(option => [option.wpa, option.vsWpa, option.vsGames])).toEqual([[-0.01, null, 0], [0.02, 0.05, 90]])
+    expect((questionsOf([slot!], ask).item4__o1__draft as { instructions: string }).instructions).toContain('[on this lane it adds +2.0% win probability; against Aatrox (Fighter) it adds +5.0% over 90 games]')
+  })
+
+  it('lets the measured effect tip checks that tie', () => {
+    const [slot] = withItemStats([two], new Map([[6694, stat(-0.01)], [3071, stat(0.03)]]), new Map())
+    expect(decide(slot!, even).jev.key).toBe('o1')
+  })
+
+  it('joins the item stats to the measured pool, completed items only', () => {
+    const pool = statsPool(new Map([[3071, stat(0.02, 108)], [1036, stat(0.1, 500)]]), [{ itemIds: [6694], games: 300, winRate: 0.5, pickRate: 0.1 }], id => id !== 1036)
+    expect(pool.map(option => option.itemIds[0])).toEqual([6694, 3071])
   })
 })

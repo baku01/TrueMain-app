@@ -3,6 +3,7 @@ import type { Champion } from '~/composables/useChampionStatics'
 import type { BuildOptions, ItemOption, Measure, RunePageIds } from '~/utils/sources/model'
 import type { Situation } from '~/utils/draft-build'
 import type { JevAnswer, JevQuestion } from '~/utils/jev'
+import type { ItemStat } from '~/utils/blitz/item-stats'
 import { isBoots } from '~/utils/blitz/builds'
 
 /**
@@ -40,6 +41,11 @@ export interface JevOption extends Measure {
   effect?: string
   /** Not measured in this slot: added from the champion's measured items because it answers the draft. */
   situational?: boolean
+  /** Win probability added on the lane (Blitz's item stats), the option's items averaged; null where unmeasured. */
+  wpa?: number | null
+  /** The same against the lane opponent, when the matchup has the games. */
+  vsWpa?: number | null
+  vsGames?: number
 }
 
 export interface JevSlot {
@@ -226,6 +232,41 @@ export function measuredPool(options: BuildOptions): ItemOption[] {
   return [...pool].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))
 }
 
+/**
+ * The champion's items as Blitz's item stats measure them on the lane — every
+ * completed item it was seen finishing, its own paths' or not — in the shape of
+ * an option, joined to the source's measured pool (the larger sample kept).
+ */
+export function statsPool(stats: Map<number, ItemStat>, measured: ItemOption[], completed: (id: number) => boolean): ItemOption[] {
+  const pool = new Map(measured.map(option => [option.itemIds[0]!, option]))
+  for (const [id, stat] of stats) {
+    if (!completed(id) || isBoots(id)) continue
+    const known = pool.get(id)
+    if (!known || known.games < stat.games) pool.set(id, { itemIds: [id], games: stat.games, winRate: stat.winRate, pickRate: known?.pickRate ?? 0 })
+  }
+  return [...pool.values()]
+}
+
+/** Each item option's win probability added, on the lane and against the lane opponent, its items averaged. */
+export function withItemStats(slots: JevSlot[], lane: Map<number, ItemStat>, versus: Map<number, ItemStat>): JevSlot[] {
+  const average = (ids: number[], stats: Map<number, ItemStat>) => {
+    const known = ids.map(id => stats.get(id)).filter(stat => !!stat)
+    return known.length ? { wpa: known.reduce((sum, stat) => sum + stat.wpa, 0) / known.length, games: Math.min(...known.map(stat => stat.games)) } : null
+  }
+  return slots.map(slot => (slot.kind !== 'checks'
+    ? slot
+    : {
+        ...slot,
+        options: slot.options.map((option) => {
+          const onLane = average(option.itemIds, lane)
+          const against = average(option.itemIds, versus)
+          return { ...option, wpa: onLane?.wpa ?? null, vsWpa: against?.wpa ?? null, vsGames: against?.games ?? 0 }
+        }),
+      }))
+}
+
+const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
+
 /** How many of the draft's answers a later slot may add to what the source measured in it. */
 const SITUATIONAL = 2
 
@@ -285,7 +326,11 @@ export function questionsOf(slots: JevSlot[], ask: Ask): Record<string, JevQuest
       continue
     }
     for (const option of slot.options) {
-      const what = `"${option.label}"${option.effect ? ` (${option.effect})` : ''}`
+      const measures = [
+        option.wpa !== null && option.wpa !== undefined ? `on this lane it adds ${signed(option.wpa)} win probability` : '',
+        option.vsWpa !== null && option.vsWpa !== undefined && (option.vsGames ?? 0) >= MIN_GAMES ? `against ${ask.opponent} it adds ${signed(option.vsWpa)} over ${option.vsGames} games` : '',
+      ].filter(Boolean).join('; ')
+      const what = `"${option.label}"${option.effect ? ` (${option.effect})` : ''}${measures ? ` [${measures}]` : ''}`
       const at = `${slot.name}${CHECK}${option.key}${CHECK}`
       questions[`${at}kit`] = {
         type: 'noul',
@@ -307,6 +352,20 @@ export function questionsOf(slots: JevSlot[], ask: Ask): Record<string, JevQuest
     }
   }
   return questions
+}
+
+/**
+ * What the item's measured effect adds to Jev's checks: its win probability
+ * added — against the lane opponent when the matchup has the games, blended
+ * with the lane's — as a factor around 1: four points of win probability make
+ * the option weigh about 1.4 times, held between 0.6 and 1.6.
+ */
+function wpaFactor(option: JevOption): number {
+  const versus = option.vsWpa !== null && option.vsWpa !== undefined && (option.vsGames ?? 0) >= MIN_GAMES ? option.vsWpa : null
+  const lane = option.wpa ?? null
+  const wpa = versus !== null ? (lane !== null ? 0.6 * versus + 0.4 * lane : versus) : lane
+  if (wpa === null) return 1
+  return Math.min(1.6, Math.max(0.6, Math.exp(8 * wpa)))
 }
 
 /** How many games a measure needs to be trusted half: the sample's weight is `games / (games + this)`. */
@@ -338,7 +397,7 @@ function verdictOfChecks(slot: JevSlot, answers: Record<string, JevAnswer>): Jev
     if (kit === null || draft === null) return 0
     checks[option.key] = { kit, draft, lane }
     const fit = lane === null ? 0.55 * draft + 0.45 * kit : 0.4 * draft + 0.35 * kit + 0.25 * lane
-    return fit * (option.games / (option.games + SAMPLE_HALF))
+    return fit * (option.games / (option.games + SAMPLE_HALF)) * wpaFactor(option)
   })
   const total = scores.reduce((sum, score) => sum + score, 0)
   if (total <= 0) return null

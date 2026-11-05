@@ -1,7 +1,8 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevDecision, LaidBuild, Names } from '~/utils/jev-build'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
+import { decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, stateOf, statsPool, withItemStats } from '~/utils/jev-build'
+import { readItemStats } from '~/utils/blitz/item-stats'
 import { answers, enemySituation } from '~/utils/draft-build'
 import { activeProvider } from '~/utils/sources'
 
@@ -48,9 +49,12 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const { request, championId } = current
       const opponentId = request.enemies.find(enemy => enemy.position === request.position)?.championId ?? null
       const enemyIds = request.enemies.map(enemy => enemy.championId)
-      const [options, matchups] = await Promise.all([
+      const [options, matchups, laneStats, versusStats] = await Promise.all([
         provider.options(championId, request.position, opponentId),
         opponentId ? provider.matchups(championId, { position: request.position, opponent: opponentId }).catch(() => null) : null,
+        // What each item adds to the win probability, on the lane and against the lane opponent (Blitz's item stats).
+        readItemStats(championId, request.position).catch(() => new Map()),
+        opponentId ? readItemStats(championId, request.position, opponentId).catch(() => new Map()) : new Map(),
         Promise.all(enemyIds.map(id => loadChampion(id).catch(() => {}))),
       ])
       if (mine !== generation) return
@@ -87,7 +91,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         needs: draftNeeds(base.enemies),
       }
 
-      const first = firstSlots(options, names, ask)
+      const first = withItemStats(firstSlots(options, names, ask), laneStats, versusStats)
       const firstAnswers = await askJev(stateOf(base), questionsOf(first, ask))
       if (mine !== generation) return
       const made = first.map(slot => decide(slot, firstAnswers))
@@ -102,10 +106,17 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       // then each slot settled in order, an item already in the build left out.
       const jevLater: number[] = []
       // A slot's measured options, and the items of the champion's measured pool that answer this draft.
-      const situational = { pool: measuredPool(options), answersDraft: (id: number) => answers(id, base.situations, items.value) !== null }
-      const laterSlots = laterSlotNumbers(options, coreOf('jev'))
+      const completed = (id: number) => {
+        const item = items.value[id]
+        return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
+      }
+      const situational = {
+        pool: statsPool(laneStats, measuredPool(options), completed),
+        answersDraft: (id: number) => answers(id, base.situations, items.value) !== null,
+      }
+      const laterSlots = withItemStats(laterSlotNumbers(options, coreOf('jev'))
         .map(slotNumber => laterSlot(options, coreOf('jev'), slotNumber, heldBy('jev'), names, ask, situational))
-        .filter(slot => slot !== null)
+        .filter(slot => slot !== null), laneStats, versusStats)
       const laterAnswers = laterSlots.length
         ? await askJev(stateOf({ ...base, taken: heldBy('jev').map(names.item) }), questionsOf(laterSlots, ask))
         : {}
