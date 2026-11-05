@@ -61,10 +61,10 @@ export function useJevPick(subject: Ref<PickSubject | null>) {
       const texts = (ids: number[], chars: number) => ids.map(id => textOf(id, chars)).filter(text => !!text)
       const request = pickRequest({
         position: current.position,
-        opponent: current.opponentId ? textOf(current.opponentId, 220) : null,
-        allies: texts(current.allies, 140),
-        enemies: texts(enemyIds.filter(id => id !== current.opponentId), 160),
-        candidates: texts(candidates.map(candidate => candidate.championId), 220),
+        opponent: current.opponentId ? textOf(current.opponentId, 360) : null,
+        allies: texts(current.allies, 260),
+        enemies: texts(enemyIds.filter(id => id !== current.opponentId), 260),
+        candidates: texts(candidates.map(candidate => candidate.championId), 320),
       })
       // The enemy kits too, the ones not read this patch: what the team throws at us is half of the screen.
       const unread = reader.unread(enemyIds)

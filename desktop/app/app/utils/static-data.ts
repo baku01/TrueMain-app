@@ -18,6 +18,7 @@ import type {
   StaticPerkStyleData,
   StaticSummonerSpellData,
 } from '#shared/types/static-data'
+import type { Locale } from '#common/utils/i18n'
 import { cdragonLocale, getActiveLocale } from '#common/utils/i18n'
 import { getChampionSpellImageUrl, getSummonerSpellImageUrl } from '#shared/utils/ddragon'
 
@@ -126,20 +127,20 @@ interface CdragonPerkStyleRow {
  * after Data Dragon lists the version, so a pinned URL that 404s early in a
  * patch cycle falls back to `latest`, as the site does.
  */
-export async function fetchRuneTree(patch: string | null): Promise<RuneTreeResponse> {
+export async function fetchRuneTree(patch: string | null, locale: Locale = getActiveLocale()): Promise<RuneTreeResponse> {
   try {
-    return await fetchRuneTreeAt(patch)
+    return await fetchRuneTreeAt(patch, locale)
   }
   catch (error) {
     if (patch === null) throw error
-    return fetchRuneTreeAt(null)
+    return fetchRuneTreeAt(null, locale)
   }
 }
 
-async function fetchRuneTreeAt(patch: string | null): Promise<RuneTreeResponse> {
+async function fetchRuneTreeAt(patch: string | null, locale: Locale): Promise<RuneTreeResponse> {
   // Names and texts come from the language's folder; the icon paths inside
   // them are rewritten onto `default`, which is where the art lives.
-  const prefix = communityDragonPrefix(patch, cdragonLocale(getActiveLocale()))
+  const prefix = communityDragonPrefix(patch, cdragonLocale(locale))
   const [perks, perkStyles] = await Promise.all([
     $fetch<CdragonPerkRow[]>(`${prefix}/v1/perks.json`),
     $fetch<{ styles: CdragonPerkStyleRow[] }>(`${prefix}/v1/perkstyles.json`),
@@ -177,6 +178,7 @@ async function fetchRuneTreeAt(patch: string | null): Promise<RuneTreeResponse> 
 
 export interface ChampionDetailResponse {
   data: Record<string, {
+    name?: string
     partype?: string
     passive?: { name: string, description?: string, image: { full: string } }
     spells: Array<{

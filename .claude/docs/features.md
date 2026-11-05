@@ -270,7 +270,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
 - **Confronto · Jev** (`/jev`, `pages/jev.vue`, key in `/settings` → `SettingsJev.vue`, kept by the shell in
   `src-tauri/src/jev.rs`, file mode 0600, never returned to the webview) — the matchup board with a build ranked by
   TypeSafe's Jev (`POST api.typesafe.ai/v1/systemone`, `jev-latest`) and statistics. Jev only reads texts, never
-  numbers: `utils/jev-read.ts` sends three requests at once, each a small object state — the enemy kits (five Score
+  numbers, and always in English — the game's own `en_US` texts (`useJevTexts`), whatever the app's language, since
+  its questions name the game's English terms (Grievous Wounds, Tenacity); Noul facts are asked as questions and a
+  Score spread over its levels is pulled toward the middle as far as Jev was unsure: `utils/jev-read.ts` sends three requests at once, each a small object state — the enemy kits (five Score
   scales each: crowd control, healing, burst, basic attacks, tankiness), the candidate items (five Noul facts each:
   Grievous Wounds, Tenacity, anti-burst, anti-autoattack, anti-tank, plus a Score of how it suits our kit) and the
   lane choices (rune pages, spells, starters, boots timing as Scores). Reads are cached per patch for the session.

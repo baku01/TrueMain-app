@@ -46,12 +46,15 @@ describe('what Jev is asked', () => {
 describe('reading the answers', () => {
   it('puts a Score on 0–1 by its levels', () => {
     expect(scoreOf(score(1))).toEqual({ value: 0.5, confidence: 0.8 })
+    expect(scoreOf(score(2, 1))!.value).toBe(1)
+    expect(scoreOf(score(2, 0))!.value).toBeCloseTo(0.7)
     expect(scoreOf(noul(0.9))).toBeNull()
   })
 
   it('reads a champion only when all five came back, its confidence averaged', () => {
     const answers = { e99_cc: score(2, 1), e99_heal: score(0, 0.5), e99_burst: score(2, 1), e99_autos: score(0, 0.5), e99_tank: score(0, 1) }
-    expect(readChampion(99, answers)).toEqual({ cc: 1, heal: 0, burst: 1, autos: 0, tank: 0, confidence: 0.8 })
+    expect(readChampion(99, answers)).toMatchObject({ cc: 1, burst: 1, tank: 0, confidence: 0.8 })
+    expect(readChampion(99, answers)!.heal).toBeCloseTo(0.15)
     expect(readChampion(99, { ...answers, e99_tank: undefined as unknown as JevAnswer })).toBeNull()
   })
 
@@ -74,7 +77,7 @@ describe('the pick', () => {
   })
 
   it('reads what came back, null where nothing was asked', () => {
-    expect(readPick(103, { p103_lane: score(2, 0.9), p103_enemy: score(0, 0.5) })).toEqual({ lane: 1, team: null, enemy: 0, confidence: 0.7 })
+    expect(readPick(103, { p103_lane: score(2, 1), p103_enemy: score(0, 1) })).toEqual({ lane: 1, team: null, enemy: 0, confidence: 1 })
     expect(readPick(103, {})).toBeNull()
   })
 })

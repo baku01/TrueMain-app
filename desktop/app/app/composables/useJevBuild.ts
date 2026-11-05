@@ -37,6 +37,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
   const { patch } = useChampionStatics()
   const { items, summoners, runeTree } = useStaticData()
   const { textOf, loadAll } = useChampionTexts()
+  const english = useJevTexts()
   const reader = useJevEnemies()
   const status = ref<JevStatus>('idle')
   const error = ref<string | null>(null)
@@ -82,6 +83,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         readItemStats(championId, position).catch(() => new Map()),
         opponentId ? readItemStats(championId, position, opponentId).catch(() => new Map()) : new Map(),
         loadAll([championId, ...enemyIds]),
+        english.load(),
         reader.load(),
       ])
       if (mine !== generation) return
@@ -111,7 +113,10 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const unreadEnemies = reader.unread(enemyIds)
       const candidates = candidateItems(options, pool).filter(id => items.value[id])
       const unreadItems = candidates.filter(id => !knownItemRead(itemReadKey(version, championId, position, id)))
-      const perkText = (id: number) => `${names.perk(id)}: ${plainAbility(tree?.perks[id]?.shortDesc ?? tree?.perks[id]?.longDesc, 140)}`
+      // What Jev reads is the game's English text (`useJevTexts`): its questions are English, and so are the game's terms in them.
+      const en = { items: english.items.value, summoners: english.summoners.value, tree: english.runeTree.value }
+      const enItem = (id: number) => en.items[id]?.name ?? names.item(id)
+      const perkText = (id: number) => `${en.tree?.perks[id]?.name ?? names.perk(id)}: ${plainAbility(en.tree?.perks[id]?.shortDesc ?? en.tree?.perks[id]?.longDesc, 220)}`
       const lane = laneRequest({
         champion: ours,
         position,
@@ -122,12 +127,12 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
             ? [option.page.primaryKeystoneId, option.page.primaryPerk1Id, option.page.primaryPerk2Id, option.page.primaryPerk3Id, option.page.secondaryPerk1Id, option.page.secondaryPerk2Id].map(perkText).join(' | ')
             : option.label,
         })),
-        spells: (slotOf('spells')?.options ?? []).map(option => ({ key: option.key, text: (option.spellIds ?? []).map(id => `${names.spell(id)}: ${plainAbility(summoners.value[id]?.description, 160)}`).join(' | ') })),
-        starters: (slotOf('starter')?.options ?? []).map(option => ({ key: option.key, text: option.itemIds.map(id => `${names.item(id)}: ${itemEffect(items.value[id], 200)}`).join(' | ') })),
+        spells: (slotOf('spells')?.options ?? []).map(option => ({ key: option.key, text: (option.spellIds ?? []).map(id => `${en.summoners[id]?.name ?? names.spell(id)}: ${plainAbility(en.summoners[id]?.description, 200)}`).join(' | ') })),
+        starters: (slotOf('starter')?.options ?? []).map(option => ({ key: option.key, text: option.itemIds.map(id => `${enItem(id)}: ${itemEffect(en.items[id] ?? items.value[id], 240)}`).join(' | ') })),
       })
       const requests: Request[] = [
         ...batches(enemyRequest(unreadEnemies)),
-        ...batches(itemRequest(ours, position, unreadItems.map(id => ({ id, name: names.item(id), text: itemEffect(items.value[id]) })))),
+        ...batches(itemRequest(ours, position, unreadItems.map(id => ({ id, name: enItem(id), text: itemEffect(en.items[id] ?? items.value[id], 520) })))),
         ...batches(lane),
       ]
       const answers: Record<string, JevAnswer> = Object.assign({}, ...await Promise.all(requests.map(part => askJev(part.state, part.questions))))

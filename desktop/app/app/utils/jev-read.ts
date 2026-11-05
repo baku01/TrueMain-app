@@ -10,8 +10,8 @@ import type { JevAnswer, JevQuestion } from '~/utils/jev'
  *   reliably", so win rates, games and win probability stay in code
  *   (`utils/jev-recommend`), out of every state and every question;
  * - a judgment on a scale is a Score whose levels "describe situations, not
- *   degrees", low to high; a yes/no fact is a Noul phrased so yes is the high
- *   value, with what counts as yes and as no spelled out;
+ *   degrees", low to high; a yes/no fact is a Noul asked as a question whose
+ *   yes is the high value, with what counts as yes and as no spelled out;
  * - the state is an object, each part under a descriptive name, holding only
  *   what its questions need ("accuracy falls as the state grows with content
  *   unrelated to the decision") — so the enemy kits, the items and the lane
@@ -129,27 +129,27 @@ export function enemyRequest(enemies: ChampionText[]): Request {
 /** The items' facts, each a yes/no statement about one item. */
 const ITEM_FACTS: Record<keyof Omit<ItemRead, 'kit'>, { says: (name: string) => string, yes: string, no: string }> = {
   antiHeal: {
-    says: name => `items["${name}"] applies Grievous Wounds: it cuts the healing of enemies it damages.`,
+    says: name => `Does items["${name}"] apply Grievous Wounds to the enemies it damages, cutting their healing?`,
     yes: 'Its text mentions Grievous Wounds or reduced healing on enemies',
     no: 'Nothing in it reduces enemy healing',
   },
   tenacity: {
-    says: name => `items["${name}"] gives Tenacity or removes crowd control from its holder.`,
+    says: name => `Does items["${name}"] give its holder Tenacity, or remove or shorten crowd control on it?`,
     yes: 'Its text gives Tenacity, or cleanses or shortens crowd control',
     no: 'It does nothing against crowd control',
   },
   antiBurst: {
-    says: name => `items["${name}"] protects its holder from burst: a shield, a stasis, a spell shield, or a lifeline that triggers at low health.`,
+    says: name => `Does items["${name}"] protect its holder from burst with a shield, a stasis, a spell shield, or a lifeline that triggers at low health?`,
     yes: 'Its text gives such a shield, stasis, spell shield or low-health lifeline',
     no: 'It has no such protection',
   },
   vsAutos: {
-    says: name => `items["${name}"] counters basic attacks: it slows the attack speed of enemies, reduces critical-strike damage taken, or reflects damage to attackers.`,
+    says: name => `Does items["${name}"] counter basic attacks — slowing attackers' attack speed, reducing critical-strike damage taken, or reflecting damage to attackers?`,
     yes: 'Its text does one of those against attackers',
     no: 'It does nothing special against basic attacks',
   },
   vsTanks: {
-    says: name => `items["${name}"] helps its holder kill tanks: armor or magic penetration, or damage based on the target's maximum health.`,
+    says: name => `Does items["${name}"] help its holder kill tanks with armor or magic penetration, or damage based on the target's maximum health?`,
     yes: 'Its text gives penetration or maximum-health damage',
     no: 'It has neither',
   },
@@ -295,10 +295,17 @@ export function readPick(id: number, answers: Record<string, JevAnswer>): PickRe
   return { lane: value('lane'), team: value('team'), enemy: value('enemy'), confidence: known.reduce((sum, [, read]) => sum + read!.confidence, 0) / known.length }
 }
 
-/** A Score answer on 0–1 (its expected level over the top one), with its confidence; null when it did not come back. */
+/**
+ * A Score answer on 0–1 (its expected level over the top one), with its
+ * confidence; null when it did not come back. An answer spread over the
+ * levels — low confidence, in TypeSafe's terms — is pulled toward the middle
+ * as far as it is spread: Jev unsure is not Jev saying "some".
+ */
 export function scoreOf(answer: JevAnswer | undefined, levels = 3): { value: number, confidence: number } | null {
   if (!answer || answer.type !== 'score') return null
-  return { value: Math.min(1, Math.max(0, answer.score / (levels - 1))), confidence: answer.confidence }
+  const raw = Math.min(1, Math.max(0, answer.score / (levels - 1)))
+  const trust = 0.4 + 0.6 * Math.min(1, Math.max(0, answer.confidence))
+  return { value: 0.5 + (raw - 0.5) * trust, confidence: answer.confidence }
 }
 
 /** A Noul answer: the probability of yes; null when it did not come back. */

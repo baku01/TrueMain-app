@@ -18,7 +18,7 @@ import type { ChampionStaticData, RuneTreeResponse, StaticItemData, StaticSummon
  */
 const { t } = useT()
 
-/** The compact layout's runes grow with their card: about a seventh of its width, between 40 and 76 pixels. */
+/** The compact layout's runes grow with their card, never past the width where the two trees still sit side by side. */
 const runesBox = ref<HTMLElement | null>(null)
 const runesWidth = ref(0)
 let observer: ResizeObserver | null = null
@@ -29,7 +29,8 @@ watch(runesBox, (box) => {
   observer.observe(box)
 }, { immediate: true })
 onBeforeUnmount(() => observer?.disconnect())
-const runeSize = computed(() => Math.round(Math.min(76, Math.max(40, runesWidth.value / 7))))
+// The two trees side by side take about 7.6 rune widths (four keystones at 1.3× beside three runes) and their gaps.
+const runeSize = computed(() => Math.floor(Math.min(80, Math.max(30, (runesWidth.value - 40) / 7.6))))
 
 withDefaults(defineProps<{
   summonerSpells: BuildSummonerSpells | null
@@ -85,7 +86,7 @@ withDefaults(defineProps<{
           <h3 class="text-sm font-semibold text-highlighted">{{ t('build.compact.spellsBuilds') }}</h3>
           <span class="ml-auto"><slot name="itemImport" /></span>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 justify-items-center gap-4">
           <ChampionCoreSpells :summoners="summonerSpells" :summoners-map="summonersMap" :summoners-pending="summonersPending" />
           <ChampionCoreStarterItems :starter="starterItems" :items-map="itemsMap" />
         </div>
