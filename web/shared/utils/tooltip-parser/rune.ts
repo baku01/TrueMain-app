@@ -1,5 +1,5 @@
 import { walkHtmlToSegments } from './dom-walker'
-import type { ParsedDocument } from './types'
+import type { ParsedDocument, ParsedSegment } from './types'
 
 /**
  * Map of raw hex colors emitted by CDragon rune descriptions to a semantic
@@ -45,7 +45,53 @@ const MELEE_RANGED_RE = /\[\s*([^[\]|]+?)\s+Melee\s*\|\|\s*([^[\]|]+?)\s+Ranged\
 export function parseRuneDescription(description: string): ParsedDocument {
   if (!description) return []
   const prepared = prepareRuneHtml(description)
-  return walkHtmlToSegments(prepared)
+  return walkHtmlToSegments(prepared).flatMap(highlightRuneText)
+}
+
+/**
+ * The stats a rune's prose names, in English and Portuguese, to the tag they
+ * read in: many localised descriptions carry no color tag at all (Grasp of the
+ * Undying in pt-BR is plain text), so the stats and the figures are found in
+ * the words themselves. Longest phrase first, so "Vida máxima" wins over "Vida".
+ */
+const STAT_PHRASES: [string, string][] = ([
+  ['dano mágico', 'magicdamage'], ['magic damage', 'magicdamage'],
+  ['dano físico', 'physicaldamage'], ['physical damage', 'physicaldamage'],
+  ['dano verdadeiro', 'truedamage'], ['true damage', 'truedamage'],
+  ['dano adaptativo', 'runeadaptive'], ['adaptive damage', 'runeadaptive'],
+  ['força adaptativa', 'runeadaptive'], ['adaptive force', 'runeadaptive'],
+  ['dano de ataque', 'runead'], ['attack damage', 'runead'],
+  ['poder de habilidade', 'runeap'], ['ability power', 'runeap'],
+  ['velocidade de ataque', 'runeas'], ['attack speed', 'runeas'],
+  ['velocidade de movimento', 'runespeed'], ['movement speed', 'runespeed'], ['move speed', 'runespeed'],
+  ['aceleração de habilidade', 'runehaste'], ['ability haste', 'runehaste'],
+  ['resistência mágica', 'runemr'], ['magic resist', 'runemr'], ['magic resistance', 'runemr'],
+  ['armadura', 'runearmor'], ['armor', 'runearmor'],
+  ['vida máxima', 'runehealth'], ['vida adicional', 'runehealth'], ['vida', 'runehealth'],
+  ['maximum health', 'runehealth'], ['max health', 'runehealth'], ['bonus health', 'runehealth'], ['health', 'runehealth'],
+  ['curar', 'healing'], ['cura', 'healing'], ['healing', 'healing'], ['heals', 'healing'], ['heal', 'healing'],
+  ['escudo', 'shield'], ['shield', 'shield'],
+] as [string, string][]).sort((a, b) => b[0].length - a[0].length)
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const NUMBER = String.raw`[+-]?\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?(?:\s*%|s(?![\p{L}]))?`
+const HIGHLIGHT_RE = new RegExp(`(?<![\\p{L}\\d])(?:(${NUMBER})|(${STAT_PHRASES.map(([phrase]) => escapeRegExp(phrase)).join('|')}))(?![\\p{L}])`, 'giu')
+const TAG_OF = new Map(STAT_PHRASES)
+
+/** A plain stretch of a rune's prose split around its figures and the stats it names. */
+function highlightRuneText(segment: ParsedSegment): ParsedSegment[] {
+  if (segment.kind !== 'text' || segment.tag !== 'default') return [segment]
+  const out: ParsedSegment[] = []
+  let last = 0
+  for (const match of segment.text.matchAll(HIGHLIGHT_RE)) {
+    const at = match.index ?? 0
+    if (at > last) out.push({ kind: 'text', tag: 'default', text: segment.text.slice(last, at) })
+    const tag = match[1] ? 'runenumber' : TAG_OF.get(match[0].toLowerCase()) ?? 'default'
+    out.push({ kind: 'text', tag, text: match[0] })
+    last = at + match[0].length
+  }
+  if (last < segment.text.length) out.push({ kind: 'text', tag: 'default', text: segment.text.slice(last) })
+  return out
 }
 
 /**
@@ -62,6 +108,10 @@ export function prepareRuneHtml(description: string): string {
   prepared = prepared
     .replace(/\s*\([^()]*@[^@\s]+@[^()]*\)/g, '')
     .replace(/@[^@\s]+@/g, '…')
+
+  // 0b. A list item (`<li>`, Grasp of the Undying's three effects) starts its
+  //     own line, as the client lists it; the walker knows only `<br>`.
+  prepared = prepared.replace(/<li>/gi, '<br>• ').replace(/<\/li>/gi, '')
 
   // 1. Replace `<font color='#HEX'>X</font>` with `<TAG>X</TAG>` where TAG is
   //    a known semantic tag, or strip the wrapper if the hex is unknown.

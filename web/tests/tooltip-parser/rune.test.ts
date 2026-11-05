@@ -72,3 +72,20 @@ describe('parseRuneDescription', () => {
     expect(parseRuneDescription('')).toEqual([])
   })
 })
+
+describe('parseRuneDescription — figures and stats in plain prose', () => {
+  it('lists each <li> on its own line and brings the figures and stats forward', () => {
+    const segments = parseRuneDescription('A cada 4s em combate, seu próximo ataque irá:<li>Causar Dano Mágico adicional equivalente a 3.5% da sua Vida máxima<li>Curar você em 1.3% da sua Vida máxima')
+    const tagged = segments.filter(s => s.kind === 'text' && s.tag !== 'default').map(s => s.kind === 'text' ? `${s.tag}:${s.text}` : '')
+    expect(tagged).toEqual([
+      'runenumber:4s', 'magicdamage:Dano Mágico', 'runenumber:3.5%', 'runehealth:Vida máxima',
+      'healing:Curar', 'runenumber:1.3%', 'runehealth:Vida máxima',
+    ])
+    expect(segments.filter(s => s.kind === 'break')).toHaveLength(2)
+  })
+
+  it('leaves a word that only contains a stat alone', () => {
+    const segments = parseRuneDescription('Vidaloka escudos')
+    expect(segments.every(s => s.kind !== 'text' || s.tag === 'default')).toBe(true)
+  })
+})

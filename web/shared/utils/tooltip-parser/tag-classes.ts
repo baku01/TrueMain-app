@@ -100,6 +100,11 @@ export const TAG_CLASS: Record<string, string> = {
   runearmor: 'text-stat-armor',
   runespeed: 'text-stat-speed',
   runemr: 'text-stat-mr',
+  runeas: 'text-stat-as',
+  runehaste: 'text-stat-haste',
+  // A figure in a rune's prose (`4s`, `3.5%`, `70 - 240`) that no color tag
+  // wrapped: brought forward the way the client's tooltips set them apart.
+  runenumber: 'text-highlighted font-semibold',
 
   // Fallthrough
   default: 'text-default',
