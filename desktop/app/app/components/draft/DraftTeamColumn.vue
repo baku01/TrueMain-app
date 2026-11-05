@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Lane, TeamRow } from '~/types/draft'
+import type { EnemyCounter } from '~/utils/draft-counters'
 
 /**
  * One side of the board: its five picks over their lanes, and the side's damage
@@ -18,6 +19,8 @@ defineProps<{
   /** The player moved an enemy lane by hand: the reset is offered. */
   hasCorrections?: boolean
   damagePicks: { championId: number, position: string | null, preview?: boolean }[]
+  /** By enemy champion: who beats it on its lane (the enemy side). */
+  counters?: Map<number, EnemyCounter[]> | null
 }>()
 
 const emit = defineEmits<{ view: [championId: number], swap: [from: Lane, to: Lane], reset: [] }>()
@@ -34,6 +37,7 @@ const { t } = useT()
         :opponent-cell="opponentCell"
         :suggested="suggested"
         :correctable="correctable"
+        :counters="counters"
         @view="emit('view', $event)"
         @swap="(from, to) => emit('swap', from, to)"
       />

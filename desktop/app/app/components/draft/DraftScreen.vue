@@ -149,6 +149,9 @@ function back() {
 
 // ─── The damage mix (#1907) ─────────────────────────────────────────────────
 
+// Who beats each enemy on its lane, under its card.
+const enemyCounters = useEnemyCounters(draft, enemyRows, eloBracket)
+
 const { allyDamagePicks, enemyDamagePicks, lockedAllies } = useDraftDamagePicks(draft, allyRows, enemyRows, previewed)
 
 const suggested = computed(() => (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => candidate.championId))
@@ -170,6 +173,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         :opponent-cell="opponentCell.ally"
         :suggested="suggested"
         :damage-picks="allyDamagePicks"
+        :counters="new Map()"
         @view="view('ally', $event)"
       />
 
@@ -190,6 +194,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         :correctable="recommendation !== null"
         :has-corrections="hasCorrections"
         :damage-picks="enemyDamagePicks"
+        :counters="enemyCounters"
         @view="view('enemy', $event)"
         @swap="swap"
         @reset="reset"

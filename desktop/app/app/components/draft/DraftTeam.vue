@@ -3,6 +3,7 @@ import { getPositionIconUrl } from '#shared/utils/ddragon'
 import { POSITIONS, positionLabel } from '#common/utils/positions'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Lane, TeamRow } from '~/types/draft'
+import type { EnemyCounter } from '~/utils/draft-counters'
 
 /**
  * Five picks of one side, left to right, each over the lane it holds. Ours
@@ -11,6 +12,8 @@ import type { Lane, TeamRow } from '~/types/draft'
  * the lane it really plays — or by dragging it onto another — which swaps the
  * two (pinned, so the rest re-solve around the correction). A guessed lane
  * carries no doubt mark: it is simply the one to correct when it is wrong.
+ * With `counters`, each enemy shows under its lane the champions that beat it
+ * there; the ally side passes none, an empty strip keeping both boards level.
  */
 const props = withDefaults(defineProps<{
   team: 'ally' | 'enemy'
@@ -23,11 +26,13 @@ const props = withDefaults(defineProps<{
   suggested?: number[]
   /** Enemy lanes resolved: the cards can be dragged to correct them. */
   correctable?: boolean
-}>(), { selectedCell: null, opponentCell: null, suggested: () => [], correctable: false })
+  /** By enemy champion: who beats it on its lane. Absent on a side that shows no counters. */
+  counters?: Map<number, EnemyCounter[]> | null
+}>(), { selectedCell: null, opponentCell: null, suggested: () => [], correctable: false, counters: null })
 
 const emit = defineEmits<{ view: [championId: number], swap: [from: Lane, to: Lane] }>()
 
-const { nameOf } = useChampionStatics()
+const { nameOf, portraitOf } = useChampionStatics()
 const { t } = useT()
 const { entryOf, mainEntryOf } = useTierList()
 
@@ -74,6 +79,19 @@ function laneChoices(row: TeamRow): DropdownMenuItem[] {
       if (row.lane && lane !== row.lane) emit('swap', row.lane, lane)
     },
   }))
+}
+
+function countersOf(row: TeamRow): EnemyCounter[] {
+  return row.championId === null ? [] : (props.counters?.get(row.championId) ?? [])
+}
+
+function counterTip(counter: EnemyCounter, enemyId: number) {
+  return t('draft.counters.tip', {
+    name: nameOf(counter.championId),
+    rate: `${(counter.winRate * 100).toFixed(1)}%`,
+    enemy: nameOf(enemyId),
+    games: counter.games.toLocaleString(),
+  })
 }
 
 function label(row: TeamRow) {
@@ -139,6 +157,24 @@ function label(row: TeamRow) {
           :title="positionLabel(row.lane, { short: true })"
           class="size-4"
         >
+      </div>
+
+      <!-- Who beats this enemy on its lane, best first, its win rate under each. -->
+      <div v-if="counters" class="flex h-[38px] w-full flex-col items-center gap-0.5">
+        <template v-if="countersOf(row).length">
+          <span class="stat-label text-[9px]!">{{ t('draft.counters.label') }}</span>
+          <div class="flex gap-1">
+            <div
+              v-for="counter in countersOf(row)"
+              :key="counter.championId"
+              class="flex flex-col items-center"
+              :title="counterTip(counter, row.championId!)"
+            >
+              <img v-if="portraitOf(counter.championId)" :src="portraitOf(counter.championId)!" :alt="nameOf(counter.championId)" class="img-skeleton size-5 rounded ring-1 ring-ink-950">
+              <span class="text-[9px] font-semibold tabular-nums text-data-good">{{ Math.round(counter.winRate * 100) }}%</span>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
