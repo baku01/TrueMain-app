@@ -43,6 +43,7 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
         >
           <UIcon v-if="option.key === decision.jev.key" name="i-tabler-sparkles" class="absolute left-1.5 top-1.5 size-3.5 text-primary" :aria-label="t('jev.card.jevPick')" />
           <UIcon v-if="option.key === decision.standard.key" name="i-tabler-database" class="absolute right-1.5 top-1.5 size-3.5 text-dimmed" :aria-label="t('jev.card.standardPick')" />
+          <UBadge v-if="option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" class="absolute -top-2 left-1/2 -translate-x-1/2" />
 
           <!-- The option's own picture, every icon with its tooltip. -->
           <span class="flex min-h-9 items-center justify-center gap-0.5">

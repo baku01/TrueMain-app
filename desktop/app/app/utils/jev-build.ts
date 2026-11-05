@@ -38,6 +38,8 @@ export interface JevOption extends Measure {
   after?: number
   /** What the option does, in words Jev can weigh: stats, effects, what it answers. */
   effect?: string
+  /** Not measured in this slot: added from the champion's measured items because it answers the draft. */
+  situational?: boolean
 }
 
 export interface JevSlot {
@@ -203,18 +205,56 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
   ].filter(slot => slot.options.length > 0)
 }
 
-/** One later item slot: what the source measured there after `core`, without an item already in the build. */
-export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, ask: Ask): JevSlot | null {
+/**
+ * Every completed item the source measured for the champion on the lane,
+ * whatever core it followed or slot it took, its games added up: where a
+ * slot's own options miss what the draft calls for, the answer is looked for
+ * here — still an item the source saw players of the champion build.
+ */
+export function measuredPool(options: BuildOptions): ItemOption[] {
+  const pool = new Map<number, { games: number, wins: number }>()
+  const add = (id: number, option: ItemOption) => {
+    if (isBoots(id)) return
+    const known = pool.get(id) ?? { games: 0, wins: 0 }
+    pool.set(id, { games: known.games + option.games, wins: known.wins + option.winRate * option.games })
+  }
+  for (const core of options.cores) {
+    for (const id of core.itemIds) add(id, core)
+    for (const group of options.followUps(core)) for (const option of group.options) for (const id of option.itemIds) add(id, option)
+  }
+  const total = [...pool.values()].reduce((sum, entry) => sum + entry.games, 0)
+  return [...pool].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))
+}
+
+/** How many of the draft's answers a later slot may add to what the source measured in it. */
+const SITUATIONAL = 2
+
+/**
+ * One later item slot: what the source measured there after `core`, without
+ * an item already in the build — and, when none of those answers what the
+ * draft calls for, up to two items of the champion's measured pool that do
+ * (`answersDraft`: armour penetration against a frontline, magic resist
+ * against magic damage, anti-heal against healers…), marked situational.
+ */
+export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, ask: Ask, situational?: { pool: ItemOption[], answersDraft: (id: number) => boolean }): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
-  const open = reliable(group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id))))
+  const measuredHere = reliable(group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id))))
+  const here = new Set(measuredHere.flatMap(option => option.itemIds))
+  const extra = situational
+    ? situational.pool
+        .filter(option => option.games >= MIN_GAMES && !here.has(option.itemIds[0]!) && !held.includes(option.itemIds[0]!) && situational.answersDraft(option.itemIds[0]!))
+        .sort((a, b) => b.games - a.games)
+        .slice(0, measuredHere.some(option => situational.answersDraft(option.itemIds[0]!)) ? 1 : SITUATIONAL)
+    : []
+  const open = [...measuredHere, ...extra.map(option => ({ ...option, situational: true }))]
   if (!open.length) return null
   return {
     name: `item${slot}`,
     kind: 'checks',
     lane: false,
     instructions: `Pick item number ${slot}: the one that best protects against or punishes what the enemy team brings (${ask.needs}) without giving up our champion's damage. It is bought after the laning phase`,
-    options: keyed(open, 4, option => ({ ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!), effect: names.itemEffect(option.itemIds[0]!) })),
+    options: keyed(open, 4 + extra.length, option => ({ ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!), effect: names.itemEffect(option.itemIds[0]!), situational: 'situational' in option })),
   }
 }
 

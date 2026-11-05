@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { JevSlot } from '~/utils/jev-build'
-import { confidenceOf, decide, draftNeeds, itemEffect, laidBuild, plainAbility, questionsOf, reliable, stateOf } from '~/utils/jev-build'
+import { confidenceOf, decide, draftNeeds, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, questionsOf, reliable, stateOf } from '~/utils/jev-build'
 
 const items = {
   3075: { id: 3075, name: 'Thornmail', tags: ['Armor', 'Health'] },
@@ -128,5 +128,19 @@ describe('checks', () => {
   it('reads confidence as TypeSafe does: 1 all on one option, 0 spread evenly', () => {
     expect(confidenceOf([1, 0])).toBe(1)
     expect(confidenceOf([0.5, 0.5])).toBeCloseTo(0)
+  })
+})
+
+describe('situational answers', () => {
+  it('adds to a later slot the champion\'s measured items that answer the draft, when its own options do not', () => {
+    const m = (games: number, itemIds: number[]) => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
+    const core = m(900, [3142, 6691])
+    const options = {
+      patch: null, games: 5000, pages: [], shares: null, spells: [], starters: [], boots: [], skills: [], cores: [core],
+      followUps: () => [{ slot: 4, options: [m(300, [6694]), m(200, [3814])] }, { slot: 5, options: [m(150, [3071])] }],
+    }
+    const names = { item: (id: number) => `#${id}`, perk: String, style: String, spell: String, itemEffect: () => '', perkEffect: () => '', spellEffect: () => '' }
+    const slot = laterSlot(options, core, 4, [3142, 6691], names, ask, { pool: measuredPool(options), answersDraft: id => id === 3071 })!
+    expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[6694, false], [3814, false], [3071, true]])
   })
 })

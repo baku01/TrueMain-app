@@ -1,8 +1,8 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevDecision, LaidBuild, Names } from '~/utils/jev-build'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
-import { enemySituation } from '~/utils/draft-build'
+import { decide, draftNeeds, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
+import { answers, enemySituation } from '~/utils/draft-build'
 import { activeProvider } from '~/utils/sources'
 
 export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noSource' | 'noOptions' | 'error'
@@ -101,8 +101,10 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       // Every later slot's candidates checked in one call (TypeSafe: ask all you may need at once),
       // then each slot settled in order, an item already in the build left out.
       const jevLater: number[] = []
+      // A slot's measured options, and the items of the champion's measured pool that answer this draft.
+      const situational = { pool: measuredPool(options), answersDraft: (id: number) => answers(id, base.situations, items.value) !== null }
       const laterSlots = laterSlotNumbers(options, coreOf('jev'))
-        .map(slotNumber => laterSlot(options, coreOf('jev'), slotNumber, heldBy('jev'), names, ask))
+        .map(slotNumber => laterSlot(options, coreOf('jev'), slotNumber, heldBy('jev'), names, ask, situational))
         .filter(slot => slot !== null)
       const laterAnswers = laterSlots.length
         ? await askJev(stateOf({ ...base, taken: heldBy('jev').map(names.item) }), questionsOf(laterSlots, ask))

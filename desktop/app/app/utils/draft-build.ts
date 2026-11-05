@@ -126,7 +126,7 @@ export function enemySituation(enemyIds: number[], champions: Map<number, Champi
 const teamLeans = (situations: Situation[]) => situations.some(s => s.axis === 'EnemyMagicDamage' || s.axis === 'EnemyPhysicalDamage')
 
 /** The situation an item answers, if it answers one this draft has. */
-function answers(itemId: number, situations: Situation[], items: Record<number, StaticItemData>): Situation | null {
+export function answers(itemId: number, situations: Situation[], items: Record<number, StaticItemData>): Situation | null {
   const tags = items[itemId]?.tags ?? []
   const has = (axis: Axis, bucket: 'High' | 'Low' = 'High') => situations.find(situation => situation.axis === axis && situation.bucket === bucket) ?? null
   const team = teamLeans(situations)
