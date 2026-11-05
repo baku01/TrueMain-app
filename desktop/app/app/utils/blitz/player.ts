@@ -64,6 +64,19 @@ export async function readPlayerAccount(region: string, gameName: string, tagLin
   }
 }
 
+/**
+ * A player's champion mastery as Blitz keeps it (`riot_account_v2`): each
+ * champion's mastery level and when it was last played — Blitz keeps no
+ * points. Highest level first, then the most recently played.
+ */
+export async function readChampionMastery(region: string, gameName: string, tagLine: string): Promise<{ championId: number, championLevel: number, lastPlayTime: number | null }[]> {
+  const answer = await blitzGet<{ champion_mastery?: Record<string, { champion_level?: number, last_play_time?: number }> | null }>('lol', `riot_account_v2/lol/${path(platformOf(region), gameName, tagLine)}`)
+  return Object.entries(answer.champion_mastery ?? {})
+    .map(([id, entry]) => ({ championId: Number(id), championLevel: entry.champion_level ?? 0, lastPlayTime: entry.last_play_time ?? null }))
+    .filter(entry => entry.championLevel > 0)
+    .sort((a, b) => b.championLevel - a.championLevel || (b.lastPlayTime ?? 0) - (a.lastPlayTime ?? 0))
+}
+
 /** The player's recent match ids, newest first. */
 export async function readPlayerMatchIds(region: string, gameName: string, tagLine: string): Promise<string[]> {
   const answer = await blitzGet<Record<string, unknown>>('lol', `lol/match_list/${path(platformOf(region), gameName, tagLine)}`)
@@ -249,7 +262,46 @@ export interface ParticipantEvents {
   skillEvents: { timestampMs: number, skillSlot: number }[]
 }
 
-interface TimelineEvent { type: string, participantId?: number, timestamp: number, itemId?: number, beforeId?: number, afterId?: number, skillSlot?: number, levelUpType?: string }
+interface TimelineEvent {
+  type: string
+  participantId?: number
+  timestamp: number
+  itemId?: number
+  beforeId?: number
+  afterId?: number
+  skillSlot?: number
+  levelUpType?: string
+  killerId?: number
+  victimId?: number
+  assistingParticipantIds?: number[]
+  killerTeamId?: number
+  teamId?: number
+  buildingType?: string
+  laneType?: string
+  towerType?: string
+  monsterType?: string
+  monsterSubType?: string
+}
+
+interface ParticipantFrame { totalGold?: number, xp?: number, level?: number, minionsKilled?: number, jungleMinionsKilled?: number }
+
+/** A game's timeline on Blitz: Riot's match-v5 timeline, a frame a minute. */
+export interface RiotTimeline {
+  info?: { frameInterval?: number, frames: { timestamp: number, events: TimelineEvent[], participantFrames?: Record<string, ParticipantFrame> }[] }
+}
+
+const timelines = new Map<string, Promise<RiotTimeline>>()
+/** A game's timeline (`BR1_123`), kept for the session. */
+export const readTimeline = (platformId: string, gameId: string | number) => {
+  const id = `${platformId.toUpperCase()}_${gameId}`
+  let answer = timelines.get(id)
+  if (!answer) {
+    answer = blitzGet<RiotTimeline>('lol', `lol/timeline/${id}`)
+    answer.catch(() => timelines.delete(id))
+    keepBounded(timelines, id, answer, 40)
+  }
+  return answer
+}
 
 const ITEM_EVENTS = new Set(['ITEM_PURCHASED', 'ITEM_SOLD', 'ITEM_DESTROYED', 'ITEM_UNDO'])
 
@@ -259,7 +311,7 @@ const ITEM_EVENTS = new Set(['ITEM_PURCHASED', 'ITEM_SOLD', 'ITEM_DESTROYED', 'I
  * An undo carries the item it took back (`beforeId`) and the one it restored.
  */
 export async function matchEvents(platformId: string, gameId: string | number): Promise<ParticipantEvents[]> {
-  const timeline = await blitzGet<{ info?: { frames: { events: TimelineEvent[] }[] } }>('lol', `lol/timeline/${platformId.toUpperCase()}_${gameId}`)
+  const timeline = await readTimeline(platformId, gameId)
   const byParticipant = new Map<number, ParticipantEvents>()
   const of = (id: number) => {
     let entry = byParticipant.get(id)

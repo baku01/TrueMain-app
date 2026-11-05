@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { GameflowPhase } from '~/types/lcu'
+import type { GameflowPhase, ChampionMastery  } from '~/types/lcu'
 import type { QueueFilter } from '~/utils/player-form'
 import { QUEUE_FILTERS, championLines, counted, gamesIn, laneLines, mainLane } from '~/utils/player-form'
 import { toMatchSummary, toProfileRanked } from '~/utils/match-summary'
 import { activityFromGames } from '~/utils/activity-from-games'
 import { dailyStandings, latestLpMoves } from '~/utils/lp-history'
-import { regionOfPlatform } from '~/utils/blitz/player'
+import { readChampionMastery, regionOfPlatform } from '~/utils/blitz/player'
 
 /**
  * Home: the player, read from their own client, on the profile page the site
@@ -82,6 +82,17 @@ const identity = computed(() => ({
   platformId: record.value?.platformId ?? null,
 }))
 const level = computed(() => (viewing.value ? other.account.value?.level ?? null : state.value.summonerLevel))
+
+// Another player's mastery, from Blitz; the player's own comes with the client's state.
+const viewedMastery = ref<ChampionMastery[]>([])
+watch(() => (viewing.value && other.account.value ? `${other.region.value}/${other.account.value.gameName}#${other.account.value.tagLine}` : null), async (key) => {
+  viewedMastery.value = []
+  const account = other.account.value
+  const region = other.region.value
+  if (!key || !account || !region) return
+  const mastery = await readChampionMastery(region, account.gameName, account.tagLine).catch(() => [])
+  if (other.account.value === account) viewedMastery.value = mastery
+}, { immediate: true })
 
 // The detail beyond the history, for whoever is on screen.
 const insightsQueue = computed(() => filter.value)
@@ -231,7 +242,7 @@ watch(() => state.value.phase, (next, previous) => {
                  they do not carry, so the dashboard offers day, week and month. -->
             <ProfileActivityHeatmap :data="activity" :modes="['day', 'week', 'month']" />
             <DashboardChampionsCard :lines="championLines(games)" :champions="champions" />
-            <DashboardMasteryCard v-if="!viewing" :mastery="state.championMastery ?? []" :champions="champions" />
+            <DashboardMasteryCard :mastery="viewing ? viewedMastery : state.championMastery ?? []" :champions="champions" />
             <DashboardRolesCard :lanes="laneLines(games)" />
           </template>
         </template>

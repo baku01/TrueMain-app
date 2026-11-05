@@ -2,13 +2,14 @@
 import type { ChampionStaticListItem } from '#shared/types/static-data'
 import type { ChampionMastery } from '~/types/lcu'
 import { championDisplayName } from '#shared/utils/champion-name'
+import { formatRelativeTime } from '#common/utils/relativeTime'
 
 /**
- * The player's champion mastery, as their client holds it: the champions with
- * the most points, each with its mastery level (the client's crest from level 4,
- * the number below it) and its points. Five at first, the rest on "Show more".
- * Read with the pool the draft ranks (`championPool`), so it is the logged-in
- * player's only.
+ * A player's champion mastery: each champion's mastery level (the client's
+ * crest from level 4, the number below it) and its points — the logged-in
+ * player's from their client (`championMastery`, most points first), another's
+ * from Blitz, which keeps no points: when it was last played stands in. Five at
+ * first, the rest on "Show more".
  */
 const props = defineProps<{
   mastery: ChampionMastery[]
@@ -32,6 +33,9 @@ const rows = computed(() => (expanded.value ? props.mastery : props.mastery.slic
   name: championDisplayName(entry.championId, championById.value.get(entry.championId)),
   icon: canonicalIcon(championById.value.get(entry.championId)?.iconUrl),
   crest: crestOf(entry.championLevel),
+  detail: entry.championPoints !== undefined
+    ? t('dash.mastery.points', { points: entry.championPoints.toLocaleString() })
+    : entry.lastPlayTime ? t('dash.mastery.played', { ago: formatRelativeTime(new Date(entry.lastPlayTime).toISOString()) }) : '',
 })))
 </script>
 
@@ -44,7 +48,7 @@ const rows = computed(() => (expanded.value ? props.mastery : props.mastery.slic
           <img v-if="row.icon" :src="row.icon" :alt="row.name" width="36" height="36" class="img-skeleton size-9 shrink-0 rounded-md">
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-semibold text-highlighted">{{ row.name }}</p>
-            <p class="text-[11px] tabular-nums text-muted">{{ t('dash.mastery.points', { points: row.championPoints.toLocaleString() }) }}</p>
+            <p class="text-[11px] tabular-nums text-muted">{{ row.detail }}</p>
           </div>
           <div class="flex w-10 shrink-0 flex-col items-center" :title="t('dash.mastery.level', { level: row.championLevel })">
             <img v-if="row.crest" :src="row.crest" alt="" class="size-7 object-contain">

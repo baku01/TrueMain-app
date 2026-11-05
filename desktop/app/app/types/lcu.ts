@@ -61,8 +61,11 @@ export interface AppState {
 /** Mirrors `ChampionMastery` in `crates/lcu/src/model.rs`. */
 export interface ChampionMastery {
   championId: number
-  championPoints: number
+  /** Absent where the source keeps none (another player's, read from Blitz). */
+  championPoints?: number
   championLevel: number
+  /** Epoch ms; another player's only. */
+  lastPlayTime?: number | null
 }
 
 /** Mirrors `Screen` in `crates/shell-state/src/lib.rs`. */

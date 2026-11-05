@@ -55,15 +55,18 @@ const owner = computed(() => (props.selfChampionId ? participants.value.find(p =
 const ownerTeamId = computed(() => owner.value?.teamId ?? 100)
 // Above it, the ten players' gold / XP / CS curves (#2102), from the same
 // timeline: only when it carries them, so a game without one shows neither.
+/** The kills and objectives, wherever the source kept the timeline's events. */
+const eventsTimeline = computed(() => (detail.value?.winProbabilityTimeline?.events.length ? detail.value.winProbabilityTimeline : null))
 const curvesTimeline = computed(() => {
   const timeline = detail.value?.winProbabilityTimeline
   return hasTimelineCurves(timeline) ? timeline : null
 })
 
-type Tab = 'general' | 'stats' | 'charts' | 'winProbability' | 'details' | 'runes'
+type Tab = 'general' | 'stats' | 'events' | 'charts' | 'winProbability' | 'details' | 'runes'
 const tabItems = computed(() => [
   { value: 'general' as Tab, label: t('match.panel.overview') },
   { value: 'stats' as Tab, label: t('match.panel.stats') },
+  ...(eventsTimeline.value ? [{ value: 'events' as Tab, label: t('match.panel.events') }] : []),
   ...(curvesTimeline.value ? [{ value: 'charts' as Tab, label: t('match.panel.charts') }] : []),
   ...(winProbability.value ? [{ value: 'winProbability' as Tab, label: t('match.panel.winProbability') }] : []),
   { value: 'details' as Tab, label: t('match.panel.build') },
@@ -117,7 +120,7 @@ const banIcons = (teamId: number) => (teamOf(teamId)?.bans ?? []).map(id => ({ i
             <span v-if="tab === item.value" class="absolute bottom-0 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-t-sm bg-primary" />
           </button>
         </nav>
-        <div v-if="detail.teams?.some(team => team.bans.length)" class="hidden shrink-0 items-center gap-2 @[52rem]:flex">
+        <div v-if="detail.teams?.some(team => team.bans.length)" class="hidden shrink-0 items-center gap-2 @[62rem]:flex">
           <span class="flex gap-0.5">
             <img v-for="ban in banIcons(100)" :key="ban.id" :src="ban.src ?? undefined" alt="" width="22" height="22" class="img-skeleton size-[22px] rounded">
           </span>
@@ -151,6 +154,16 @@ const banIcons = (teamId: number) => (teamOf(teamId)?.bans ?? []).map(id => ({ i
         :red-team="redTeam"
         :champions="champions"
         :self-participant-id="owner?.participantId ?? null"
+      />
+
+      <MatchDetailEventTimeline
+        v-if="eventsTimeline"
+        v-show="tab === 'events'"
+        class="mt-3"
+        :timeline="eventsTimeline"
+        :perspective-team-id="ownerTeamId"
+        :participants="participants"
+        :champions="champions"
       />
 
       <MatchDetailTimelineCurves

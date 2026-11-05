@@ -6,7 +6,7 @@ import { counted } from '~/utils/player-form'
 import { toMatchSummary } from '~/utils/match-summary'
 import { lpDeltaOf } from '~/utils/lp-history'
 import { MATCH_DETAIL_SOURCE } from '#common/utils/match-detail-source'
-import { blitzMatchDetail } from '~/utils/blitz/match-detail'
+import { blitzMatchDetail, withRanks } from '~/utils/blitz/match-detail'
 
 /**
  * The player's match history, ten games a page with the site's pagination,
@@ -54,6 +54,11 @@ provide(MATCH_DETAIL_SOURCE, (nameTag, matchId) => {
     data.value = await blitzMatchDetail(`${props.blitzPlatform}_${id}`).catch(() => null)
     notFound.value = !data.value
     isLoading.value = false
+    // The ranks come after: ten reads, which the scoreboard need not wait for.
+    if (data.value && props.blitzPlatform) {
+      const ranked = await withRanks(data.value, props.blitzPlatform).catch(() => null)
+      if (ranked && toValue(matchId) === id) data.value = ranked
+    }
   }, { immediate: true })
   return { data, isLoading, notFound }
 })
