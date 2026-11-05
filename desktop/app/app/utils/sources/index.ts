@@ -3,7 +3,6 @@ import type { ChampionMatchups, ChampionSummaryResponse, ChampionTierListRespons
 import type { ChampionBuildResponse } from '~/types/build'
 import type { ExternalSource } from '~/utils/data-source'
 import type { BuildOptions } from '~/utils/sources/model'
-import { buildsFromOptions } from '~/utils/sources/model'
 import type { CompositionBuildRequest } from '#shared/types/composition'
 import { readBlitzBuild } from '~/utils/blitz/builds'
 import { matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
@@ -18,7 +17,6 @@ import { lolalyticsBuilds, lolalyticsMatchups, lolalyticsOptions, lolalyticsRows
 import { tencentBuilds, tencentMatchups, tencentOptions, tencentRows, tencentTierList, tencentTrend } from '~/utils/sources/tencent'
 import { opggBuilds, opggMatchups, opggOptions, opggRows, opggTierList, opggTrend } from '~/utils/sources/opgg'
 import { externalSource } from '~/utils/data-source'
-import { combineMatchups, combineOptions, combineTierLists } from '~/utils/sources/combined'
 
 /**
  * Every source other than TrueMain answers the same reads, in TrueMain's
@@ -110,53 +108,17 @@ function firstAnswering(sources: Provider[]): Provider {
   return { builds: chain('builds'), options: chain('options'), tierList: chain('tierList'), directory: chain('directory'), matchups: chain('matchups'), trend: chain('trend') }
 }
 
-/** Both reads, pooled; either alone when the other failed or said nothing. */
-async function both<T>(first: Promise<T>, second: Promise<T>, combine: (a: T, b: T) => T): Promise<T> {
-  const [a, b] = await Promise.allSettled([first, second])
-  const one = a.status === 'fulfilled' && !empty(a.value) ? a.value : null
-  const two = b.status === 'fulfilled' && !empty(b.value) ? b.value : null
-  if (one && two) return combine(one, two)
-  if (one ?? two) return (one ?? two)!
-  if (a.status === 'rejected') throw a.reason
-  return (a as PromiseFulfilledResult<T>).value
-}
-
-/** Both sources' options on the lane, read at once and pooled. */
-async function pooledOptions(championId: number, position: string, opponent?: number | null): Promise<BuildOptions | null> {
-  const [first, second] = await Promise.all([
-    lolalyticsProvider.options(championId, position, opponent).catch(() => null),
-    blitzProvider.options(championId, position, opponent).catch(() => null),
-  ])
-  return combineOptions(first, second)
-}
-
 /**
- * lolalytics and Blitz as one source: the builds, the matchups and the tier
- * list's rates pooled game by game (`utils/sources/combined`); the reads only
- * one of them can give (the champions list, the trend) from lolalytics first,
- * Blitz when it has nothing.
- */
-const pooledProvider: Provider = {
-  ...firstAnswering([lolalyticsProvider, blitzProvider]),
-  options: pooledOptions,
-  builds: async (championId, position, opponent) => {
-    const pooled = buildsFromOptions(championId, position, await pooledOptions(championId, position, opponent))
-    return pooled.builds.length ? pooled : blitzProvider.builds(championId, position, opponent)
-  },
-  matchups: (championId, query) => both(lolalyticsProvider.matchups(championId, query), blitzProvider.matchups(championId, query), combineMatchups),
-  tierList: query => both(lolalyticsProvider.tierList(query), blitzProvider.tierList(query), combineTierLists),
-}
-
-/**
- * The provider of the source Settings picked; null on TrueMain. Blitz and
- * lolalytics are read pooled together; any other source is asked first, then
- * lolalytics, then Blitz, for what it does not have.
+ * The provider of the source Settings picked; null on TrueMain. The builds and
+ * runes are strictly that source's — never filled from another. Every other
+ * read asks it first, then lolalytics, then Blitz, for what it does not have:
+ * each answer whole from one source, never two pooled.
  */
 export function activeProvider(): Provider | null {
   const source = externalSource()
   if (!source) return null
-  if (source === 'blitz' || source === 'lolalytics') return pooledProvider
-  return firstAnswering([PROVIDERS[source], lolalyticsProvider, blitzProvider])
+  const own = PROVIDERS[source]
+  return { ...firstAnswering([own, lolalyticsProvider, blitzProvider]), builds: own.builds, options: own.options }
 }
 
 /**
