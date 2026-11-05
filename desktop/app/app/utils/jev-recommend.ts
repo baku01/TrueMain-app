@@ -10,8 +10,8 @@ import { MIN_GAMES } from '~/utils/jev-build'
  *
  * 1. The enemy team's needs: its damage split from Blitz's measured profiles,
  *    each champion weighed by the damage it deals, and what Jev read of each
- *    kit — crowd control, healing, burst, basic attacks, tankiness — summed
- *    into what the team throws at us. The lane opponent alone weighs more on
+ *    kit — crowd control, healing, burst, basic attacks, tankiness — as what
+ *    stands out of a usual team. The lane opponent alone weighs more on
  *    what is bought or set while laning.
  * 2. Each item option's fit to those needs: armour against physical damage,
  *    magic resist against magic (Riot's own item tags), and each fact Jev read
@@ -50,10 +50,27 @@ export interface EnemyLine {
 const clamp = (value: number) => Math.min(1, Math.max(0, value))
 
 /**
+ * What a usual team of five holds, summed as Jev reads it, and how much more
+ * makes a need full: every team has some crowd control, a healer or a
+ * fighter that sustains, someone durable — a need is what stands out of that,
+ * or every defensive item would answer every draft.
+ */
+const USUAL: Record<'cc' | 'heal' | 'burst' | 'tank', { usual: number, more: number }> = {
+  cc: { usual: 2, more: 1.5 },
+  heal: { usual: 1, more: 1.5 },
+  burst: { usual: 1, more: 1.5 },
+  tank: { usual: 1, more: 1.5 },
+}
+
+/** The share of damage dealt with basic attacks a usual team has, and how much more makes the need full. */
+const USUAL_AUTOS = { usual: 0.25, more: 0.5 }
+
+/**
  * What a team throws at us, each 0–1: the damage split weighed by what each
- * champion deals; the basic-attack share the same way; crowd control, healing,
- * burst and tankiness summed over the champions (two heavy crowd-controllers,
- * or a champion and a half that heal as their game plan, fill the need).
+ * champion deals (a share, as measured); the rest as what stands out of a
+ * usual team of as many — crowd control, healing, burst and tankiness summed
+ * over the champions, the basic-attack share weighed by damage — 0 at the
+ * usual, 1 well past it.
  */
 export function needsOf(enemies: EnemyLine[]): Needs {
   if (!enemies.length) return { physical: 0.5, magic: 0.5, cc: 0, heal: 0, burst: 0, autos: 0, tanks: 0 }
@@ -61,15 +78,17 @@ export function needsOf(enemies: EnemyLine[]): Needs {
   const total = weights.reduce((sum, weight) => sum + weight, 0)
   const share = (index: number) => (total > 0 ? weights[index]! / total : 1 / enemies.length)
   const weighed = (pick: (enemy: EnemyLine) => number) => enemies.reduce((sum, enemy, index) => sum + share(index) * pick(enemy), 0)
-  const summed = (pick: (enemy: EnemyLine) => number) => enemies.reduce((sum, enemy) => sum + pick(enemy), 0)
+  const scale = enemies.length / 5
+  // One champion alone (the lane opponent) fills a need only near the top of the scale, not by being a little more than a fifth of a team.
+  const past = (fact: keyof typeof USUAL) => clamp((enemies.reduce((sum, enemy) => sum + enemy.read[fact], 0) - USUAL[fact].usual * scale) / Math.max(0.5, USUAL[fact].more * scale))
   return {
     physical: weighed(enemy => enemy.physical),
     magic: weighed(enemy => enemy.magic),
-    cc: clamp(summed(enemy => enemy.read.cc) / 2),
-    heal: clamp(summed(enemy => enemy.read.heal) / 1.5),
-    burst: clamp(summed(enemy => enemy.read.burst) / 1.5),
-    autos: weighed(enemy => enemy.read.autos),
-    tanks: clamp(summed(enemy => enemy.read.tank) / 2),
+    cc: past('cc'),
+    heal: past('heal'),
+    burst: past('burst'),
+    autos: clamp((weighed(enemy => enemy.read.autos) - USUAL_AUTOS.usual) / USUAL_AUTOS.more),
+    tanks: past('tank'),
   }
 }
 
@@ -99,12 +118,21 @@ const LITTLE = 0.3
 
 /**
  * Crowd control heavy enough to buy Tenacity on magic resist into physical
- * damage: more than one heavy crowd-controller. A lone lane opponent never
- * reaches it — into a physical laner, resist its damage.
+ * damage: well past a usual team's. A lone lane opponent with one stun does
+ * not reach it — into a physical laner, resist its damage.
  */
 const HEAVY_CC = 0.6
 
-/** How well items answer the needs: Riot's resistance tags against the damage split, Jev's facts against the rest. */
+/**
+ * How much a damage share calls for resisting it: nothing at an even split
+ * (armor into a usual team buys little), all of it from four fifths.
+ */
+const resistNeed = (share: number) => clamp((share - 0.45) / 0.35)
+
+/**
+ * How well items answer the needs: Riot's resistance tags against the share
+ * of the damage past an even split, Jev's facts against the rest.
+ */
 export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRead>, tags: (id: number) => string[]): Fit {
   if (!itemIds.length) return { fit: 0, answers: [], misfit: false }
   const per = itemIds.map((id) => {
@@ -126,8 +154,9 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
     )
     return { has, misfit: !!misfit }
   })
+  const calls: Needs = { ...needs, physical: resistNeed(needs.physical), magic: resistNeed(needs.magic) }
   const answers = NEEDS
-    .map(need => ({ need, value: per.reduce((sum, item) => sum + item.has[need], 0) / per.length * needs[need] }))
+    .map(need => ({ need, value: per.reduce((sum, item) => sum + item.has[need], 0) / per.length * calls[need] }))
     .filter(answer => answer.value >= 0.12)
     .sort((a, b) => b.value - a.value)
   const raw = answers.reduce((sum, answer) => sum + answer.value, 0)
@@ -155,8 +184,12 @@ export function slotWpa(options: JevOption[]): ((option: JevOption) => number) |
   return option => (known(option.wpa) ? raw(option) - mean : 0)
 }
 
-/** Games of the slot's own win rate an option's is pulled toward. */
-const PRIOR_GAMES = 150
+/**
+ * Games of the slot's own win rate an option's is pulled toward: a win rate
+ * over a thousand games is about as uncertain (±1.6 points) as options of one
+ * slot usually differ, so a rare option's high win rate counts for little.
+ */
+const PRIOR_GAMES = 1000
 
 /** How far over its slot an option's signal must be to read about 0.73: three points of win rate. */
 const SPREAD = 0.03
@@ -242,11 +275,13 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
     let weights = WEIGHTS.choice
     if (slot.kind === 'item' || slot.kind === 'boots') {
       const fit = fitOf(option.itemIds, slot.lane ? context.lane : context.team, context.itemReads, context.tags)
-      parts.draft = fit.fit
-      answers = fit.answers
-      misfit = fit.misfit
       const reads = option.itemIds.map(id => context.itemReads.get(id)).filter(read => !!read)
       if (reads.length) parts.kit = reads.reduce((sum, read) => sum + read.kit, 0) / reads.length
+      // Answering nothing of the draft is neutral, not a fault: a damage item answers it by killing.
+      // And an answer counts as far as our champion makes use of the item: armor boots answer a physical lane, not for a marksman.
+      parts.draft = 0.5 + 0.5 * fit.fit * (parts.kit ?? 1)
+      answers = fit.answers
+      misfit = fit.misfit
       weights = WEIGHTS.item
     }
     else if (slot.kind === 'starter') {

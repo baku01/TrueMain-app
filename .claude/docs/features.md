@@ -275,11 +275,13 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   Grievous Wounds, Tenacity, anti-burst, anti-autoattack, anti-tank, plus a Score of how it suits our kit) and the
   lane choices (rune pages, spells, starters, boots timing as Scores). Reads are cached per patch for the session.
   `utils/jev-recommend.ts` does the arithmetic: the enemy team's needs (damage split from Blitz's measured profiles,
-  weighed by damage dealt; the kits' facts summed; the lane opponent 60% on laning slots), each option's fit to them
-  (armor/magic-resist tags against the split, Jev's facts against the rest; a defensive-only item against damage the
+  weighed by damage dealt; the kits' facts as what stands out of a usual team of as many; the lane opponent 60% on
+  laning slots), each option's fit to them
+  (armor/magic-resist tags against the share past an even split, Jev's facts against the rest, scaled by how well
+  Jev read the item suits our champion, 50 when it answers nothing; a defensive-only item against damage the
   team barely deals is a misfit, halved — Mercury's Treads into a physical lane unless crowd control is heavy), its
   statistics (lolalytics + Blitz pooled through `utils/sources/combined.ts`, the one pooled view in the app; win rate
-  shrunk toward its slot's plus Blitz's `champion_item_stats` WPA over the slot's, only where every option has it, the
+  shrunk toward its slot's by 1000 games plus Blitz's `champion_item_stats` WPA over the slot's, only where every option has it, the
   matchup's when every option has 30 games there), weighed
   items 40% stats / 35% team / 25% kit, lane choices 50/50. `utils/jev-build.ts` lays the slots: runes, spells,
   starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus

@@ -12,16 +12,23 @@ const needs = (fields: Partial<Needs>): Needs => ({ physical: 0.5, magic: 0.5, c
 const option = (key: string, itemIds: number[], fields: Partial<JevOption> = {}): JevOption => ({ key, label: key, itemIds, games: 900, pickRate: 0.3, winRate: 0.5, ...fields })
 
 describe('needsOf', () => {
-  it('weighs the damage split by what each enemy deals, and sums the kits\' facts', () => {
+  it('weighs the damage split by what each enemy deals', () => {
     const team = needsOf([
-      { id: 122, read: read({ cc: 0.5, tank: 0.5, autos: 1 }), physical: 1, magic: 0, weight: 3 },
-      { id: 99, read: read({ cc: 1, burst: 1 }), physical: 0, magic: 1, weight: 1 },
+      { id: 122, read: read(), physical: 1, magic: 0, weight: 3 },
+      { id: 99, read: read(), physical: 0, magic: 1, weight: 1 },
     ])
     expect(team.physical).toBeCloseTo(0.75)
     expect(team.magic).toBeCloseTo(0.25)
-    expect(team.autos).toBeCloseTo(0.75)
-    expect(team.cc).toBeCloseTo(0.75)
-    expect(team.tanks).toBeCloseTo(0.25)
+  })
+
+  it('reads the kits\' facts as what stands out of a usual team', () => {
+    const line = (id: number, fields: Partial<EnemyLine['read']>): EnemyLine => ({ id, read: read(fields), physical: 0.5, magic: 0.5, weight: 1 })
+    const usual = [1, 2, 3, 4, 5].map(id => line(id, { cc: 0.4, tank: 0.2, autos: 0.25 }))
+    expect(needsOf(usual)).toMatchObject({ cc: 0, tanks: 0, autos: 0 })
+    const lockdown = [line(1, { cc: 1 }), line(2, { cc: 1 }), line(3, { cc: 0.4 }), line(4, { cc: 0.4 }), line(5, { cc: 0.4 })]
+    expect(needsOf(lockdown).cc).toBeCloseTo(0.8)
+    expect(needsOf([line(1, { cc: 0.5 })]).cc).toBeCloseTo(0.2)
+    expect(needsOf([line(1, { cc: 1 })]).cc).toBe(1)
   })
 
   it('leans on the lane opponent while laning', () => {
@@ -59,12 +66,12 @@ describe('fitOf', () => {
 })
 
 describe('statistics', () => {
-  it('reads an option even with its slot as 0.5, a better one higher, the sample pulling it in', () => {
-    const stats = statsOf([option('o0', [1], { winRate: 0.5 }), option('o1', [2], { winRate: 0.5 }), option('o2', [3], { winRate: 0.56, games: 40 }), option('o3', [4], { games: 0 })])
+  it('reads an option even with its slot as 0.5, the sample pulling a rare one in', () => {
+    const stats = statsOf([option('o0', [1], { winRate: 0.5 }), option('o1', [2], { winRate: 0.5 }), option('o2', [3], { winRate: 0.56, games: 40 }), option('o3', [4], { winRate: 0.53, games: 3000 }), option('o4', [5], { games: 0 })])
     expect(stats.o0).toBeLessThan(0.5)
-    expect(stats.o2).toBeGreaterThan(0.6)
-    expect(stats.o2).toBeLessThan(0.9)
-    expect(stats.o3).toBeNull()
+    expect(stats.o3).toBeGreaterThan(0.5)
+    expect(stats.o2).toBeLessThan(stats.o3!)
+    expect(stats.o4).toBeNull()
   })
 
   it('weighs the matchup\'s WPA only when every option has its games, centred on the slot', () => {
@@ -98,6 +105,13 @@ describe('rankSlot', () => {
     const ambessa = needs({ physical: 0.9, magic: 0.05, cc: 0.5, autos: 0.5 })
     const ranked = rankSlot(boots, context(ambessa, new Map([[3111, item({ tenacity: 0.97, kit: 0.7 })], [3047, item({ vsAutos: 0.9, kit: 0.7 })]])))
     expect(ranked.pick.itemIds).toEqual([3047])
+  })
+
+  it('takes Berserker\'s Greaves on a marksman into a physical lane: armor answers it only as far as the champion uses it', () => {
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006], { games: 30000 }), option('o1', [3047], { games: 200, winRate: 0.51 })] }
+    const caitlyn = needs({ physical: 0.85, magic: 0.1, autos: 0.6 })
+    const ranked = rankSlot(boots, context(caitlyn, new Map([[3006, item({ kit: 1 })], [3047, item({ vsAutos: 0.9, kit: 0.5 })]])))
+    expect(ranked.pick.itemIds).toEqual([3006])
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {
