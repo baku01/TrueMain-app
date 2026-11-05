@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { BuildOptions } from '~/utils/sources/model'
-import { draftBuildFromOptions, enemySituation, proShares } from '~/utils/draft-build'
+import { draftBuildFromOptions, enemySituation, proShares, winRateFactor } from '~/utils/draft-build'
 
 /**
  * The draft's build from another source (`utils/draft-build.ts`): the source's
@@ -49,6 +49,53 @@ describe('enemySituation', () => {
 })
 
 describe('draftBuildFromOptions', () => {
+  it('Darius into an AD laner and four mages takes Mercury\'s Treads: the board outweighs the lane', () => {
+    const board = new Map([
+      ...champions,
+      [266, { id: 266, alias: 'Aatrox', name: 'Aatrox', tags: ['Fighter'], info: { attack: 8, magic: 3, defense: 4 }, attackRange: 175 }],
+    ])
+    const situation = enemySituation([266, 1, 2, 3, 6], board, 266)
+    const darius: BuildOptions = { ...options, boots: [{ games: 3805, winRate: 0.469, pickRate: 0.48, itemIds: [3047] }, { games: 2172, winRate: 0.498, pickRate: 0.28, itemIds: [3111] }] }
+    const boots = draftBuildFromOptions(darius, situation, items).find(step => step.isBoots)
+    expect(boots?.itemId).toBe(3111)
+    expect(boots?.reason?.axis).toBe('EnemyMagicDamage')
+  })
+
+  it('reads the board the same way for every item, not the boots alone: an AD laner into four mages buys no pure armour', () => {
+    const board = new Map([...champions, [266, { id: 266, alias: 'Aatrox', name: 'Aatrox', tags: ['Fighter'], info: { attack: 8, magic: 3, defense: 4 }, attackRange: 175 }]])
+    const ids = draftBuildFromOptions(options, enemySituation([266, 1, 2, 3, 6], board, 266), items).map(step => step.itemId)
+    expect(ids).not.toContain(3075)
+    expect(ids).toContain(3102)
+  })
+
+  it('an AD laner still decides the boots when the team leans no way', () => {
+    const board = new Map([...champions, [266, { id: 266, alias: 'Aatrox', name: 'Aatrox', tags: ['Fighter'], info: { attack: 8, magic: 3, defense: 4 }, attackRange: 175 }]])
+    const darius: BuildOptions = { ...options, boots: [{ games: 2000, winRate: 0.5, pickRate: 0.3, itemIds: [3111] }, { games: 1800, winRate: 0.5, pickRate: 0.27, itemIds: [3047] }] }
+    expect(draftBuildFromOptions(darius, enemySituation([266], board, 266), items).find(step => step.isBoots)?.itemId).toBe(3047)
+  })
+
+  it('prefers boots that win over a slightly more popular pair that loses', () => {
+    const lopsided: BuildOptions = {
+      ...options,
+      boots: [{ games: 6000, winRate: 0.47, pickRate: 0.5, itemIds: [3020] }, { games: 5000, winRate: 0.54, pickRate: 0.4, itemIds: [3111] }],
+    }
+    expect(draftBuildFromOptions(lopsided, [], items).find(step => step.isBoots)?.itemId).toBe(3111)
+  })
+
+  it('does not trust a handful of lucky games', () => {
+    expect(winRateFactor(0.8, 20, 0.5)).toBeLessThan(1.3)
+    expect(winRateFactor(0.53, 5000, 0.5)).toBeGreaterThan(winRateFactor(0.6, 60, 0.5))
+    expect(winRateFactor(0.5, 1000, 0.5)).toBe(1)
+  })
+
+  it('reads a healer on the enemy team and takes the anti-heal the source measured', () => {
+    const healers = new Map([...champions, [9, { id: 9, alias: 'Soraka', name: 'Soraka', tags: ['Support'], info: { attack: 2, magic: 7, defense: 5 } }]])
+    const situation = enemySituation([4, 9], healers)
+    expect(situation.map(entry => entry.axis)).toContain('EnemySustain')
+    const steps = draftBuildFromOptions(options, [{ axis: 'EnemySustain', bucket: 'High', strength: 1 }], items)
+    expect(steps.find(step => step.itemId === 3075)?.reason?.axis).toBe('EnemySustain')
+  })
+
   it('keeps the source\'s most played items, in the order it measures them, when the draft asks nothing of it', () => {
     const steps = draftBuildFromOptions(options, [], items)
     // The most played core first, the boots second, then the items measured fourth, fifth, sixth.

@@ -1,9 +1,13 @@
 <!--
   The one match row of every match list — the profile's history (site and app),
   the favorites, the player-scoped champion page, the builder's games drawer and
-  the app's dashboard. A 54 px line: the result as an edge mark and a wash, then
-  one component per column (`MatchRowPortrait`, `MatchRowResult`, `MatchRowKda`,
-  `MatchRowStats`, `MatchRowLoadout`, `MatchRowTeams`, `MatchRowPerformance`).
+  the app's dashboard. A tile on Blitz's pattern: the result as an edge mark and
+  a wash across the tile, the champion's portrait framed and glowing in the
+  result's colour, then a title line (result • LP • queue • duration, how long
+  ago on the right) over the game's line — `MatchRowLoadout`, `MatchRowKda`, the
+  farm, `MatchRowBadges` when the host graded them (`MatchSummaryResponse.badges`)
+  — and on the right edge `MatchRowTeams` (named when the tile is wide) and
+  `MatchRowPerformance`.
   With a `nameTag` the row is an accordion over the shared `MatchDetailPanel`,
   which reads the game through the page's `MATCH_DETAIL_SOURCE`; without one it
   stays a static article. Host-specific controls (the app's "Watch") go in the
@@ -19,6 +23,9 @@ import type {
   StaticSummonerSpellData,
 } from '#shared/types/static-data'
 import { resultTone } from '#common/utils/result-tone'
+import { getQueueLabel } from '#common/utils/queues'
+import { formatDuration, formatRelativeTime } from '#common/utils/relativeTime'
+import { formatSigned } from '#shared/utils/deltas'
 
 const { t } = useT()
 
@@ -78,6 +85,10 @@ const champion = computed(() => championById.value.get(self.value.championId))
 const championName = computed(() => championDisplayName(self.value.championId, champion.value))
 
 const result = computed(() => resultTone(self.value.win))
+const queueLabel = computed(() => getQueueLabel(props.match.queueId, props.match.gameMode))
+const ago = computed(() => formatRelativeTime(props.match.gameStartTimeUtc))
+const lp = computed(() => self.value.lpDelta ?? null)
+const csPerMin = computed(() => (self.value.cs / Math.max(props.match.gameDurationSeconds / 60, 1)).toFixed(1))
 </script>
 
 <template>
@@ -85,57 +96,81 @@ const result = computed(() => resultTone(self.value.win))
        (`content-visibility: auto`, #2129) saved little on a page of ten and
        showed rows empty for a frame when the list was scrolled fast. -->
   <article
-    class="@container surface overflow-hidden rounded-lg"
+    class="@container surface overflow-hidden rounded-xl"
     :aria-label="t('match.row.label', { result: result.label, champion: championName, kda: `${self.kills}/${self.deaths}/${self.assists}` })"
   >
     <!-- The row sizes off its own width, not the viewport (#967): it sits
          full-width on a page, in a ~33rem drawer and on a phone. Columns come
          back as it widens — compositions first (they are what a provenance row
-         is read for), then CS/m and duration, then the result and queue label,
-         which only repeat the edge mark at a glance. The skeleton mirrors these
-         tiers (`MatchRowSkeleton`). `isolate` keeps the wash and the edge under
+         is read for), then how long ago, the queue, the farm and the duration,
+         then the badges, and the players' names beside the compositions last.
+         The skeleton mirrors these tiers (`MatchRowSkeleton`). `isolate` keeps the wash and the edge under
          the content without positioning every column. -->
     <div
       :role="canExpand ? 'button' : undefined"
       :tabindex="canExpand ? 0 : undefined"
       :aria-expanded="canExpand ? expanded : undefined"
-      class="group/row relative isolate flex h-[54px] items-center gap-1.5 pl-3 pr-2 transition-all duration-200 ease-out @sm:gap-2.5 @sm:pl-4 @sm:pr-3"
+      class="group/row relative isolate flex items-center gap-3 py-2.5 pl-3 pr-2 transition-all duration-200 ease-out @sm:gap-4 @sm:pl-4 @sm:pr-3"
       :class="canExpand ? 'cursor-pointer hover:bg-white/[0.035] active:bg-white/[0.05]' : ''"
       @click="toggle"
       @keydown.enter.prevent="toggle"
       @keydown.space.prevent="toggle"
     >
-      <span class="pointer-events-none absolute inset-y-0 left-0 -z-10 w-40 bg-linear-to-r to-transparent transition-opacity duration-200 group-hover/row:opacity-100" :class="result.wash" />
+      <span class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r to-60% to-transparent opacity-80 transition-opacity duration-200 group-hover/row:opacity-100" :class="result.wash" />
       <span class="absolute inset-y-2 left-0 -z-10 w-[3px] rounded-r-full transition-all duration-200 group-hover/row:w-1" :class="result.edge" />
 
-      <MatchRowPortrait
-        :icon-url="champion?.iconUrl ?? null"
-        :champion-name="championName"
-        :position="self.position ?? null"
-        :champion-level="self.championLevel"
-      />
-      <div class="hidden shrink-0 @[39rem]:block">
-        <MatchRowResult :win="self.win" :queue-id="match.queueId" :game-mode="match.gameMode" />
+      <div class="shrink-0 rounded-lg ring-2" :class="result.portrait">
+        <MatchRowPortrait
+          :icon-url="champion?.iconUrl ?? null"
+          :champion-name="championName"
+          :position="self.position ?? null"
+          :champion-level="self.championLevel"
+          :size="48"
+        />
       </div>
-      <MatchRowKda :self="self" />
-      <div class="hidden shrink-0 @[33rem]:block">
-        <MatchRowStats :self="self" :duration-seconds="match.gameDurationSeconds" />
-      </div>
-      <MatchRowLoadout
-        :self="self"
-        :items="items"
-        :summoner-spells="summonerSpells"
-        :rune-tree="runeTree"
-      />
 
-      <!-- Right edge, one flex item pushed out by `ml-auto`. The chevron is
-           the first thing a phone drops: the whole line is the toggle. -->
-      <div class="ml-auto flex shrink-0 items-center gap-1.5 @sm:gap-2.5">
+      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+        <!-- The title line: what the game was. The queue and the duration are
+             the first things a narrow tile drops; the result never. -->
+        <p class="flex min-w-0 items-baseline gap-1.5 text-xs text-muted">
+          <span class="shrink-0 text-sm font-semibold" :class="result.text">{{ result.label }}</span>
+          <template v-if="lp !== null">
+            <span class="text-dimmed" aria-hidden="true">•</span>
+            <span class="shrink-0 font-semibold tabular-nums" :class="lp >= 0 ? 'text-data-good' : 'text-data-bad'">{{ formatSigned(lp) }} LP</span>
+          </template>
+          <span class="hidden text-dimmed @[30rem]:inline" aria-hidden="true">•</span>
+          <span class="hidden truncate @[30rem]:inline" :title="queueLabel">{{ queueLabel }}</span>
+          <span class="hidden text-dimmed @[36rem]:inline" aria-hidden="true">•</span>
+          <span class="hidden shrink-0 tabular-nums @[36rem]:inline">{{ formatDuration(match.gameDurationSeconds) }}</span>
+          <span v-if="ago" class="ml-auto hidden shrink-0 pl-2 text-dimmed @[26rem]:inline">{{ ago }}</span>
+        </p>
+
+        <div class="flex min-w-0 items-center gap-3 @sm:gap-4">
+          <MatchRowLoadout
+            :self="self"
+            :items="items"
+            :summoner-spells="summonerSpells"
+            :rune-tree="runeTree"
+          />
+          <MatchRowKda :self="self" />
+          <div class="hidden w-14 shrink-0 leading-tight tabular-nums @[33rem]:block">
+            <p class="text-sm font-semibold text-highlighted">{{ t('match.row.cs', { value: self.cs }) }}</p>
+            <p class="text-[11px] text-dimmed">{{ t('match.row.csPerMin', { value: csPerMin }) }}</p>
+          </div>
+          <div v-if="match.badges?.length" class="hidden min-w-0 flex-1 @[44rem]:block">
+            <MatchRowBadges :badges="match.badges" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Right edge. The chevron is the first thing a phone drops: the whole tile is the toggle. -->
+      <div class="flex shrink-0 items-center gap-1.5 @sm:gap-3">
         <div v-if="match.participants.length" class="hidden @[29rem]:block">
           <MatchRowTeams
             :participants="match.participants"
             :self-team-id="self.teamId"
             :champion-by-id="championById"
+            :self-champion-id="self.championId"
           />
         </div>
         <!-- A game nobody graded (a remake, or a client game whose scoreboard

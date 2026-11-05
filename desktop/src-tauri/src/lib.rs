@@ -11,6 +11,7 @@ mod chrome;
 mod game;
 mod graphics;
 mod itemsets;
+mod jev;
 mod kits;
 mod loading;
 mod menu;
@@ -361,6 +362,9 @@ pub fn run() {
             composition_build,
             api_get,
             sources::source_get,
+            jev::jev_key_status,
+            jev::jev_set_key,
+            jev::jev_system_one,
             sources::opgg_call,
             sources::clear_source_cache,
             api_post,

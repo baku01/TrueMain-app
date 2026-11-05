@@ -66,6 +66,10 @@ Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
 - **Navegação:** menu lateral agrupado (Campeões, Builds, Em partida), recolhível, só com ícones em janelas estreitas; busca única de campeão e jogador (⌘K).
 - **Abas novas:** **Analytics**, **Habilidades**, **Meus kits**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).
 - **Atualização automática:** o app se atualiza pelas releases deste fork, mostrando o progresso do download num aviso no canto.
+- **Confronto · Jev:** build e runas classificadas com o [Jev](https://typesafe.ai) — ele lê os kits inimigos e cada item, o app junta isso às estatísticas do lolalytics e do Blitz — com importação de runas e item set para o cliente.
+- **Seleção de campeões nova:** tudo numa tela — times nas laterais com counters, sugestões em pôsteres, a build num card só (com a de pros a um clique) e um seletor **Fonte | Jev** para o Jev reordenar as sugestões e montar a build do draft.
+- **Perfil e partidas no estilo Blitz:** badges com o motivo, painel da partida com abas e linha do tempo, maestria com os pontos exatos e análise do jogador.
+- **Simulador sem compilar:** `./sim-lcu.sh` abre uma seleção de campeões simulada e o app no navegador, lado a lado.
 - **Várias fontes de dados** (acima) e o **painel para qualquer jogador**, lido do Blitz e do op.gg — sem chave da API da Riot.
 - **Cara de app nativo:** barra de título no tema do app (no macOS, integrada à barra superior), uma única instância, ⌘, abre Configurações, fechar a janela no macOS só a esconde, e na versão final sem menu de clique direito nem atalhos de navegador.
 - **Desempenho:** o app só processa os eventos do cliente que usa, o overlay fica parado fora da partida, a busca pelo cliente desacelera quando ele está fechado, e os caches têm limite.

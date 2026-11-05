@@ -4,12 +4,12 @@ import { MIN_GAMES_FOR_DELTA, formTiles } from '#common/utils/match-form'
 import type { MatchSummaryResponse, MatchSummarySelf } from '~~/shared/types/matches'
 
 /**
- * The four form tiles the profile opens on, on the site and in the app alike.
+ * The four form tiles the profile opens on, on the site and in the app alike:
+ * win rate, KDA, TrueMain's score and CS/min.
  *
  * What the tiles must get right is the move, not the average: under
  * `MIN_GAMES_FOR_DELTA` games the newest five are most of the sample, so no move
- * is read at all; a flat run shows none either; and "better" points down for
- * deaths and up for everything else.
+ * is read at all; a flat run shows none either; and a lower KDA reads as worse.
  */
 
 /** One thirty-minute game; the self line the tiles read, every other field inert. */
@@ -68,13 +68,13 @@ describe('formTiles', () => {
       match(2, { kills: 2, deaths: 2, assists: 2, cs: 150, killParticipation: 0.4 }, 1500),
     ])
 
-    expect(tiles.map(entry => entry.key)).toEqual(['kda', 'killParticipation', 'csPerMinute', 'deaths'])
+    expect(tiles.map(entry => entry.key)).toEqual(['winRate', 'kda', 'score', 'csPerMinute'])
+    expect(tile(tiles, 'winRate').value).toBe('100%')
     // A deathless game counts as one death in its KDA: 12 / 1, never a division by zero.
     expect(tile(tiles, 'kda')).toMatchObject({ value: '7.00', series: [2, 12] })
-    expect(tile(tiles, 'killParticipation').value).toBe('50%')
+    expect(tile(tiles, 'score').value).toBe('50')
     // 150 CS over 25 minutes, then 300 over 30.
     expect(tile(tiles, 'csPerMinute')).toMatchObject({ value: '8.0', series: [6, 10] })
-    expect(tile(tiles, 'deaths').value).toBe('1.0')
   })
 
   it('reads no move on a sample shorter than MIN_GAMES_FOR_DELTA', () => {
@@ -84,23 +84,23 @@ describe('formTiles', () => {
   })
 
   it('reads the newest five games against the whole sample from MIN_GAMES_FOR_DELTA on', () => {
-    // Eight games: 3.5 deaths on average, 2 over the newest five.
-    const run = deathsRun([2, 2, 2, 2, 2], [6, 6, 6])
+    // Eight games: three wins of the newest five against five of eight.
+    const run = [true, true, true, false, false, true, true, false].map((win, index) => match(index, { win }))
     expect(run).toHaveLength(MIN_GAMES_FOR_DELTA)
-    expect(tile(formTiles(run), 'deaths')).toMatchObject({
-      value: '3.5',
-      delta: { text: '1.5', direction: 'down', good: true },
+    expect(tile(formTiles(run), 'winRate')).toMatchObject({
+      value: '63%',
+      delta: { direction: 'down', good: false },
     })
   })
 
-  it('reads fewer deaths and a higher KDA as good, the reverse as bad', () => {
-    const better = formTiles(deathsRun([2, 2, 2, 2, 2], [6, 6, 6]))
-    expect(tile(better, 'deaths').delta).toMatchObject({ direction: 'down', good: true })
-    expect(tile(better, 'kda').delta).toMatchObject({ direction: 'up', good: true })
+  it('reads a higher KDA as good, a lower one as bad', () => {
+    expect(tile(formTiles(deathsRun([2, 2, 2, 2, 2], [6, 6, 6])), 'kda').delta).toMatchObject({ direction: 'up', good: true })
+    expect(tile(formTiles(deathsRun([6, 6, 6, 6, 6], [2, 2, 2])), 'kda').delta).toMatchObject({ direction: 'down', good: false })
+  })
 
-    const worse = formTiles(deathsRun([6, 6, 6, 6, 6], [2, 2, 2]))
-    expect(tile(worse, 'deaths').delta).toMatchObject({ direction: 'up', good: false })
-    expect(tile(worse, 'kda').delta).toMatchObject({ direction: 'down', good: false })
+  it('reads the score over graded games only', () => {
+    const tiles = formTiles([match(1, { performanceScore: 80 }), match(2, { performanceScore: 0 }), match(3, { performanceScore: 60 })])
+    expect(tile(tiles, 'score')).toMatchObject({ value: '70', series: [60, 80] })
   })
 
   it('reads no move on a flat run', () => {
@@ -108,7 +108,7 @@ describe('formTiles', () => {
   })
 
   it('sets each tile against its tier median where the benchmark has one, and none elsewhere', () => {
-    const reference = { tier: 'DIAMOND', position: 'MIDDLE', samples: 1234, medians: { kda: 2.9, killParticipation: 0.54 } }
+    const reference = { tier: 'DIAMOND', position: 'MIDDLE', samples: 1234, medians: { kda: 2.9, csPerMinute: 7.4 } }
     const tiles = formTiles(deathsRun([4, 4, 4], [4]), reference)
 
     expect(tile(tiles, 'kda').reference).toEqual({
@@ -116,9 +116,9 @@ describe('formTiles', () => {
       tier: 'DIAMOND',
       hint: 'Median KDA of Diamond players on Mid: 2.90 (1,234 games)',
     })
-    expect(tile(tiles, 'killParticipation').reference?.text).toBe('54%')
-    expect(tile(tiles, 'csPerMinute').reference).toBeNull()
-    expect(tile(tiles, 'deaths').reference).toBeNull()
+    expect(tile(tiles, 'csPerMinute').reference?.text).toBe('7.4')
+    expect(tile(tiles, 'winRate').reference).toBeNull()
+    expect(tile(tiles, 'score').reference).toBeNull()
   })
 
   it('has no reference without a benchmark', () => {

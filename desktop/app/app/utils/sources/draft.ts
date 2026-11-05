@@ -75,6 +75,12 @@ export function enemyLanes(enemies: number[], pinned: Record<string, string>, ro
   return enemies.map(championId => placed.get(championId)!)
 }
 
+/** The enemies on their lanes for a screen with no draft recommendation to read them from (the Jev matchup page). */
+export async function enemyLanesFromSource(provider: Provider, enemies: number[]): Promise<EnemyLane[]> {
+  if (!enemies.length) return []
+  return enemyLanes(enemies, {}, entriesOf(await provider.tierList({})))
+}
+
 interface RecommendationRequest {
   position: string
   enemyChampions: number[]

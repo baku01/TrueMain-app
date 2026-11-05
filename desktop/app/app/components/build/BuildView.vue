@@ -7,6 +7,7 @@ import type { ImportChoice } from '~/composables/useDraftAutoImport'
 import type { ImportBuild } from '~/utils/recommended-item-set'
 import { externalSource, fromBlitz } from '~/utils/data-source'
 import { situationalFromTree } from '~/utils/item-set'
+import { formatPercentage } from '#shared/utils/ddragon'
 import { kitPaths } from '~/utils/kit-tree'
 
 /**
@@ -36,10 +37,13 @@ const props = defineProps<{
   kits?: Kit[]
   /** The items the draft moves the build toward (`useDraftItemAdvice`), marked in the Blitz panel. */
   itemAdvice?: DraftItemPush[]
+  /** Champion select's layout: the build as Blitz lays it there, runes beside spells, path, situational and max order (`BuildCore`'s `compact`). */
+  compact?: boolean
 }>()
 
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
 const kitId = defineModel<string | null>('kitId', { default: null })
+const prosOpen = ref(false)
 const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) ?? null)
 
 const { t } = useT()
@@ -167,7 +171,101 @@ const emptyMessage = computed(() => t('build.view.none'))
 </script>
 
 <template>
-  <div class="surface relative grid h-full min-h-0 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
+  <!-- Champion select's card, as Blitz lays a build there: one header — whose build, which build, how it does — over the runes beside spells and build. -->
+  <div v-if="compact" class="flex h-full min-h-0 flex-col gap-3">
+    <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-default pb-3">
+      <div class="min-w-48"><slot name="header" /></div>
+      <div class="flex flex-wrap gap-1.5">
+        <button
+          v-for="option in options.slice(0, 6)"
+          :key="option.key"
+          type="button"
+          class="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold tabular-nums ring-1 ring-inset transition-colors"
+          :class="!kitShown && shown?.key === option.key ? 'bg-accented/70 text-highlighted ring-primary/50' : 'text-muted ring-default hover:text-highlighted'"
+          :title="option.key === 'draft' ? t('build.list.thisDraft') : undefined"
+          @click="selected = option.key; kitId = null"
+        >
+          <GameTooltipPerkIcon v-if="option.keystoneId && runeTree" :perk="runeTree.perks[option.keystoneId] ?? null" :width="20" :height="20" class="size-5 rounded-full bg-black/30" />
+          <GameTooltipItemIcon :item="items[option.firstItemId] ?? null" :width="20" :height="20" class="rounded" />
+          <span v-if="option.key === 'draft'">{{ t('build.compact.thisDraft') }}</span>
+          <span v-else-if="option.winRate !== null">{{ formatPercentage(option.winRate, 1) }}</span>
+        </button>
+        <button
+          v-for="kit in kits ?? []"
+          :key="kit.id"
+          type="button"
+          class="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ring-1 ring-inset transition-colors"
+          :class="kitShown?.id === kit.id ? 'bg-accented/70 text-highlighted ring-primary/50' : 'text-muted ring-default hover:text-highlighted'"
+          @click="kitId = kit.id"
+        >
+          <UIcon name="i-lucide-package" class="size-4" />{{ kit.name }}
+        </button>
+      </div>
+      <!-- The pros' builds: a list a click away, the one picked shown in this card. -->
+      <UPopover v-if="blitz || external" v-model:open="prosOpen" :content="{ align: 'start' }">
+        <button
+          type="button"
+          class="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ring-1 ring-inset transition-colors"
+          :class="selected === 'pro' && pro && !kitShown ? 'bg-accented/70 text-highlighted ring-primary/50' : 'text-muted ring-default hover:text-highlighted'"
+        >
+          <UIcon name="i-lucide-trophy" class="size-4 text-primary" />{{ selected === 'pro' && pro && !kitShown ? pro.player : t('build.compact.pros') }}
+          <UIcon name="i-lucide-chevron-down" class="size-3.5" />
+        </button>
+        <template #content>
+          <div class="max-h-[28rem] w-80 overflow-y-auto p-2">
+            <BuildPros v-if="blitz" :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="(...args) => { selectPro(...args); prosOpen = false }" />
+            <ProbuildTopPlayers v-else :champion-id="championId" :position="position" compact selectable @select="(...args) => { selectPro(...args); prosOpen = false }" />
+          </div>
+        </template>
+      </UPopover>
+      <div v-if="shown && !kitShown" class="ml-auto flex gap-6 text-right">
+        <div v-if="shown.winRate !== null">
+          <p class="text-lg font-bold leading-tight tabular-nums text-data-good">{{ formatPercentage(shown.winRate, 1) }}</p>
+          <p class="text-[11px] text-muted">{{ t('build.compact.gameWinRate') }}</p>
+        </div>
+        <div v-if="draft?.build?.lane?.winRate != null">
+          <p class="text-lg font-bold leading-tight tabular-nums text-data-good">{{ formatPercentage(draft.build.lane.winRate, 1) }}</p>
+          <p class="text-[11px] text-muted">{{ t('build.compact.laneWinRate') }}</p>
+        </div>
+      </div>
+    </header>
+
+    <p v-if="selected === 'pro' && pro && !kitShown" class="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs text-default">
+      <UIcon name="i-lucide-trophy" class="size-4 shrink-0 text-primary" />
+      {{ t('pro.banner', { player: pro.player, result: pro.option.winRate ? t('pro.win') : t('pro.loss') }) }}
+    </p>
+    <slot name="advice" />
+    <KitBuild v-if="kitShown" :kit="kitShown" />
+    <BuildCore
+      v-else-if="shown"
+      compact
+      :summoner-spells="shown.core.summonerSpells"
+      :starter-items="shown.core.starterItems"
+      :skill-order="shown.core.skillOrder"
+      :boots="shown.core.boots"
+      :rune-page="shown.core.runePage"
+      :champion-static="championStatic(championId)"
+      :items-map="items"
+      :summoners-map="summoners"
+      :summoners-pending="staticPending"
+      :rune-tree="runeTree"
+      :no-runes-message="shown.key === 'draft' ? t('build.view.noRunes') : null"
+      :champion-name="championStatic(championId)?.championName || null"
+      :champion-id="championId"
+      :item-path="shown.core.itemPath"
+      :situational="situationalFromTree(shown.buildTree, shown.core.itemPath?.itemIds ?? [])"
+    >
+      <template #itemImport>
+        <BuildItemSetImport v-if="itemSetSubject" :subject="itemSetSubject" labeled />
+      </template>
+    </BuildCore>
+    <div v-else class="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
+      <UIcon :name="waiting ? 'i-lucide-loader-circle' : 'i-lucide-scroll-text'" class="size-6 text-dimmed" />
+      <p class="text-sm text-muted">{{ waiting ? t('build.view.reading') : emptyMessage }}</p>
+    </div>
+  </div>
+
+  <div v-else class="surface relative grid h-full min-h-0 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
     <!-- The thin bar that says a newer draft is being asked for, without hiding the answer on screen. -->
     <div v-if="draft?.pending && shown" class="absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden">
       <div class="h-full w-1/3 animate-[tm-scan_1.1s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-primary to-transparent" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ItemSetSubject } from '~/composables/useItemSetImport'
+import type { ItemSetBlocks, ItemSetSubject } from '~/composables/useItemSetImport'
 
 /**
  * The item set import button (#1908): the rune button's twin, in the corner of
@@ -7,7 +7,10 @@ import type { ItemSetSubject } from '~/composables/useItemSetImport'
  * tooltip; the toast says how it went.
  */
 const props = defineProps<{
-  subject: ItemSetSubject
+  /** A build view's build, or one already laid out in the set's blocks. */
+  subject: ItemSetSubject | ItemSetBlocks
+  /** Its label shown beside the icon, where the button stands in a header rather than a corner. */
+  labeled?: boolean
 }>()
 
 const { t } = useT()
@@ -19,12 +22,13 @@ const { available, pending, done, importItemSet } = useItemSetImport()
     <UButton
       size="xs"
       color="neutral"
-      variant="ghost"
-      square
+      :variant="labeled ? 'soft' : 'ghost'"
+      :square="!labeled"
+      :label="labeled ? (done ? t('build.imported') : t('build.importItems')) : undefined"
       :icon="done ? 'i-lucide-check' : 'i-lucide-download'"
       :loading="pending"
       :aria-label="t('build.importItems')"
-      class="text-dimmed hover:text-highlighted"
+      :class="labeled ? '' : 'text-dimmed hover:text-highlighted'"
       @click="importItemSet(props.subject)"
     />
   </UTooltip>

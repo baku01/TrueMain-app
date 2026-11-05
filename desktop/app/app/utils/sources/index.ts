@@ -5,7 +5,7 @@ import type { ExternalSource } from '~/utils/data-source'
 import type { BuildOptions } from '~/utils/sources/model'
 import type { CompositionBuildRequest } from '#shared/types/composition'
 import { readBlitzBuild } from '~/utils/blitz/builds'
-import { matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
+import { damageProfilesFromBlitz, matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
 import { directoryFromBlitz } from '~/utils/blitz/directory'
 import { blitzOptions } from '~/utils/sources/blitz'
 import { compositionFromSource, compositionGamesFromBlitz } from '~/utils/sources/composition'
@@ -75,10 +75,59 @@ const tencentProvider: Provider = {
 
 export const PROVIDERS: Record<ExternalSource, Provider> = { blitz: blitzProvider, opgg: opggProvider, lolalytics: lolalyticsProvider, tencent: tencentProvider }
 
-/** The provider of the source Settings picked; null on TrueMain. */
+/** An answer that says nothing: no build, no row, no point — the next source is asked. */
+function empty(value: unknown): boolean {
+  if (value === null || value === undefined) return true
+  if (typeof value !== 'object') return false
+  const answer = value as Record<string, unknown>
+  if (Array.isArray(answer.builds)) return !answer.builds.length
+  if (Array.isArray(answer.tiers)) return !(answer.tiers as { entries: unknown[] }[]).some(group => group.entries.length)
+  if (Array.isArray(answer.rows)) return !answer.rows.length
+  if (Array.isArray(answer.matchups)) return !answer.matchups.length
+  if (Array.isArray(answer.points)) return !answer.points.length
+  if ('cores' in answer) return !(answer.cores as unknown[]).length && !(answer.boots as unknown[]).length
+  return false
+}
+
+/** Each read asked of `sources` in turn, the first that answers something kept. */
+function firstAnswering(sources: Provider[]): Provider {
+  const chain = <K extends keyof Provider>(method: K) => (async (...args: unknown[]) => {
+    let failure: unknown = null
+    for (const source of sources) {
+      try {
+        const answer = await (source[method] as (...a: unknown[]) => Promise<unknown>)(...args)
+        if (!empty(answer)) return answer
+      }
+      catch (error) {
+        failure = error
+      }
+    }
+    if (failure) throw failure
+    return (sources[0]![method] as (...a: unknown[]) => Promise<unknown>)(...args)
+  }) as Provider[K]
+  return { builds: chain('builds'), options: chain('options'), tierList: chain('tierList'), directory: chain('directory'), matchups: chain('matchups'), trend: chain('trend') }
+}
+
+/**
+ * The provider of the source Settings picked; null on TrueMain. The builds and
+ * runes are strictly that source's — never filled from another. Every other
+ * read asks it first, then lolalytics, then Blitz, for what it does not have:
+ * each answer whole from one source, never two pooled.
+ */
 export function activeProvider(): Provider | null {
   const source = externalSource()
-  return source ? PROVIDERS[source] : null
+  if (!source) return null
+  const own = PROVIDERS[source]
+  return { ...firstAnswering([own, lolalyticsProvider, blitzProvider]), builds: own.builds, options: own.options }
+}
+
+/**
+ * lolalytics, then Blitz for what it does not have, whatever source Settings
+ * picked: the Jev matchup page's reads, which pool those two (`combineOptions`)
+ * and so read the rest from them too.
+ */
+export function lolalyticsThenBlitz(): Provider {
+  return firstAnswering([lolalyticsProvider, blitzProvider])
 }
 
 /**
@@ -97,10 +146,11 @@ export function answerFromSource(path: string, query: Record<string, unknown>): 
   if (trend) return provider.trend(Number(trend[1]), query)
   // TrueMain's situational reading of each item — its model's, which no other
   // source has: none, rather than TrueMain's beside another source's build.
-  // Every champion's damage split, for the draft's team bars: Riot's own 0–10
+  // Every champion's damage split for the team bars: Blitz's measured split
+  // (`damageProfilesFromBlitz`); where it cannot be read, Riot's own 0–10
   // attack and magic ratings (Data Dragon) as the split, the same weight each.
   if (path === '/champions/damage-profiles') {
-    return championTraits().then(traits => ({
+    return damageProfilesFromBlitz().catch(() => championTraits().then(traits => ({
       patch: null,
       profiles: [...traits.values()].filter(champion => champion.info).map((champion) => {
         const total = Math.max(1, champion.info!.attack + champion.info!.magic)
@@ -120,7 +170,7 @@ export function answerFromSource(path: string, query: Record<string, unknown>): 
           flexDamage: false,
         }
       }),
-    }))
+    })))
   }
   // The shop's classes are TrueMain's reading of the client: none from another source.
   if (path === '/items/classes') return Promise.resolve({ patch: String(query.patch ?? ''), items: [] })

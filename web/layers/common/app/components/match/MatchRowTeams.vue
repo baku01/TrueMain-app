@@ -18,10 +18,16 @@ import { iconPlaceholderClass } from '#common/utils/icon-placeholder'
 // stops on its own after a few cycles). A champion the static list does not
 // know draws the hollow "no icon" box: the list has landed before any row is
 // drawn, so its absence is final.
+//
+// In a wide tile (the row's container past 50rem) the two teams stand side by
+// side as Blitz lists them, each player's Riot ID beside the portrait and the
+// player's own line brought forward.
 const props = defineProps<{
   participants: MatchSummaryParticipant[]
   selfTeamId: number
   championById: Map<number, ChampionStaticListItem>
+  /** The player's champion: their line in the named teams is highlighted. */
+  selfChampionId?: number | null
 }>()
 
 const canonicalIcon = useCanonicalIcon()
@@ -30,9 +36,11 @@ const unresolvedClass = iconPlaceholderClass(true)
 const teams = computed(() => [
   props.participants.filter(p => p.teamId === props.selfTeamId).sort(compareByPosition),
   props.participants.filter(p => p.teamId !== props.selfTeamId).sort(compareByPosition),
-].map(team => team.map(p => ({
+].map((team, side) => team.map(p => ({
   src: canonicalIcon(props.championById.get(p.championId)?.iconUrl),
   label: participantLabel(p),
+  name: p.gameName ?? championDisplayName(p.championId, props.championById.get(p.championId)),
+  self: side === 0 && p.championId === props.selfChampionId,
 }))))
 
 function settle(event: Event) {
@@ -48,7 +56,25 @@ function participantLabel(p: MatchSummaryParticipant): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-0.5">
+  <div class="hidden grid-cols-2 gap-x-3 @[50rem]:grid">
+    <ul v-for="(team, side) in teams" :key="side" class="flex w-[6.75rem] flex-col gap-0.5">
+      <li v-for="(p, index) in team" :key="index" class="flex min-w-0 items-center gap-1.5" :title="p.label">
+        <img
+          v-if="p.src"
+          :src="p.src"
+          alt=""
+          width="16"
+          height="16"
+          loading="lazy"
+          class="img-skeleton size-4 shrink-0 rounded-sm"
+          @load="settle"
+        >
+        <span v-else class="size-4 shrink-0 rounded-sm" :class="unresolvedClass" />
+        <span class="truncate text-[11px] leading-4" :class="p.self ? 'font-semibold text-highlighted' : 'text-muted'">{{ p.name }}</span>
+      </li>
+    </ul>
+  </div>
+  <div class="flex flex-col gap-0.5 @[50rem]:hidden">
     <div v-for="(team, side) in teams" :key="side" class="flex gap-0.5">
       <template v-for="(p, index) in team" :key="index">
         <img

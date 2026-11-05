@@ -1,6 +1,7 @@
 import type { ChampionItemContextResponse } from '#shared/types/item-context'
 import type { BuildOption } from '~/types/build'
 import { tr } from '#common/utils/i18n'
+import type { ItemSetBuild } from '~/utils/item-set'
 import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
 
 /** What the shell answers when it could not read the client's list (`itemsets.rs`). */
@@ -16,6 +17,13 @@ export interface ItemSetSubject {
   champion: string
   position: string
   build: BuildOption
+}
+
+/** A build already laid out in the set's blocks (the Jev page's), and whose it is. */
+export interface ItemSetBlocks {
+  championId: number
+  champion: string
+  blocks: ItemSetBuild
 }
 
 /**
@@ -52,22 +60,25 @@ export function useItemSetImport() {
     return situationalFromTree(subject.build.buildTree, path)
   }
 
-  async function importItemSet(subject: ItemSetSubject) {
+  const known = (itemId: number) => itemId in items.value
+
+  /** The one write path: the blocks made on the click, checked, written, and every outcome told. */
+  async function write(championId: number, champion: string, blocks: () => Promise<ItemSetBuild>) {
     if (pending.value) return
     pending.value = true
     try {
-      const build = itemSetBuild(subject.build.core, await situational(subject), itemId => itemId in items.value)
+      const build = await blocks()
       if (!hasItems(build)) throw new Error(EMPTY_BUILD)
       if (insideTauri()) {
         const { invoke } = await import('@tauri-apps/api/core')
-        await invoke('import_item_set', { championId: subject.championId, champion: subject.champion, build })
+        await invoke('import_item_set', { championId, champion, build })
       }
       done.value = true
       clearTimeout(doneTimer)
       doneTimer = setTimeout(() => (done.value = false), 2500)
       toast.add({
         title: tr('kit.import.itemsDone'),
-        description: insideTauri() ? tr('build.items.importedDescription', { champion: subject.champion }) : tr('build.devNothingSent'),
+        description: insideTauri() ? tr('build.items.importedDescription', { champion }) : tr('build.devNothingSent'),
         icon: 'i-lucide-check',
         color: 'success',
       })
@@ -78,6 +89,16 @@ export function useItemSetImport() {
     finally {
       pending.value = false
     }
+  }
+
+  /** A build view's build: its core blocks, and the situational items the item context or the tree gives. */
+  async function importItemSet(subject: ItemSetSubject | ItemSetBlocks) {
+    if ('blocks' in subject) {
+      const keep = (ids: number[]) => ids.filter(known)
+      const { starter, boots, core, situational: rest } = subject.blocks
+      return write(subject.championId, subject.champion, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest) }))
+    }
+    return write(subject.championId, subject.champion, async () => itemSetBuild(subject.build.core, await situational(subject), known))
   }
 
   onScopeDispose(() => clearTimeout(doneTimer))

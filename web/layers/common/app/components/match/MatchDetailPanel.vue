@@ -17,8 +17,9 @@ const { t } = useT()
  * `MATCH_DETAIL_SOURCE` (TrueMain's copy by default) and lays out the
  * scoreboard, the timeline (the players' gold / XP / CS curves and the win
  * probability, desktop only), a per-player build and skill order
- * (behind a player selector) and every player's rune page, across full-width
- * tabs. Static-data maps are passed down from the
+ * (behind a player selector), every player's rune page with what its runes did,
+ * and a table of every measure, across Blitz's underlined tabs with the bans
+ * on their right. Static-data maps are passed down from the
  * surrounding page so they hit the shared caches instead of being re-fetched
  * per open row.
  */
@@ -54,17 +55,29 @@ const owner = computed(() => (props.selfChampionId ? participants.value.find(p =
 const ownerTeamId = computed(() => owner.value?.teamId ?? 100)
 // Above it, the ten players' gold / XP / CS curves (#2102), from the same
 // timeline: only when it carries them, so a game without one shows neither.
+/** The kills and objectives, wherever the source kept the timeline's events. */
+const eventsTimeline = computed(() => (detail.value?.winProbabilityTimeline?.events.length ? detail.value.winProbabilityTimeline : null))
 const curvesTimeline = computed(() => {
   const timeline = detail.value?.winProbabilityTimeline
   return hasTimelineCurves(timeline) ? timeline : null
 })
 
+type Tab = 'general' | 'stats' | 'events' | 'charts' | 'winProbability' | 'details' | 'runes'
 const tabItems = computed(() => [
-  { value: 'general', label: t('match.panel.overview'), slot: 'general' as const },
-  ...(winProbability.value || curvesTimeline.value ? [{ value: 'timeline', label: t('match.panel.timeline'), slot: 'timeline' as const }] : []),
-  { value: 'details', label: t('match.panel.build'), slot: 'details' as const },
-  { value: 'runes', label: t('match.panel.runes'), slot: 'runes' as const },
+  { value: 'general' as Tab, label: t('match.panel.overview') },
+  { value: 'stats' as Tab, label: t('match.panel.stats') },
+  ...(eventsTimeline.value ? [{ value: 'events' as Tab, label: t('match.panel.events') }] : []),
+  ...(curvesTimeline.value ? [{ value: 'charts' as Tab, label: t('match.panel.charts') }] : []),
+  ...(winProbability.value ? [{ value: 'winProbability' as Tab, label: t('match.panel.winProbability') }] : []),
+  { value: 'details' as Tab, label: t('match.panel.build') },
+  { value: 'runes' as Tab, label: t('match.panel.runes') },
 ])
+const tab = ref<Tab>('general')
+
+// Each side's bans and objectives, where the source counted them (the app's).
+const teamOf = (teamId: number) => detail.value?.teams?.find(team => team.teamId === teamId) ?? null
+const canonicalIcon = useCanonicalIcon()
+const banIcons = (teamId: number) => (teamOf(teamId)?.bans ?? []).map(id => ({ id, src: canonicalIcon(championsById.value.get(id)?.iconUrl) }))
 </script>
 
 <template>
@@ -89,94 +102,113 @@ const tabItems = computed(() => [
       :description="t('match.panel.unavailable')"
     />
 
-    <!-- Full-width pills, one per tab: the dashboard's segmented control. -->
-    <UTabs
-      v-else
-      :items="tabItems"
-      default-value="general"
-      variant="pill"
-      color="neutral"
-      size="sm"
-      class="w-full"
-      :unmount-on-hide="false"
-      :ui="{
-        list: 'w-full ring ring-default',
-        indicator: 'rounded-md bg-accented shadow-none',
-        trigger: 'flex-1 data-[state=active]:text-highlighted',
-      }"
-    >
-      <!-- ── General: scoreboard ─────────────────────────────────────── -->
-      <template #general>
-        <div class="mt-3 flex flex-col gap-3">
-          <MatchDetailScoreboard
-            :participants="blueTeam"
-            :team-id="100"
-            :win="blueWin"
-            :champions="champions"
-            :items="items"
-            :summoner-spells="summonerSpells"
-            :rune-tree="runeTree"
-          />
-          <MatchDetailScoreboard
-            :participants="redTeam"
-            :team-id="200"
-            :win="!blueWin"
-            :champions="champions"
-            :items="items"
-            :summoner-spells="summonerSpells"
-            :rune-tree="runeTree"
-          />
+    <!-- Blitz's tabs: underlined, the game's bans on the right. Every panel is
+         kept once drawn (`v-show`), so going back to one never redraws it. -->
+    <div v-else class="@container">
+      <div class="flex items-center justify-between gap-4 border-b border-default">
+        <nav class="-mb-px flex overflow-x-auto">
+          <button
+            v-for="item in tabItems"
+            :key="item.value"
+            type="button"
+            class="relative h-10 shrink-0 px-3 text-sm font-medium transition-colors @[40rem]:px-4"
+            :class="tab === item.value ? 'text-highlighted' : 'text-muted hover:text-highlighted'"
+            :aria-pressed="tab === item.value"
+            @click="tab = item.value"
+          >
+            {{ item.label }}
+            <span v-if="tab === item.value" class="absolute bottom-0 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-t-sm bg-primary" />
+          </button>
+        </nav>
+        <div v-if="detail.teams?.some(team => team.bans.length)" class="hidden shrink-0 items-center gap-2 @[62rem]:flex">
+          <span class="flex gap-0.5">
+            <img v-for="ban in banIcons(100)" :key="ban.id" :src="ban.src ?? undefined" alt="" width="22" height="22" class="img-skeleton size-[22px] rounded">
+          </span>
+          <span class="text-[11px] font-medium uppercase text-muted">{{ t('match.scoreboard.bans') }}</span>
+          <span class="flex gap-0.5">
+            <img v-for="ban in banIcons(200)" :key="ban.id" :src="ban.src ?? undefined" alt="" width="22" height="22" class="img-skeleton size-[22px] rounded">
+          </span>
         </div>
-      </template>
+      </div>
 
-      <!-- ── Timeline: gold / XP / CS curves, then the win probability ── -->
-      <template #timeline>
-        <div class="mt-3 flex flex-col gap-3">
-          <MatchDetailTimelineCurves
-            v-if="curvesTimeline"
-            :timeline="curvesTimeline"
-            :perspective-team-id="ownerTeamId"
-            :self-participant-id="owner?.participantId ?? null"
-            :participants="participants"
-            :champions="champions"
-          />
-          <MatchDetailWinProbability
-            v-if="winProbability"
-            :win-probability="winProbability"
-            :perspective-team-id="ownerTeamId"
-            :participants="participants"
-            :champions="champions"
-          />
-        </div>
-      </template>
-
-      <!-- ── Build: player selector + single-player breakdown ───────── -->
-      <template #details>
-        <MatchDetailBuildTab
-          class="mt-3"
-          :blue-team="blueTeam"
-          :red-team="redTeam"
+      <div v-show="tab === 'general'" class="mt-3 flex flex-col gap-2">
+        <MatchDetailScoreboard
+          v-for="side in [{ id: 100, players: blueTeam, win: blueWin }, { id: 200, players: redTeam, win: !blueWin }]"
+          :key="side.id"
+          :participants="side.players"
+          :team-id="side.id"
+          :win="side.win"
+          :team="teamOf(side.id)"
+          :self-participant-id="owner?.participantId ?? null"
           :champions="champions"
           :items="items"
-          :self-champion-id="selfChampionId"
+          :summoner-spells="summonerSpells"
+          :rune-tree="runeTree"
         />
-      </template>
+      </div>
 
-      <!-- ── Runes: compact 10-player grid ───────────────────────────── -->
-      <template #runes>
-        <!-- Container-sized like the Build tab's selector: on a
-             1440px viewport `lg:` matched inside the 2xl drawer too, packing
-             five rune pages into a 624px box. -->
-        <div class="mt-3 grid grid-cols-2 gap-2 @md:grid-cols-3 @2xl:grid-cols-5">
-          <MatchDetailRunePage
-            v-for="p in participants"
-            :key="`runes-${p.participantId}`"
-            :participant="p"
-            :champion="championsById.get(p.championId) ?? null"
-            :rune-tree="runeTree"
-          />
-        </div>
-      </template>
-    </UTabs>
+      <MatchDetailStatsTable
+        v-show="tab === 'stats'"
+        class="mt-3"
+        :blue-team="blueTeam"
+        :red-team="redTeam"
+        :champions="champions"
+        :self-participant-id="owner?.participantId ?? null"
+      />
+
+      <MatchDetailEventTimeline
+        v-if="eventsTimeline"
+        v-show="tab === 'events'"
+        class="mt-3"
+        :timeline="eventsTimeline"
+        :perspective-team-id="ownerTeamId"
+        :participants="participants"
+        :champions="champions"
+      />
+
+      <MatchDetailTimelineCurves
+        v-if="curvesTimeline"
+        v-show="tab === 'charts'"
+        class="mt-3"
+        :timeline="curvesTimeline"
+        :perspective-team-id="ownerTeamId"
+        :self-participant-id="owner?.participantId ?? null"
+        :participants="participants"
+        :champions="champions"
+      />
+
+      <MatchDetailWinProbability
+        v-if="winProbability"
+        v-show="tab === 'winProbability'"
+        class="mt-3"
+        :win-probability="winProbability"
+        :perspective-team-id="ownerTeamId"
+        :participants="participants"
+        :champions="champions"
+      />
+
+      <MatchDetailBuildTab
+        v-show="tab === 'details'"
+        class="mt-3"
+        :blue-team="blueTeam"
+        :red-team="redTeam"
+        :champions="champions"
+        :items="items"
+        :self-champion-id="selfChampionId"
+      />
+
+      <!-- Container-sized like the Build tab's selector: on a 1440px
+           viewport `lg:` matched inside the 2xl drawer too, packing five rune
+           pages into a 624px box. -->
+      <div v-show="tab === 'runes'" class="mt-3 grid grid-cols-2 gap-2 @md:grid-cols-3 @2xl:grid-cols-5">
+        <MatchDetailRunePage
+          v-for="p in participants"
+          :key="`runes-${p.participantId}`"
+          :participant="p"
+          :champion="championsById.get(p.championId) ?? null"
+          :rune-tree="runeTree"
+        />
+      </div>
+    </div>
   </div>
 </template>

@@ -1,9 +1,9 @@
 import type { BuildSubject } from '~/composables/useDraftBuild'
-import type { NextItemRequest, NextItemResponse } from '~/utils/next-item'
+import type { NextItemCandidate, NextItemRequest, NextItemResponse } from '~/utils/next-item'
 import type { DraftItemPush } from '~/utils/draft-damage'
 import { draftPush, isDraftReason, PUSH_MIN_RATIO } from '~/utils/draft-damage'
 import type { SourceBuildStep } from '~/utils/draft-build'
-import { draftBuildFromOptions, enemySituation, proShares } from '~/utils/draft-build'
+import { draftBuildFromOptions, enemySituation, proShares, winRateFactor } from '~/utils/draft-build'
 import { readProMatches } from '~/utils/blitz/pro'
 import { activeProvider } from '~/utils/sources'
 import { externalSource } from '~/utils/data-source'
@@ -26,9 +26,18 @@ export interface DraftBuildStep {
   reason: { axis: string, bucket: 'High' | 'Low' } | null
 }
 
-/** The candidate a step settles on — the most taken in a draft like this one — with its reason when the draft moved it. */
+/**
+ * The candidate a step settles on — the most taken in a draft like this one,
+ * weighed by how it wins against the branch (shrunk by its games, so a rare
+ * lucky item moves nothing) — with its reason when the draft moved it.
+ */
 function stepOf(slot: NextItemResponse['build'], isBoots: boolean, skip: ReadonlySet<number>): DraftBuildStep | null {
-  const best = [...(slot?.candidates ?? [])].filter(candidate => !skip.has(candidate.itemId)).sort((a, b) => b.share - a.share)[0]
+  const open = (slot?.candidates ?? []).filter(candidate => !skip.has(candidate.itemId))
+  const games = open.reduce((sum, candidate) => sum + candidate.games, 0)
+  const baseline = games ? open.reduce((sum, candidate) => sum + candidate.wins, 0) / games : 0.5
+  const topShare = Math.max(0, ...open.map(candidate => candidate.share))
+  const score = (candidate: NextItemCandidate) => candidate.share * winRateFactor(candidate.games ? candidate.wins / candidate.games : 0, candidate.games, baseline)
+  const best = open.filter(candidate => candidate.share >= topShare * 0.1).sort((a, b) => score(b) - score(a))[0]
   if (!best) return null
   const reason = best.share >= best.baseShare * PUSH_MIN_RATIO ? best.reasons.find(entry => isDraftReason(entry.axis)) ?? null : null
   return { itemId: best.itemId, isBoots, share: best.share, baseShare: best.baseShare, reason: reason ? { axis: reason.axis, bucket: reason.bucket } : null }

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { GameflowPhase } from '~/types/lcu'
+import type { GameflowPhase, ChampionMastery  } from '~/types/lcu'
 import type { QueueFilter } from '~/utils/player-form'
 import { QUEUE_FILTERS, championLines, counted, gamesIn, laneLines, mainLane } from '~/utils/player-form'
 import { toMatchSummary, toProfileRanked } from '~/utils/match-summary'
 import { activityFromGames } from '~/utils/activity-from-games'
 import { dailyStandings, latestLpMoves } from '~/utils/lp-history'
-import { regionOfPlatform } from '~/utils/blitz/player'
+import { platformOf, readChampionMastery, regionOfPlatform } from '~/utils/blitz/player'
+import { readMasteryPoints } from '~/utils/sources/championmastery'
 
 /**
  * Home: the player, read from their own client, on the profile page the site
@@ -83,6 +84,19 @@ const identity = computed(() => ({
 }))
 const level = computed(() => (viewing.value ? other.account.value?.level ?? null : state.value.summonerLevel))
 
+// Another player's mastery with its exact points (championmastery.gg), Blitz's levels
+// where that page has none; the player's own comes with the client's state.
+const viewedMastery = ref<ChampionMastery[]>([])
+watch(() => (viewing.value && other.account.value ? `${other.region.value}/${other.account.value.gameName}#${other.account.value.tagLine}` : null), async (key) => {
+  viewedMastery.value = []
+  const account = other.account.value
+  const region = other.region.value
+  if (!key || !account || !region) return
+  const points = await readMasteryPoints(platformOf(region), account.gameName, account.tagLine).catch(() => [])
+  const mastery = points.length ? points : await readChampionMastery(region, account.gameName, account.tagLine).catch(() => [])
+  if (other.account.value === account) viewedMastery.value = mastery
+}, { immediate: true })
+
 // The detail beyond the history, for whoever is on screen.
 const insightsQueue = computed(() => filter.value)
 const insightsPlayer = computed(() => {
@@ -141,30 +155,36 @@ watch(() => state.value.phase, (next, previous) => {
         :form-reference="formReference"
         :loading="pending"
       >
+        <template #actions>
+          <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="sm" />
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="soft"
+            size="sm"
+            :label="t('dash.update')"
+            :aria-label="t('dash.refresh')"
+            :loading="status === 'pending'"
+            @click="refresh(true)"
+          />
+        </template>
+
+        <!-- The queues as Blitz's page tabs, underlined. -->
+        <template #tabs>
+          <button
+            v-for="tab in queueTabs"
+            :key="tab.value"
+            type="button"
+            class="tm-tab shrink-0"
+            :data-active="filter === tab.value || undefined"
+            :aria-pressed="filter === tab.value"
+            @click="filter = tab.value"
+          >
+            {{ tab.label }}
+          </button>
+        </template>
+
         <template #header>
-          <PageHeader :title="t('dash.title')" :description="viewing ? t('dash.viewing.description') : t('dash.description')">
-            <template #actions>
-              <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="sm" />
-              <UTabs
-                v-model="filter"
-                :items="queueTabs"
-                :content="false"
-                variant="pill"
-                color="neutral"
-                size="xs"
-                :ui="{ list: 'ring ring-default', indicator: 'rounded-md bg-accented shadow-none', trigger: 'px-3 data-[state=active]:text-highlighted' }"
-              />
-              <UButton
-                icon="i-lucide-refresh-cw"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                :loading="status === 'pending'"
-                :aria-label="t('dash.refresh')"
-                @click="refresh(true)"
-              />
-            </template>
-          </PageHeader>
           <UAlert
             v-if="viewing && (other.status.value === 'missing' || other.status.value === 'error')"
             color="neutral"
@@ -184,7 +204,7 @@ watch(() => state.value.phase, (next, previous) => {
         </template>
 
         <template #history>
-          <DashboardDetailedStats :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
+          <DashboardDetailedStats :games="historyGames" :champions="champions" :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
           <DashboardMatchHistory
             :games="historyGames"
             :all-games="loadedGames"
@@ -225,6 +245,7 @@ watch(() => state.value.phase, (next, previous) => {
                  they do not carry, so the dashboard offers day, week and month. -->
             <ProfileActivityHeatmap :data="activity" :modes="['day', 'week', 'month']" />
             <DashboardChampionsCard :lines="championLines(games)" :champions="champions" />
+            <DashboardMasteryCard :mastery="viewing ? viewedMastery : state.championMastery ?? []" :champions="champions" />
             <DashboardRolesCard :lanes="laneLines(games)" />
           </template>
         </template>

@@ -26,7 +26,7 @@ defineProps<{
       :trinket-item-id="self.trinketItemId"
       :role-bound-item-id="self.roleBoundItemId"
       :items="items"
-      :size="20"
+      :size="22"
     />
   </div>
 </template>

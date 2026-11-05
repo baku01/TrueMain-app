@@ -1,4 +1,5 @@
 import type { ChampionMatchups, ChampionTierListResponse, ChampionTrendResponse } from '#shared/types/champions'
+import type { DamageProfile, DamageProfilesResponse } from '~/utils/damage-profile'
 import { SOLO_QUEUE, blitzRole, blitzRows, blitzTier, truemainPosition } from '~/utils/blitz/client'
 
 /**
@@ -146,4 +147,52 @@ export async function trendFromBlitz(championId: number, query: Record<string, u
     ...(row ? [{ patch: row.patch, winRate: row.win_rate, pickRate: row.pick_rate, banRate: row.champion_ban_rate ?? null, games: row.games }] : []),
   ]
   return { championId, position, points }
+}
+
+interface BlitzDamageRow {
+  champion_id: number
+  individual_position: string
+  games: number
+  patch?: string
+  postmatch_damage?: { physical_damage_dealt_to_champions: number, magic_damage_dealt_to_champions: number, true_damage_dealt_to_champions: number } | null
+}
+
+/**
+ * Every champion's damage to champions split into physical, magic and true,
+ * as Blitz measures it per lane (`champion_postmatch_stats`, Emerald and above,
+ * the live patch) — what its own champion-select damage bars read — in the
+ * shape of TrueMain's damage profiles, so the team bars draw them unchanged.
+ * A champion's `ALL` row stands for it on a lane it was not measured on.
+ */
+export async function damageProfilesFromBlitz(): Promise<DamageProfilesResponse> {
+  const rows = await blitzRows<BlitzDamageRow>('champion_postmatch_stats', {
+    queue_id: SOLO_QUEUE,
+    region: 'WORLD',
+    tier: blitzTier('EMERALD_PLUS'),
+    columns: 'champion_id,individual_position,games,patch,postmatch_damage',
+  })
+  const profiles = rows.flatMap((row): DamageProfile[] => {
+    const damage = row.postmatch_damage
+    if (!damage || !row.games) return []
+    const total = damage.physical_damage_dealt_to_champions + damage.magic_damage_dealt_to_champions + damage.true_damage_dealt_to_champions
+    if (total <= 0) return []
+    const position = row.individual_position === 'ALL' ? null : truemainPosition(row.individual_position)
+    return [{
+      championId: row.champion_id,
+      position,
+      profilePosition: position,
+      source: 'measured',
+      patch: row.patch ?? null,
+      games: row.games,
+      physicalShare: damage.physical_damage_dealt_to_champions / total,
+      magicShare: damage.magic_damage_dealt_to_champions / total,
+      trueShare: damage.true_damage_dealt_to_champions / total,
+      damagePerGame: total / row.games,
+      damageClass: null,
+      builds: [],
+      flexDamage: false,
+    }]
+  })
+  if (!profiles.length) throw new Error('Blitz measured no damage profile')
+  return { patch: rows[0]?.patch ?? null, profiles }
 }

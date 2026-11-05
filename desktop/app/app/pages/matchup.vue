@@ -30,6 +30,7 @@ if (externalSource()) {
   <SharedPage :eyebrow="t('app.page.drafttools')" :title="t('app.page.matchup')">
     <PageMatchup>
       <template #advice="{ championId, request }">
+        <DraftTeamDamageMeter :allies="[{ championId, position: request.position }, ...request.allies]" :enemies="request.enemies" class="surface rounded-xl px-4 py-3" />
         <DraftBuildAdvice :champion-id="championId" :request="request" />
       </template>
     </PageMatchup>

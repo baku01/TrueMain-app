@@ -13,7 +13,7 @@ export const RECENT_GAMES = 5
 export const MIN_GAMES_FOR_DELTA = RECENT_GAMES + 3
 
 export interface FormTile {
-  key: 'kda' | 'killParticipation' | 'csPerMinute' | 'deaths'
+  key: 'winRate' | 'kda' | 'score' | 'killParticipation' | 'csPerMinute' | 'deaths'
   label: string
   value: string
   /** The newest `RECENT_GAMES` against the sample's average; null on too short a sample. */
@@ -48,9 +48,27 @@ interface Metric {
   /** The move's size, unsigned (the arrow gives the direction); `format` unless the unit differs. */
   formatDelta?: (value: number) => string
   higherIsBetter: boolean
+  /** Games the metric does not read (an ungraded game has no score); every game when absent. */
+  counts?: (match: MatchSummaryResponse) => boolean
+  /** The sparkline as a running average rather than game by game: a result is a 0 or a 1. */
+  running?: boolean
 }
 
+/**
+ * The four tiles, in the order the profile opens on them: how often the player
+ * wins, how they fight, how TrueMain grades their games, how they farm. Kill
+ * participation and deaths are read in the analysis against the lane opponents.
+ */
 const METRICS: Metric[] = [
+  {
+    key: 'winRate',
+    label: () => tr('match.form.winRate'),
+    read: ({ self }) => (self.win ? 1 : 0),
+    format: value => formatPercentage(value, 0),
+    formatDelta: value => formatPointDelta(value, { digits: 0, signed: false }),
+    higherIsBetter: true,
+    running: true,
+  },
   {
     key: 'kda',
     label: () => 'KDA',
@@ -59,13 +77,12 @@ const METRICS: Metric[] = [
     higherIsBetter: true,
   },
   {
-    key: 'killParticipation',
-    label: () => tr('match.form.killPart'),
-    read: ({ self }) => self.killParticipation,
-    format: value => formatPercentage(value, 0),
-    // A move between two rates is in points, not a percentage of a percentage.
-    formatDelta: value => formatPointDelta(value, { digits: 0, signed: false }),
+    key: 'score',
+    label: () => tr('match.form.score'),
+    read: ({ self }) => self.performanceScore,
+    format: value => Math.round(value).toString(),
     higherIsBetter: true,
+    counts: ({ self }) => self.performanceScore > 0,
   },
   {
     key: 'csPerMinute',
@@ -73,13 +90,6 @@ const METRICS: Metric[] = [
     read: ({ self, gameDurationSeconds }) => self.cs / Math.max(gameDurationSeconds / 60, 1),
     format: value => value.toFixed(1),
     higherIsBetter: true,
-  },
-  {
-    key: 'deaths',
-    label: () => tr('match.form.deaths'),
-    read: ({ self }) => self.deaths,
-    format: value => value.toFixed(1),
-    higherIsBetter: false,
   },
 ]
 
@@ -95,13 +105,15 @@ const average = (values: number[]) => values.reduce((sum, value) => sum + value,
 export function formTiles(matches: MatchSummaryResponse[], benchmark: FormReference | null = null): FormTile[] {
   if (!matches.length) return []
   const oldestFirst = [...matches].reverse()
-  return METRICS.map((metric) => {
+  return METRICS.flatMap((metric) => {
     const median = benchmark?.medians[metric.key]
-    const series = oldestFirst.map(metric.read)
-    const mean = average(series)
-    const recent = series.length >= MIN_GAMES_FOR_DELTA ? average(series.slice(-RECENT_GAMES)) : null
+    const read = oldestFirst.filter(match => metric.counts?.(match) ?? true).map(metric.read)
+    if (!read.length) return []
+    const series = metric.running ? read.map((_, index) => average(read.slice(Math.max(0, index - RECENT_GAMES + 1), index + 1))) : read
+    const mean = average(read)
+    const recent = read.length >= MIN_GAMES_FOR_DELTA ? average(read.slice(-RECENT_GAMES)) : null
     const diff = recent === null ? 0 : recent - mean
-    return {
+    return [{
       key: metric.key,
       label: metric.label(),
       value: metric.format(mean),
@@ -114,7 +126,7 @@ export function formTiles(matches: MatchSummaryResponse[], benchmark: FormRefere
           },
       series,
       reference: benchmark && median !== undefined ? tierReference(benchmark, metric, median) : null,
-    }
+    }]
   })
 }
 

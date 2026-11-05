@@ -122,11 +122,17 @@ pub async fn write_recommended_item_sets(
             let mut set = set.clone();
             if let Some(object) = set.as_object_mut() {
                 object.insert("priority".into(), serde_json::Value::Bool(index == 0));
-                object.insert("sortrank".into(), serde_json::Value::from(RECOMMENDED_RANK - index as i64));
+                object.insert(
+                    "sortrank".into(),
+                    serde_json::Value::from(RECOMMENDED_RANK - index as i64),
+                );
             }
             let path = folder.join(format!("{RECOMMENDED_PREFIX}{index}.json"));
-            std::fs::write(&path, serde_json::to_vec(&set).map_err(|error| error.to_string())?)
-                .map_err(|error| error.to_string())?;
+            std::fs::write(
+                &path,
+                serde_json::to_vec(&set).map_err(|error| error.to_string())?,
+            )
+            .map_err(|error| error.to_string())?;
         }
         written = true;
     }

@@ -16,7 +16,6 @@ use tauri::menu::{Menu, MenuEvent, MenuItem, MenuItemKind, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{App, AppHandle, Emitter, Manager, Runtime};
 
-
 const CHECK_FOR_UPDATES: &str = "check-for-updates";
 const SHOW: &str = "show";
 const QUIT: &str = "quit";

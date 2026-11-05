@@ -22,6 +22,8 @@ export interface ResultTone {
   wash: string
   /** Tinted chip: fill and text together. */
   chip: string
+  /** The match tile's portrait: its border and the glow around it, Blitz's tile mark. */
+  portrait: string
 }
 
 const WIN: ResultTone = {
@@ -31,6 +33,7 @@ const WIN: ResultTone = {
   edge: 'bg-sky-400',
   wash: 'from-sky-500/12',
   chip: 'bg-sky-500/15 text-sky-400',
+  portrait: 'ring-sky-400/80 shadow-[0_0_24px] shadow-sky-500/30',
 }
 
 const LOSS: ResultTone = {
@@ -40,6 +43,7 @@ const LOSS: ResultTone = {
   edge: 'bg-red-400',
   wash: 'from-red-500/12',
   chip: 'bg-red-500/15 text-red-400',
+  portrait: 'ring-red-400/80 shadow-[0_0_24px] shadow-red-500/30',
 }
 
 export function resultTone(win: boolean): ResultTone {

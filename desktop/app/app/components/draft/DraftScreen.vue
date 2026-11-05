@@ -3,12 +3,17 @@ import type { DraftSelection } from '~/composables/useDraftAutoImport'
 import type { DraftSuggestionItem } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { ViewedPick } from '~/composables/useDraftSubject'
+import type { PickSubject } from '~/composables/useJevPick'
 
 /**
- * Champion select, laid out like the reference client: each side's bans and
- * the clock over the two teams, our lane duel between them, and under them
- * what the draft is for right now — the picks worth making while ours is
- * open, the build to run once it is locked.
+ * Champion select on one screen, no page scroll: each side's bans and the
+ * clock over three columns — our team and its damage split, a tabbed card,
+ * theirs with who counters each. The card, as Blitz tabs it: — Suggestions while our pick or ban is
+ * open (the side lists beside the grid of suggestions), Builds once there is
+ * a build to show — whose header holds who ranks (the source or Jev), our
+ * lane's duel and the lock; only its body scrolls when it outgrows the
+ * window. Jev reorders the same suggestions and lays the build in the
+ * same card, on the player's click.
  */
 const props = defineProps<{
   draft: DraftState
@@ -149,96 +154,256 @@ function back() {
 
 // ─── The damage mix (#1907) ─────────────────────────────────────────────────
 
+// Who beats each enemy on its lane, under its card.
+const enemyCounters = useEnemyCounters(draft, enemyRows, eloBracket)
+
 const { allyDamagePicks, enemyDamagePicks, lockedAllies } = useDraftDamagePicks(draft, allyRows, enemyRows, previewed)
+
+// ─── Jev, in the same screen ────────────────────────────────────────────────
+
+/** The source or Jev ranks the picks and lays the build; kept for the session. Jev only answers a click — its calls are paid. */
+const withJev = useState('draft-with-jev', () => false)
+
+/** What a pick with Jev is chosen for: our lane, its opponent, the teams so far, the source's measured candidates. */
+const jevPick = computed<PickSubject | null>(() => {
+  const candidates = (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => ({ championId: candidate.championId, score: candidate.score }))
+  if (!candidates.length || !props.draft.myPosition) return null
+  return {
+    position: props.draft.myPosition,
+    opponentId: duel.value.opponentId,
+    allies: lockedAllies.value.map(ally => ally.championId),
+    enemies: props.draft.enemyChampions.map(championId => ({ championId, position: enemyLanes.value.find(lane => lane.championId === championId)?.position ?? null })),
+    candidates,
+  }
+})
+const jevPicks = useJevPick(jevPick)
+const jevBuildSubject = computed(() => (subject.value ? { championId: subject.value.championId, request: subject.value.request } : null))
+const jevBuild = useJevBuild(jevBuildSubject)
+const jevScores = computed(() => (withJev.value && jevPicks.status.value === 'ready' ? new Map(jevPicks.ranked.value.map(pick => [pick.championId, pick])) : null))
+
+// ─── The tabs ───────────────────────────────────────────────────────────────
+
+/** Suggestions while our pick or ban is open, Builds once there is a build to show — as Blitz tabs its card. */
+const tab = ref<'suggestions' | 'builds'>('suggestions')
+watch(mode, next => (tab.value = next === 'build' ? 'builds' : 'suggestions'), { immediate: true })
+function openTab(next: 'suggestions' | 'builds') {
+  if (next === 'builds' && mode.value !== 'build') showBuild.value = true
+  if (next === 'suggestions') back()
+  tab.value = next
+}
+const suggestionKind = computed<'pick' | 'ban'>(() => (banTime.value ? 'ban' : 'pick'))
+
+/** The picks in the grid: Jev's order once it answered, else the source's. */
+const shownPicks = computed<DraftSuggestionItem[]>(() => {
+  if (suggestionKind.value === 'ban') return banSuggestions.value
+  const scores = jevScores.value
+  if (!scores) return pickSuggestions.value
+  const byId = new Map(pickSuggestions.value.map(item => [item.championId, item]))
+  return jevPicks.ranked.value.map(pick => byId.get(pick.championId) ?? { championId: pick.championId, reasons: [], thin: false })
+})
+const jevStatus = computed(() => (tab.value === 'builds' ? jevBuild.status.value : jevPicks.status.value))
+const askJev = () => (tab.value === 'builds' ? jevBuild.ask() : jevPicks.ask())
+const jevReadings = computed(() => (!withJev.value ? null : tab.value === 'builds' ? (jevBuild.enemies.value.length ? jevBuild.enemies.value : null) : jevPicks.assessment.value?.readings ?? null))
+const subtitle = computed(() => {
+  if (!withJev.value) return t('draft.sugg.fromSource')
+  return jevStatus.value === 'ready' ? t('draft.sugg.fromJev') : t('draft.sugg.askJev')
+})
 
 const suggested = computed(() => (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => candidate.championId))
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-3 px-4 pb-4 pt-3">
-    <DraftTopStrip :ally-bans="draft.allyBans" :enemy-bans="draft.enemyBans" :seconds-left="draft.secondsLeft" :label="turnLabel ?? label ?? t('draft.screen.title')">
-      <template #action>
-        <DraftLockButton />
-      </template>
-    </DraftTopStrip>
-
-    <div class="grid grid-cols-[minmax(0,1fr)_8.5rem_minmax(0,1fr)] gap-3">
-      <DraftTeamColumn
-        team="ally"
-        :rows="allyRows"
-        :selected-cell="selectedCell.ally"
-        :opponent-cell="opponentCell.ally"
-        :suggested="suggested"
-        :damage-picks="allyDamagePicks"
-        @view="view('ally', $event)"
-      />
-
-      <DraftLaneDuel
-        :champion-id="duel.championId"
-        :opponent-id="duel.opponentId"
-        :position="duel.position"
-        :lane="build && build.championId === duel.championId ? build.lane : null"
-        :pending="buildPending"
-        class="pb-6"
-      />
-
-      <DraftTeamColumn
-        team="enemy"
-        :rows="enemyRows"
-        :selected-cell="selectedCell.enemy"
-        :opponent-cell="opponentCell.enemy"
-        :correctable="recommendation !== null"
-        :has-corrections="hasCorrections"
-        :damage-picks="enemyDamagePicks"
-        @view="view('enemy', $event)"
-        @swap="swap"
-        @reset="reset"
-      />
+  <!-- One screen, no page scroll: the bans and clock over three columns — our team, the card, theirs. -->
+  <div class="relative isolate flex h-full flex-col gap-3 overflow-hidden px-4 pb-3 pt-3">
+    <!-- The room: our champion's splash far behind, the two sides' colours rising from their edges. -->
+    <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+      <ChampionArt v-if="duel.championId" :key="duel.championId" :champion-id="duel.championId" kind="splash" fade="none" position="50% 25%" class="absolute inset-0 scale-110 opacity-[0.09] blur-2xl transition-opacity duration-700" />
+      <div class="absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-ally/[0.09] to-transparent" />
+      <div class="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-enemy/[0.09] to-transparent" />
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--ui-bg)_100%)]" />
     </div>
+      <DraftTopStrip :ally-bans="draft.allyBans" :enemy-bans="draft.enemyBans" :seconds-left="draft.secondsLeft" :label="turnLabel ?? label ?? t('draft.screen.title')" />
 
-    <div class="min-h-0 flex-1">
-      <DraftSuggestions
-        v-if="mode === 'pick' || mode === 'ban'"
-        v-model:my-pool="myPool"
-        :mode="mode"
-        :has-pool="hasPool"
-        :suggestions="mode === 'ban' ? banSuggestions : pickSuggestions"
-        :target="mode === 'ban' && bans ? { kind: bans.target, championIds: bans.targetChampionIds } : null"
-        :pending="mode === 'ban' ? banPending : ranking"
-        :error="mode === 'ban' ? banError : rankError"
-        :position="draft.myPosition"
-        :allies="lockedAllies"
-        @preview="previewed = $event"
-      />
+    <div class="grid min-h-0 flex-1 grid-cols-[minmax(12rem,19%)_minmax(0,1fr)_minmax(12rem,19%)] gap-3">
+      <aside class="flex min-h-0 flex-col gap-3">
+        <DraftTeamColumn
+          team="ally"
+          vertical
+          :rows="allyRows"
+          :selected-cell="selectedCell.ally"
+          :opponent-cell="opponentCell.ally"
+          :suggested="suggested"
+          :counters="null"
+          :damage-picks="allyDamagePicks"
+          @view="view('ally', $event)"
+        />
+        <DraftSideLists class="min-h-0 flex-1" :groups="['tiers']" :position="draft.myPosition" :opponent-id="duel.opponentId" :opponent-counters="[]" :jev-readings="null" @preview="previewed = $event" />
+      </aside>
 
-      <BuildView
-        v-else-if="subject"
-        :kit-id="kitId"
-        :champion-id="subject.championId"
-        :position="subject.request.position"
-        :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
-        :kits="kits"
-        :item-advice="itemAdvice"
-        @update:kit-id="pickKit"
-        @selection="importSelection = shownView === null && previewed === null ? $event : importSelection"
-      >
-        <template #advice>
-          <DraftItemAdvice :pushes="itemAdvice" :build="draftBuild" :pending="draftBuildPending" />
-        </template>
-        <template #header>
-          <DraftBuildHeader
+      <!-- The card the draft is for, as Blitz tabs it: suggestions while our pick or ban is open, the build once there is one. -->
+      <section class="flex min-h-0 flex-col rounded-xl bg-default/60 ring-1 ring-white/[0.06] backdrop-blur-md">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-4">
+          <div class="flex gap-5 self-stretch" role="tablist">
+            <button
+              v-for="entry in ([{ key: 'suggestions', icon: 'i-lucide-sparkle', label: t('draft.tab.suggestions'), disabled: !byLane }, { key: 'builds', icon: 'i-lucide-scroll-text', label: t('draft.tab.builds'), disabled: !subject && draft.myChampion === null }] as const)"
+              :key="entry.key"
+              type="button"
+              role="tab"
+              :aria-selected="tab === entry.key"
+              :disabled="entry.disabled"
+              class="-mb-px flex h-11 items-center gap-1.5 border-b-2 font-display text-[13px] font-bold uppercase tracking-[0.12em] transition-colors disabled:opacity-40"
+              :class="tab === entry.key ? 'border-primary text-highlighted' : 'border-transparent text-muted hover:text-highlighted'"
+              @click="openTab(entry.key)"
+            >
+              <UIcon :name="entry.icon" class="size-4" />{{ entry.label }}
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 py-2">
+            <!-- Who ranks and builds: the source, or Jev. -->
+            <div class="flex overflow-hidden rounded-lg ring-1 ring-inset ring-default">
+              <button
+                v-for="entry in [{ jev: false, label: t('draft.source.source'), icon: 'i-lucide-database' }, { jev: true, label: 'Jev', icon: 'i-tabler-chess-knight' }]"
+                :key="entry.label"
+                type="button"
+                class="flex h-9 items-center gap-1.5 border-default px-3 text-sm font-semibold transition-colors not-first:border-l disabled:opacity-40"
+                :class="withJev === entry.jev ? 'bg-accented/70 text-highlighted' : 'text-muted hover:text-highlighted'"
+                :disabled="entry.jev && suggestionKind === 'ban' && tab === 'suggestions'"
+                :title="entry.jev ? t('jev.pick.description') : undefined"
+                @click="withJev = entry.jev"
+              >
+                <UIcon :name="entry.icon" class="size-4" :class="entry.jev && withJev ? 'text-primary' : ''" />{{ entry.label }}
+              </button>
+            </div>
+            <UButton
+              v-if="withJev && !(suggestionKind === 'ban' && tab === 'suggestions')"
+              icon="i-tabler-chess-knight"
+              :label="jevStatus === 'ready' ? t('jev.card.again') : t('jev.card.ask')"
+              :loading="jevStatus === 'loading'"
+              :disabled="tab === 'builds' ? !jevBuildSubject : !jevPick"
+              color="neutral"
+              variant="soft"
+              @click="askJev()"
+            />
+
+            <!-- Our lane: us against the one we face, and how often the lane is won. -->
+            <div v-if="duel.position" class="flex h-9 items-center gap-1.5 rounded-lg px-2 ring-1 ring-inset ring-default">
+              <ChampionPortrait v-if="duel.championId" :champion-id="duel.championId" size="sm" class="size-6! rounded-md! ring-1 ring-ally/60" />
+              <span v-else class="size-6 rounded-md border border-dashed border-default" />
+              <span class="stat-label">{{ t('draft.duel.vs') }}</span>
+              <ChampionPortrait v-if="duel.opponentId" :champion-id="duel.opponentId" size="sm" class="size-6! rounded-md! ring-1 ring-enemy/60" />
+              <span v-else class="size-6 rounded-md border border-dashed border-default" />
+              <span v-if="build && build.championId === duel.championId && build.lane?.winRate != null" class="text-xs font-semibold tabular-nums text-highlighted" :title="t('draft.duel.laneWinRate')">{{ `${(build.lane.winRate * 100).toFixed(1)}%` }}</span>
+            </div>
+
+            <DraftLockButton />
+          </div>
+        </header>
+
+        <!-- Suggestions: the grid; the side lists live under the teams. -->
+        <div v-if="tab === 'suggestions'" class="@container min-h-0 flex-1 overflow-y-auto p-4">
+          <div class="min-w-0">
+            <UAlert v-if="withJev && jevStatus === 'noKey'" class="mb-4" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
+            <UAlert v-else-if="withJev && jevStatus === 'error'" class="mb-4" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" />
+            <DraftSuggestions
+              v-model:my-pool="myPool"
+              :mode="suggestionKind"
+              :has-pool="hasPool"
+              :suggestions="shownPicks"
+              :target="suggestionKind === 'ban' && bans ? { kind: bans.target, championIds: bans.targetChampionIds } : null"
+              :pending="suggestionKind === 'ban' ? banPending : ranking"
+              :error="suggestionKind === 'ban' ? banError : rankError"
+              :position="draft.myPosition"
+              :allies="lockedAllies"
+              :jev-scores="suggestionKind === 'pick' ? jevScores : null"
+              :subtitle="suggestionKind === 'pick' ? subtitle : null"
+              @preview="previewed = $event"
+            />
+          </div>
+        </div>
+
+        <!-- Builds: Jev's, or the source's. -->
+        <div v-else class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+          <template v-if="withJev">
+            <UAlert v-if="jevStatus === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
+            <UAlert v-else-if="jevStatus === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="jevBuild.error.value ?? undefined" />
+            <JevBuildBody
+              v-if="jevStatus === 'ready' && subject"
+              :champion-id="subject.championId"
+              :ranked="jevBuild.ranked.value"
+              :needs="jevBuild.needs.value"
+              :enemies="jevBuild.enemies.value"
+              :jev-build="jevBuild.jevBuild.value"
+              :standard-build="jevBuild.standardBuild.value"
+            />
+            <div v-else-if="jevStatus === 'loading'" class="flex flex-col gap-3">
+              <USkeleton class="h-40 rounded-2xl" />
+              <USkeleton class="h-64 rounded-2xl" />
+            </div>
+            <div v-else class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+              <UIcon name="i-tabler-chess-knight" class="size-6 text-dimmed" />
+              <p class="max-w-md text-sm text-muted">{{ t('jev.coach.idleBuild') }}</p>
+            </div>
+          </template>
+
+          <BuildView
+            v-else-if="subject"
+            :kit-id="kitId"
             :champion-id="subject.championId"
             :position="subject.request.position"
-            :can-go-back="canGoBack"
-            @back="back"
-          />
-        </template>
-      </BuildView>
+            :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
+            :kits="kits"
+            :item-advice="itemAdvice"
+            compact
+            class="flex-1"
+            @update:kit-id="pickKit"
+            @selection="importSelection = shownView === null && previewed === null ? $event : importSelection"
+          >
+            <template #advice>
+              <DraftItemAdvice :pushes="itemAdvice" :build="draftBuild" :pending="draftBuildPending" />
+            </template>
+            <template #header>
+              <DraftBuildHeader
+                :champion-id="subject.championId"
+                :position="subject.request.position"
+                :can-go-back="canGoBack"
+                @back="back"
+              />
+            </template>
+          </BuildView>
 
-      <div v-else class="surface flex h-full flex-col items-center justify-center gap-2 rounded-xl text-center">
-        <UIcon name="i-lucide-scroll-text" class="size-6 text-dimmed" />
-        <p class="text-sm text-muted">{{ t('draft.screen.buildEmpty') }}</p>
-      </div>
+          <div v-else class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+            <UIcon name="i-lucide-scroll-text" class="size-6 text-dimmed" />
+            <p class="text-sm text-muted">{{ t('draft.screen.buildEmpty') }}</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="flex min-h-0 flex-col gap-3">
+        <DraftTeamColumn
+          team="enemy"
+          vertical
+          :rows="enemyRows"
+          :selected-cell="selectedCell.enemy"
+          :opponent-cell="opponentCell.enemy"
+          :correctable="recommendation !== null"
+          :has-corrections="hasCorrections"
+          :counters="enemyCounters"
+          :damage-picks="enemyDamagePicks"
+          @view="view('enemy', $event)"
+          @swap="swap"
+          @reset="reset"
+        />
+        <DraftSideLists
+          class="min-h-0 flex-1"
+          :groups="['counters', 'jev']"
+          :position="draft.myPosition"
+          :opponent-id="duel.opponentId"
+          :opponent-counters="duel.opponentId !== null ? enemyCounters.get(duel.opponentId) ?? [] : []"
+          :jev-readings="jevReadings"
+          @preview="previewed = $event"
+        />
+      </aside>
     </div>
   </div>
 </template>

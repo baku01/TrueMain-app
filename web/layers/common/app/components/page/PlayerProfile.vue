@@ -13,9 +13,11 @@ const { t } = useT()
 /**
  * A player's profile, one page on both apps: the site's `/truemains/{nameTag}`
  * and, in the desktop app, the dashboard (the player in the client) and any
- * other player's profile. The desktop dashboard's layout (#1682): a banner on a
- * splash, four form tiles read from the games on screen, the match history, and
- * an 18rem column of cards beside it.
+ * other player's profile. Laid out on Blitz's profile: the art blurred and faint
+ * behind the head of the page, the player's portrait with the level over its
+ * edge, their name and standing beside it, the page's tabs under them (`#tabs`),
+ * four form tiles read from the games on screen, then the match history with
+ * a 308 px column of cards on its right.
  *
  * What differs between the hosts goes in slots — the header row (a breadcrumb
  * and filters on a profile, the dashboard's title and queue switch), the
@@ -52,7 +54,7 @@ const props = withDefaults(defineProps<{
   splashUrl: null,
   splashPosition: '68% 22%',
   loading: false,
-  asideWidth: '18rem',
+  asideWidth: '308px',
   formReference: null,
 })
 
@@ -66,85 +68,112 @@ const rankLabel = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div class="relative isolate flex flex-col gap-5">
+    <!-- Blitz's page backdrop: the art, blurred and faint, behind the head of
+         the page, fading out from its top centre. -->
+    <div
+      v-if="splashUrl"
+      class="pointer-events-none absolute inset-x-0 -top-5 -z-10 h-[35rem] overflow-hidden [mask-image:radial-gradient(80%_100%_at_50%_0%,black,transparent)]"
+      aria-hidden="true"
+    >
+      <img
+        :src="splashUrl"
+        alt=""
+        decoding="async"
+        class="size-full scale-110 object-cover opacity-30 blur-[28px]"
+        :style="{ objectPosition: splashPosition }"
+      >
+    </div>
+
     <slot name="header" />
 
-    <PageHero
-      :splash-url="splashUrl"
-      :splash-position="splashPosition"
-    >
-      <template #identity>
-        <Account
-          :identity="identity"
-          :patch="patch"
-          size="xl"
-          :to="false"
-          :ui="{
-            avatar: 'shadow-lg ring-1 ring-white/10',
-            body: '[text-shadow:0_1px_12px_rgb(0_0_0/0.6)]',
-            subline: 'mt-1 flex-wrap gap-2 text-sm text-muted',
-          }"
-        >
-          <template #name>
-            <div class="flex min-w-0 items-center gap-2">
-              <h1 class="truncate text-[28px] font-semibold leading-tight text-highlighted">
-                {{ identity.gameName }}<span
-                  v-if="identity.tagLine"
-                  class="font-medium text-muted"
-                >#{{ identity.tagLine }}</span>
-              </h1>
-              <slot name="title-actions" />
-            </div>
-          </template>
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <Account
+        :identity="identity"
+        :patch="patch"
+        size="xl"
+        :to="false"
+        class="min-w-0 flex-1"
+        :ui="{
+          avatar: 'size-16 rounded-xl shadow-lg ring-2 ring-default',
+          subline: 'mt-1.5 flex-wrap gap-2 text-sm text-muted',
+        }"
+      >
+        <template v-if="level !== null" #avatar-badge>
+          <span class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[35%] rounded-full bg-default px-2 py-px text-[11px] font-semibold tabular-nums text-highlighted ring-1 ring-default">
+            {{ level }}
+          </span>
+        </template>
 
-          <template #subline>
-            <template v-if="ranked && rankLabel">
-              <RankIcon
-                :tier="ranked.tier"
-                :size="20"
+        <template #name>
+          <div class="flex min-w-0 items-center gap-2">
+            <h1 class="truncate text-[22px] font-semibold leading-tight text-highlighted">
+              {{ identity.gameName }}<span
+                v-if="identity.tagLine"
+                class="ml-1 font-medium text-muted"
+              >#{{ identity.tagLine }}</span>
+            </h1>
+            <slot name="title-actions" />
+          </div>
+        </template>
+
+        <template #subline>
+          <template v-if="ranked && rankLabel">
+            <RankIcon
+              :tier="ranked.tier"
+              :size="20"
+            />
+            <span class="font-semibold text-highlighted">{{ rankLabel }}</span>
+          </template>
+          <span v-else-if="level !== null">{{ t('pages.profile.level', { level }) }}</span>
+          <template v-if="truemain">
+            <span class="text-dimmed">·</span>
+            <span class="flex items-center gap-1.5">
+              {{ t('pages.profile.truemain') }}
+              <SkeletonImage
+                :src="truemain.iconUrl"
+                :alt="truemain.name"
+                width="20"
+                height="20"
+                class="size-5 rounded"
               />
-              <span class="font-semibold text-highlighted">{{ rankLabel }}</span>
-            </template>
-            <span v-else-if="level !== null">{{ t('pages.profile.level', { level }) }}</span>
-            <template v-if="truemain">
-              <span class="text-dimmed">·</span>
-              <span class="flex items-center gap-1.5">
-                {{ t('pages.profile.truemain') }}
-                <SkeletonImage
-                  :src="truemain.iconUrl"
-                  :alt="truemain.name"
-                  width="20"
-                  height="20"
-                  class="size-5 rounded"
-                />
-                {{ truemain.name }}
-              </span>
-            </template>
-            <template v-if="persona">
-              <span class="text-dimmed">·</span>
-              <ULink
-                :to="playerPath(persona.slug)"
-                class="flex items-center gap-1.5 font-semibold text-highlighted hover:text-primary"
-              >
-                <UIcon
-                  name="i-lucide-user-round"
-                  class="size-4"
-                />
-                {{ persona.displayName }}
-                <span class="font-normal text-muted">· {{ t('pages.profile.allAccounts') }}</span>
-              </ULink>
-            </template>
+              {{ truemain.name }}
+            </span>
           </template>
-        </Account>
-      </template>
+          <template v-if="persona">
+            <span class="text-dimmed">·</span>
+            <ULink
+              :to="playerPath(persona.slug)"
+              class="flex items-center gap-1.5 font-semibold text-highlighted hover:text-primary"
+            >
+              <UIcon
+                name="i-lucide-user-round"
+                class="size-4"
+              />
+              {{ persona.displayName }}
+              <span class="font-normal text-muted">· {{ t('pages.profile.allAccounts') }}</span>
+            </ULink>
+          </template>
+        </template>
+      </Account>
 
-      <template
+      <div
         v-if="$slots.actions"
-        #actions
+        class="flex shrink-0 flex-wrap items-center gap-2"
       >
         <slot name="actions" />
-      </template>
+      </div>
+    </div>
 
+    <nav
+      v-if="$slots.tabs"
+      class="-mt-1 flex gap-6 overflow-x-auto border-b border-default"
+    >
+      <slot name="tabs" />
+    </nav>
+
+    <!-- `on-art`: the tiles keep their dark glass in the light theme too. -->
+    <div class="on-art grid grid-cols-2 gap-2 sm:grid-cols-4">
       <template v-if="loading && !matches.length">
         <USkeleton
           v-for="index in 4"
@@ -163,10 +192,12 @@ const rankLabel = computed(() => {
         :series="tile.series"
         :reference="tile.reference"
       />
-    </PageHero>
+    </div>
 
+    <!-- The history, and the column of cards on its right; one column when
+         narrow, the history first. -->
     <div
-      class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_var(--aside-width)]"
+      class="grid grid-cols-1 items-start gap-x-4 gap-y-5 lg:grid-cols-[minmax(0,1fr)_var(--aside-width)]"
       :style="{ '--aside-width': asideWidth }"
     >
       <section class="flex min-w-0 flex-col gap-2">

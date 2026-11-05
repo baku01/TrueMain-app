@@ -17,6 +17,9 @@ use lcu::{
 };
 use serde::{Deserialize, Serialize};
 
+/// How many of the player's champions the dashboard's mastery card can list.
+pub const MASTERY_SHOWN: usize = 50;
+
 /// The app's whole view of the world, pushed to the frontend on every change.
 ///
 /// One payload rather than several events: the frontend renders a *state*, and
@@ -40,6 +43,10 @@ pub struct AppState {
     /// relog never shows the previous account's pool.
     #[serde(default)]
     pub champion_pool: Vec<i64>,
+    /// The same pool with each champion's mastery level and points, for the
+    /// dashboard's mastery card; at most `MASTERY_SHOWN`, emptied with the pool.
+    #[serde(default)]
+    pub champion_mastery: Vec<ChampionMastery>,
     /// Present only in champ select.
     pub draft: Option<DraftState>,
 }
@@ -53,6 +60,7 @@ impl Default for AppState {
             profile_icon_id: None,
             summoner_level: None,
             champion_pool: Vec::new(),
+            champion_mastery: Vec::new(),
             draft: None,
         }
     }
@@ -108,6 +116,7 @@ impl AppState {
         let riot_id = summoner.map(CurrentSummoner::riot_id);
         if riot_id != self.riot_id {
             self.champion_pool.clear();
+            self.champion_mastery.clear();
         }
         self.riot_id = riot_id;
         self.profile_icon_id = summoner.map(|s| s.profile_icon_id);
@@ -130,6 +139,11 @@ impl AppState {
                 .then(a.champion_id.cmp(&b.champion_id))
         });
         self.champion_pool = played.iter().map(|entry| entry.champion_id).collect();
+        self.champion_mastery = played
+            .iter()
+            .take(MASTERY_SHOWN)
+            .map(|entry| (*entry).clone())
+            .collect();
     }
 
     /// Whether the pool should be read now: a player is logged in, their pool
@@ -281,6 +295,7 @@ mod tests {
         ChampionMastery {
             champion_id,
             champion_points,
+            champion_level: 1,
         }
     }
 

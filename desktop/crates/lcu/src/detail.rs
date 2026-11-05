@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::marks::{marks_by_participant, TimelineMark};
-use crate::record::{HistoryGame, HistoryParticipant};
+use crate::record::{GameTeam, HistoryGame, HistoryParticipant};
 use crate::win_probability::WinProbabilityTimeline;
 
 /// `GET /lol-match-history/v1/game-timelines/{gameId}`: one frame a minute.
@@ -104,6 +104,8 @@ pub struct GameDetail {
     pub game_duration_seconds: i64,
     pub game_version: String,
     pub participants: Vec<DetailParticipant>,
+    /// Both sides' bans and objectives, for the scoreboard's team headers.
+    pub teams: Vec<GameTeam>,
     /// What the shared win-probability model reads (#1911); the app draws the
     /// curve from it. `None` without the timeline.
     pub win_probability_timeline: Option<WinProbabilityTimeline>,
@@ -174,6 +176,9 @@ pub struct DetailRune {
     pub style_id: i64,
     pub selection_index: i64,
     pub perk_id: i64,
+    /// The rune's end-of-game stats (`var1..3`), in the order of its
+    /// `endOfGameStatDescs`.
+    pub vars: [i64; 3],
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -301,6 +306,7 @@ impl GameDetail {
             game_duration_seconds: game.duration_seconds(),
             game_version: game.game_version.clone(),
             participants,
+            teams: game.teams.iter().map(GameTeam::from_team).collect(),
             win_probability_timeline: timeline
                 .map(|timeline| WinProbabilityTimeline::from_game(game, timeline)),
         }
@@ -320,13 +326,40 @@ fn opponent_of<'a>(
 
 fn runes_of(p: &HistoryParticipant) -> Vec<DetailRune> {
     let stats = &p.stats;
-    let primary = [stats.perk0, stats.perk1, stats.perk2, stats.perk3];
-    let secondary = [stats.perk4, stats.perk5];
+    let primary = [
+        (
+            stats.perk0,
+            [stats.perk0_var1, stats.perk0_var2, stats.perk0_var3],
+        ),
+        (
+            stats.perk1,
+            [stats.perk1_var1, stats.perk1_var2, stats.perk1_var3],
+        ),
+        (
+            stats.perk2,
+            [stats.perk2_var1, stats.perk2_var2, stats.perk2_var3],
+        ),
+        (
+            stats.perk3,
+            [stats.perk3_var1, stats.perk3_var2, stats.perk3_var3],
+        ),
+    ];
+    let secondary = [
+        (
+            stats.perk4,
+            [stats.perk4_var1, stats.perk4_var2, stats.perk4_var3],
+        ),
+        (
+            stats.perk5,
+            [stats.perk5_var1, stats.perk5_var2, stats.perk5_var3],
+        ),
+    ];
     let rune = |style_id: i64| {
-        move |(index, perk_id): (usize, &i64)| DetailRune {
+        move |(index, (perk_id, vars)): (usize, &(i64, [i64; 3]))| DetailRune {
             style_id,
             selection_index: index as i64,
             perk_id: *perk_id,
+            vars: *vars,
         }
     };
     primary
@@ -441,6 +474,10 @@ mod tests {
                   "stats": { "item0": 3031, "item6": 3363, "roleBoundItem": 3006 } },
                 { "participantId": 6, "teamId": 200, "championId": 7, "timeline": { "lane": "MIDDLE", "role": "SOLO" },
                   "stats": { "kills": 3 } }
+              ],
+              "teams": [
+                { "teamId": 100, "towerKills": 9, "dragonKills": 3, "baronKills": 1, "inhibitorKills": 2, "riftHeraldKills": 1, "hordeKills": 4,
+                  "bans": [ { "championId": 238, "pickTurn": 3 }, { "championId": -1, "pickTurn": 1 }, { "championId": 157, "pickTurn": 2 } ] }
               ] }"#,
         )
         .unwrap()
@@ -485,6 +522,12 @@ mod tests {
         assert_eq!(adc.items[0], 3031);
         assert_eq!(adc.trinket_item_id, 3363);
         assert_eq!(adc.role_bound_item_id, 3006);
+        let blue = &detail.teams[0];
+        assert_eq!(blue.bans, vec![157, 238]);
+        assert_eq!(
+            (blue.towers, blue.dragons, blue.barons, blue.grubs),
+            (9, 3, 1, Some(4))
+        );
     }
 
     #[test]

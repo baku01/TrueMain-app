@@ -10,6 +10,35 @@ export interface MatchSummaryResponse {
   gameDurationSeconds: number
   self: MatchSummarySelf
   participants: MatchSummaryParticipant[]
+  /**
+   * The game's standouts for the player — top damage, CS/min, vision… — graded
+   * from the whole scoreboard. Absent when the host cannot grade them (the site
+   * holds no per-player scoreboard on a summary); the row then draws none.
+   */
+  badges?: MatchBadge[]
+}
+
+/** Blitz's match accolades, every one of them (`MatchRowBadges`, `#common/utils/match-badges`). */
+export type MatchBadgeKind =
+  | 'mvp' | 'svp' | 'second' | 'third'
+  | 'pentaKill' | 'quadraKill' | 'tripleKill' | 'doubleKill'
+  | 'filthyRich' | 'cashMoney' | 'goldDigger'
+  | 'csGod' | 'csLegend' | 'csMaster'
+  | 'unkillable' | 'stable'
+  | 'allSeeing' | 'goodEye'
+  | 'trueSupport'
+  | 'firstBlood'
+  | 'topDamage' | 'goodDamage'
+  | 'bigChungus' | 'beefy'
+  | 'wreckingBall' | 'bulldozer'
+  | 'perfectGame'
+
+export interface MatchBadge {
+  kind: MatchBadgeKind
+  /** The measure behind it, for its tooltip: a count, DPM, gold, CS/min, vision score, assists… */
+  value?: number
+  /** A second measure: the vision score aimed for, or a support's KDA. */
+  target?: number
 }
 
 export interface MatchSummarySelf {

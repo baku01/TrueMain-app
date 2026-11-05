@@ -26,7 +26,7 @@ const route = useRoute()
 const PAGES: [string, string, string | null][] = [
   ['/champions', 'i-tabler-swords', 'nav.group.champions'], ['/tierlist', 'i-tabler-chart-bar', 'nav.group.champions'],
   ['/analytics', 'i-tabler-chart-line', 'nav.group.champions'], ['/classes', 'i-tabler-hierarchy-2', 'nav.group.champions'],
-  ['/matchup', 'i-tabler-scale', 'nav.group.champions'], ['/probuild', 'i-tabler-trophy', 'nav.group.builds'],
+  ['/matchup', 'i-tabler-scale', 'nav.group.champions'], ['/jev', 'i-tabler-chess-knight', 'nav.group.champions'], ['/probuild', 'i-tabler-trophy', 'nav.group.builds'],
   ['/kits', 'i-tabler-backpack', 'nav.group.builds'], ['/items', 'i-tabler-flask', 'nav.group.builds'],
   ['/patchnotes', 'i-tabler-news', 'nav.group.builds'], ['/draft', 'i-tabler-users-group', 'nav.inGame'],
   ['/game', 'i-tabler-crosshair', 'nav.inGame'], ['/overlay', 'i-tabler-eye', 'nav.inGame'],

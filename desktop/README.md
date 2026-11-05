@@ -32,6 +32,12 @@ As capturas foram feitas no navegador (`npm run dev`) com dados reais das fontes
 - **Abas:** Analytics, Itens e runas, Classes, Notas da atualização (lidas de leagueoflegends.com pelo Rust), ProBuild (por fonte).
 - **Overlay:** próximo item com a receita e a ordem da build (`OverlayNextItemPath`), o mesmo componente no exemplo das configurações.
 - **Nativo:** barra de título no tema do app (`chrome.rs`; no macOS `titleBarStyle: Overlay` em `tauri.macos.conf.json`, com regiões de arraste na barra superior), instância única (`tauri-plugin-single-instance`), ⌘, para Configurações, fechar esconde no macOS, e `plugins/native.client.ts` tira o menu de clique direito e os atalhos de navegador na versão final.
+- **Confronto · Jev** (`pages/jev.vue`, `utils/jev-*.ts`, `useJevBuild`): a build e as runas classificadas com o [Jev](https://typesafe.ai) (TypeSafe System One). O Jev só lê textos — os kits inimigos, cada item candidato, as runas, os feitiços e os iniciais, sempre em inglês (`useJevTexts`) — e responde perguntas de escala (Score) e de sim/não (Noul); o app faz as contas: o que o time inimigo joga em nós (divisão de dano medida pelo Blitz e o que se destaca de um time comum), o encaixe de cada item, as estatísticas de lolalytics e Blitz somadas (vitória puxada pela amostra e o WPA do Blitz) e a nota final, parte por parte. Mostra a build recomendada ao lado da mais jogada, cada etapa com suas opções, e importa runas e item set para o cliente. A chave fica em Configurações, guardada pelo shell (`src-tauri/src/jev.rs`), nunca devolvida à interface. Cada pedido é uma chamada paga: o Jev só é chamado num clique.
+- **Seleção de campeões** (`components/draft/`): uma tela só, sem rolar — os dois times como faixas nas laterais (counters de cada inimigo na própria faixa, a divisão de dano numa barra fina, a tier list da rota e os counters do oponente embaixo) e, no centro, um card com as abas **Sugestões** (pôsteres de todas as sugestões, a nota e o motivo) e **Builds** (runas ao lado de feitiços, iniciais, ordem de itens, botas, situacionais e ordem de evolução, importação nos cabeçalhos, as builds de pros num menu). Um seletor **Fonte | Jev** no cabeçalho faz o Jev reordenar as sugestões (com o detalhamento da nota) e montar a build do draft. A página Confronto · Jev também lê o draft do cliente sozinha.
+- **Perfil e partidas no estilo Blitz:** badges de partida com o motivo de cada um, painel da partida com abas, Linha do tempo, dano das runas por jogador, maestria (top 5 com os pontos exatos do championmastery.gg) e a análise do jogador nas estatísticas detalhadas.
+- **Fontes e dados:** builds e runas sempre da fonte escolhida; o que ela não tiver vem do lolalytics e depois do Blitz, cada resposta inteira de uma fonte só (a única soma é a classificação do Confronto · Jev, lolalytics + Blitz). Os dados do TrueMain só são usados com o TrueMain escolhido.
+- **Simulador de LCU sem compilar:** `./sim-lcu.sh` na raiz sobe o servidor de desenvolvimento e abre o simulador de seleção de campeões (os dois times já sorteados) e o app numa segunda aba, que acompanha o simulador ao vivo.
+- **Zoom:** ⌘/Ctrl + `+`, `−` e `0` ampliam o app como no navegador (`zoomHotkeysEnabled`).
 - **Removido:** chave da API da Riot e o coletor ProBuild que dependia dela, ranking e marcas de Truemains, gravações (crates `game-recording`, `capture-helper`, `capture-spike` e `capture/`), abas Jogador e Matchups.
 
 ## Rodando
@@ -41,6 +47,7 @@ cd desktop/app
 npm ci
 npm run dev            # a interface no navegador, com cenários de simulação
 npm run tauri dev      # o app de verdade, com o cliente do League aberto
+../../sim-lcu.sh       # uma seleção de campeões simulada no navegador, sem compilar
 npm run test && npm run lint && npm run typecheck
 cd .. && cargo test --workspace
 ```
@@ -448,6 +455,18 @@ what the window server does with it during a real game
 
 A champion select needs a real game. In development one can be played by hand
 instead, and the app takes it for a real one — navigation, parsing and all:
+
+Without compiling anything, from the repository root:
+
+```sh
+./sim-lcu.sh
+```
+
+starts the desktop dev server when none is running and opens two browser tabs:
+the simulator (below) and the app's draft screen, which follows it over a
+broadcast channel (`SIM_CHANNEL`, the board read as `DraftState` by
+`useLcuSimulator`). The app's own writes to the client — Hover, Ban, Lock in —
+need the shell; for those, and to exercise the Rust side:
 
 ```sh
 cd desktop/app && npm run tauri:sim

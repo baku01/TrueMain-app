@@ -1139,7 +1139,10 @@ mod tests {
             "winProbability":{"enabled":true,"anchor":"top-left","custom":null,"trigger":{"kind":"always"}},
             "scoreboardNudge":0}"#;
         let settings = OverlaySettings::from_app(body);
-        assert_eq!(settings.next_item.custom, Some(OverlayPoint { x: 1.0, y: 0.0992 }));
+        assert_eq!(
+            settings.next_item.custom,
+            Some(OverlayPoint { x: 1.0, y: 0.0992 })
+        );
     }
 
     #[test]

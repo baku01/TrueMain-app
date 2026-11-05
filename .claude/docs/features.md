@@ -267,6 +267,48 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   subclasses as panels side by side; class tabs (counting the whole roster) stay pinned at the top while scrolling,
   and a filter beside the title narrows by name. A champion in two subclasses shows in both, its tooltip naming the
   other; a click opens its page.
+- **Confronto · Jev** (`/jev`, `pages/jev.vue`, key in `/settings` → `SettingsJev.vue`, kept by the shell in
+  `src-tauri/src/jev.rs`, file mode 0600, never returned to the webview) — the matchup board with a build ranked by
+  TypeSafe's Jev (`POST api.typesafe.ai/v1/systemone`, `jev-latest`) and statistics. Jev only reads texts, never
+  numbers, and always in English — the game's own `en_US` texts (`useJevTexts`), whatever the app's language, since
+  its questions name the game's English terms (Grievous Wounds, Tenacity); Noul facts are asked as questions and a
+  Score spread over its levels is pulled toward the middle as far as Jev was unsure: `utils/jev-read.ts` sends three requests at once, each a small object state — the enemy kits (five Score
+  scales each: crowd control, healing, burst, basic attacks, tankiness), the candidate items (five Noul facts each:
+  Grievous Wounds, Tenacity, anti-burst, anti-autoattack, anti-tank, plus a Score of how it suits our kit) and the
+  lane choices (rune pages, spells, starters, boots timing as Scores). Reads are cached per patch for the session.
+  `utils/jev-recommend.ts` does the arithmetic: the enemy team's needs (damage split from Blitz's measured profiles,
+  weighed by damage dealt; the kits' facts as what stands out of a usual team of as many; the lane opponent 60% on
+  laning slots), each option's fit to them
+  (armor/magic-resist tags against the share past an even split, Jev's facts against the rest, scaled by how well
+  Jev read the item suits our champion, 50 when it answers nothing; a defensive-only item against damage the
+  team barely deals is a misfit, halved — Mercury's Treads into a physical lane unless crowd control is heavy), its
+  statistics (lolalytics + Blitz pooled through `utils/sources/combined.ts`, the one pooled view in the app; win rate
+  shrunk toward its slot's by 1000 games plus Blitz's `champion_item_stats` WPA over the slot's, only where every option has it, the
+  matchup's when every option has 30 games there), weighed
+  items 40% stats / 35% team / 25% kit, lane choices 50/50. `utils/jev-build.ts` lays the slots: runes, spells,
+  starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus
+  up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
+  needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
+  (`JevBuildPath`): a setup row (runes, spells, starter, skill order with its 18-level strip, boots timing) and the
+  items in buy order, each step its option large with score, win rate, pick rate, games and WPA, the slot's other
+  options small under it with their scores; steps share the width the same way in both, so they line up. A click on
+  a step opens every option of it below as a table (`JevChoices`: option, score, win rate, pick rate and games, WPA,
+  score parts, answered needs).
+  Each build's header imports it into the client on a click: its rune page (`BuildRuneImport`) and its item set
+  (`BuildItemSetImport` with the build already in blocks — starter, boots, items in buy order, the slots' other
+  options as situational, best score first), both labelled here. In champion select the board fills itself from the
+  client (`useJevClientDraft`): our champion, hovered or locked, and lane, the allies on theirs, the enemies on their
+  likeliest lanes (`enemyLanesFromSource`, lolalytics then Blitz); a "Follow the client" switch stops it. Jev is never
+  asked on its own. The page's icon is a chess knight.
+  In champion select a narrow Jev panel sits beside the lower half (`JevDraftPanel`), folded to a rail until opened
+  (kept for the session; not on a ban turn). While our pick is open it lists the source's eight best measured
+  candidates for our lane as Jev ranks them (`useJevPick`: read against the lane opponent, with our locked allies and
+  against the enemy team — `pickRequest`, one Score per question asked only where the draft has someone to judge
+  against — and ranked with the source's own ranking key placed among them, `rankPicks`: source 40%, lane 25%, team
+  20%, enemies 15%), the breakdown on hover, a click opening the build, a control hovering it; once our champion is set,
+  Jev's build for the draft in short — buy order, rune and item-set import — the whole of it (`JevBuildBody`) in a
+  slide-over. Jev answers only a click; an answer is dropped when the draft changes, not when its clock ticks. The
+  draft screen keeps one damage split, the thin bars under each team.
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no
@@ -331,7 +373,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   heading, and the dashboard carries no Riot legal line (the app's other pages keep it, `SharedPage`). The goals card (#1913)
   was removed in #2074 at the product owner's request. With no client: a waiting banner over the patch's best picks by lane.
 - **Draft** (`/draft`) — bans and phase clock, both teams as tall pick cards with their tier on their lane, enemy lanes
-  guessed and correctable (the lane icon under an enemy is a menu of lanes, or drag one onto another), the lane duel (lane win rate). While our pick is open: the ranked picks ("My pool" =
+  guessed and correctable (the lane icon under an enemy is a menu of lanes, or drag one onto another), under each placed enemy its **counters** on its lane (`useEnemyCounters`, `utils/draft-counters.ts`: the enemy's own matchups from the active source read from the other side, ≥ 40 games, ranked on the enemy's Wilson ceiling, picked and banned champions left out — the top three with their win rate, games in the tooltip), the lane duel (lane win rate). The draft's item build weighs each item's games by its win rate shrunk toward the lane's (`winRateFactor` in `utils/draft-build.ts`, both the other-source build and TrueMain's step-by-step `next-item` read), opens on the core that wins most for its games, and reads a healer on the enemy team (`EnemySustain`) to take the anti-heal the source measured. While our pick is open: the ranked picks ("My pool" =
   ten most-mastered champions on the lane, or every champion on the lane), in the endpoint's order — blind safety before
   our lane opponent shows — each card leading with its strongest reason's figure (a delta in points or a rate, never the
   score) and that reason in one line under the name ("Safe blind", "vs Zed (likely)", "With Lulu (hover)"), every reason
@@ -659,6 +701,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   ranked only / every game, resolution (Native, 1440p, 1080p, 720p) and 30 / 60 fps with the shell's estimated size of
   an hour (labelled an estimate; none for Native), the disk budget (slider from the shell's minimum, space used) and the
   folder (shown, with a button to show it). Saved as changed, in order.
+- **Match badges** (dashboard match rows) — every Blitz accolade on Blitz's own rules and weights (`utils/match-badges.ts` → `MatchSummaryResponse.badges`; weights, tiers and icons in the shared `#common/utils/match-badges`): MVP / SVP / 2nd / 3rd from the game's score, Penta / Quadra / 3-Piece / 2-Piece, Filthy Rich / Cash Money / Gold Digger (gold rank 1–3 of ten), CS God / Legend / Master (> 9 / 8 / 7 CS/min, Rift only), Unkillable / Stable (0 / 1 death), All-Seeing / Good Eye (vision > 2.5× / 2× the minutes, Rift only), True Support (KDA > 3, assists > 3× kills), First Blood (not Arena), Top / Good Damage, Big Chungus / Beefy (damage mitigated), Wrecking Ball / Bulldozer (tower damage), Perfect Game (nothing given to the enemy). None on a game of 10 min or less (14 on the Rift). Drawn as Blitz's pills (`MatchRowBadges`: tier-coloured edge, medallion across the left edge), the three heaviest and a "+N" whose tooltip lists the rest; each tooltip names the badge and says why. Games carry the multi-kill counts, first blood, damage mitigated and to towers, and both sides' bans and objectives (`lcu::record`, Blitz's match-v5). The site sends no badges and draws none.
+- **Profile layout** (dashboard and any viewed player, the shared `PagePlayerProfile`) — on Blitz's: the splash blurred and faint behind the head of the page, a 64 px portrait with the level over its edge, the queues as underlined tabs, "Update" beside the name, the form tiles, then the history with the 308 px column of cards on its right. Match rows are Blitz's tiles: a title line (result • LP • queue • duration, how long ago on the right), the portrait framed and glowing in the result's colour, the badges, and both teams named side by side when the tile is wide. A **Champion mastery** card (own profile only, `DashboardMasteryCard`): the client's mastery (`championMastery` in the shell state, top 50) — points and level with the client's crest, five then "Show more". Top five only. Another player's mastery comes with its exact points from championmastery.gg (`utils/sources/championmastery.ts`, the shell's `championmastery` source, which hands the page over as text), Blitz's levels and last-played (`riot_account_v2`) where that page has none. The form tiles read win rate, KDA, TrueMain score (graded games only) and CS/min (`match-form.ts`, shared with the site). The **Player analysis** (`DashboardAnalysis`, folding, at the head of the detailed stats panel; `utils/player-insights.ts`): the playstyle the play leans to against the lane opponents (carry, farmer, teamfighter, vision, objectives, frontline, careful, balanced, with a second trait), strengths and what to improve (the widest gaps, each with a tip), the champions the player wins most on and the allies they win most beside (above their own win rate, three games or more, ranked on the Wilson lower bound).
+- **Match panel** (an opened row, shared `MatchDetailPanel`) — Blitz's: underlined tabs (Overview, Stats, Graphs, Win Probability, Build, Runes) with both sides' bans on the right; each side's header with its K / D / A, towers, inhibitors, barons, dragons, heralds, voidgrubs, gold and damage (the objectives and bans only where the app's source counted them: the client's game or Blitz's copy, `MatchDetailResponse.teams`); player lines with the round team-coloured portrait and level, spells and runes, the name (the owner's in gold), the placement tag (MVP gold, SVP blue, 2nd silver, 3rd bronze), the rank, seven slots, K / D / A over the KDA, CS over KP, and damage over a bar against the side's top. Stats: the ten as columns, one row per measure, the highest in gold. Timeline: every kill and objective in time order down a centre line, blue side left, red side right (`MatchDetailEventTimeline`). What the source's detail lacks — the timeline, the bans and objectives, the rune stats — is filled from the client's copy, then Blitz's (`fillGaps` in `useSiteShims`), whatever source Settings picked; every player's Solo/Duo rank is read from Blitz by Riot ID (`withRanks`, today's rank). Runes: each page with the damage its runes dealt and every rune's end-of-game line in the tooltip (`utils/rune-stats.ts`: the runes' `var1..3` read by CDragon's `endOfGameStatDescs`; the client's or Blitz's games only).
 - **Watch** (dashboard match rows) — on a game the library holds: its recap, or its clips once the full game is gone.
 - **Site sections** — the tier list, the champion directory, the matchup page, the truemains leaderboard and the
   favorites are **the site's own pages** (`PageTierList`, `PageChampions`, `PageMatchup`, `PageTruemains`,

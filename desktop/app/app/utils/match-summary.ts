@@ -5,6 +5,7 @@ import type { GameParticipant, PlayerGame, RankedQueue, TimelineMark } from '~/t
 import type { ScoredParticipant } from '~/utils/match-performance'
 import { gradeMatch } from '~/utils/match-performance'
 import { killParticipation } from '~/utils/player-form'
+import { matchBadges } from '~/utils/match-badges'
 
 /**
  * The player's record from their client, in the shapes the site's profile
@@ -75,6 +76,7 @@ export function gradeDetail(detail: MatchDetailResponse): MatchDetailResponse {
 const MAP_MODES: Record<number, string> = { 11: 'CLASSIC', 12: 'ARAM', 30: 'CHERRY' }
 
 export function toMatchSummary(game: PlayerGame, lpDelta: number | null, stored?: GameScore | null): MatchSummaryResponse {
+  const score = gameScore(game, stored)
   return {
     matchId: String(game.gameId),
     queueId: game.queueId,
@@ -101,9 +103,10 @@ export function toMatchSummary(game: PlayerGame, lpDelta: number | null, stored?
       position: game.position,
       win: game.win,
       lpDelta,
-      ...gameScore(game, stored),
+      ...score,
     },
     participants: game.participants,
+    badges: matchBadges(game, score),
   }
 }
 

@@ -4,6 +4,8 @@ import { POSITIONS, positionLabel } from '#common/utils/positions'
 import type { SimRequest, SimSlot, SimTurn } from '~/composables/useLcuSimulator'
 import type { Lane } from '~/types/draft'
 import type { ChampionPosition } from '#common/utils/positions'
+import type { AppState } from '~/types/lcu'
+import { SIM_CHANNEL } from '~/composables/useLcuState'
 
 /**
  * The draft simulator — development only, dropped from builds (nuxt.config).
@@ -13,10 +15,12 @@ import type { ChampionPosition } from '#common/utils/positions'
  * is sent as the client would send it — gameflow phase, a synthetic summoner,
  * a mastery list, and the champion select session — to the app's shell,
  * through the dev server's relay (`/__sim/lcu`). The app, started with
- * `npm run tauri:sim`, takes it for a real champion select and answers live.
+ * `npm run tauri:sim`, takes it for a real champion select and answers live;
+ * the app in another browser tab gets the same draft over a broadcast
+ * channel, with nothing compiled (`sim-lcu.sh` at the repository root).
  */
-const { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, answer } = useLcuSimulator()
-const { laneEntries } = useTierList()
+const { board, taken, championAt, place, lockMine, setMyLane, setTurn, clear, tick, session, draftState, answer } = useLcuSimulator()
+const { laneEntries, status: tierListStatus, load: loadTierList } = useTierList()
 const { nameOf, portraitOf, champions } = useChampionStatics()
 
 type Phase = 'Lobby' | 'ChampSelect' | 'InProgress'
@@ -67,9 +71,64 @@ watch(session, (next) => {
   if (phase.value === 'ChampSelect') void send({ op: 'push', readings: [event('/lol-champ-select/v1/session', next)] })
 }, { deep: true })
 
+// ─── The app in a browser tab, with no shell to compile (`sim-lcu.sh`) ──────
+
+/**
+ * The same draft for the app open in another tab of this browser: its state
+ * as the shell would push it, on every change, and again whenever a tab asks
+ * (one opened mid-draft). The relay above still serves `npm run tauri:sim`.
+ */
+const channel = import.meta.client ? new BroadcastChannel(SIM_CHANNEL) : null
+const appState = computed((): AppState => {
+  const pool = POSITIONS.flatMap(lane => laneEntries(lane).slice(0, 5).map(entry => entry.championId))
+  const mastery = [...new Set(pool)].map((championId, index) => ({ championId, championLevel: 7, championPoints: 200000 - index * 5000 }))
+  return {
+    connected: true,
+    phase: phase.value,
+    riotId: 'Simulated#DEV',
+    profileIconId: 29,
+    summonerLevel: 30,
+    championPool: mastery.map(entry => entry.championId),
+    championMastery: mastery,
+    draft: phase.value === 'ChampSelect' ? draftState.value : null,
+  }
+})
+const broadcast = () => channel?.postMessage({ state: JSON.parse(JSON.stringify(appState.value)) })
+watch(appState, broadcast, { deep: true })
+if (channel) channel.onmessage = event => event.data?.hello && broadcast()
+onBeforeUnmount(() => channel?.close())
+
 let clock: ReturnType<typeof setInterval> | undefined
 let requests: ReturnType<typeof setInterval> | undefined
+/**
+ * Both teams filled at once — the enemies, one of each lane in shuffled cells
+ * as the client gives them, and our allies on their lanes — each a champion
+ * often played there (the lane's ten most played), none twice; our own pick is
+ * left for the player, and what Jev or the draft suggests.
+ */
+async function randomTeams() {
+  if (phase.value !== 'ChampSelect') await start()
+  await loadTierList()
+  // A load already under way returns at once: wait for it, the lanes' champions come from it.
+  for (let tries = 0; tierListStatus.value === 'pending' && tries < 40; tries++) await new Promise(resolve => setTimeout(resolve, 250))
+  const used = new Set(taken.value)
+  const draw = (lane: Lane) => {
+    const pool = laneEntries(lane).slice(0, 10).map(entry => entry.championId).filter(id => !used.has(id))
+    const id = pool[Math.floor(Math.random() * pool.length)] ?? null
+    if (id !== null) used.add(id)
+    return id
+  }
+  for (const lane of POSITIONS) {
+    if (lane !== board.value.myLane) place({ kind: 'ally', lane }, draw(lane))
+  }
+  const enemies = POSITIONS.map(lane => draw(lane)).sort(() => Math.random() - 0.5)
+  enemies.forEach((id, index) => place({ kind: 'enemy', index }, id))
+}
+
+const route = useRoute()
 onMounted(() => {
+  // Opened by `sim-lcu.sh` (`?start`): champion select is on at once with both teams drawn, the app in the other tab following it.
+  if (route.query.start !== undefined) void randomTeams()
   clock = setInterval(() => {
     if (phase.value === 'ChampSelect') tick()
   }, 1000)
@@ -146,7 +205,7 @@ const mine = computed(() => board.value.allies[board.value.myLane])
       <UIcon name="i-lucide-flask-conical" class="size-5 text-primary" />
       <div class="leading-tight">
         <h1 class="text-sm font-semibold text-highlighted">Draft simulator</h1>
-        <p class="text-xs text-muted">Development only. The app started with <code>npm run tauri:sim</code> follows this page as a League client.</p>
+        <p class="text-xs text-muted">Development only. The app follows this page as a League client: in another tab of this browser (<code>./sim-lcu.sh</code>), or started with <code>npm run tauri:sim</code>.</p>
       </div>
       <UBadge :color="phase === 'ChampSelect' ? 'primary' : 'neutral'" variant="subtle" class="ml-auto">{{ phase }}</UBadge>
       <UButton v-if="phase !== 'ChampSelect'" label="Start champion select" icon="i-lucide-play" size="sm" @click="start" />
@@ -154,6 +213,7 @@ const mine = computed(() => board.value.allies[board.value.myLane])
         <UButton label="Game starts" icon="i-lucide-swords" color="neutral" variant="subtle" size="sm" @click="leave('InProgress')" />
         <UButton label="Dodge" icon="i-lucide-log-out" color="neutral" variant="ghost" size="sm" @click="leave('Lobby')" />
       </template>
+      <UButton icon="i-lucide-shuffle" label="Random teams" color="neutral" variant="subtle" size="sm" @click="randomTeams" />
       <UButton icon="i-lucide-rotate-ccw" label="Clear" color="neutral" variant="ghost" size="sm" @click="clear" />
     </header>
 

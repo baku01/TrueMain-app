@@ -3,6 +3,8 @@ import type { ChampionStaticListItem } from '#shared/types/static-data'
 import type { WinProbabilityTimeline } from '#shared/types/win-probability'
 import { gradeDetail } from '~/utils/match-summary'
 import { matchEvents } from '~/utils/blitz/player'
+import { blitzMatchDetail, withRanks } from '~/utils/blitz/match-detail'
+import { externalSource } from '~/utils/data-source'
 
 /**
  * The app's side of the composables the twinned site components call, so the
@@ -126,6 +128,32 @@ async function readClientDetail(matchId: string): Promise<MatchDetailResponse | 
  * the client's once the panel is shown, and the Timeline tab appears whenever
  * the game allows it.
  */
+/** Whether a game's detail lacks something another source may have. */
+function gapsOf(detail: MatchDetailResponse): boolean {
+  return !detail.winProbabilityTimeline?.events.length
+    || !detail.teams?.length
+    || !detail.participants.some(p => p.runes.some(rune => rune.vars))
+}
+
+/** `detail` with what it lacks taken from `extra`, the same game read elsewhere; what it has is kept. */
+export function fillGaps(detail: MatchDetailResponse, extra: MatchDetailResponse): MatchDetailResponse {
+  const fromExtra = new Map(extra.participants.map(p => [p.participantId, p]))
+  return {
+    ...detail,
+    winProbabilityTimeline: detail.winProbabilityTimeline?.events.length ? detail.winProbabilityTimeline : extra.winProbabilityTimeline ?? detail.winProbabilityTimeline,
+    teams: detail.teams?.length ? detail.teams : extra.teams,
+    participants: detail.participants.map((p) => {
+      const other = fromExtra.get(p.participantId)
+      if (!other) return p
+      return {
+        ...p,
+        runes: p.runes.some(rune => rune.vars) || !other.runes.some(rune => rune.vars) ? p.runes : other.runes,
+        rank: p.rank ?? other.rank,
+      }
+    }),
+  }
+}
+
 export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: MaybeRefOrGetter<string>) {
   const { record } = usePlayerRecord()
   const data = ref<MatchDetailResponse | null>(null)
@@ -136,7 +164,8 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
     isLoading.value = true
     try {
       const known = matchDetails.get(id)
-      const truemain = known ?? await readTruemainDetail(toValue(nameTag), record.value?.platformId ?? null, id)
+      // TrueMain's copy only where TrueMain is the source Settings picked.
+      const truemain = known ?? (externalSource() ? null : await readTruemainDetail(toValue(nameTag), record.value?.platformId ?? null, id))
       if (truemain) matchDetails.set(id, truemain)
       // The client's fallback is cached by the shell; TrueMain is asked again
       // next time, since it may have ingested the game since.
@@ -148,11 +177,19 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
     }
     notFound.value = !data.value
     isLoading.value = false
-    if (data.value && !data.value.winProbabilityTimeline && insideTauri()) {
-      const client = await readClientDetail(id).catch(() => null)
-      if (client?.winProbabilityTimeline && toValue(matchId) === id && data.value) {
-        data.value = { ...data.value, winProbabilityTimeline: client.winProbabilityTimeline }
-      }
+    // What the source read lacks — the curve and the timeline's events, the
+    // teams' bans and objectives, the runes' stats (TrueMain's API keeps none),
+    // and a player's rank where the other copy has it — is filled from the others, whichever Settings picked:
+    // the client's copy first, then Blitz's (Riot's match-v5 and timeline).
+    const platformId = record.value?.platformId ?? null
+    for (const other of [() => (insideTauri() ? readClientDetail(id) : null), () => (platformId ? blitzMatchDetail(`${platformId}_${id}`) : null)]) {
+      if (!data.value || !gapsOf(data.value)) break
+      const extra = await Promise.resolve(other()).catch(() => null)
+      if (extra && toValue(matchId) === id && data.value) data.value = fillGaps(data.value, extra)
+    }
+    if (data.value && platformId) {
+      const ranked = await withRanks(data.value, platformId).catch(() => null)
+      if (ranked && toValue(matchId) === id) data.value = ranked
     }
   }, { immediate: true })
 
