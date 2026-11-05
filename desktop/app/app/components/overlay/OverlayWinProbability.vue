@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ClockSync } from '~/composables/useGameClock'
+import { useGameClock } from '~/composables/useGameClock'
 import type { GameState } from '~/types/game'
 import { winProbability } from '~/utils/item-value'
 
@@ -11,18 +13,10 @@ import { winProbability } from '~/utils/item-value'
  * when spectating) — the colours say which is which, so no labels.
  */
 const { t } = useT()
-const props = defineProps<{ game: GameState, syncedAt: number }>()
+const props = defineProps<{ game: GameState, sync: ClockSync }>()
 
-// The game is read every couple of seconds and only a change is sent: an
-// inhibitor standing again or a buff running out is a matter of the clock,
-// which runs here between two readings.
-const now = ref(Date.now())
-let ticking: ReturnType<typeof setInterval> | undefined
-onMounted(() => {
-  ticking = setInterval(() => (now.value = Date.now()), 1000)
-})
-onBeforeUnmount(() => clearInterval(ticking))
-const clock = computed(() => props.game.gameTime + Math.max(0, now.value - props.syncedAt) / 1000)
+// An inhibitor standing again or a buff running out is a matter of the clock, which runs here between two readings.
+const clock = useGameClock(() => props.sync)
 
 const ours = computed(() => Math.round(winProbability(props.game, clock.value) * 100))
 /** The side ahead reads at full strength, the other steps back; an even game keeps both. */

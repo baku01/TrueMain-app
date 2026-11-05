@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ClockSync } from '~/composables/useGameClock'
+import { useGameClock } from '~/composables/useGameClock'
 import { getPositionIconUrl } from '#shared/utils/ddragon'
 import { isChampionPosition, positionLabel } from '#common/utils/positions'
 import { formatDuration } from '#common/utils/relativeTime'
@@ -21,32 +23,18 @@ import { loadingLineOf } from '~/utils/player-intel'
  */
 const props = defineProps<{
   game: GameState
-  /** When `game.gameTime` was read, on this page's clock. */
-  syncedAt: number
+  /** The latest game time and when it was read (`useLiveGame`). */
+  sync: ClockSync
   /** The loading screen's players (`useLoadingPlayers`); empty until the roster is read. */
   lines?: LoadingPlayer[]
 }>()
 
 // ─── The clock ──────────────────────────────────────────────────────────────
 
-/**
- * The game is read every couple of seconds and only a change is sent, so the
- * time it carries can be minutes old. The clock runs from it on the page's own
- * time, and every update or snapshot sets it right again.
- */
-const now = ref(Date.now())
-let ticking: ReturnType<typeof setInterval> | undefined
-onMounted(() => {
-  // A hidden window has no clock to show; it catches up on the next tick it is seen.
-  ticking = setInterval(() => {
-    if (!document.hidden) now.value = Date.now()
-  }, 1000)
-})
-onBeforeUnmount(() => clearInterval(ticking))
-
-// Handed to a player only while they are dead, for the respawn countdown: the
-// others' rows do not redraw every second.
-const clock = computed(() => props.game.gameTime + Math.max(0, now.value - props.syncedAt) / 1000)
+// Set right on every reading (`useGameClock`). Handed to a player only while
+// they are dead, for the respawn countdown: the others' rows do not redraw on
+// every tick.
+const clock = useGameClock(() => props.sync)
 
 const { t } = useT()
 const MAPS: Record<number, string> = { 11: t('game.map.rift'), 12: t('game.map.abyss'), 30: t('game.map.arena') }

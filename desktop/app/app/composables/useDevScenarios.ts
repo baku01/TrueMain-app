@@ -1,3 +1,4 @@
+import type { ClockSync } from '~/composables/useGameClock'
 import type { DraftRecommendation } from '~/types/draft'
 import type { GameState } from '~/types/game'
 import type { AppState } from '~/types/lcu'
@@ -56,7 +57,7 @@ export function useDevScenarios() {
   const nextItem = useState<NextItemResponse | null>('dev-next-item', () => null)
   // `useLiveGame`'s own state, set directly as `lcu-state` is above.
   const game = useState<GameState | null>('live-game', () => null)
-  const gameSyncedAt = useState<number>('live-game-synced-at', () => Date.now())
+  const gameClock = useState<ClockSync>('live-game-clock', () => ({ gameTime: 0, at: Date.now() }))
 
   async function load() {
     if (scenarios.value.length > 0) return
@@ -78,7 +79,7 @@ export function useDevScenarios() {
     rankHistory.value = found?.rankHistory ? JSON.parse(JSON.stringify(found.rankHistory)) : []
     nextItem.value = found?.nextItem ? JSON.parse(JSON.stringify(found.nextItem)) : null
     game.value = found?.game ? JSON.parse(JSON.stringify(found.game)) : null
-    gameSyncedAt.value = Date.now()
+    gameClock.value = { gameTime: game.value?.gameTime ?? 0, at: Date.now() }
     current.value = found?.id ?? ''
 
     // Kept in the URL so a scenario can be linked to, and so a reload after an

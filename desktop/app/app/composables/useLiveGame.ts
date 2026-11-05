@@ -1,3 +1,4 @@
+import type { ClockSync } from '~/composables/useGameClock'
 import type { GameChange, GameState, GameUpdate } from '~/types/game'
 
 /**
@@ -59,8 +60,8 @@ export function applyGameChanges(game: GameState, changes: GameChange[]): GameSt
  */
 export function useLiveGame() {
   const game = useState<GameState | null>('live-game', () => null)
-  /** When `game.gameTime` was read, on this page's clock: the clock on screen runs from it. */
-  const syncedAt = useState<number>('live-game-synced-at', () => Date.now())
+  /** The latest game time and when it was read, on this page's clock: the clock on screen runs from it (`useGameClock`). */
+  const sync = useState<ClockSync>('live-game-clock', () => ({ gameTime: 0, at: Date.now() }))
   const subscribed = useState<boolean>('live-game-subscribed', () => false)
 
   // Every change replaces the state whole, so it is held raw: no proxy over
@@ -68,7 +69,7 @@ export function useLiveGame() {
   // replacement.
   function set(next: GameState | null) {
     game.value = next ? markRaw(next) : null
-    syncedAt.value = Date.now()
+    sync.value = { gameTime: next?.gameTime ?? 0, at: Date.now() }
   }
 
   if (!subscribed.value) {
@@ -106,14 +107,19 @@ export function useLiveGame() {
       epoch++
       set({ ...applyGameChanges(current, update.changes), revision: update.revision, gameTime: update.gameTime })
     })
+    // A reading that moved nothing else still sets the clock right: minutes can pass without a change.
+    const stopClock = await listen<number>('game://clock', (event) => {
+      if (game.value) sync.value = { gameTime: event.payload, at: Date.now() }
+    })
     onScopeDispose(() => {
       stopSnapshot()
       stopUpdate()
+      stopClock()
     })
 
     // After subscribing, so nothing lands between the read and the listeners.
     await resync()
   }
 
-  return { game, syncedAt, set }
+  return { game, sync, set }
 }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ClockSync } from '~/composables/useGameClock'
+import { useGameClock } from '~/composables/useGameClock'
 import type { GameState, NeutralTimers } from '~/types/game'
 import type { ObjectiveKey, PillStatus } from '~/utils/objective-timers'
 import { SOON_SECONDS, dragonLabel, drakeIcon, drakeName, formatCountdown, objectiveIcon, pillStatus } from '~/utils/objective-timers'
@@ -24,16 +26,10 @@ import { SOON_SECONDS, dragonLabel, drakeIcon, drakeName, formatCountdown, objec
  * the season's spawn rules and the kills the event feed announces
  * (`crates/live-client/src/timers.rs`).
  */
-const props = defineProps<{ game: GameState, syncedAt: number }>()
+const props = defineProps<{ game: GameState, sync: ClockSync }>()
 
-// The shell sends game times; the clock runs here between two readings.
-const now = ref(Date.now())
-let ticking: ReturnType<typeof setInterval> | undefined
-onMounted(() => {
-  ticking = setInterval(() => (now.value = Date.now()), 1000)
-})
-onBeforeUnmount(() => clearInterval(ticking))
-const clock = computed(() => props.game.gameTime + Math.max(0, now.value - props.syncedAt) / 1000)
+// An inhibitor standing again or a buff running out is a matter of the clock, which runs here between two readings.
+const clock = useGameClock(() => props.sync)
 
 const timers = computed<NeutralTimers | null>(() => props.game.objectives.timers)
 const blue = computed(() => props.game.objectives.order.drakes)

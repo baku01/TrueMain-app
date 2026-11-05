@@ -52,7 +52,7 @@ afterEach(() => {
 
 describe('OverlayObjectives', () => {
   it('draws one strip of pills counting down from the clock, and runs it between readings', async () => {
-    const wrapper = mount(OverlayObjectives, { props: { game: game(fresh, 240), syncedAt: NOW }, global })
+    const wrapper = mount(OverlayObjectives, { props: { game: game(fresh, 240), sync: { gameTime: 240, at: NOW } }, global })
     expect(wrapper.findAll('ol')).toHaveLength(1)
     expect(pill(wrapper, 'dragon').get('[data-icon]').attributes('src')).toMatch(/\/dragon\.png$/)
     expect(pill(wrapper, 'dragon').text()).toBe('1:00')
@@ -61,7 +61,15 @@ describe('OverlayObjectives', () => {
     expect(pill(wrapper, 'grubs').text()).toBe('4:00')
     expect(pill(wrapper, 'grubs').get('[data-countdown]').classes()).toContain('text-muted')
 
-    await vi.advanceTimersByTimeAsync(60_000)
+    // Between two readings the clock runs on its own…
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(pill(wrapper, 'dragon').text()).toBe('0:58')
+    // …but no further than a reading late: a game that stops answering is not run ahead.
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(pill(wrapper, 'dragon').text()).toBe('0:57')
+    // The next reading sets it right.
+    await vi.advanceTimersByTimeAsync(28_000)
+    await wrapper.setProps({ sync: { gameTime: 300, at: Date.now() } })
     expect(pill(wrapper, 'dragon').attributes('data-status')).toBe('up')
     expect(pill(wrapper, 'dragon').find('[data-countdown]').exists()).toBe(false)
     expect(pill(wrapper, 'dragon').find('[data-up]').exists()).toBe(true)
@@ -69,25 +77,25 @@ describe('OverlayObjectives', () => {
   })
 
   it('greys the Herald while the grubs are to come and Baron while the Herald is, keeping their countdowns', () => {
-    const wrapper = mount(OverlayObjectives, { props: { game: game(fresh, 240), syncedAt: NOW }, global })
+    const wrapper = mount(OverlayObjectives, { props: { game: game(fresh, 240), sync: { gameTime: 240, at: NOW } }, global })
     expect(states(wrapper)).toEqual(['dragon:countdown', 'grubs:countdown', 'herald:waiting', 'baron:waiting'])
     expect(pill(wrapper, 'herald').text()).toBe('11:00')
     expect(pill(wrapper, 'herald').get('[data-icon]').classes()).toContain('grayscale')
     expect(pill(wrapper, 'herald').get('[data-countdown]').classes()).toContain('text-dimmed')
 
     // The grubs taken: the Herald counts down in earnest, Baron still waits for it.
-    const taken = mount(OverlayObjectives, { props: { game: game({ ...fresh, grubs: GONE }, 600), syncedAt: NOW }, global })
+    const taken = mount(OverlayObjectives, { props: { game: game({ ...fresh, grubs: GONE }, 600), sync: { gameTime: 600, at: NOW } }, global })
     expect(states(taken)).toEqual(['dragon:up', 'herald:countdown', 'baron:waiting'])
   })
 
   it('keeps the soul race\'s line from the start, and fills it as the drakes fall', () => {
-    const before = mount(OverlayObjectives, { props: { game: game(fresh, 240), syncedAt: NOW }, global })
+    const before = mount(OverlayObjectives, { props: { game: game(fresh, 240), sync: { gameTime: 240, at: NOW } }, global })
     expect(before.find('[data-soul-race]').exists()).toBe(true)
     expect(drakes(before, 'blue')).toEqual([])
     expect(before.find('[data-next]').exists()).toBe(false)
 
     const timers: NeutralTimers = { ...fresh, dragon: { at: 1898, until: null }, drake: 'mountain', grubs: GONE, herald: GONE, baron: { at: 1855, until: null } }
-    const wrapper = mount(OverlayObjectives, { props: { game: game(timers, 1606, [['infernal', 'mountain', 'mountain'], ['ocean']]), syncedAt: NOW }, global })
+    const wrapper = mount(OverlayObjectives, { props: { game: game(timers, 1606, [['infernal', 'mountain', 'mountain'], ['ocean']]), sync: { gameTime: 1606, at: NOW } }, global })
     expect(drakes(wrapper, 'blue')).toEqual(['dragon_infernal.png', 'dragon_mountain.png', 'dragon_mountain.png'])
     expect(drakes(wrapper, 'red')).toEqual(['dragon_ocean.png'])
     expect(wrapper.get('[data-next]').attributes('src')).toMatch(/dragon_mountain\.png$/)
@@ -100,7 +108,7 @@ describe('OverlayObjectives', () => {
 
   it('sets the Elder at the race\'s centre once a side holds the soul, and lights what stands', () => {
     const timers: NeutralTimers = { ...fresh, dragon: { at: 2110, until: null }, elder: true, drake: 'ocean' }
-    const wrapper = mount(OverlayObjectives, { props: { game: game(timers, 2200, [['cloud'], ['ocean', 'hextech', 'ocean', 'ocean']]), syncedAt: NOW }, global })
+    const wrapper = mount(OverlayObjectives, { props: { game: game(timers, 2200, [['cloud'], ['ocean', 'hextech', 'ocean', 'ocean']]), sync: { gameTime: 2200, at: NOW } }, global })
     expect(wrapper.get('[data-next]').attributes('src')).toMatch(/dragon_elder\.png$/)
     expect(wrapper.get('[data-next]').attributes('alt')).toBe('Elder')
     expect(pill(wrapper, 'dragon').get('[data-icon]').attributes('alt')).toBe('Elder')
@@ -112,7 +120,7 @@ describe('OverlayObjectives', () => {
   })
 
   it('says so off the Rift, where the shell has no timers', () => {
-    const wrapper = mount(OverlayObjectives, { props: { game: game(null, 300), syncedAt: NOW }, global })
+    const wrapper = mount(OverlayObjectives, { props: { game: game(null, 300), sync: { gameTime: 300, at: NOW } }, global })
     expect(wrapper.find('[data-objective]').exists()).toBe(false)
     expect(wrapper.find('[data-soul-race]').exists()).toBe(false)
     expect(wrapper.text()).toContain('standard rules')

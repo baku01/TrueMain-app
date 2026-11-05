@@ -13,7 +13,7 @@ import { SAMPLE_BUILD_ORDER, SAMPLE_NEXT_ITEM, SAMPLE_PACE_REFERENCE, sampleGame
 withDefaults(defineProps<{ panel: OverlayPanel, lanes?: boolean }>(), { lanes: true })
 
 const game = sampleGame()
-const syncedAt = Date.now()
+const sync = { gameTime: game.gameTime, at: Date.now() }
 const { items } = useStaticData()
 const next = computed(() => items.value[SAMPLE_NEXT_ITEM.itemId] ?? null)
 const { itemId, held, gold, route } = SAMPLE_NEXT_ITEM
@@ -27,9 +27,9 @@ const missing = computed(() => Math.max(0, toComplete.value - gold))
     <OverlayNextItemCard :item="next" :name="next?.name ?? 'Zhonya\'s Hourglass'" :missing="missing" :total="toComplete" />
     <OverlayNextItemPath :path="path" :order="SAMPLE_BUILD_ORDER" :statics="items" :gold="gold" />
   </div>
-  <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="game" :synced-at="syncedAt" />
+  <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="game" :sync="sync" />
   <OverlayStats v-else-if="panel === 'stats'" :game="game" :reference="SAMPLE_PACE_REFERENCE" />
-  <OverlayObjectives v-else-if="panel === 'objectives'" :game="game" :synced-at="syncedAt" />
+  <OverlayObjectives v-else-if="panel === 'objectives'" :game="game" :sync="sync" />
   <OverlayLaneGold v-else-if="panel === 'lane-gold'" :game="game" />
   <OverlayItemValue v-else :game="game" :lanes="lanes" />
 </template>
