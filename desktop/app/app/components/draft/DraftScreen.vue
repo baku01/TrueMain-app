@@ -9,8 +9,8 @@ import type { PickSubject } from '~/composables/useJevPick'
  * Champion select, laid out like the reference client: each side's bans and
  * the clock over the two teams, our lane duel between them, and under them
  * what the draft is for right now — the picks worth making while ours is
- * open, the build to run once it is locked. A switch hands both to Jev
- * (`JevPickAdvice`, `JevBuildAdvice`), on the player's click.
+ * open, the build to run once it is locked — and beside it, in a narrow panel
+ * the player can fold, Jev's ranking of the pick and its build (`JevDraftPanel`).
  */
 const props = defineProps<{
   draft: DraftState
@@ -158,8 +158,8 @@ const { allyDamagePicks, enemyDamagePicks, lockedAllies } = useDraftDamagePicks(
 
 // ─── Jev (the Jev matchup page's reading, here on the draft) ──────────────
 
-/** Jev in place of the source's picks and build, while the player keeps it on: its calls are paid, so it only answers a click. */
-const withJev = useState('draft-with-jev', () => false)
+/** Jev's panel beside the lower half: folded to a rail until the player opens it, kept for the session. */
+const jevPanel = useState<'open' | 'closed'>('draft-jev-panel', () => 'closed')
 
 /** What a pick with Jev is chosen for: our lane, its opponent, the teams so far, the source's measured candidates. */
 const jevPick = computed<PickSubject | null>(() => {
@@ -221,68 +221,67 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
       />
     </div>
 
-    <!-- Both teams' damage split, as Blitz shows it under the board. -->
-    <DraftTeamDamageMeter :allies="allyDamagePicks" :enemies="enemyDamagePicks" class="surface rounded-xl px-4 py-3" />
+    <!-- The source's picks or build, and Jev's beside them in a narrow panel the player can fold away. -->
+    <div class="grid min-h-0 flex-1 gap-3" :class="jevPanel === 'open' ? 'grid-cols-[minmax(0,1fr)_17rem]' : 'grid-cols-[minmax(0,1fr)_2.25rem]'">
+      <div class="min-h-0">
+        <DraftSuggestions
+          v-if="mode === 'pick' || mode === 'ban'"
+          v-model:my-pool="myPool"
+          :mode="mode"
+          :has-pool="hasPool"
+          :suggestions="mode === 'ban' ? banSuggestions : pickSuggestions"
+          :target="mode === 'ban' && bans ? { kind: bans.target, championIds: bans.targetChampionIds } : null"
+          :pending="mode === 'ban' ? banPending : ranking"
+          :error="mode === 'ban' ? banError : rankError"
+          :position="draft.myPosition"
+          :allies="lockedAllies"
+          @preview="previewed = $event"
+        />
 
-    <!-- Jev in place of the source's picks and build, on the player's switch. -->
-    <div v-if="mode !== 'ban'" class="-mb-1 flex justify-end">
-      <UTooltip :text="t('jev.draft.toggleHint')">
-        <USwitch v-model="withJev" size="sm" :label="t('jev.draft.toggle')" :ui="{ label: 'flex items-center gap-1 stat-label' }">
-          <template #label><UIcon name="i-tabler-chess-knight" class="size-3.5 text-primary" />{{ t('jev.draft.toggle') }}</template>
-        </USwitch>
-      </UTooltip>
-    </div>
+        <BuildView
+          v-else-if="subject"
+          :kit-id="kitId"
+          :champion-id="subject.championId"
+          :position="subject.request.position"
+          :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
+          :kits="kits"
+          :item-advice="itemAdvice"
+          @update:kit-id="pickKit"
+          @selection="importSelection = shownView === null && previewed === null ? $event : importSelection"
+        >
+          <template #advice>
+            <DraftItemAdvice :pushes="itemAdvice" :build="draftBuild" :pending="draftBuildPending" />
+          </template>
+          <template #header>
+            <DraftBuildHeader
+              :champion-id="subject.championId"
+              :position="subject.request.position"
+              :can-go-back="canGoBack"
+              @back="back"
+            />
+          </template>
+        </BuildView>
 
-    <div class="min-h-0 flex-1">
-      <JevPickAdvice v-if="withJev && mode === 'pick'" :subject="jevPick" @preview="previewed = $event" />
-
-      <div v-else-if="withJev && mode === 'build' && subject" class="h-full overflow-y-auto pr-1">
-        <DraftBuildHeader :champion-id="subject.championId" :position="subject.request.position" :can-go-back="canGoBack" class="mb-3" @back="back" />
-        <JevBuildAdvice :champion-id="subject.championId" :request="subject.request" />
+        <div v-else class="surface flex h-full flex-col items-center justify-center gap-2 rounded-xl text-center">
+          <UIcon name="i-lucide-scroll-text" class="size-6 text-dimmed" />
+          <p class="text-sm text-muted">{{ t('draft.screen.buildEmpty') }}</p>
+        </div>
       </div>
 
-      <DraftSuggestions
-        v-else-if="mode === 'pick' || mode === 'ban'"
-        v-model:my-pool="myPool"
-        :mode="mode"
-        :has-pool="hasPool"
-        :suggestions="mode === 'ban' ? banSuggestions : pickSuggestions"
-        :target="mode === 'ban' && bans ? { kind: bans.target, championIds: bans.targetChampionIds } : null"
-        :pending="mode === 'ban' ? banPending : ranking"
-        :error="mode === 'ban' ? banError : rankError"
-        :position="draft.myPosition"
-        :allies="lockedAllies"
+      <JevDraftPanel
+        v-if="jevPanel === 'open'"
+        :mode="mode === 'build' ? 'build' : 'pick'"
+        :pick="mode === 'pick' ? jevPick : null"
+        :build="mode === 'build' && subject ? { championId: subject.championId, request: subject.request } : null"
         @preview="previewed = $event"
+        @collapse="jevPanel = 'closed'"
       />
-
-      <BuildView
-        v-else-if="subject"
-        :kit-id="kitId"
-        :champion-id="subject.championId"
-        :position="subject.request.position"
-        :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
-        :kits="kits"
-        :item-advice="itemAdvice"
-        @update:kit-id="pickKit"
-        @selection="importSelection = shownView === null && previewed === null ? $event : importSelection"
-      >
-        <template #advice>
-          <DraftItemAdvice :pushes="itemAdvice" :build="draftBuild" :pending="draftBuildPending" />
-        </template>
-        <template #header>
-          <DraftBuildHeader
-            :champion-id="subject.championId"
-            :position="subject.request.position"
-            :can-go-back="canGoBack"
-            @back="back"
-          />
-        </template>
-      </BuildView>
-
-      <div v-else class="surface flex h-full flex-col items-center justify-center gap-2 rounded-xl text-center">
-        <UIcon name="i-lucide-scroll-text" class="size-6 text-dimmed" />
-        <p class="text-sm text-muted">{{ t('draft.screen.buildEmpty') }}</p>
-      </div>
+      <UTooltip v-else :text="t('jev.panel.open')" :content="{ side: 'left' }">
+        <button type="button" class="surface flex h-full w-full flex-col items-center gap-2 rounded-xl pt-3 text-muted transition-colors hover:text-highlighted" :aria-label="t('jev.panel.open')" @click="jevPanel = 'open'">
+          <UIcon name="i-tabler-chess-knight" class="size-4 text-primary" />
+          <span class="text-xs font-semibold [writing-mode:vertical-rl]">Jev</span>
+        </button>
+      </UTooltip>
     </div>
   </div>
 </template>

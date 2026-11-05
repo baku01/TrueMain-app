@@ -5,6 +5,7 @@ import type { RankedSlot } from '~/utils/jev-recommend'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
+import { itemSetOf } from '~/utils/jev-recommend'
 
 /**
  * One build of the Jev page — the recommended or the most played — laid out
@@ -58,25 +59,8 @@ const path = computed(() => {
     return [{ entry, option, label: entry.slot.kind === 'boots' ? t('jev.slot.boots') : t('jev.slot.item', { slot: ++count }) }]
   })
 })
-/**
- * The build as the client's item set: its starter, its boots, its items in buy
- * order, then as situational every other item its slots offered, best score
- * first — what to turn to when the game asks for it.
- */
-const itemSet = computed((): ItemSetBlocks => {
-  const boots = props.build.boots?.itemIds ?? []
-  const core = props.build.order.filter(id => !boots.includes(id))
-  const offered = props.ranked
-    .filter(entry => entry.slot.kind === 'item')
-    .flatMap(entry => entry.slot.options.map(option => ({ id: option.itemIds[0]!, score: entry.scored[option.key]?.total ?? 0 })))
-    .filter(option => !core.includes(option.id))
-    .sort((a, b) => b.score - a.score)
-  return {
-    championId: props.championId,
-    champion: nameOf(props.championId),
-    blocks: { starter: props.build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))] },
-  }
-})
+/** The build as the client's item set (`itemSetOf`). */
+const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: nameOf(props.championId), blocks: itemSetOf(props.ranked, props.build) }))
 const others = (step: Step) => step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => score(step.entry, b) - score(step.entry, a))
 
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)
