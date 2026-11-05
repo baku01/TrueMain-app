@@ -35,8 +35,8 @@ export function matchBadges(game: PlayerGame): MatchBadge[] {
   else if (csPerMin >= 9) badges.push({ kind: 'csLegend', value: csPerMin })
   else if (csPerMin >= 8) badges.push({ kind: 'csMaster', value: csPerMin })
 
-  if (game.visionScore >= minutes * 2.5) badges.push({ kind: 'allSeeing', value: game.visionScore })
-  else if (game.visionScore >= minutes * 2) badges.push({ kind: 'goodEye', value: game.visionScore })
+  if (game.visionScore >= minutes * 2.5) badges.push({ kind: 'allSeeing', value: game.visionScore, target: Math.ceil(minutes * 2.5) })
+  else if (game.visionScore >= minutes * 2) badges.push({ kind: 'goodEye', value: game.visionScore, target: Math.ceil(minutes * 2) })
 
   return badges
 }

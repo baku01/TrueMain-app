@@ -31,6 +31,7 @@ describe('matchBadges', () => {
   })
 
   it('grades farm, deaths, vision and multi-kills from the player line', () => {
+    expect(matchBadges(game({ visionScore: 76 }))).toEqual([{ kind: 'allSeeing', value: 76, target: 75 }])
     expect(kinds({ cs: 255, deaths: 0, visionScore: 76, largestMultiKill: 5 }))
       .toEqual(['pentaKill', 'unkillable', 'csMaster', 'allSeeing'])
     expect(kinds({ cs: 300, visionScore: 60 })).toEqual(['csGod', 'goodEye'])

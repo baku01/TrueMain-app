@@ -30,6 +30,8 @@ export interface MatchBadge {
   kind: MatchBadgeKind
   /** The measure behind it, for its tooltip: DPM, gold, CS/min or vision score. */
   value?: number
+  /** The bar it cleared, when it is measured against the game's length: the vision score aimed for. */
+  target?: number
 }
 
 export interface MatchSummarySelf {
