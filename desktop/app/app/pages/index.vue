@@ -231,6 +231,7 @@ watch(() => state.value.phase, (next, previous) => {
                  they do not carry, so the dashboard offers day, week and month. -->
             <ProfileActivityHeatmap :data="activity" :modes="['day', 'week', 'month']" />
             <DashboardChampionsCard :lines="championLines(games)" :champions="champions" />
+            <DashboardMasteryCard v-if="!viewing" :mastery="state.championMastery ?? []" :champions="champions" />
             <DashboardRolesCard :lanes="laneLines(games)" />
           </template>
         </template>

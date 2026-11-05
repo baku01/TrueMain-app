@@ -128,9 +128,15 @@ mod tests {
 
     #[test]
     fn drops_what_the_app_does_not_follow_before_parsing() {
-        assert!(followed(r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-champ-select/v1/session"}]"#));
-        assert!(followed(r#"[8,"OnJsonApiEvent",{"uri": "/lol-gameflow/v1/gameflow-phase"}]"#));
-        assert!(!followed(r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-chat/v1/conversations"}]"#));
+        assert!(followed(
+            r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-champ-select/v1/session"}]"#
+        ));
+        assert!(followed(
+            r#"[8,"OnJsonApiEvent",{"uri": "/lol-gameflow/v1/gameflow-phase"}]"#
+        ));
+        assert!(!followed(
+            r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-chat/v1/conversations"}]"#
+        ));
     }
 
     #[test]

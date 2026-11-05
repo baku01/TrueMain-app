@@ -327,14 +327,32 @@ fn opponent_of<'a>(
 fn runes_of(p: &HistoryParticipant) -> Vec<DetailRune> {
     let stats = &p.stats;
     let primary = [
-        (stats.perk0, [stats.perk0_var1, stats.perk0_var2, stats.perk0_var3]),
-        (stats.perk1, [stats.perk1_var1, stats.perk1_var2, stats.perk1_var3]),
-        (stats.perk2, [stats.perk2_var1, stats.perk2_var2, stats.perk2_var3]),
-        (stats.perk3, [stats.perk3_var1, stats.perk3_var2, stats.perk3_var3]),
+        (
+            stats.perk0,
+            [stats.perk0_var1, stats.perk0_var2, stats.perk0_var3],
+        ),
+        (
+            stats.perk1,
+            [stats.perk1_var1, stats.perk1_var2, stats.perk1_var3],
+        ),
+        (
+            stats.perk2,
+            [stats.perk2_var1, stats.perk2_var2, stats.perk2_var3],
+        ),
+        (
+            stats.perk3,
+            [stats.perk3_var1, stats.perk3_var2, stats.perk3_var3],
+        ),
     ];
     let secondary = [
-        (stats.perk4, [stats.perk4_var1, stats.perk4_var2, stats.perk4_var3]),
-        (stats.perk5, [stats.perk5_var1, stats.perk5_var2, stats.perk5_var3]),
+        (
+            stats.perk4,
+            [stats.perk4_var1, stats.perk4_var2, stats.perk4_var3],
+        ),
+        (
+            stats.perk5,
+            [stats.perk5_var1, stats.perk5_var2, stats.perk5_var3],
+        ),
     ];
     let rune = |style_id: i64| {
         move |(index, (perk_id, vars)): (usize, &(i64, [i64; 3]))| DetailRune {
@@ -506,7 +524,10 @@ mod tests {
         assert_eq!(adc.role_bound_item_id, 3006);
         let blue = &detail.teams[0];
         assert_eq!(blue.bans, vec![157, 238]);
-        assert_eq!((blue.towers, blue.dragons, blue.barons, blue.grubs), (9, 3, 1, Some(4)));
+        assert_eq!(
+            (blue.towers, blue.dragons, blue.barons, blue.grubs),
+            (9, 3, 1, Some(4))
+        );
     }
 
     #[test]

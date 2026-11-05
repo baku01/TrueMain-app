@@ -53,7 +53,16 @@ export interface AppState {
   summonerLevel: number | null
   /** Champions the player has mastery points on, most first — their pick pool. Empty until read. */
   championPool: number[]
+  /** The same champions with their mastery level and points, most first; at most 50. */
+  championMastery: ChampionMastery[]
   draft: DraftState | null
+}
+
+/** Mirrors `ChampionMastery` in `crates/lcu/src/model.rs`. */
+export interface ChampionMastery {
+  championId: number
+  championPoints: number
+  championLevel: number
 }
 
 /** Mirrors `Screen` in `crates/shell-state/src/lib.rs`. */
@@ -66,5 +75,6 @@ export const EMPTY_STATE: AppState = {
   profileIconId: null,
   summonerLevel: null,
   championPool: [],
+  championMastery: [],
   draft: null,
 }
