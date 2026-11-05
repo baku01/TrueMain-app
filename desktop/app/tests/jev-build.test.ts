@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { JevSlot } from '~/utils/jev-build'
-import { decide, draftNeeds, itemEffect, laidBuild, plainAbility, questionsOf, stateOf } from '~/utils/jev-build'
+import { confidenceOf, decide, draftNeeds, itemEffect, laidBuild, plainAbility, questionsOf, reliable, stateOf } from '~/utils/jev-build'
 
 const items = {
   3075: { id: 3075, name: 'Thornmail', tags: ['Armor', 'Health'] },
@@ -17,13 +17,15 @@ const slot = (name: string, ids: number[]): JevSlot => ({
   instructions: name,
   options: ids.map((id, index) => ({ key: `o${index}`, itemIds: [id], label: items[id]?.name ?? String(id), games: 100, pickRate: 0.1, winRate: 0.5 })),
 })
+const ask = { champion: 'Darius (Fighter, TOP)', opponent: 'Aatrox (Fighter)', needs: '67% physical damage' }
 const answer = (probabilities: Record<string, number>) => ({ type: 'choice' as const, choice: Object.entries(probabilities).sort((a, b) => b[1] - a[1])[0]![0], confidence: 0.6, probabilities })
 
 describe('questionsOf', () => {
   it('asks each slot with more than one option, every option with its measure', () => {
-    const questions = questionsOf([slot('item4', [3075, 3065]), slot('item5', [3071])])
+    const questions = questionsOf([slot('item4', [3075, 3065]), slot('item5', [3071])], ask)
     expect(Object.keys(questions)).toEqual(['item4'])
-    expect(questions.item4!.criteria.o1).toBe('Spirit Visage (100 games, 10.0% pick rate, 50.0% win rate)')
+    expect(questions.item4).toMatchObject({ type: 'choice' })
+    expect((questions.item4 as { criteria: Record<string, string> }).criteria.o1).toBe('Spirit Visage (100 games, 10.0% pick rate, 50.0% win rate)')
   })
 })
 
@@ -33,9 +35,9 @@ describe('decide and laidBuild', () => {
     const boots: JevSlot = { name: 'boots', instructions: '', options: [{ key: 'o0', itemIds: [3047], label: 'Steelcaps', games: 800, pickRate: 0.6, winRate: 0.47 }, { key: 'o1', itemIds: [3111], label: 'Mercury', games: 400, pickRate: 0.3, winRate: 0.5 }] }
     const timing: JevSlot = { name: 'bootsAfter', instructions: '', options: [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], label: String(after), games: 0, pickRate: 0, winRate: 0 })) }
     const decisions = [
-      decide(core, answer({ o0: 0.2, o1: 0.8 })),
-      decide(boots, answer({ o0: 0.1, o1: 0.9 })),
-      decide(timing, answer({ o0: 0.7, o1: 0.2, o2: 0.1 })),
+      decide(core, { core: answer({ o0: 0.2, o1: 0.8 }) }),
+      decide(boots, { boots: answer({ o0: 0.1, o1: 0.9 }) }),
+      decide(timing, { bootsAfter: answer({ o0: 0.7, o1: 0.2, o2: 0.1 }) }),
     ]
     expect(decisions.map(entry => [entry.jev.key, entry.standard.key])).toEqual([['o1', 'o0'], ['o1', 'o0'], ['o0', 'o0']])
     expect(laidBuild(decisions, 'jev', [4401]).order).toEqual([3111, 3143, 3075, 4401])
@@ -43,7 +45,7 @@ describe('decide and laidBuild', () => {
   })
 
   it('takes a single option when Jev was not asked', () => {
-    expect(decide(slot('item4', [4401]), undefined).jev.itemIds).toEqual([4401])
+    expect(decide(slot('item4', [4401]), {}).jev.itemIds).toEqual([4401])
   })
 })
 
@@ -94,5 +96,37 @@ describe('draftNeeds', () => {
     const champion = (alias: string, attack: number, magic: number, tags: string[]) => ({ id: alias.length, alias, name: alias, tags, info: { attack, magic, defense: 5 } })
     expect(draftNeeds([champion('Lux', 2, 9, ['Mage', 'Support']), champion('Soraka', 2, 7, ['Support']), champion('Ornn', 5, 3, ['Tank']), champion('Jinx', 9, 2, ['Marksman'])]))
       .toBe('50% magic and 50% physical damage, heavy crowd control from Lux, Soraka, Ornn, a frontline of Ornn, healing from Soraka')
+  })
+})
+
+describe('checks', () => {
+  const checksSlot: JevSlot = { name: 'item5', instructions: '', kind: 'checks', lane: false, options: [
+    { key: 'o0', itemIds: [3065], label: 'Spirit Visage', games: 800, pickRate: 0.3, winRate: 0.52 },
+    { key: 'o1', itemIds: [6333], label: 'Death\'s Dance', games: 600, pickRate: 0.2, winRate: 0.51 },
+  ] }
+
+  it('asks each option its own yes/no checks, the lane only for what is bought while laning', () => {
+    const questions = questionsOf([checksSlot], ask)
+    expect(Object.keys(questions)).toEqual(['item5__o0__kit', 'item5__o0__draft', 'item5__o1__kit', 'item5__o1__draft'])
+    expect(questions.item5__o1__draft).toMatchObject({ type: 'noul' })
+  })
+
+  it('weighs the checks and the sample into the slot\'s pick and confidence', () => {
+    const noul = (value: number) => ({ type: 'noul' as const, noul: value })
+    const decision = decide(checksSlot, { item5__o0__kit: noul(0.8), item5__o0__draft: noul(0.1), item5__o1__kit: noul(0.9), item5__o1__draft: noul(0.95) })
+    expect(decision.jev.key).toBe('o1')
+    expect(decision.answer?.checks?.o1).toEqual({ kit: 0.9, draft: 0.95, lane: null })
+    expect(decision.answer!.probabilities.o1).toBeGreaterThan(0.6)
+  })
+
+  it('leaves out what the source barely saw, keeping two to compare', () => {
+    const measure = (games: number) => ({ games, pickRate: 0, winRate: 0.5 })
+    expect(reliable([measure(12), measure(400), measure(45)]).map(entry => entry.games)).toEqual([400, 45])
+    expect(reliable([measure(16), measure(14), measure(12)]).map(entry => entry.games)).toEqual([16, 14])
+  })
+
+  it('reads confidence as TypeSafe does: 1 all on one option, 0 spread evenly', () => {
+    expect(confidenceOf([1, 0])).toBe(1)
+    expect(confidenceOf([0.5, 0.5])).toBeCloseTo(0)
   })
 })

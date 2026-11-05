@@ -20,12 +20,28 @@ export interface JevChoiceQuestion {
   criteria: Record<string, string>
 }
 
+/** A yes/no question (TypeSafe's "noul"): answered with the probability of yes. */
+export interface JevNoulQuestion {
+  type: 'noul'
+  instructions: string
+  criteria?: { true: string, false: string }
+}
+
+export type JevQuestion = JevChoiceQuestion | JevNoulQuestion
+
 export interface JevChoiceAnswer {
   type: 'choice'
   choice: string
   confidence: number
   probabilities: Record<string, number>
 }
+
+export interface JevNoulAnswer {
+  type: 'noul'
+  noul: number
+}
+
+export type JevAnswer = JevChoiceAnswer | JevNoulAnswer
 
 export const JEV_MODEL = 'jev-latest'
 const DEV_KEY = 'truemain-jev-key'
@@ -50,7 +66,7 @@ export async function setJevKey(key: string | null): Promise<JevKeyStatus> {
 }
 
 /** Ask every question about `state` in one call; the answers by question name. */
-export async function askJev(state: string, questions: Record<string, JevChoiceQuestion>): Promise<Record<string, JevChoiceAnswer>> {
+export async function askJev(state: string, questions: Record<string, JevQuestion>): Promise<Record<string, JevAnswer>> {
   const started = performance.now()
   const body = { model: JEV_MODEL, state, questions }
   const answer = insideTauri()
@@ -62,5 +78,5 @@ export async function askJev(state: string, questions: Record<string, JevChoiceQ
       })
   console.info('[jev] call answered', { ms: Math.round(performance.now() - started) }, answer)
   // The answers sit under `answers` by question name; a bare map is read the same.
-  return ((answer.answers ?? answer) as Record<string, JevChoiceAnswer>)
+  return ((answer.answers ?? answer) as Record<string, JevAnswer>)
 }

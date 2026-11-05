@@ -2,7 +2,7 @@ import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells 
 import type { Champion } from '~/composables/useChampionStatics'
 import type { BuildOptions, ItemOption, Measure, RunePageIds } from '~/utils/sources/model'
 import type { Situation } from '~/utils/draft-build'
-import type { JevChoiceAnswer, JevChoiceQuestion } from '~/utils/jev'
+import type { JevAnswer, JevQuestion } from '~/utils/jev'
 import { isBoots } from '~/utils/blitz/builds'
 
 /**
@@ -12,6 +12,16 @@ import { isBoots } from '~/utils/blitz/builds'
  * picked measured on the lane, so whatever it builds is something players of
  * the champion build. Beside each choice, the source's own (its most played
  * option), with every option's pick rate, win rate and Jev's probability.
+ *
+ * Asked the way TypeSafe's documentation advises (atomic "gut-check"
+ * questions, combined in code — its "composite scoring" pattern): the items
+ * (starter, boots, core, each later item) are not one "which is best"
+ * question but, for each option, yes/no checks Jev answers on its own — does
+ * it suit our champion's kit, is it strong against this enemy team, does it
+ * help the lane (for what is bought while laning) — weighed together, then by
+ * how many games the source saw it in. The runes, spells, skill order and the
+ * boots' timing stay single choices. Options the source barely saw are left
+ * out, so a dozen lucky games cannot carry a slot.
  */
 
 export interface JevOption extends Measure {
@@ -35,13 +45,30 @@ export interface JevSlot {
   /** What the question asks, for Jev. */
   instructions: string
   options: JevOption[]
+  /** `checks`: each option judged by yes/no checks combined in code; a single choice otherwise. */
+  kind?: 'choice' | 'checks'
+  /** For checks: the option is bought while laning, so the lane check counts too. */
+  lane?: boolean
+}
+
+/** What Jev's yes/no checks said of one option, each the probability of yes. */
+export interface JevChecks { kit: number, draft: number, lane: number | null }
+
+/** Jev's answer to a slot, whichever way it was asked: its pick, every option's share, how sure. */
+export interface JevVerdict {
+  choice: string
+  /** TypeSafe's measure: 1 when all the weight is on one option, 0 when it is spread evenly. */
+  confidence: number
+  probabilities: Record<string, number>
+  /** For checks: each option's yes/no answers. */
+  checks?: Record<string, JevChecks>
 }
 
 export interface JevDecision {
   slot: JevSlot
   /** The option Jev picked; the only one when the slot had a single option. */
   jev: JevOption
-  answer: JevChoiceAnswer | null
+  answer: JevVerdict | null
   /** The source's most played option. */
   standard: JevOption
 }
@@ -50,6 +77,16 @@ const percent = (rate: number) => `${(rate * 100).toFixed(1)}%`
 const measured = <T extends Measure>(option: T): Measure => ({ games: option.games, pickRate: option.pickRate, winRate: option.winRate })
 const keyed = <T>(list: T[], count: number, shape: (option: T) => Omit<JevOption, 'key'>): JevOption[] =>
   list.slice(0, count).map((option, index) => ({ key: `o${index}`, ...shape(option) }))
+
+/** Under this many games an option is a rumour: a slot keeps it only to have two to compare. */
+export const MIN_GAMES = 30
+
+/** The options seen often enough to judge, most played first; the two most played whatever their games. */
+export function reliable<T extends Measure>(list: T[]): T[] {
+  const sorted = [...list].sort((a, b) => b.games - a.games)
+  const kept = sorted.filter(option => option.games >= MIN_GAMES)
+  return kept.length >= 2 ? kept : sorted.slice(0, 2)
+}
 
 export interface Names {
   item: (id: number) => string
@@ -106,7 +143,12 @@ const pathOf = (core: ItemOption) => core.itemIds.filter(id => !isBoots(id))
  * the enemy team demands (`draftNeeds`), named in each question so Jev weighs
  * the options against it rather than against "this draft" in general.
  */
-export interface Ask { opponent: string, needs: string }
+export interface Ask {
+  /** Our champion as the checks name it: `Darius (Fighter/Tank, TOP)`. */
+  champion: string
+  opponent: string
+  needs: string
+}
 
 /** The first call's slots: runes, spells, starter, skills, boots and their timing, the core path. */
 export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSlot[] {
@@ -129,8 +171,10 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
     },
     {
       name: 'starter',
+      kind: 'checks' as const,
+      lane: true,
       instructions: `Pick the starting items that best trade with or sustain against ${ask.opponent} in the first levels`,
-      options: keyed(options.starters, 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + '), effect: starter.itemIds.map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
+      options: keyed(reliable(options.starters), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + '), effect: starter.itemIds.map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
     },
     {
       name: 'skills',
@@ -139,8 +183,10 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
     },
     {
       name: 'boots',
+      kind: 'checks' as const,
+      lane: true,
       instructions: `Pick the boots that best defend against what this draft throws at us: ${ask.needs}. They are bought while laning against ${ask.opponent} and kept for the teamfights`,
-      options: keyed(options.boots, 3, boots => ({ ...measured(boots), itemIds: boots.itemIds.slice(0, 1), label: names.item(boots.itemIds[0]!), effect: names.itemEffect(boots.itemIds[0]!) })),
+      options: keyed(reliable(options.boots), 3, boots => ({ ...measured(boots), itemIds: boots.itemIds.slice(0, 1), label: names.item(boots.itemIds[0]!), effect: names.itemEffect(boots.itemIds[0]!) })),
     },
     {
       name: 'bootsAfter',
@@ -149,8 +195,10 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
     },
     {
       name: 'core',
+      kind: 'checks' as const,
+      lane: true,
       instructions: `Pick the core item path whose first item holds the lane against ${ask.opponent} and whose items fit an enemy team with ${ask.needs}, without giving up our champion's damage`,
-      options: keyed(options.cores, 4, core => ({ ...measured(core), itemIds: pathOf(core), label: pathOf(core).map(names.item).join(' > '), effect: pathOf(core).map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
+      options: keyed(reliable(options.cores), 4, core => ({ ...measured(core), itemIds: pathOf(core), label: pathOf(core).map(names.item).join(' > '), effect: pathOf(core).map(id => `${names.item(id)}: ${names.itemEffect(id)}`).join(' | ') })),
     },
   ].filter(slot => slot.options.length > 0)
 }
@@ -159,10 +207,12 @@ export function firstSlots(options: BuildOptions, names: Names, ask: Ask): JevSl
 export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, ask: Ask): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
-  const open = group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id)))
+  const open = reliable(group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id))))
   if (!open.length) return null
   return {
     name: `item${slot}`,
+    kind: 'checks',
+    lane: false,
     instructions: `Pick item number ${slot}: the one that best protects against or punishes what the enemy team brings (${ask.needs}) without giving up our champion's damage. It is bought after the laning phase`,
     options: keyed(open, 4, option => ({ ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!), effect: names.itemEffect(option.itemIds[0]!) })),
   }
@@ -171,22 +221,105 @@ export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: 
 /** The later slots the source measured after `core`, in order. */
 export const laterSlotNumbers = (options: BuildOptions, core: ItemOption | null) => options.followUps(core).map(group => group.slot).sort((a, b) => a - b)
 
-export function questionsOf(slots: JevSlot[]): Record<string, JevChoiceQuestion> {
-  return Object.fromEntries(slots.filter(slot => slot.options.length > 1).map(slot => [slot.name, {
-    type: 'choice' as const,
-    instructions: slot.instructions,
-    criteria: Object.fromEntries(slot.options.map(option => [option.key, [
-      option.label,
-      option.effect ? `— ${option.effect}` : '',
-      option.games ? `(${option.games} games, ${percent(option.pickRate)} pick rate, ${percent(option.winRate)} win rate)` : '',
-    ].filter(Boolean).join(' ')])),
-  }]))
+const CHECK = '__'
+
+/**
+ * The questions for the slots: a choice for a choice slot; for a checks slot,
+ * per option, the yes/no checks (`kit`, `draft`, `lane` when it is bought while
+ * laning), each a statement about that one option, with what it does.
+ */
+export function questionsOf(slots: JevSlot[], ask: Ask): Record<string, JevQuestion> {
+  const questions: Record<string, JevQuestion> = {}
+  for (const slot of slots) {
+    if (slot.options.length < 2) continue
+    if (slot.kind !== 'checks') {
+      questions[slot.name] = {
+        type: 'choice',
+        instructions: slot.instructions,
+        criteria: Object.fromEntries(slot.options.map(option => [option.key, [
+          option.label,
+          option.effect ? `— ${option.effect}` : '',
+          option.games ? `(${option.games} games, ${percent(option.pickRate)} pick rate, ${percent(option.winRate)} win rate)` : '',
+        ].filter(Boolean).join(' ')])),
+      }
+      continue
+    }
+    for (const option of slot.options) {
+      const what = `"${option.label}"${option.effect ? ` (${option.effect})` : ''}`
+      const at = `${slot.name}${CHECK}${option.key}${CHECK}`
+      questions[`${at}kit`] = {
+        type: 'noul',
+        instructions: `${what} is something ${ask.champion} builds to make its own kit work`,
+        criteria: { true: 'It gives the stats and effects this champion\'s abilities and role need', false: 'It is off this champion\'s kit or role' },
+      }
+      questions[`${at}draft`] = {
+        type: 'noul',
+        instructions: `${what} is a strong buy against this enemy team: ${ask.needs}`,
+        criteria: { true: 'It protects against or punishes what this enemy team brings', false: 'It does nothing special against this enemy team' },
+      }
+      if (slot.lane) {
+        questions[`${at}lane`] = {
+          type: 'noul',
+          instructions: `${what} helps ${ask.champion} win the lane against ${ask.opponent}`,
+          criteria: { true: 'It wins trades or holds the lane against this opponent', false: 'It does not matter in this lane' },
+        }
+      }
+    }
+  }
+  return questions
+}
+
+/** How many games a measure needs to be trusted half: the sample's weight is `games / (games + this)`. */
+const SAMPLE_HALF = 60
+
+/** TypeSafe's confidence of a distribution: 1 all on one option, 0 spread evenly (one minus the normalised entropy). */
+export function confidenceOf(probabilities: number[]): number {
+  if (probabilities.length < 2) return 1
+  const entropy = probabilities.reduce((sum, p) => (p > 0 ? sum - p * Math.log(p) : sum), 0)
+  return Math.max(0, 1 - entropy / Math.log(probabilities.length))
+}
+
+/**
+ * A checks slot's verdict: each option's checks weighed together — the enemy
+ * team first, then the kit, then the lane when it counts — times how far the
+ * source's sample can be trusted, as shares of the slot.
+ */
+function verdictOfChecks(slot: JevSlot, answers: Record<string, JevAnswer>): JevVerdict | null {
+  const noul = (key: string) => {
+    const answer = answers[key]
+    return answer && answer.type === 'noul' ? answer.noul : null
+  }
+  const checks: Record<string, JevChecks> = {}
+  const scores = slot.options.map((option) => {
+    const at = `${slot.name}${CHECK}${option.key}${CHECK}`
+    const kit = noul(`${at}kit`)
+    const draft = noul(`${at}draft`)
+    const lane = slot.lane ? noul(`${at}lane`) : null
+    if (kit === null || draft === null) return 0
+    checks[option.key] = { kit, draft, lane }
+    const fit = lane === null ? 0.55 * draft + 0.45 * kit : 0.4 * draft + 0.35 * kit + 0.25 * lane
+    return fit * (option.games / (option.games + SAMPLE_HALF))
+  })
+  const total = scores.reduce((sum, score) => sum + score, 0)
+  if (total <= 0) return null
+  const shares = scores.map(score => score / total)
+  const best = shares.indexOf(Math.max(...shares))
+  return {
+    choice: slot.options[best]!.key,
+    confidence: confidenceOf(shares),
+    probabilities: Object.fromEntries(slot.options.map((option, index) => [option.key, shares[index]!])),
+    checks,
+  }
 }
 
 /** Jev's pick in a slot, taken as it is; the slot's only option when it had one. */
-export function decide(slot: JevSlot, answer: JevChoiceAnswer | undefined): JevDecision {
+export function decide(slot: JevSlot, answers: Record<string, JevAnswer>): JevDecision {
+  const raw = answers[slot.name]
+  const answer: JevVerdict | null = slot.kind === 'checks'
+    ? verdictOfChecks(slot, answers)
+    : raw && raw.type === 'choice' ? raw : null
   const jev = (answer && slot.options.find(option => option.key === answer.choice)) ?? slot.options[0]!
-  return { slot, jev, answer: answer ?? null, standard: slot.options[0]! }
+  return { slot, jev, answer, standard: slot.options[0]! }
 }
 
 /** A build laid out for the core view (`BuildCore`) and its purchase order. */

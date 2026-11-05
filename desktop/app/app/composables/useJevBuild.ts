@@ -10,8 +10,8 @@ export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noSource' | 'n
 /**
  * The Jev matchup page's build (`utils/jev-build`), asked on the player's click
  * — each ask is paid. One call for the runes, spells, starter, skills, boots,
- * when to buy them and the core path; then one per item after the core Jev
- * picked, told what is already in the build. Jev's picks are taken as they
+ * when to buy them and the core path; then one for every item after the core
+ * Jev picked, told what is already in the build. Jev's picks are taken as they
  * are; beside them, the source's most played option of every slot.
  */
 export function useJevBuild(subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>) {
@@ -82,14 +82,15 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       }
       // What every question is asked against: the lane opponent, and the enemy team in one line.
       const ask = {
+        champion: base.champion ? `${base.champion.name} (${(base.champion.tags ?? []).join('/')}, ${request.position})` : `our ${request.position}`,
         opponent: base.opponent ? `${base.opponent.name} (${(base.opponent.tags ?? []).join('/')})` : 'the lane opponent',
         needs: draftNeeds(base.enemies),
       }
 
       const first = firstSlots(options, names, ask)
-      const firstAnswers = await askJev(stateOf(base), questionsOf(first))
+      const firstAnswers = await askJev(stateOf(base), questionsOf(first, ask))
       if (mine !== generation) return
-      const made = first.map(slot => decide(slot, firstAnswers[slot.name]))
+      const made = first.map(slot => decide(slot, firstAnswers))
 
       // The items after the core, slot by slot, each asked knowing what Jev has put in the build so far.
       const coreOf = (side: 'jev' | 'standard') => {
@@ -97,15 +98,20 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         return core ? options.cores[Number(core[side].key.slice(1))] ?? null : null
       }
       const heldBy = (side: 'jev' | 'standard') => made.flatMap(entry => (entry.slot.name === 'core' || entry.slot.name === 'boots' ? entry[side].itemIds : []))
+      // Every later slot's candidates checked in one call (TypeSafe: ask all you may need at once),
+      // then each slot settled in order, an item already in the build left out.
       const jevLater: number[] = []
-      for (const slotNumber of laterSlotNumbers(options, coreOf('jev'))) {
-        const slot = laterSlot(options, coreOf('jev'), slotNumber, [...heldBy('jev'), ...jevLater], names, ask)
-        if (!slot) continue
-        const answers = slot.options.length > 1
-          ? await askJev(stateOf({ ...base, taken: [...heldBy('jev'), ...jevLater].map(names.item) }), questionsOf([slot]))
-          : {}
-        if (mine !== generation) return
-        const decision = decide(slot, answers[slot.name])
+      const laterSlots = laterSlotNumbers(options, coreOf('jev'))
+        .map(slotNumber => laterSlot(options, coreOf('jev'), slotNumber, heldBy('jev'), names, ask))
+        .filter(slot => slot !== null)
+      const laterAnswers = laterSlots.length
+        ? await askJev(stateOf({ ...base, taken: heldBy('jev').map(names.item) }), questionsOf(laterSlots, ask))
+        : {}
+      if (mine !== generation) return
+      for (const slot of laterSlots) {
+        const open = slot.options.filter(option => !option.itemIds.some(id => jevLater.includes(id)))
+        if (!open.length) continue
+        const decision = decide({ ...slot, options: open }, laterAnswers)
         jevLater.push(...decision.jev.itemIds)
         made.push(decision)
       }

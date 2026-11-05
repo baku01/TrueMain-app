@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JevDecision, JevOption } from '~/utils/jev-build'
+import type { JevChecks, JevDecision, JevOption } from '~/utils/jev-build'
 import { formatPercentage } from '#shared/utils/ddragon'
 
 /**
@@ -17,6 +17,11 @@ const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumF
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
 const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
 const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
+const checksOf = (checks: JevChecks) => [
+  { key: 'draft', value: checks.draft },
+  { key: 'kit', value: checks.kit },
+  ...(checks.lane !== null ? [{ key: 'lane', value: checks.lane }] : []),
+]
 const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first') : t('jev.after.item', { item: option.after ?? 0 }))
 </script>
 
@@ -32,7 +37,8 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
         <li
           v-for="option in decision.slot.options"
           :key="option.key"
-          class="relative flex w-[7.5rem] shrink-0 flex-col items-center gap-1 rounded-lg px-1.5 pb-2 pt-2.5 text-center leading-tight transition-colors"
+          class="relative flex shrink-0 flex-col items-center gap-1 rounded-lg px-1.5 pb-2 pt-2.5 text-center leading-tight transition-colors"
+          :style="{ width: option.page ? '11rem' : '7.5rem' }"
           :class="option.key === decision.jev.key ? 'bg-primary/12 ring-1 ring-primary/50' : 'bg-accented/25'"
         >
           <UIcon v-if="option.key === decision.jev.key" name="i-tabler-sparkles" class="absolute left-1.5 top-1.5 size-3.5 text-primary" :aria-label="t('jev.card.jevPick')" />
@@ -43,10 +49,19 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
             <template v-if="option.itemIds.length">
               <GameTooltipItemIcon v-for="id in option.itemIds" :key="id" :item="items[id] ?? null" :width="option.itemIds.length > 2 ? 28 : 36" :height="option.itemIds.length > 2 ? 28 : 36" class="rounded-md" />
             </template>
-            <template v-else-if="option.page">
-              <GameTooltipPerkIcon :perk="runeTree?.perks[option.page.primaryKeystoneId] ?? null" :width="36" :height="36" class="size-9 rounded-full bg-black/30" />
-              <GameTooltipPerkStyleIcon :style="runeTree?.perkStyles[option.page.secondaryStyleId] ?? null" :width="26" :height="26" class="size-[26px]" />
-            </template>
+            <!-- The whole page: the keystone, the three runes of its tree, the two of the second tree, the shards. -->
+            <span v-else-if="option.page" class="flex flex-col items-center gap-1">
+              <span class="flex items-center gap-1">
+                <GameTooltipPerkIcon :perk="runeTree?.perks[option.page.primaryKeystoneId] ?? null" :width="34" :height="34" class="size-[34px] rounded-full bg-black/30" />
+                <GameTooltipPerkIcon v-for="id in [option.page.primaryPerk1Id, option.page.primaryPerk2Id, option.page.primaryPerk3Id]" :key="id" :perk="runeTree?.perks[id] ?? null" :width="22" :height="22" class="size-[22px] rounded-full bg-black/30" />
+              </span>
+              <span class="flex items-center gap-1">
+                <GameTooltipPerkStyleIcon :style="runeTree?.perkStyles[option.page.secondaryStyleId] ?? null" :width="18" :height="18" class="size-[18px]" />
+                <GameTooltipPerkIcon v-for="id in [option.page.secondaryPerk1Id, option.page.secondaryPerk2Id]" :key="id" :perk="runeTree?.perks[id] ?? null" :width="20" :height="20" class="size-5 rounded-full bg-black/30" />
+                <span class="mx-0.5 h-3 w-px bg-default" aria-hidden="true" />
+                <GameTooltipPerkIcon v-for="(id, index) in [option.page.statOffense, option.page.statFlex, option.page.statDefense]" :key="`shard-${index}`" :perk="runeTree?.perks[id] ?? null" :width="14" :height="14" class="size-3.5 rounded-full bg-black/40" />
+              </span>
+            </span>
             <template v-else-if="option.spellIds">
               <GameTooltipSummonerSpellIcon v-for="id in option.spellIds" :key="id" :spell="summoners[id] ?? null" :width="36" :height="36" class="size-9 rounded-md" />
             </template>
@@ -65,6 +80,12 @@ const timing = (option: JevOption) => (option.after === 0 ? t('jev.after.first')
 
           <span v-if="option.games" class="text-[13px] font-semibold tabular-nums" :class="tone(option.winRate)">{{ formatPercentage(option.winRate, 1) }}</span>
           <span v-if="option.games" class="whitespace-nowrap text-[10px] tabular-nums text-dimmed">{{ formatPercentage(option.pickRate, 1) }} · {{ compact.format(option.games) }}</span>
+          <!-- Jev's yes/no checks of this option: its kit, the enemy team, the lane. -->
+          <span v-if="decision.answer?.checks?.[option.key]" class="flex flex-wrap justify-center gap-1 text-[9px] font-semibold tabular-nums">
+            <span v-for="check in checksOf(decision.answer.checks[option.key]!)" :key="check.key" class="rounded px-1 py-px" :class="check.value >= 0.6 ? 'bg-primary/15 text-primary' : check.value <= 0.35 ? 'bg-error/10 text-error' : 'bg-accented/50 text-muted'" :title="t(`jev.check.${check.key}.hint`)">
+              {{ t(`jev.check.${check.key}`) }} {{ percent(check.value) }}
+            </span>
+          </span>
           <span class="mt-auto flex w-full items-center gap-1.5 pt-1">
             <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-accented/70">
               <span class="block h-full rounded-full" :class="option.key === decision.jev.key ? 'bg-primary' : 'bg-(--ui-text-dimmed)'" :style="{ width: percent(decision.answer?.probabilities[option.key]) }" />
