@@ -43,6 +43,7 @@ const props = defineProps<{
 
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
 const kitId = defineModel<string | null>('kitId', { default: null })
+const prosOpen = ref(false)
 const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) ?? null)
 
 const { t } = useT()
@@ -200,6 +201,23 @@ const emptyMessage = computed(() => t('build.view.none'))
           <UIcon name="i-lucide-package" class="size-4" />{{ kit.name }}
         </button>
       </div>
+      <!-- The pros' builds: a list a click away, the one picked shown in this card. -->
+      <UPopover v-if="blitz || external" v-model:open="prosOpen" :content="{ align: 'start' }">
+        <button
+          type="button"
+          class="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ring-1 ring-inset transition-colors"
+          :class="selected === 'pro' && pro && !kitShown ? 'bg-accented/70 text-highlighted ring-primary/50' : 'text-muted ring-default hover:text-highlighted'"
+        >
+          <UIcon name="i-lucide-trophy" class="size-4 text-primary" />{{ selected === 'pro' && pro && !kitShown ? pro.player : t('build.compact.pros') }}
+          <UIcon name="i-lucide-chevron-down" class="size-3.5" />
+        </button>
+        <template #content>
+          <div class="max-h-[28rem] w-80 overflow-y-auto p-2">
+            <BuildPros v-if="blitz" :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="(...args) => { selectPro(...args); prosOpen = false }" />
+            <ProbuildTopPlayers v-else :champion-id="championId" :position="position" compact selectable @select="(...args) => { selectPro(...args); prosOpen = false }" />
+          </div>
+        </template>
+      </UPopover>
       <div v-if="shown && !kitShown" class="ml-auto flex gap-6 text-right">
         <div v-if="shown.winRate !== null">
           <p class="text-lg font-bold leading-tight tabular-nums text-data-good">{{ formatPercentage(shown.winRate, 1) }}</p>
@@ -212,6 +230,10 @@ const emptyMessage = computed(() => t('build.view.none'))
       </div>
     </header>
 
+    <p v-if="selected === 'pro' && pro && !kitShown" class="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs text-default">
+      <UIcon name="i-lucide-trophy" class="size-4 shrink-0 text-primary" />
+      {{ t('pro.banner', { player: pro.player, result: pro.option.winRate ? t('pro.win') : t('pro.loss') }) }}
+    </p>
     <slot name="advice" />
     <KitBuild v-if="kitShown" :kit="kitShown" />
     <BuildCore
