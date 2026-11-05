@@ -298,6 +298,13 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   client (`useJevClientDraft`): our champion, hovered or locked, and lane, the allies on theirs, the enemies on their
   likeliest lanes (`enemyLanesFromSource`, lolalytics then Blitz); a "Follow the client" switch stops it. Jev is never
   asked on its own. The page's icon is a chess knight.
+  In champion select a "Jev" switch over the lower half (`withJev`, kept for the session; not on a ban turn) hands it
+  to Jev: while our pick is open, "Pick with Jev" (`JevPickAdvice`, `useJevPick`) — the source's eight best measured
+  candidates for our lane read by Jev against the lane opponent, with our locked allies and against the enemy team
+  (`pickRequest`: one Score per question asked only where the draft has someone to judge against), ranked with the
+  source's own ranking key placed among them (`rankPicks`: source 40%, lane 25%, team 20%, enemies 15%), a click
+  opening the build, the corner hovering it; once locked, `JevBuildAdvice` for the draft. Jev answers only a click;
+  an answer is dropped when the draft changes, not when its clock ticks.
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no

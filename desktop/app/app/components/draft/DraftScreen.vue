@@ -3,12 +3,14 @@ import type { DraftSelection } from '~/composables/useDraftAutoImport'
 import type { DraftSuggestionItem } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { ViewedPick } from '~/composables/useDraftSubject'
+import type { PickSubject } from '~/composables/useJevPick'
 
 /**
  * Champion select, laid out like the reference client: each side's bans and
  * the clock over the two teams, our lane duel between them, and under them
  * what the draft is for right now — the picks worth making while ours is
- * open, the build to run once it is locked.
+ * open, the build to run once it is locked. A switch hands both to Jev
+ * (`JevPickAdvice`, `JevBuildAdvice`), on the player's click.
  */
 const props = defineProps<{
   draft: DraftState
@@ -154,6 +156,24 @@ const enemyCounters = useEnemyCounters(draft, enemyRows, eloBracket)
 
 const { allyDamagePicks, enemyDamagePicks, lockedAllies } = useDraftDamagePicks(draft, allyRows, enemyRows, previewed)
 
+// ─── Jev (the Jev matchup page's reading, here on the draft) ──────────────
+
+/** Jev in place of the source's picks and build, while the player keeps it on: its calls are paid, so it only answers a click. */
+const withJev = useState('draft-with-jev', () => false)
+
+/** What a pick with Jev is chosen for: our lane, its opponent, the teams so far, the source's measured candidates. */
+const jevPick = computed<PickSubject | null>(() => {
+  const candidates = (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => ({ championId: candidate.championId, score: candidate.score }))
+  if (!candidates.length || !props.draft.myPosition) return null
+  return {
+    position: props.draft.myPosition,
+    opponentId: duel.value.opponentId,
+    allies: lockedAllies.value.map(ally => ally.championId),
+    enemies: props.draft.enemyChampions,
+    candidates,
+  }
+})
+
 const suggested = computed(() => (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => candidate.championId))
 </script>
 
@@ -204,9 +224,25 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
     <!-- Both teams' damage split, as Blitz shows it under the board. -->
     <DraftTeamDamageMeter :allies="allyDamagePicks" :enemies="enemyDamagePicks" class="surface rounded-xl px-4 py-3" />
 
+    <!-- Jev in place of the source's picks and build, on the player's switch. -->
+    <div v-if="mode !== 'ban'" class="-mb-1 flex justify-end">
+      <UTooltip :text="t('jev.draft.toggleHint')">
+        <USwitch v-model="withJev" size="sm" :label="t('jev.draft.toggle')" :ui="{ label: 'flex items-center gap-1 stat-label' }">
+          <template #label><UIcon name="i-tabler-chess-knight" class="size-3.5 text-primary" />{{ t('jev.draft.toggle') }}</template>
+        </USwitch>
+      </UTooltip>
+    </div>
+
     <div class="min-h-0 flex-1">
+      <JevPickAdvice v-if="withJev && mode === 'pick'" :subject="jevPick" @preview="previewed = $event" />
+
+      <div v-else-if="withJev && mode === 'build' && subject" class="h-full overflow-y-auto pr-1">
+        <DraftBuildHeader :champion-id="subject.championId" :position="subject.request.position" :can-go-back="canGoBack" class="mb-3" @back="back" />
+        <JevBuildAdvice :champion-id="subject.championId" :request="subject.request" />
+      </div>
+
       <DraftSuggestions
-        v-if="mode === 'pick' || mode === 'ban'"
+        v-else-if="mode === 'pick' || mode === 'ban'"
         v-model:my-pool="myPool"
         :mode="mode"
         :has-pool="hasPool"

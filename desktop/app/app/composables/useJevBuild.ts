@@ -1,7 +1,7 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevAnswer } from '~/utils/jev'
 import type { LaidBuild, Names } from '~/utils/jev-build'
-import type { ChampionRead, ChampionText, FitRead, ItemRead, Request } from '~/utils/jev-read'
+import type { ChampionRead, FitRead, ItemRead, Request } from '~/utils/jev-read'
 import type { EnemyLine, Needs, RankedSlot } from '~/utils/jev-recommend'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import { candidateItems, closestCore, coreSlots, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, standardCore, statsPool, withItemStats } from '~/utils/jev-build'
@@ -36,7 +36,8 @@ export interface EnemyReading { id: number, name: string, opponent: boolean, rea
  */
 export function useJevBuild(subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>) {
   const { champions, patch } = useChampionStatics()
-  const { items, summoners, runeTree, loadChampion, championStatic } = useStaticData()
+  const { items, summoners, runeTree } = useStaticData()
+  const { textOf, loadAll } = useChampionTexts()
   const damage = useDamageProfiles()
   const status = ref<JevStatus>('idle')
   const error = ref<string | null>(null)
@@ -48,8 +49,8 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
   const elapsedMs = ref<number | null>(null)
   let generation = 0
 
-  // A new draft drops the last answer: it was for another board.
-  watch(subject, () => {
+  // A new draft drops the last answer: it was for another board. The same board recomputed (champion select's clock) keeps it.
+  watch(() => JSON.stringify(subject.value), () => {
     generation++
     status.value = 'idle'
     ranked.value = []
@@ -57,15 +58,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     enemies.value = []
     jevBuild.value = null
     standardBuild.value = null
-  }, { deep: true })
-
-  /** A champion as Jev reads it: its name, Riot's classes, its passive and abilities in words. */
-  const textOf = (id: number): ChampionText | null => {
-    const champion = champions.value.get(id)
-    if (!champion) return null
-    const kit = Object.values(championStatic(id)?.championSpells ?? {}).map(spell => ({ key: spell.key, name: spell.name, description: plainAbility(spell.description, 360) }))
-    return { id, name: champion.name, classes: champion.tags ?? [], kit }
-  }
+  })
 
   async function ask() {
     const current = subject.value
@@ -89,7 +82,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         ]).then(([lolalytics, blitz]) => combineOptions(lolalytics, blitz)),
         readItemStats(championId, position).catch(() => new Map()),
         opponentId ? readItemStats(championId, position, opponentId).catch(() => new Map()) : new Map(),
-        Promise.all([championId, ...enemyIds].map(id => loadChampion(id).catch(() => {}))),
+        loadAll([championId, ...enemyIds]),
         damage.load(),
       ])
       if (mine !== generation) return
@@ -116,7 +109,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const opponent = opponentId ? textOf(opponentId) : null
       if (!ours) throw new Error('our champion is not known yet')
       const version = patch.value || 'live'
-      const enemyTexts = enemyIds.map(textOf).filter(text => !!text)
+      const enemyTexts = enemyIds.map(id => textOf(id)).filter(text => !!text)
       const unreadEnemies = enemyTexts.filter(enemy => !knownChampionRead(championReadKey(version, enemy.id)))
       const candidates = candidateItems(options, pool).filter(id => items.value[id])
       const unreadItems = candidates.filter(id => !knownItemRead(itemReadKey(version, championId, position, id)))

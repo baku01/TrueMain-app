@@ -1,4 +1,4 @@
-import type { ChampionRead, FitRead, ItemRead } from '~/utils/jev-read'
+import type { ChampionRead, FitRead, ItemRead, PickRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import { MIN_GAMES } from '~/utils/jev-build'
 
@@ -311,4 +311,34 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
 export function answersDraft(id: number, team: Needs, reads: Map<number, ItemRead>, tags: (id: number) => string[]): boolean {
   const fit = fitOf([id], team, reads, tags)
   return !fit.misfit && fit.fit >= 0.35
+}
+
+/** How a pick's parts weigh: the source's own ranking, then the lane, the team and the enemy team as Jev read them. */
+export const PICK_WEIGHTS = { stats: 0.4, lane: 0.25, team: 0.2, enemy: 0.15 } as const
+
+export interface PickParts { stats: number, lane?: number, team?: number, enemy?: number }
+export interface RankedPick { championId: number, total: number, parts: PickParts, confidence: number | null }
+
+/**
+ * The champions we could pick, ranked: the source's ranking key (its own
+ * mix of matchup, strength and synergy, measured) as where each stands among
+ * these candidates — 0.5 the middle of them — beside what Jev read of the
+ * lane, our team and the enemy team, weighed as `PICK_WEIGHTS` says, a part
+ * Jev did not read giving its weight to the others.
+ */
+export function rankPicks(candidates: { championId: number, score: number }[], reads: Map<number, PickRead>): RankedPick[] {
+  if (!candidates.length) return []
+  const mean = candidates.reduce((sum, candidate) => sum + candidate.score, 0) / candidates.length
+  const spread = Math.sqrt(candidates.reduce((sum, candidate) => sum + (candidate.score - mean) ** 2, 0) / candidates.length)
+  return candidates.map((candidate) => {
+    const read = reads.get(candidate.championId)
+    const parts: PickParts = { stats: spread > 0 ? 1 / (1 + Math.exp(-(candidate.score - mean) / spread)) : 0.5 }
+    if (read?.lane !== null && read?.lane !== undefined) parts.lane = read.lane
+    if (read?.team !== null && read?.team !== undefined) parts.team = read.team
+    if (read?.enemy !== null && read?.enemy !== undefined) parts.enemy = read.enemy
+    const present = (Object.keys(PICK_WEIGHTS) as (keyof PickParts)[]).filter(part => parts[part] !== undefined)
+    const weight = present.reduce((sum, part) => sum + PICK_WEIGHTS[part], 0)
+    const total = present.reduce((sum, part) => sum + PICK_WEIGHTS[part] * parts[part]!, 0) / weight
+    return { championId: candidate.championId, total, parts, confidence: read?.confidence ?? null }
+  }).sort((a, b) => b.total - a.total)
 }

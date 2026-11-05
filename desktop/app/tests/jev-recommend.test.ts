@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { answersDraft, fitOf, laneNeeds, needsOf, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
+import { answersDraft, fitOf, laneNeeds, needsOf, rankPicks, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, heal: 0, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
@@ -128,5 +128,22 @@ describe('rankSlot', () => {
     const timing: JevSlot = { name: 'bootsAfter', kind: 'timing', lane: true, options: [0, 1, 2].map(after => option(`o${after}`, [], { after, games: 0 })) }
     expect(rankSlot(timing, { ...context(needs({})), urgency: 0.9 }).pick.key).toBe('o0')
     expect(rankSlot(timing, { ...context(needs({})), urgency: 0.1 }).pick.key).toBe('o2')
+  })
+})
+
+describe('rankPicks', () => {
+  it('puts the source\'s ranking among the candidates beside what Jev read, a lane Jev did not judge giving its weight away', () => {
+    const ranked = rankPicks([{ championId: 1, score: 3 }, { championId: 2, score: 1 }], new Map([
+      [1, { lane: null, team: 0, enemy: 0, confidence: 0.8 }],
+      [2, { lane: null, team: 1, enemy: 1, confidence: 0.8 }],
+    ]))
+    expect(ranked.map(pick => pick.championId)).toEqual([2, 1])
+    expect(ranked[0]!.parts.lane).toBeUndefined()
+    expect(ranked[1]!.parts.stats).toBeGreaterThan(0.5)
+    expect(ranked[0]!.total).toBeCloseTo((0.4 * ranked[0]!.parts.stats + 0.2 + 0.15) / 0.75)
+  })
+
+  it('ranks on the source alone when Jev read nothing', () => {
+    expect(rankPicks([{ championId: 1, score: 1 }, { championId: 2, score: 2 }], new Map()).map(pick => pick.championId)).toEqual([2, 1])
   })
 })

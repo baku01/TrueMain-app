@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JevAnswer } from '~/utils/jev'
-import { batches, enemyRequest, itemRequest, laneRequest, readChampion, readItem, scoreOf } from '~/utils/jev-read'
+import { batches, enemyRequest, itemRequest, laneRequest, pickRequest, readChampion, readItem, readPick, scoreOf } from '~/utils/jev-read'
 
 const darius = { id: 122, name: 'Darius', classes: ['Fighter', 'Tank'], kit: [{ key: 'E', name: 'Apprehend', description: 'Pulls in enemies.' }] }
 const lux = { id: 99, name: 'Lux', classes: ['Mage'], kit: [{ key: 'Q', name: 'Light Binding', description: 'Roots two enemies.' }] }
@@ -59,5 +59,22 @@ describe('reading the answers', () => {
     const answers = { i3111_antiHeal: noul(0.02), i3111_tenacity: noul(0.97), i3111_antiBurst: noul(0.1), i3111_vsAutos: noul(0.05), i3111_vsTanks: noul(0.01), i3111_kit: score(1) }
     expect(readItem(3111, answers)).toEqual({ antiHeal: 0.02, tenacity: 0.97, antiBurst: 0.1, vsAutos: 0.05, vsTanks: 0.01, kit: 0.5 })
     expect(readItem(3111, { i3111_kit: score(1) })).toBeNull()
+  })
+})
+
+describe('the pick', () => {
+  const ahri = { id: 103, name: 'Ahri', classes: ['Mage'], kit: [{ key: 'E', name: 'Charm', description: 'Charms an enemy.' }] }
+
+  it('asks each candidate only what the draft has someone to judge against', () => {
+    const request = pickRequest({ position: 'MIDDLE', opponent: null, allies: [darius], enemies: [lux], candidates: [ahri] })
+    expect(Object.keys(request.questions)).toEqual(['p103_team', 'p103_enemy'])
+    expect(request.state).not.toHaveProperty('laneOpponent')
+    expect(request.state).toMatchObject({ ourRole: 'MIDDLE', candidates: { Ahri: { classes: 'Mage' } } })
+    expect(Object.keys(pickRequest({ position: 'MIDDLE', opponent: lux, allies: [], enemies: [], candidates: [ahri] }).questions)).toEqual(['p103_lane'])
+  })
+
+  it('reads what came back, null where nothing was asked', () => {
+    expect(readPick(103, { p103_lane: score(2, 0.9), p103_enemy: score(0, 0.5) })).toEqual({ lane: 1, team: null, enemy: 0, confidence: 0.7 })
+    expect(readPick(103, {})).toBeNull()
   })
 })
