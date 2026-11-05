@@ -22,7 +22,6 @@ const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFix
 const wpaTone = (value: number) => (value >= 0.01 ? 'text-primary' : value <= -0.01 ? 'text-error' : 'text-muted')
 const has = (value: number | null | undefined): value is number => value !== null && value !== undefined
 const score = (entry: RankedSlot, option: JevOption) => Math.round((entry.scored[option.key]?.total ?? 0) * 100)
-const slotLabel = (name: string) => (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
 
 const SETUP = ['runes', 'spells', 'starter', 'skills', 'bootsAfter']
 const setup = computed(() => SETUP.map(name => props.ranked.find(entry => entry.slot.name === name)).filter(entry => !!entry))
@@ -35,6 +34,14 @@ const path = computed(() => {
     return entry
   }).filter(entry => !!entry)
 })
+/** Items named by their place in the buy order, the boots apart, so the path counts 1, 2, 3 with no gap where a slot had nothing new. */
+const labels = computed(() => {
+  const named = new Map<string, string>()
+  let count = 0
+  for (const entry of path.value) named.set(entry.slot.name, entry.slot.kind === 'boots' ? t('jev.slot.boots') : t('jev.slot.item', { slot: ++count }))
+  return named
+})
+const slotLabel = (name: string) => labels.value.get(name) ?? (name.startsWith('item') ? t('jev.slot.item', { slot: name.slice(4) }) : t(`jev.slot.${name}`))
 const others = (entry: RankedSlot) => [...entry.slot.options].filter(option => option.key !== entry.pick.key).sort((a, b) => score(entry, b) - score(entry, a))
 
 /** The step opened below: the first where the pick parts from the most played, else the first. */
