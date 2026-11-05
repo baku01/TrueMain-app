@@ -167,7 +167,7 @@ const heightOf = (index: number) => Math.max(0.78, 1 - index * 0.035)
             @click="emit('preview', item.championId)"
           />
           <template #action>
-            <DraftChampionAction :champion-id="item.championId" />
+            <DraftChampionAction :champion-id="item.championId" compact />
           </template>
         </DraftSuggestionCard>
       </div>

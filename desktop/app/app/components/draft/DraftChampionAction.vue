@@ -11,7 +11,9 @@
 const props = withDefaults(defineProps<{
   championId: number
   size?: 'xs' | 'sm'
-}>(), { size: 'xs' })
+  /** Icon only, its label in the tooltip: a narrow card shares its top row with the tier badge. */
+  compact?: boolean
+}>(), { size: 'xs', compact: false })
 
 const { nameOf } = useChampionStatics()
 const { t } = useT()
@@ -20,6 +22,7 @@ const { writable, kind, shownKind, pending, availability, allyHovering, allyName
 const state = computed(() => availability(props.championId))
 const ally = computed(() => allyHovering(props.championId))
 const isBan = computed(() => shownKind.value === 'ban')
+const label = computed(() => state.value.reason === t('draft.avail.hoveredInClient') ? t('draft.action.hovered') : isBan.value ? t('draft.action.ban') : t('draft.action.hover'))
 const busy = computed(() => pending.value?.championId === props.championId && pending.value.kind !== 'lock')
 
 /** Whether the click opens a confirmation rather than writing at once. */
@@ -51,7 +54,7 @@ function onOpen(open: boolean) {
 </script>
 
 <template>
-  <UTooltip v-if="writable" :text="state.reason ?? undefined" :disabled="!state.reason" :content="{ side: 'top' }">
+  <UTooltip v-if="writable" :text="state.reason ?? (compact ? label : undefined)" :disabled="!state.reason && !compact" :content="{ side: 'top' }">
     <!-- A disabled button takes no pointer events: the span is what the tooltip hangs on. -->
     <span class="inline-flex" @click.stop>
       <UPopover :open="confirming" :content="{ side: 'top', sideOffset: 6 }" @update:open="onOpen">
@@ -60,7 +63,7 @@ function onOpen(open: boolean) {
           :color="isBan ? 'error' : 'primary'"
           :variant="state.allowed ? 'subtle' : 'soft'"
           :icon="busy ? 'i-lucide-loader-circle' : isBan ? 'i-lucide-ban' : 'i-lucide-hand'"
-          :label="state.reason === t('draft.avail.hoveredInClient') ? t('draft.action.hovered') : isBan ? t('draft.action.ban') : t('draft.action.hover')"
+          :label="compact ? undefined : label"
           :disabled="!state.allowed || busy"
           :class="!state.allowed && 'pointer-events-none'"
           :ui="{ leadingIcon: busy ? 'animate-spin' : undefined }"
