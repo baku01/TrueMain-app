@@ -3,10 +3,8 @@ import type { MessageDictionary } from '#common/utils/i18n'
 /** The dashboard, the champion and Truemain pages, and the loading board. */
 export default {
   'en': {
-  'dash.title': 'Dashboard',
-  'dash.description': 'Your games, your form and your standing, read from your client.',
-  'dash.viewing.description': 'Another player\'s games and standing, read through Blitz.',
   'dash.refresh': 'Read your games again',
+  'dash.update': 'Update',
   'dash.error.title': 'Your client did not share your match history',
   'dash.error.body': 'It sometimes needs a moment after logging in.',
   'dash.error.retry': 'Try again',
@@ -128,10 +126,8 @@ export default {
   'dash.viewing.error': 'The player could not be read. Try again.',
   },
   'pt-BR': {
-  'dash.title': 'Painel',
-  'dash.description': 'Suas partidas, sua forma e seu ranque, lidos do seu cliente.',
-  'dash.viewing.description': 'As partidas e o ranque de outro jogador, lidos pelo Blitz.',
   'dash.refresh': 'Ler suas partidas novamente',
+  'dash.update': 'Atualizar',
   'dash.error.title': 'Seu cliente não compartilhou seu histórico de partidas',
   'dash.error.body': 'Às vezes ele precisa de um momento depois do login.',
   'dash.error.retry': 'Tentar de novo',

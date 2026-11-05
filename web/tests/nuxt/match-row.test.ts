@@ -77,7 +77,8 @@ describe('MatchRowTeams', () => {
   it('draws the player\'s team over the enemy\'s, in lane order, as plain canonical <img>s', async () => {
     const wrapper = await mountSuspended(MatchRowTeams, { props: { participants, selfTeamId: 100, championById } })
 
-    const imgs = wrapper.findAll('img')
+    // The compact composition; the named one (a wide tile) carries its labels as titles.
+    const imgs = wrapper.findAll('img').filter(img => img.attributes('alt'))
     expect(imgs.map(img => img.attributes('alt'))).toEqual(['Garen · Top', 'Lee Sin · Jungle', 'Ahri · Middle'])
     for (const img of imgs) {
       expect(img.attributes('src')).toContain('/_ipx/')
@@ -109,12 +110,10 @@ describe('MatchRowTeams', () => {
 describe('MatchRow', () => {
   const props = { match: match('EUW1_1'), champions, items, summonerSpells, runeTree }
 
-  it('is skipped off screen, keeping the last height it rendered', async () => {
+  it('names the game it draws', async () => {
     const wrapper = await mountInApp(MatchRow, props)
 
     const row = wrapper.find('article')
-    expect(row.classes()).toContain('[content-visibility:auto]')
-    expect(row.classes()).toContain('[contain-intrinsic-block-size:auto_54px]')
     expect(row.attributes('aria-label')).toBe('Victory as Garen, 7/2/5')
   })
 

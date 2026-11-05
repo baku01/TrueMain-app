@@ -141,30 +141,36 @@ watch(() => state.value.phase, (next, previous) => {
         :form-reference="formReference"
         :loading="pending"
       >
+        <template #actions>
+          <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="sm" />
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="soft"
+            size="sm"
+            :label="t('dash.update')"
+            :aria-label="t('dash.refresh')"
+            :loading="status === 'pending'"
+            @click="refresh(true)"
+          />
+        </template>
+
+        <!-- The queues as Blitz's page tabs, underlined. -->
+        <template #tabs>
+          <button
+            v-for="tab in queueTabs"
+            :key="tab.value"
+            type="button"
+            class="tm-tab shrink-0"
+            :data-active="filter === tab.value || undefined"
+            :aria-pressed="filter === tab.value"
+            @click="filter = tab.value"
+          >
+            {{ tab.label }}
+          </button>
+        </template>
+
         <template #header>
-          <PageHeader :title="t('dash.title')" :description="viewing ? t('dash.viewing.description') : t('dash.description')">
-            <template #actions>
-              <UButton v-if="viewing" to="/" icon="i-lucide-arrow-left" :label="t('dash.viewing.back')" color="neutral" variant="soft" size="sm" />
-              <UTabs
-                v-model="filter"
-                :items="queueTabs"
-                :content="false"
-                variant="pill"
-                color="neutral"
-                size="xs"
-                :ui="{ list: 'ring ring-default', indicator: 'rounded-md bg-accented shadow-none', trigger: 'px-3 data-[state=active]:text-highlighted' }"
-              />
-              <UButton
-                icon="i-lucide-refresh-cw"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                :loading="status === 'pending'"
-                :aria-label="t('dash.refresh')"
-                @click="refresh(true)"
-              />
-            </template>
-          </PageHeader>
           <UAlert
             v-if="viewing && (other.status.value === 'missing' || other.status.value === 'error')"
             color="neutral"
