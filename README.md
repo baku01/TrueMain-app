@@ -19,8 +19,9 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dad
 | ![Fontes de dados](docs/screenshots/sources.png)<br>**Configurações:** a fonte de dados — TrueMain, Blitz, op.gg, lolalytics ou Tencent | ![ProBuild](docs/screenshots/probuild.png)<br>**ProBuild:** as partidas recentes de pros, vitória ou derrota em destaque |
 | ![Tier list](docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas | ![Classes](docs/screenshots/classes.png)<br>**Classes:** campeões por classe e subclasse, com o papel de cada uma |
 | ![Itens](docs/screenshots/items.png)<br>**Itens:** descrição e receita em árvore | ![Runas](docs/screenshots/runes.png)<br>**Runas:** as árvores e a descrição colorida |
-| ![Seleção de campeões](docs/screenshots/draft.png)<br>**Seleção de campeões:** picks e a build contra o draft | ![Partida](docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e o que cada jogador vem fazendo |
-| ![Notas da atualização](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas | ![Overlay de próximo item](docs/screenshots/overlay-next-item.png)<br>**Overlay:** o próximo item sobre o jogo, com a receita e a ordem da build |
+| ![Seleção de campeões](docs/screenshots/draft.png)<br>**Seleção de campeões:** os times nas laterais com counters, a tier list da rota e as sugestões em pôsteres — da fonte ou reordenadas pelo Jev | ![Builds na seleção de campeões](docs/screenshots/draft-builds.png)<br>**Builds na seleção:** runas, feitiços, iniciais, ordem de itens e evolução num card só, com importação e as builds de pros |
+| ![Partida](docs/screenshots/ingame.png)<br>**Partida:** placar, próximo item e o que cada jogador vem fazendo | ![Notas da atualização](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas |
+| ![Overlay de próximo item](docs/screenshots/overlay-next-item.png)<br>**Overlay:** o próximo item sobre o jogo, com a receita e a ordem da build | |
 
 **Tema claro:** o app tem tema escuro (o padrão) e claro, alternados pelo botão da barra superior. No claro, os painéis são brancos sobre um fundo cinza-azulado, com texto e destaque escurecidos para manter o contraste; os banners sobre arte de campeão continuam escuros.
 
@@ -29,16 +30,21 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dad
 ## O que o app faz
 
 - **Acompanha o cliente do League** no macOS e no Windows e abre a tela certa em cada fase: a seleção de campeões abre o draft, e a partida abre a página do jogo.
-- **Painel de jogador:** o seu perfil (lido do cliente) ou o de **qualquer jogador** — buscado por `Nome#TAG` na busca do topo (⌘K) ou clicado numa partida. Mostra elo, histórico com o detalhe de cada partida, campeões, funções, atividade, e:
+- **Painel de jogador:** o seu perfil (lido do cliente) ou o de **qualquer jogador** — buscado por `Nome#TAG` na busca do topo (⌘K) ou clicado numa partida. Mostra elo, campeões, funções, atividade, **maestria** (o top 5 com o nível, o emblema e os pontos exatos do championmastery.gg), e:
+  - **histórico no estilo Blitz:** cada partida com seus **badges** (MVP, multiabates, mais dano, mestre do CS, imortal, primeiro abate, jogo perfeito…), e o mouse sobre um badge diz a medida e o corte que ele passou;
+  - **painel da partida** com abas: os bans e os objetivos de cada time, ouro e dano, o elo de cada jogador, a tabela de **Estatísticas**, **Gráficos**, **Probabilidade de vitória**, a **Linha do tempo** de abates e objetivos e o dano das runas por jogador; o que faltar na fonte vem do cliente e depois do Blitz;
+  - **análise do jogador:** estilo de jogo, pontos fortes, o que melhorar (com dicas), melhores campeões e melhores parceiros;
   - **estatísticas detalhadas** das últimas 20 partidas (≈25 métricas: dano, parcela do dano do time, CS aos 10, visão, objetivos, abates solo, skillshots…), cada uma **comparada aos oponentes de rota** nas mesmas partidas, com barras e veredito por grupo;
   - **comparação por elo:** KDA, participação, CS/min, visão/min e mortes numa régua com a mediana de cada elo (Ferro a Desafiante), com qualquer elo escolhido como referência;
   - **ranking e temporadas** (op.gg): posição na ladder, pico da temporada e elos das temporadas anteriores.
-- **Campeões, tier list e Analytics:** builds com todas as opções medidas (runas, feitiços, iniciais, botas, núcleos e 4º/5º item com taxa de vitória), a sequência de itens em árvore, a ordem de habilidades com o vídeo de cada uma ao passar o mouse, melhores jogadores e builds de pros, e uma página de **Analytics** com tudo o que a fonte mede sobre o campeão.
+- **Campeões, tier list e Analytics:** builds com todas as opções medidas (runas, feitiços, iniciais, botas, núcleos e 4º/5º item com taxa de vitória), a sequência de itens em árvore, a ordem de habilidades com o vídeo, a descrição e os valores de cada uma ao passar o mouse, melhores jogadores e builds de pros, e uma página de **Analytics** com tudo o que a fonte mede sobre o campeão.
 - **Habilidades:** cada habilidade com o vídeo da Riot e a descrição do próprio jogo, com os valores resolvidos nível a nível.
 - **Meus kits:** builds suas (árvore de itens, página de runas e feitiços) para um campeão e as rotas escolhidas, oferecidas na seleção de campeões ao lado das do TrueMain; escolhido um kit, o overlay segue os itens dele.
-- **Confronto:** a build para o draft e as partidas reais do confronto.
-- **Seleção de campeões:** picks, bans e a build para o draft, com **itens sugeridos pela composição inimiga** (ex.: Mercúrio contra muito controle de grupo). Por padrão, runas e conjuntos de itens só vão para o cliente **quando você clica**; com a **importação automática** ligada (Configurações), a build vai sozinha ao travar o campeão, como no Blitz. Só a página de runas e os conjuntos do próprio TrueMain são substituídos.
+- **Confronto:** a build para o draft e as partidas reais do confronto, com o **medidor de dano** de cada time (físico, mágico e verdadeiro, medido pelo Blitz) e um aviso quando um time é de um tipo só.
+- **Confronto · Jev:** a build inteira (runas, feitiços, inicial, ordem de habilidades, botas e quando comprá-las, núcleo item a item e itens tardios) escolhida pelo [Jev](https://typesafe.ai) entre as opções medidas, ao lado da mais jogada. O Jev só lê textos — os kits inimigos e cada item, runa e feitiço, em inglês — e responde perguntas; o app faz as contas com as estatísticas do lolalytics e do Blitz somadas partida a partida. Cada opção mostra a taxa de escolha, a de vitória e as checagens que pesaram; itens situacionais respondem ao draft (penetração contra linha de frente, resistência mágica, antecura). Importa runas e item set para o cliente e segue a seleção de campeões sozinha. Precisa de uma chave do Jev em Configurações (guardada pelo app, nunca exposta à interface); cada pedido é pago, por isso o Jev só é chamado num clique.
+- **Seleção de campeões:** tudo numa tela, sem rolar, como numa transmissão. Os dois times ficam nas laterais, com os counters de cada inimigo na própria rota, o medidor de dano, a tier list da rota e os counters do oponente. No centro, um card com as abas **Sugestões** (pôsteres de todas as sugestões, com a nota e o motivo) e **Builds** (runas, feitiços, iniciais, ordem de itens, botas, situacionais e ordem de evolução, as builds contra o oponente de rota e as de pros num menu). A build pesa a vitória de cada item pela amostra, responde a curas com antecura e segue o time inimigo para botas e itens (ex.: um atirador contra três magos leva Mercúrio e resistência mágica), mostrando o motivo sempre que foge da mais jogada. O seletor **Fonte | Jev** faz o Jev reordenar as sugestões (com o detalhamento da nota) e montar a build do draft. Por padrão, runas e conjuntos de itens só vão para o cliente **quando você clica**; com a **importação automática** ligada (Configurações), a build vai sozinha ao travar o campeão, como no Blitz. Só a página de runas e os conjuntos do próprio TrueMain são substituídos; com a lista de páginas cheia, o app libera a página menos usada (uma inválida primeiro), como o Blitz.
 - **Partida e overlay:** placar das duas equipes, próximo item com a receita e a ordem da build, timers de objetivos e painéis sobre o jogo.
+- **Zoom:** ⌘/Ctrl + `+`, `−` e `0` ampliam o app como no navegador.
 - **Português do Brasil** em todo o app, inclusive nos nomes de itens, campeões e runas.
 
 ## Fontes de dados (Configurações)
@@ -52,6 +58,8 @@ Em **Configurações → Fonte de dados**, todas as telas de estatísticas passa
 | **op.gg** | A API oficial (servidor MCP) do op.gg: builds, runas, counters, ranking por campeão |
 | **lolalytics** *(experimental)* | A mais detalhada: cada runa, item por slot, matchups, objetivos, duração de partida |
 | **Tencent** *(experimental)* | Os guias do lol.qq.com (servidores chineses, atualizados diariamente): páginas de runa completas, núcleos, ordem de habilidades e matchups |
+
+Builds e runas vêm **sempre da fonte escolhida**, sem misturar. O que ela não tiver vem do lolalytics e, depois, do Blitz, cada resposta inteira de uma fonte só; a única soma é a classificação do Confronto · Jev (lolalytics + Blitz). Os dados do TrueMain só são usados com o TrueMain escolhido.
 
 As fontes marcadas como experimentais usam endpoints públicos que os sites não documentam e podem mudar sem aviso. Nenhuma fonte é lida contornando proteções: sites que exigem burlar anti-bot ficaram de fora.
 
@@ -67,6 +75,7 @@ Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
 - **Abas novas:** **Analytics**, **Habilidades**, **Meus kits**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).
 - **Atualização automática:** o app se atualiza pelas releases deste fork, mostrando o progresso do download num aviso no canto.
 - **Confronto · Jev:** build e runas classificadas com o [Jev](https://typesafe.ai) — ele lê os kits inimigos e cada item, o app junta isso às estatísticas do lolalytics e do Blitz — com importação de runas e item set para o cliente.
+- **Medidor de dano dos times:** físico, mágico e verdadeiro de cada time, medido pelo Blitz, na seleção de campeões, no Confronto e no Confronto · Jev.
 - **Seleção de campeões nova:** tudo numa tela — times nas laterais com counters, sugestões em pôsteres, a build num card só (com a de pros a um clique) e um seletor **Fonte | Jev** para o Jev reordenar as sugestões e montar a build do draft.
 - **Perfil e partidas no estilo Blitz:** badges com o motivo, painel da partida com abas e linha do tempo, maestria com os pontos exatos e análise do jogador.
 - **Simulador sem compilar:** `./sim-lcu.sh` abre uma seleção de campeões simulada e o app no navegador, lado a lado.
@@ -101,6 +110,9 @@ npm run dev            # http://localhost:3003
 # O app de verdade, com o cliente do League aberto:
 npm run tauri dev
 
+# Uma seleção de campeões simulada e o app no navegador, sem compilar (na raiz):
+../../sim-lcu.sh
+
 # Testes e verificações:
 npm run test
 npm run lint
@@ -117,11 +129,13 @@ Para gerar o instalador: `npm run tauri build` dentro de `desktop/app`. O GitHub
 | Fonte | Para quê |
 |---|---|
 | API do TrueMain (`truemain.lol`) | Estatísticas na fonte TrueMain, recomendações de draft e de próximo item, referências por elo |
-| Blitz (`iesdev.com`) | Perfis e partidas de qualquer jogador, builds e pros; na fonte Blitz, as estatísticas |
+| Blitz (`iesdev.com`) | Perfis e partidas de qualquer jogador, o elo de cada jogador da partida, builds, pros e a divisão de dano dos campeões; na fonte Blitz, as estatísticas |
 | op.gg (API oficial) | Ranking e temporadas dos jogadores; na fonte op.gg, as estatísticas |
-| lolalytics e Tencent | As estatísticas nessas fontes (experimental) |
+| lolalytics e Tencent | As estatísticas nessas fontes (experimental); o lolalytics também cobre o que faltar na fonte escolhida |
+| [championmastery.gg](https://championmastery.gg) | Os pontos exatos de maestria no painel |
+| [Jev](https://typesafe.ai) (TypeSafe, `api.typesafe.ai`) | As escolhas do Confronto · Jev e da seleção de campeões no modo Jev — só com a sua chave e só num clique |
 | [Data Dragon](https://developer.riotgames.com/docs/lol) e [Community Dragon](https://www.communitydragon.org/) | Nomes, textos e imagens de itens, campeões, feitiços e runas, no idioma escolhido |
-| Cliente do League (local) | Seleção de campeões, perfil, histórico e a partida ao vivo |
+| Cliente do League (local) | Seleção de campeões, perfil, histórico, maestria e a partida ao vivo |
 | [Wiki do League](https://wiki.leagueoflegends.com/) | Subclasses dos campeões (um retrato guardado no app) |
 | leagueoflegends.com | Notas da atualização |
 | CDNs da Riot e do Blitz | Vídeos das habilidades e suas miniaturas |

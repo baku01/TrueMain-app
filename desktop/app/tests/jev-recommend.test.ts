@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { answersDraft, fitOf, laneNeeds, needsOf, rankPicks, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
+import { addedWinProbability, answersDraft, fitOf, laneNeeds, needsOf, rankPicks, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, heal: 0, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
@@ -23,11 +23,14 @@ describe('needsOf', () => {
 
   it('reads the kits\' facts as what stands out of a usual team', () => {
     const line = (id: number, fields: Partial<EnemyLine['read']>): EnemyLine => ({ id, read: read(fields), physical: 0.5, magic: 0.5, weight: 1 })
-    const usual = [1, 2, 3, 4, 5].map(id => line(id, { cc: 0.4, tank: 0.2, autos: 0.25 }))
-    expect(needsOf(usual)).toMatchObject({ cc: 0, tanks: 0, autos: 0 })
-    const lockdown = [line(1, { cc: 1 }), line(2, { cc: 1 }), line(3, { cc: 0.4 }), line(4, { cc: 0.4 }), line(5, { cc: 0.4 })]
-    expect(needsOf(lockdown).cc).toBeCloseTo(0.8)
-    expect(needsOf([line(1, { cc: 0.5 })]).cc).toBeCloseTo(0.2)
+    // A team as solo queue draws them: every fact near the champions' average, no need.
+    const usual = [1, 2, 3, 4, 5].map(id => line(id, { cc: 0.44, heal: 0.17, burst: 0.49, tank: 0.33, autos: 0.43 }))
+    for (const need of ['cc', 'heal', 'burst', 'tanks', 'autos'] as const) expect(needsOf(usual)[need]).toBeCloseTo(0)
+    const lockdown = [line(1, { cc: 1 }), line(2, { cc: 0.6 }), line(3, { cc: 0.44 }), line(4, { cc: 0.44 }), line(5, { cc: 0.44 })]
+    expect(needsOf(lockdown).cc).toBeCloseTo(0.9)
+    const assassins = [line(1, { burst: 1 }), line(2, { burst: 1 }), line(3, { burst: 0.5 }), line(4, { burst: 0.5 }), line(5, { burst: 0.5 })]
+    expect(needsOf(assassins).burst).toBe(1)
+    expect(needsOf([line(1, { cc: 0.5 })]).cc).toBeCloseTo(0.12)
     expect(needsOf([line(1, { cc: 1 })]).cc).toBe(1)
   })
 
@@ -58,6 +61,13 @@ describe('fitOf', () => {
     expect(fitOf([6333], needs({ physical: 0.1, magic: 0.9 }), reads, tags).misfit).toBe(false)
   })
 
+  it('does not take Maw of Malmortius\'s shield for an answer to a physical team\'s burst: it shields magic damage only', () => {
+    const maw = new Map([[3156, item({ antiBurst: 0.9 })]])
+    const mawTags = (id: number) => (id === 3156 ? ['Damage', 'SpellBlock'] : tags(id))
+    expect(fitOf([3156], needs({ physical: 0.83, magic: 0.05, burst: 1 }), maw, mawTags)).toMatchObject({ misfit: false, answers: [] })
+    expect(fitOf([3156], needs({ physical: 0.07, magic: 0.87, burst: 1 }), maw, mawTags).answers.map(answer => answer.need)).toEqual(['magic', 'burst'])
+  })
+
   it('offers where it was not measured only what answers the draft', () => {
     const magic = needs({ physical: 0.2, magic: 0.8 })
     expect(answersDraft(3065, magic, reads, tags)).toBe(true)
@@ -74,11 +84,26 @@ describe('statistics', () => {
     expect(stats.o4).toBeNull()
   })
 
-  it('weighs the matchup\'s WPA only when every option has its games, centred on the slot', () => {
-    const both = slotWpa([option('o0', [1], { wpa: 0.01, vsWpa: 0.06, vsGames: 90 }), option('o1', [2], { wpa: 0.01, vsWpa: 0.0, vsGames: 90 })])!
-    expect(both(option('o0', [1], { wpa: 0.01, vsWpa: 0.06, vsGames: 90 }))).toBeCloseTo(0.018)
-    const thin = slotWpa([option('o0', [1], { wpa: 0.03, vsWpa: 0.06, vsGames: 90 }), option('o1', [2], { wpa: 0.01, vsWpa: 0.0, vsGames: 10 })])!
-    expect(thin(option('o0', [1], { wpa: 0.03 }))).toBeCloseTo(0.01)
+  it('pulls WPA toward nothing by its games, and toward the matchup\'s only as far as the matchup\'s games go', () => {
+    expect(addedWinProbability(option('o0', [1], { wpa: 0.02, wpaGames: 1000 }))).toBeCloseTo(0.01)
+    expect(addedWinProbability(option('o0', [1], { wpa: 0.02, wpaGames: 1000, vsWpa: 0.12, vsGames: 1000 }))).toBeCloseTo(0.065)
+    expect(addedWinProbability(option('o0', [1], { wpa: 0.02, wpaGames: 1000, vsWpa: 0.12, vsGames: 0 }))).toBeCloseTo(0.01)
+    expect(addedWinProbability(option('o0', [1]))).toBeNull()
+    const slot = [option('o0', [1], { wpa: 0.02, wpaGames: 1000 }), option('o1', [2], { wpa: 0, wpaGames: 1000 })]
+    expect(slotWpa(slot)!(slot[0]!)).toBeCloseTo(0.005)
+  })
+
+  it('does not let a thin matchup outweigh the lane (Aatrox into Akali: Eclipse over Spear of Shojin)', () => {
+    const eclipse = option('o0', [6692], { games: 2219, winRate: 0.5588, wpa: -0.0045, wpaGames: 6179, vsWpa: -0.0834, vsGames: 87 })
+    const shojin = option('o1', [3161], { games: 92, winRate: 0.5435, wpa: -0.0006, wpaGames: 5191, vsWpa: 0.0482, vsGames: 64 })
+    const stats = statsOf([eclipse, shojin])
+    expect(stats.o1! - stats.o0!).toBeLessThan(0.08)
+    expect(stats.o1).toBeLessThan(0.6)
+  })
+
+  it('does not compare a situational option\'s win rate, measured wherever the item was bought, with the slot\'s', () => {
+    const stats = statsOf([option('o0', [1], { winRate: 0.56 }), option('o1', [2], { winRate: 0.56 }), option('o2', [3], { winRate: 0.497, games: 6179, situational: true })])
+    expect(stats.o2).toBeCloseTo(0.5)
   })
 
   it('leaves WPA out of a slot where an option was not measured on it', () => {

@@ -2,6 +2,8 @@ import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells 
 import type { BuildOptions, ItemOption, Measure, RunePageIds } from '~/utils/sources/model'
 import type { ItemStat } from '~/utils/blitz/item-stats'
 import { isBoots } from '~/utils/blitz/builds'
+import { STARTER_LINE, fitsWith } from '~/utils/item-groups'
+import { buysBoots } from '~/utils/sources/model'
 
 /**
  * The Jev matchup page's build, its structure: every choice of a build — rune
@@ -31,6 +33,8 @@ export interface JevOption extends Measure {
   situational?: boolean
   /** Win probability added on the lane (Blitz's item stats), the option's items averaged; null where unmeasured. */
   wpa?: number | null
+  /** The games behind `wpa`: the fewest of the option's items. */
+  wpaGames?: number
   /** The same against the lane opponent, when the matchup has the games. */
   vsWpa?: number | null
   vsGames?: number
@@ -84,10 +88,51 @@ export function plainAbility(text: string | undefined, max: number): string {
   return cut((text ?? '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(), max)
 }
 
-const pathOf = (core: ItemOption) => core.itemIds.filter(id => !isBoots(id))
+/** The items a build chooses: neither the boots, drawn apart, nor the starting item that grows by itself (`STARTER_LINE`). */
+const chosen = (id: number) => !isBoots(id) && !STARTER_LINE.has(id)
+const pathOf = (core: ItemOption) => core.itemIds.filter(chosen)
 
-/** The slots set before the items: runes, spells, starter, skills, boots and their timing. */
-export function firstSlots(options: BuildOptions, names: Names): JevSlot[] {
+/** Six item slots; the starting item that grows by itself (a support's World Atlas, a jungle pet) keeps one. */
+export const INVENTORY = 6
+export const roomFor = (starter: number[]) => INVENTORY - (starter.some(id => STARTER_LINE.has(id)) ? 1 : 0)
+
+/**
+ * The starting sets as choices: sets that differ only by potions or wards are
+ * one start (Doran's Blade, with or without a Health Potion), their games
+ * added up, shown as the most played of them. A set of consumables alone is a
+ * source leaving the starting item out (Blitz records a support's World Atlas
+ * as nothing), not a start, while another set holds an item; and where the
+ * most played start holds the item that grows (a support's World Atlas, a
+ * jungle pet), a set without one is the same omission (Blitz's Ruby Crystal on
+ * a support Tahm Kench), not a start either.
+ */
+export function startingSets(starters: ItemOption[], consumable: (id: number) => boolean): ItemOption[] {
+  const sets = new Map<string, { shown: ItemOption, games: number, wins: number }>()
+  for (const starter of starters) {
+    const key = starter.itemIds.filter(id => !consumable(id)).sort((a, b) => a - b).join(',')
+    const known = sets.get(key)
+    if (!known) {
+      sets.set(key, { shown: starter, games: starter.games, wins: starter.winRate * starter.games })
+      continue
+    }
+    known.games += starter.games
+    known.wins += starter.winRate * starter.games
+    if (starter.games > known.shown.games) known.shown = starter
+  }
+  const starts = [...sets].filter(([key]) => key !== '' || sets.size === 1).map(([, set]) => set)
+  const grows = (set: { shown: ItemOption }) => set.shown.itemIds.some(id => STARTER_LINE.has(id))
+  const top = [...starts].sort((a, b) => b.games - a.games)[0]
+  const kept = top && grows(top) ? starts.filter(grows) : starts
+  const total = kept.reduce((sum, set) => sum + set.games, 0)
+  return kept.map(set => ({ ...set.shown, games: set.games, winRate: set.games ? set.wins / set.games : 0, pickRate: total ? set.games / total : 0 }))
+}
+
+/**
+ * The slots set before the items: runes, spells, starter, skills, boots and
+ * their timing — no boots for a champion that plays without (`buysBoots`).
+ */
+export function firstSlots(options: BuildOptions, names: Names, consumable: (id: number) => boolean): JevSlot[] {
+  const boots = buysBoots(options)
   const slots: JevSlot[] = [
     {
       name: 'runes',
@@ -110,7 +155,7 @@ export function firstSlots(options: BuildOptions, names: Names): JevSlot[] {
       name: 'starter',
       kind: 'starter',
       lane: true,
-      options: keyed(reliable(options.starters), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
+      options: keyed(reliable(startingSets(options.starters, consumable)), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
     },
     {
       name: 'skills',
@@ -122,13 +167,13 @@ export function firstSlots(options: BuildOptions, names: Names): JevSlot[] {
       name: 'boots',
       kind: 'boots',
       lane: true,
-      options: keyed(reliable(options.boots), 3, boots => ({ ...measured(boots), itemIds: boots.itemIds.slice(0, 1), label: names.item(boots.itemIds[0]!) })),
+      options: boots ? keyed(reliable(options.boots), 3, pair => ({ ...measured(pair), itemIds: pair.itemIds.slice(0, 1), label: names.item(pair.itemIds[0]!) })) : [],
     },
     {
       name: 'bootsAfter',
       kind: 'timing',
       lane: true,
-      options: [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], games: 0, pickRate: 0, winRate: 0, label: String(after) })),
+      options: boots ? [0, 1, 2].map(after => ({ key: `o${after}`, after, itemIds: [], games: 0, pickRate: 0, winRate: 0, label: String(after) })) : [],
     },
   ]
   return slots.filter(slot => slot.options.length > 0)
@@ -137,8 +182,23 @@ export function firstSlots(options: BuildOptions, names: Names): JevSlot[] {
 /** How many completed items the core runs to: each one its own slot. */
 export const CORE_ITEMS = 3
 
-/** The champion's measured items and the test of which answer this draft. */
-export interface Situational { pool: ItemOption[], answersDraft: (id: number) => boolean }
+/**
+ * The champion's measured items, the test of which answer this draft, and of
+ * which the build can use (`damageKind`: no ability power item on a build of
+ * attack damage).
+ */
+export interface Situational { pool: ItemOption[], answersDraft: (id: number) => boolean, suits?: (id: number) => boolean }
+
+/**
+ * What an item's damage scales with, by Riot's tags: attack damage (critical
+ * strike, armour penetration), ability power (magic penetration), or neither —
+ * a tank's, an enchanter's — or both alike (Guinsoo's Rageblade): null.
+ */
+export function damageKind(tags: string[]): 'ad' | 'ap' | null {
+  const ad = tags.some(tag => tag === 'Damage' || tag === 'CriticalStrike' || tag === 'ArmorPenetration')
+  const ap = tags.some(tag => tag === 'SpellDamage' || tag === 'MagicPenetration')
+  return ad === ap ? null : ad ? 'ad' : 'ap'
+}
 
 /** How many of the draft's answers a slot may add to what was measured in it. */
 const SITUATIONAL = 2
@@ -152,7 +212,7 @@ function withSituational(measuredHere: ItemOption[], held: number[], situational
   if (!situational) return measuredHere
   const here = new Set(measuredHere.flatMap(option => option.itemIds))
   const extra = situational.pool
-    .filter(option => option.games >= MIN_GAMES && !here.has(option.itemIds[0]!) && !held.includes(option.itemIds[0]!) && situational.answersDraft(option.itemIds[0]!))
+    .filter(option => option.games >= MIN_GAMES && !here.has(option.itemIds[0]!) && fitsWith(option.itemIds[0]!, held) && (situational.suits?.(option.itemIds[0]!) ?? true) && situational.answersDraft(option.itemIds[0]!))
     .sort((a, b) => b.games - a.games)
     .slice(0, measuredHere.some(option => situational.answersDraft(option.itemIds[0]!)) ? 1 : SITUATIONAL)
   return [...measuredHere, ...extra.map(option => ({ ...option, situational: true as const }))]
@@ -165,10 +225,15 @@ const itemOptions = (open: (ItemOption & { situational?: true })[], names: Names
  * The core, item by item: the first, second and third completed item are each
  * a slot of the items measured at that place of a core (their games added up
  * over every core that has them there), so a draft can change the second item
- * without a whole measured path that does — plus, from the second on, the
- * champion's measured items that answer the draft.
+ * without a whole measured path that does. Only what was measured there: the
+ * core is what the champion's players build first, and the draft's answers
+ * from the rest of its items come after it (`laterSlot`) — offered in the
+ * core, they took a marksman's second item from the critical strike it needs.
+ * Only a place some core measured is a slot: the sources' cores mostly carry
+ * the boots (Eclipse, Plated Steelcaps, Sundered Sky), so their third place is
+ * the items after them.
  */
-export function coreSlots(options: BuildOptions, names: Names, situational?: Situational): JevSlot[] {
+export function coreSlots(options: BuildOptions, names: Names): JevSlot[] {
   return Array.from({ length: CORE_ITEMS }, (_, index): JevSlot => {
     const at = new Map<number, { games: number, wins: number }>()
     for (const core of options.cores) {
@@ -179,8 +244,7 @@ export function coreSlots(options: BuildOptions, names: Names, situational?: Sit
     }
     const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
     const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
-    const open = index === 0 ? measuredHere : withSituational(measuredHere, [], situational)
-    return { name: `item${index + 1}`, kind: 'item', lane: index === 0, options: itemOptions(open, names) }
+    return { name: `item${index + 1}`, kind: 'item', lane: index === 0, options: itemOptions(measuredHere, names) }
   }).filter(slot => slot.options.length > 0)
 }
 
@@ -205,7 +269,7 @@ export const standardCore = (cores: ItemOption[]): number[] => {
 export function measuredPool(options: BuildOptions): ItemOption[] {
   const pool = new Map<number, { games: number, wins: number }>()
   const add = (id: number, option: ItemOption) => {
-    if (isBoots(id)) return
+    if (!chosen(id)) return
     const known = pool.get(id) ?? { games: 0, wins: 0 }
     pool.set(id, { games: known.games + option.games, wins: known.wins + option.winRate * option.games })
   }
@@ -225,18 +289,22 @@ export function measuredPool(options: BuildOptions): ItemOption[] {
 export function statsPool(stats: Map<number, ItemStat>, measuredItems: ItemOption[], completed: (id: number) => boolean): ItemOption[] {
   const pool = new Map(measuredItems.map(option => [option.itemIds[0]!, option]))
   for (const [id, stat] of stats) {
-    if (!completed(id) || isBoots(id)) continue
+    if (!completed(id) || !chosen(id)) continue
     const known = pool.get(id)
     if (!known || known.games < stat.games) pool.set(id, { itemIds: [id], games: stat.games, winRate: stat.winRate, pickRate: known?.pickRate ?? 0 })
   }
   return [...pool.values()]
 }
 
-/** One later item slot: what was measured there after `core`, without an item already in the build, plus the draft's answers. */
+/**
+ * One later item slot: what was measured there after `core` that can join the
+ * build (`fitsWith`: not held, no limited group full — one Lifeline item, one
+ * Last Whisper item), plus the draft's answers.
+ */
 export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, situational?: Situational): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
-  const measuredHere = reliable(group.options.filter(option => !option.itemIds.some(id => held.includes(id) || isBoots(id)))).slice(0, 4)
+  const measuredHere = reliable(group.options.filter(option => option.itemIds.every(id => chosen(id) && fitsWith(id, held)))).slice(0, 4)
   const open = withSituational(measuredHere, held, situational)
   if (!open.length) return null
   return { name: `item${slot}`, kind: 'item', lane: false, options: itemOptions(open, names) }
@@ -271,7 +339,7 @@ export function withItemStats(slots: JevSlot[], lane: Map<number, ItemStat>, ver
         options: slot.options.map((option) => {
           const onLane = average(option.itemIds, lane)
           const against = average(option.itemIds, versus)
-          return { ...option, wpa: onLane?.wpa ?? null, vsWpa: against?.wpa ?? null, vsGames: against?.games ?? 0 }
+          return { ...option, wpa: onLane?.wpa ?? null, wpaGames: onLane?.games ?? 0, vsWpa: against?.wpa ?? null, vsGames: against?.games ?? 0 }
         }),
       }))
 }

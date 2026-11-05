@@ -2,6 +2,8 @@ import type { StaticItemData } from '#shared/types/static-data'
 import type { Champion } from '~/composables/useChampionStatics'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import { isBoots } from '~/utils/blitz/builds'
+import { fitsWith } from '~/utils/item-groups'
+import { buysBoots } from '~/utils/sources/model'
 
 /**
  * The build for a draft from the source Settings picked — not TrueMain's
@@ -216,7 +218,8 @@ function pick(options: ItemOption[], situations: Situation[], items: Record<numb
     const shares = ids(option).map(id => pros.get(id) ?? 0)
     return 1 + PRO_WEIGHT * (shares.length ? shares.reduce((sum, share) => sum + share, 0) / shares.length : 0)
   }
-  const usable = options.filter(option => ids(option).length && !ids(option).some(id => skip.has(id) || excluded(id, situations, items)))
+  // Never what the inventory cannot hold beside what is chosen: a second Lifeline or Last Whisper item (`fitsWith`).
+  const usable = options.filter(option => ids(option).length && !ids(option).some(id => skip.has(id) || !fitsWith(id, [...skip]) || excluded(id, situations, items)))
   const top = [...usable].sort((a, b) => b.games - a.games)[0]
   if (!top) return null
   // The source's own pick, before this board ruled anything out: a choice other than it says why.
@@ -244,7 +247,7 @@ export function draftBuildFromOptions(options: BuildOptions, situations: Situati
   // The lane's win rate, as the cores measured it: what an item's is read against.
   const coreGames = options.cores.reduce((sum, core) => sum + core.games, 0)
   const baseline = coreGames ? options.cores.reduce((sum, core) => sum + core.winRate * core.games, 0) / coreGames : 0.5
-  const boots = pick(options.boots, situations, items, new Set(), option => option.itemIds.slice(0, 1), pros, baseline, BOOTS_ANSWER_WEIGHT)
+  const boots = buysBoots(options) ? pick(options.boots, situations, items, new Set(), option => option.itemIds.slice(0, 1), pros, baseline, BOOTS_ANSWER_WEIGHT) : null
 
   // Every completed item the source measured on the lane, with the games
   // behind it: the cores' items (a source's core can carry the boots —
@@ -259,14 +262,22 @@ export function draftBuildFromOptions(options: BuildOptions, situations: Situati
     .filter(core => core.games >= mostPlayed * 0.25)
     .map(core => ({ core, score: core.games * winRateFactor(core.winRate, core.games, baseline) }))
     .sort((a, b) => b.score - a.score)[0]?.core ?? null
+  // Each option's win rate is read against its own group's: a fourth or fifth
+  // item wins more than a core whatever it is, the game having gone on (on
+  // lolalytics, Aatrox's fifth items win 70% where his cores win 52%), so a
+  // later item's rate is not the cores' to compare with.
   const pool = new Map<number, { games: number, wins: number }>()
-  const add = (itemId: number, option: ItemOption) => {
+  const add = (itemId: number, option: ItemOption, groupRate: number) => {
     if (isBoots(itemId)) return
     const held = pool.get(itemId) ?? { games: 0, wins: 0 }
-    pool.set(itemId, { games: held.games + option.games, wins: held.wins + option.winRate * option.games })
+    pool.set(itemId, { games: held.games + option.games, wins: held.wins + (baseline + option.winRate - groupRate) * option.games })
   }
-  for (const core of options.cores) for (const itemId of core.itemIds) add(itemId, core)
-  for (const group of options.followUps(topCore)) for (const option of group.options) for (const itemId of option.itemIds) add(itemId, option)
+  for (const core of options.cores) for (const itemId of core.itemIds) add(itemId, core, baseline)
+  for (const group of options.followUps(topCore)) {
+    const games = group.options.reduce((sum, option) => sum + option.games, 0)
+    const groupRate = games ? group.options.reduce((sum, option) => sum + option.winRate * option.games, 0) / games : baseline
+    for (const option of group.options) for (const itemId of option.itemIds) add(itemId, option, groupRate)
+  }
 
   const steps: SourceBuildStep[] = []
   const chosen = new Set<number>()
@@ -309,7 +320,7 @@ export function draftBuildFromOptions(options: BuildOptions, situations: Situati
   let bootsStep: SourceBuildStep | null = boots
     ? { itemId: boots.option.itemIds[0]!, isBoots: true, games: boots.option.games, pros: proOf(boots.option.itemIds[0]!), reason: boots.reason }
     : null
-  const measuredBoots = options.boots.length > 0
+  const measuredBoots = buysBoots(options)
   if ((bootsStep && misfits(bootsStep.itemId, situations, items)) || (!bootsStep && measuredBoots)) {
     const answer = [MERCURY, STEELCAPS].map(itemId => ({ itemId, reason: answers(itemId, situations, items) })).find(entry => entry.reason && !misfits(entry.itemId, situations, items))
     if (answer) bootsStep = { itemId: answer.itemId, isBoots: true, games: 0, pros: proOf(answer.itemId), reason: answer.reason }

@@ -6,6 +6,7 @@ import { buildsFromOptions, measure, skillOption } from '~/utils/sources/model'
 import { parseOpgg } from '~/utils/sources/opgg-format'
 import { championIdOf, championSlug, currentPatch } from '~/utils/sources/champions'
 import { keepBounded } from '~/utils/bounded'
+import { SOURCE_ELO_BRACKET } from '~/utils/data-source'
 
 /**
  * op.gg through its official API (its MCP server, which op.gg publishes for
@@ -48,9 +49,9 @@ export async function callOpgg(tool: string, args: Record<string, unknown>): Pro
 const LANE: Record<string, string> = { TOP: 'top', JUNGLE: 'jungle', MIDDLE: 'mid', BOTTOM: 'adc', UTILITY: 'support' }
 export const POSITION: Record<string, string> = { top: 'TOP', jungle: 'JUNGLE', mid: 'MIDDLE', adc: 'BOTTOM', support: 'UTILITY' }
 
-/** TrueMain's elo bracket as op.gg's tier filter: `MASTER_PLUS` is `master_plus`; every tier is no filter. */
+/** TrueMain's elo bracket as op.gg's tier filter: `MASTER_PLUS` is `master_plus`; every tier is no filter; none is op.gg's own default, Emerald+ (`SOURCE_ELO_BRACKET`). */
 function opggTier(eloBracket: unknown): string | undefined {
-  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket : 'MASTER_PLUS'
+  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket : SOURCE_ELO_BRACKET
   return bracket === 'ALL' ? undefined : bracket.toLowerCase()
 }
 

@@ -1,3 +1,5 @@
+import { SOURCE_ELO_BRACKET } from '~/utils/data-source'
+
 /**
  * One read of Blitz. Inside Tauri it goes through the shell (`sources.rs`);
  * in `npm run dev` through the dev server's `/__blitz/*` proxy (nuxt.config).
@@ -57,10 +59,10 @@ export const SOLO_QUEUE = 'RANKED_SOLO_5X5'
  * TrueMain's elo bracket (`?eloBracket=`, `elo-brackets.ts`) as Blitz's tier
  * filter: `GOLD` stays `GOLD`, `MASTER_PLUS` is `MASTER+`, and `ALL` is
  * `IRON+` — Blitz's `ALL` answers its all-lanes rows only. No bracket reads
- * TrueMain's own default, Master+.
+ * Blitz's own default, Emerald+ (`SOURCE_ELO_BRACKET`).
  */
 export function blitzTier(eloBracket: unknown): string {
-  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket.toUpperCase() : 'MASTER_PLUS'
+  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket.toUpperCase() : SOURCE_ELO_BRACKET
   if (bracket === 'ALL') return 'IRON+'
   return bracket.endsWith('_PLUS') ? `${bracket.slice(0, -'_PLUS'.length)}+` : bracket
 }

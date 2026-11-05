@@ -16,7 +16,7 @@ const measure = { games: 100, pickRate: 0.5, winRate: 0.5 }
 const provider = {
   options: async () => ({
     patch: '16.22', games: 1000, pages: [], shares: null, spells: [], starters: [], skills: [],
-    boots: [{ ...measure, itemIds: [3020] }],
+    boots: [{ ...measure, games: 900, itemIds: [3020] }],
     cores: [{ ...measure, itemIds: [3118, 4645, 3089] }],
     followUps: () => [{ slot: 4, options: [{ ...measure, itemIds: [3157] }] }],
   }),

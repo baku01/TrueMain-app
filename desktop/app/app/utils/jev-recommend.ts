@@ -1,7 +1,6 @@
 import type { ChampionRead, FitRead, ItemRead, PickRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot, LaidBuild } from '~/utils/jev-build'
 import type { ItemSetBuild } from '~/utils/item-set'
-import { MIN_GAMES } from '~/utils/jev-build'
 
 /**
  * The Jev matchup page's ranking, all arithmetic and all in code — TypeSafe's
@@ -54,17 +53,21 @@ const clamp = (value: number) => Math.min(1, Math.max(0, value))
  * What a usual team of five holds, summed as Jev reads it, and how much more
  * makes a need full: every team has some crowd control, a healer or a
  * fighter that sustains, someone durable — a need is what stands out of that,
- * or every defensive item would answer every draft.
+ * or every defensive item would answer every draft. Measured (16.22): the 173
+ * champions played on a lane in Emerald+ read by Jev, 20,000 solo-queue teams
+ * drawn one champion per lane — a team's usual sum is the median, a need full
+ * at the 97th percentile. Guessed before (burst usual at 1), burst read full
+ * in nearly every draft and a defensive item answered all of them.
  */
 const USUAL: Record<'cc' | 'heal' | 'burst' | 'tank', { usual: number, more: number }> = {
-  cc: { usual: 2, more: 1.5 },
-  heal: { usual: 1, more: 1.5 },
-  burst: { usual: 1, more: 1.5 },
-  tank: { usual: 1, more: 1.5 },
+  cc: { usual: 2.2, more: 0.8 },
+  heal: { usual: 0.85, more: 0.8 },
+  burst: { usual: 2.45, more: 0.7 },
+  tank: { usual: 1.65, more: 1.15 },
 }
 
-/** The share of damage dealt with basic attacks a usual team has, and how much more makes the need full. */
-const USUAL_AUTOS = { usual: 0.25, more: 0.5 }
+/** The share of damage dealt with basic attacks a usual team has, and how much more makes the need full: measured as `USUAL`. */
+const USUAL_AUTOS = { usual: 0.43, more: 0.15 }
 
 /**
  * What a team throws at us, each 0–1: the damage split weighed by what each
@@ -148,6 +151,14 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
       autos: read?.vsAutos ?? 0,
       tanks: read?.vsTanks ?? 0,
     }
+    // An item that resists only the damage the team does not deal guards against nothing it throws: its
+    // protection against burst or basic attacks is that resistance's (Maw of Malmortius shields magic
+    // damage only), so it answers neither — a damage item too, though it is never a misfit.
+    const offKind = (has.physical && !has.magic && needs.physical < LITTLE) || (has.magic && !has.physical && needs.magic < LITTLE)
+    if (offKind) {
+      has.burst = 0
+      has.autos = 0
+    }
     const defensiveOnly = (has.physical || has.magic) && !own.some(tag => OFFENSIVE.includes(tag))
     const misfit = defensiveOnly && (
       (has.physical && !has.magic && needs.physical < LITTLE)
@@ -167,30 +178,43 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
 const known = (value: number | null | undefined): value is number => value !== null && value !== undefined
 
 /**
- * The win probability added each option of a slot is weighed by, or null when
- * the slot cannot be compared on it: only when every measured option has it
- * (an option Blitz did not measure would otherwise read as even, and beat
- * every option measured below even — boots all read negative), against the
- * lane opponent only when every one has the matchup's games, blended 60/40
- * with the lane's; centred on the slot's own average, so what a slot's items
- * share (every boots' timing) does not count.
+ * Games of evidence a measure is pulled toward what is known without it: a
+ * win rate over a thousand games is about as uncertain (±1.6 points) as
+ * options of one slot usually differ, so a rare option's high win rate counts
+ * for little — and so does the win probability Blitz says an item adds.
+ */
+const PRIOR_GAMES = 1000
+const pull = (games: number) => games / (games + PRIOR_GAMES)
+
+/**
+ * The win probability an option adds, as far as its games show it: the
+ * lane's, pulled toward nothing by its games, then moved toward the one
+ * against the lane opponent by the matchup's games. Blitz's own estimate is
+ * barely shrunk (Eclipse on Aatrox into Akali: −9.6 points over 87 games read
+ * −8.3), and taken whole such a matchup outweighed thousands of lane games.
+ * Null where Blitz did not measure the option on the lane.
+ */
+export function addedWinProbability(option: JevOption): number | null {
+  if (!known(option.wpa)) return null
+  const lane = option.wpa * pull(option.wpaGames ?? 0)
+  return known(option.vsWpa) ? lane + (option.vsWpa - lane) * pull(option.vsGames ?? 0) : lane
+}
+
+/**
+ * The win probability added each option of a slot is weighed by
+ * (`addedWinProbability`), or null when the slot cannot be compared on it:
+ * only when every measured option has it (an option Blitz did not measure
+ * would otherwise read as even, and beat every option measured below even —
+ * boots all read negative); centred on the slot's own average, so what a
+ * slot's items share (every boots' timing) does not count.
  */
 export function slotWpa(options: JevOption[]): ((option: JevOption) => number) | null {
   const measuredOptions = options.filter(option => option.games > 0)
   if (!measuredOptions.length || !measuredOptions.every(option => known(option.wpa))) return null
-  const versus = measuredOptions.every(option => known(option.vsWpa) && (option.vsGames ?? 0) >= MIN_GAMES)
-  const raw = (option: JevOption) => (versus ? 0.6 * option.vsWpa! + 0.4 * option.wpa! : option.wpa!)
   const games = measuredOptions.reduce((sum, option) => sum + option.games, 0)
-  const mean = measuredOptions.reduce((sum, option) => sum + raw(option) * option.games, 0) / games
-  return option => (known(option.wpa) ? raw(option) - mean : 0)
+  const mean = measuredOptions.reduce((sum, option) => sum + addedWinProbability(option)! * option.games, 0) / games
+  return option => (addedWinProbability(option) ?? mean) - mean
 }
-
-/**
- * Games of the slot's own win rate an option's is pulled toward: a win rate
- * over a thousand games is about as uncertain (±1.6 points) as options of one
- * slot usually differ, so a rare option's high win rate counts for little.
- */
-const PRIOR_GAMES = 1000
 
 /** How far over its slot an option's signal must be to read about 0.73: three points of win rate. */
 const SPREAD = 0.03
@@ -199,18 +223,22 @@ const SPREAD = 0.03
  * Each option's measured signal on 0–1 (0.5 even with its slot): its win rate
  * shrunk toward the slot's by its sample, plus half its win probability added
  * over the slot's (`slotWpa`); three points over the slot read about 0.73.
- * Null for an option nothing measured.
+ * A situational option's win rate was measured wherever the item was bought,
+ * not at this place of the build — a fifth item wins more than a second, the
+ * game having gone on — so it is not compared: only its win probability
+ * added, measured alike for every item, counts. Null for an option nothing
+ * measured.
  */
 export function statsOf(options: JevOption[]): Record<string, number | null> {
-  const measuredOptions = options.filter(option => option.games > 0)
-  const games = measuredOptions.reduce((sum, option) => sum + option.games, 0)
-  if (!games) return Object.fromEntries(options.map(option => [option.key, null]))
-  const average = measuredOptions.reduce((sum, option) => sum + option.winRate * option.games, 0) / games
+  if (!options.some(option => option.games > 0)) return Object.fromEntries(options.map(option => [option.key, null]))
+  const compared = options.filter(option => option.games > 0 && !option.situational)
+  const games = compared.reduce((sum, option) => sum + option.games, 0)
+  const average = games ? compared.reduce((sum, option) => sum + option.winRate * option.games, 0) / games : 0
   const wpa = slotWpa(options)
   return Object.fromEntries(options.map((option) => {
     if (!option.games) return [option.key, null]
-    const shrunk = (option.winRate * option.games + average * PRIOR_GAMES) / (option.games + PRIOR_GAMES)
-    const signal = shrunk - average + 0.5 * (wpa ? wpa(option) : 0)
+    const rate = option.situational || !games ? 0 : option.winRate * pull(option.games) + average * (1 - pull(option.games)) - average
+    const signal = rate + 0.5 * (wpa ? wpa(option) : 0)
     return [option.key, 1 / (1 + Math.exp(-signal / SPREAD))]
   }))
 }
