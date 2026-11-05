@@ -1,9 +1,11 @@
 <!--
   The one match row of every match list — the profile's history (site and app),
   the favorites, the player-scoped champion page, the builder's games drawer and
-  the app's dashboard. A 54 px line: the result as an edge mark and a wash, then
+  the app's dashboard. A 64 px line: the result as an edge mark and a wash, then
   one component per column (`MatchRowPortrait`, `MatchRowResult`, `MatchRowKda`,
-  `MatchRowStats`, `MatchRowLoadout`, `MatchRowTeams`, `MatchRowPerformance`).
+  `MatchRowStats`, `MatchRowLoadout`, `MatchRowBadges`, `MatchRowTeams`,
+  `MatchRowPerformance`). The badges fill the room between the build and the
+  compositions when the host graded them (`MatchSummaryResponse.badges`).
   With a `nameTag` the row is an accordion over the shared `MatchDetailPanel`,
   which reads the game through the page's `MATCH_DETAIL_SOURCE`; without one it
   stays a static article. Host-specific controls (the app's "Watch") go in the
@@ -99,7 +101,7 @@ const result = computed(() => resultTone(self.value.win))
       :role="canExpand ? 'button' : undefined"
       :tabindex="canExpand ? 0 : undefined"
       :aria-expanded="canExpand ? expanded : undefined"
-      class="group/row relative isolate flex h-[54px] items-center gap-1.5 pl-3 pr-2 transition-all duration-200 ease-out @sm:gap-2.5 @sm:pl-4 @sm:pr-3"
+      class="group/row relative isolate flex h-16 items-center gap-1.5 pl-3 pr-2 transition-all duration-200 ease-out @sm:gap-2.5 @sm:pl-4 @sm:pr-3"
       :class="canExpand ? 'cursor-pointer hover:bg-white/[0.035] active:bg-white/[0.05]' : ''"
       @click="toggle"
       @keydown.enter.prevent="toggle"
@@ -113,6 +115,7 @@ const result = computed(() => resultTone(self.value.win))
         :champion-name="championName"
         :position="self.position ?? null"
         :champion-level="self.championLevel"
+        :size="44"
       />
       <div class="hidden shrink-0 @[39rem]:block">
         <MatchRowResult :win="self.win" :queue-id="match.queueId" :game-mode="match.gameMode" />
@@ -127,6 +130,9 @@ const result = computed(() => resultTone(self.value.win))
         :summoner-spells="summonerSpells"
         :rune-tree="runeTree"
       />
+      <div v-if="match.badges?.length" class="hidden min-w-0 flex-1 pl-1 @[44rem]:block">
+        <MatchRowBadges :badges="match.badges" />
+      </div>
 
       <!-- Right edge, one flex item pushed out by `ml-auto`. The chevron is
            the first thing a phone drops: the whole line is the toggle. -->

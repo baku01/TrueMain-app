@@ -1,12 +1,12 @@
 <script setup lang="ts">
-// Placeholder of `MatchRow`: same 54 px line, same columns at the same
+// Placeholder of `MatchRow`: same 64 px line, same columns at the same
 // @container tiers, so a list does not jump a size when the games resolve.
 </script>
 
 <template>
   <article class="@container surface overflow-hidden rounded-lg" aria-hidden="true">
-    <div class="flex h-[54px] items-center gap-1.5 pl-3 pr-2 @sm:gap-2.5 @sm:pl-4 @sm:pr-3">
-      <USkeleton class="size-9 shrink-0 rounded-md" />
+    <div class="flex h-16 items-center gap-1.5 pl-3 pr-2 @sm:gap-2.5 @sm:pl-4 @sm:pr-3">
+      <USkeleton class="size-11 shrink-0 rounded-md" />
       <div class="hidden w-20 shrink-0 space-y-1 @[39rem]:block">
         <USkeleton class="h-3.5 w-14" />
         <USkeleton class="h-2.5 w-12" />

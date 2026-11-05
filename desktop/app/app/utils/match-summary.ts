@@ -5,6 +5,7 @@ import type { GameParticipant, PlayerGame, RankedQueue, TimelineMark } from '~/t
 import type { ScoredParticipant } from '~/utils/match-performance'
 import { gradeMatch } from '~/utils/match-performance'
 import { killParticipation } from '~/utils/player-form'
+import { matchBadges } from '~/utils/match-badges'
 
 /**
  * The player's record from their client, in the shapes the site's profile
@@ -104,6 +105,7 @@ export function toMatchSummary(game: PlayerGame, lpDelta: number | null, stored?
       ...gameScore(game, stored),
     },
     participants: game.participants,
+    badges: matchBadges(game),
   }
 }
 

@@ -10,6 +10,26 @@ export interface MatchSummaryResponse {
   gameDurationSeconds: number
   self: MatchSummarySelf
   participants: MatchSummaryParticipant[]
+  /**
+   * The game's standouts for the player — top damage, CS/min, vision… — graded
+   * from the whole scoreboard. Absent when the host cannot grade them (the site
+   * holds no per-player scoreboard on a summary); the row then draws none.
+   */
+  badges?: MatchBadge[]
+}
+
+export type MatchBadgeKind =
+  | 'pentaKill' | 'quadraKill' | 'tripleKill'
+  | 'topDamage' | 'teamDamage'
+  | 'topGold'
+  | 'csGod' | 'csLegend' | 'csMaster'
+  | 'unkillable'
+  | 'allSeeing' | 'goodEye'
+
+export interface MatchBadge {
+  kind: MatchBadgeKind
+  /** The measure behind it, for its tooltip: DPM, gold, CS/min or vision score. */
+  value?: number
 }
 
 export interface MatchSummarySelf {
