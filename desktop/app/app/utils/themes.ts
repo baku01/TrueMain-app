@@ -1,6 +1,8 @@
 import type { Accent, Palette } from '~/utils/catppuccin'
 import { PALETTES, mix } from '~/utils/catppuccin'
-import { PUPPY } from '~/utils/theme-art'
+// The player's own pictures of Cinnamoroll for its themes' icons, inlined: the icon is drawn from an SVG that can reach nothing outside itself.
+import cinnamorollVampire from '~/assets/theme-icons/cinnamoroll-vampire.png?inline'
+import cinnamorollWitch from '~/assets/theme-icons/cinnamoroll-witch.png?inline'
 
 /**
  * Every theme painted from a palette (`utils/app-theme`), each written in
@@ -21,9 +23,10 @@ export interface ThemeDef {
   pair?: string
   /**
    * The app icon's own tile and what is drawn on it, where the theme does not
-   * take its base and accent: the mark in a colour, or a drawing (`theme-art`).
+   * take its base and accent: the mark in a colour, or a picture filling the
+   * tile (a data URI).
    */
-  icon?: { tile: string, mark: string } | { tile: string, art: string }
+  icon?: { tile: string, mark: string } | { image: string }
   /** Tokens the theme sets by hand over what its palette lays out (`flavorTokens`). */
   tokens?: Record<string, string>
   /** Rules of its own, `&` standing for the theme's root (`themeCss`). */
@@ -160,9 +163,9 @@ export const THEMES = {
   // Cinnamoroll: a pastel pink page (#f5d6e1) under white panes, the puppy's sky blue beside it. On the light page
   // the pink is too pale to be read (1.3:1 on white), so the accent there is its deep shade (4.65:1); the night
   // twin takes the pink itself as its accent.
-  'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { tile: '#f5d6e1', art: PUPPY }, tokens: CINNAMOROLL_LIGHT, css: CINNAMOROLL_CSS, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
-  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { tile: '#f5d6e1', art: PUPPY }, tokens: CINNAMOROLL_NIGHT, css: CINNAMOROLL_NIGHT_CSS, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
-  'cinnamoroll-sakura': { light: true, accent: 'pink', icon: { tile: '#ffd2e0', art: PUPPY }, tokens: SAKURA_LIGHT, css: SAKURA_CSS, palette: palette({ base: '#ffffff', mantle: '#fff0f4', crust: '#ffd9e4', text: '#3d4a66', red: '#d6435e', peach: '#e07a4f', yellow: '#c08a1e', green: '#3f9a6f', teal: '#2a9d9a', sky: '#3b9ad6', blue: '#2f7fc2', mauve: '#9a6fd0', pink: '#cf3f74', rosewater: '#f4a3bd', flamingo: '#ec8fae', lavender: '#7f8ce0' }) },
+  'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { image: cinnamorollVampire }, tokens: CINNAMOROLL_LIGHT, css: CINNAMOROLL_CSS, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
+  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { image: cinnamorollWitch }, tokens: CINNAMOROLL_NIGHT, css: CINNAMOROLL_NIGHT_CSS, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
+  'cinnamoroll-sakura': { light: true, accent: 'pink', icon: { image: cinnamorollVampire }, tokens: SAKURA_LIGHT, css: SAKURA_CSS, palette: palette({ base: '#ffffff', mantle: '#fff0f4', crust: '#ffd9e4', text: '#3d4a66', red: '#d6435e', peach: '#e07a4f', yellow: '#c08a1e', green: '#3f9a6f', teal: '#2a9d9a', sky: '#3b9ad6', blue: '#2f7fc2', mauve: '#9a6fd0', pink: '#cf3f74', rosewater: '#f4a3bd', flamingo: '#ec8fae', lavender: '#7f8ce0' }) },
 } satisfies Record<string, ThemeDef>
 
 export type PaletteTheme = keyof typeof THEMES
