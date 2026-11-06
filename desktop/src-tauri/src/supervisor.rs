@@ -196,7 +196,9 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
     if let (Some(recorder), Some(lobby)) = (&mut recorder, &lobby) {
         // Recorded as the event it stands in for, the parsed model as its
         // body: a replay derives the picks through the same `apply`, with no
-        // reading kind of its own, and the other members are never written.
+        // reading kind of its own. Only the local member's slots go in here;
+        // the lobby's live events that follow are kept whole, as champion
+        // select's session events are.
         let wrap = |data: serde_json::Value| Reading::Event {
             uri: lcu::uri::LOBBY.to_string(),
             event_type: "Update".to_string(),
