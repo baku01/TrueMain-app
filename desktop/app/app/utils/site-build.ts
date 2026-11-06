@@ -34,9 +34,11 @@ export function statsFromSite(championId: number, lanes: Record<string, Champion
   const pages = new Map<string, RunePage>()
   const spells = new Map<string, { spells: [number, number], games: number, wins: number }>()
   let wins = 0
+  let buildGames = 0
 
   for (const build of answer?.builds ?? []) {
     wins += build.games * build.winRate
+    buildGames += build.games
     add(keystones, build.primaryKeystoneId, build.games, build.winRate)
     const { itemPath, boots, runePage, summonerSpells } = build.core
     for (const set of [itemPath, boots]) {
@@ -73,7 +75,9 @@ export function statsFromSite(championId: number, lanes: Record<string, Champion
     patch: answer?.patch ?? '',
     patches: answer?.patch ? [answer.patch] : [],
     games: answer?.totalGames ?? 0,
-    wins: Math.round(wins),
+    // The builds listed are a slice of the lane's games (another source lists only
+    // its top ones): their win rate, carried over to the lane's whole count.
+    wins: buildGames > 0 ? Math.round(wins / buildGames * (answer?.totalGames ?? 0)) : 0,
     positions,
     keystones: tallies(keystones),
     runes: [],
