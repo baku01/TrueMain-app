@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BuildOption } from '~/types/build'
 import type { ItemRead } from '~/utils/jev-read'
 import type { Needs } from '~/utils/jev-recommend'
-import { rowFit, rowFits, rowItems } from '~/utils/jev-row-fit'
+import { ROW_WEIGHTS, rowFit, rowFits, rowItems, rowWeights } from '~/utils/jev-row-fit'
 
 const read = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 /** An enemy team that heals a lot, deals both kinds of damage evenly and nothing else stands out. */
@@ -35,6 +35,16 @@ describe('a build row read against the draft', () => {
     expect(fit.score).toBeGreaterThan(0)
     expect(fit.answers[0]?.need).toBe('heal')
     expect(fit.answering).toEqual([EXECUTIONER])
+  })
+
+  it('weighs its items by their place as LoLTheory weighs a build: the first most, the boots as boots', () => {
+    expect(ROW_WEIGHTS).toEqual({ items: [25, 17.5, 12.5, 7.5, 2.5], boots: 5 })
+    expect(rowWeights([SUNDERED, STERAK, PLATED])).toEqual([25, 17.5, 5])
+    expect(rowWeights([1, 2, 3, 4, 5, 6])).toEqual([25, 17.5, 12.5, 7.5, 2.5, 2.5])
+    // Grievous Wounds first answers more of a healing team than Grievous Wounds fifth.
+    const first = rowFit([EXECUTIONER, SUNDERED, SUNDERED, SUNDERED, SUNDERED], needs, id => reads.get(id), tags)!
+    const fifth = rowFit([SUNDERED, SUNDERED, SUNDERED, SUNDERED, EXECUTIONER], needs, id => reads.get(id), tags)!
+    expect(first.score).toBeGreaterThan(fifth.score)
   })
 
   it('is never guessed: an item Jev did not read leaves the row unmarked', () => {

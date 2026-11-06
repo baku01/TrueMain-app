@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
-import { closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool, withItemStats } from '~/utils/jev-build'
+import { closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import { withItemStats } from '~/utils/jev-item-stats'
 
 const m = (games: number, itemIds: number[]): ItemOption => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
 const names = { item: (id: number) => `#${id}`, perk: String, style: String, spell: String }
@@ -118,6 +119,13 @@ describe('win probability added', () => {
     ] }
     const [annotated] = withItemStats([slot], new Map([[6694, stat(-0.01)], [3071, stat(0.02)]]), new Map([[3071, stat(0.05, 90)]]))
     expect(annotated!.options.map(option => [option.wpa, option.wpaGames, option.vsWpa, option.vsGames])).toEqual([[-0.01, 200, null, 0], [0.02, 200, 0.05, 90]])
+    expect(annotated!.options[0]).toMatchObject({ slotWpa: null, slotGames: 0, pathWpa: null, pathGames: 0 })
+  })
+
+  it('annotates them with what Blitz measured at the slot\'s place of the build and after the items held before it', () => {
+    const slot = { name: 'item2', kind: 'item' as const, lane: false, options: [{ key: 'o0', itemIds: [3031], label: 'Infinity Edge', games: 400, pickRate: 0.3, winRate: 0.5 }] }
+    const [annotated] = withItemStats([slot], new Map([[3031, stat(0.014, 36000)]]), new Map(), { slot: new Map([[3031, stat(0.002, 31897)]]), path: new Map([[3031, stat(0.001, 18758)]]) })
+    expect(annotated!.options[0]).toMatchObject({ wpa: 0.014, wpaGames: 36000, slotWpa: 0.002, slotGames: 31897, pathWpa: 0.001, pathGames: 18758 })
   })
 
   it('joins the item stats to the measured pool, completed items only', () => {

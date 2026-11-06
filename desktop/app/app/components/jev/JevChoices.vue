@@ -89,6 +89,7 @@ const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5re
             <span class="text-right text-xs tabular-nums text-muted">{{ option.games ? `${formatPercentage(option.pickRate, 1)} · ${compact.format(option.games)}` : '—' }}</span>
             <span class="flex flex-col items-end text-xs font-semibold tabular-nums">
               <span v-if="has(option.wpa)" :class="wpaTone(option.wpa)" :title="t('jev.card.wpaHint')">{{ signed(option.wpa) }}</span>
+              <span v-if="has(option.slotWpa)" class="text-[10px]" :class="wpaTone(option.slotWpa)" :title="t('jev.card.slotWpaHint', { games: option.slotGames ?? 0 })">{{ t('jev.card.slot') }} {{ signed(option.slotWpa) }}</span>
               <span v-if="has(option.vsWpa)" class="text-[10px]" :class="wpaTone(option.vsWpa)" :title="t('jev.card.vsWpaHint', { games: option.vsGames ?? 0 })">{{ t('jev.card.vs') }} {{ signed(option.vsWpa) }}</span>
               <span v-if="!has(option.wpa) && !has(option.vsWpa)" class="text-dimmed">—</span>
             </span>

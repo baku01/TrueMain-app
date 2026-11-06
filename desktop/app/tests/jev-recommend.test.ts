@@ -5,7 +5,7 @@ import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
 import { answersDraft, fitOf, itemSetOf, laneNeeds, needsOf, rankPicks, rankSlot } from '~/utils/jev-recommend'
 import { SELECTION, addedWinProbability, credibleEdge, slotWpa, statsOf } from '~/utils/jev-stats'
 
-const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, heal: 0, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
+const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, ccReducible: 1, heal: 0, healInFight: 1, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 const TAGS: Record<number, string[]> = { 3047: ['Armor', 'Boots'], 3111: ['SpellBlock', 'Boots'], 3065: ['SpellBlock', 'Health'], 6333: ['Damage', 'Armor'], 3071: ['Damage', 'Health'] }
 const tags = (id: number) => TAGS[id] ?? []
@@ -33,6 +33,19 @@ describe('needsOf', () => {
     expect(needsOf(assassins).burst).toBe(1)
     expect(needsOf([line(1, { cc: 0.5 })]).cc).toBeCloseTo(0.12)
     expect(needsOf([line(1, { cc: 1 })]).cc).toBe(1)
+  })
+
+  it('counts crowd control only as far as Tenacity shortens it, and healing only as far as it is done in fights (LoLTheory)', () => {
+    const line = (id: number, fields: Partial<EnemyLine['read']>): EnemyLine => ({ id, read: read(fields), physical: 0.5, magic: 0.5, weight: 1 })
+    // Five kits of knock-ups and suppression: a lot of crowd control, none of it for Mercury's Treads.
+    const airborne = [1, 2, 3, 4, 5].map(id => line(id, { cc: 1, ccReducible: 0 }))
+    expect(needsOf(airborne).cc).toBe(0)
+    const half = [line(1, { cc: 1, ccReducible: 0 }), line(2, { cc: 1, ccReducible: 1 }), line(3, { cc: 1, ccReducible: 1 }), line(4, { cc: 1, ccReducible: 0 }), line(5, { cc: 0, ccReducible: 0 })]
+    expect(needsOf(half).cc).toBeCloseTo(0.5)
+    // Garen and Tahm Kench regenerate out of combat, where Grievous Wounds has run out.
+    const regen = [line(1, { heal: 1, healInFight: 0 }), line(2, { heal: 1, healInFight: 0 }), line(3, { heal: 0.5, healInFight: 0 })]
+    expect(needsOf(regen).heal).toBe(0)
+    expect(needsOf([line(1, { heal: 1 }), line(2, { heal: 1 }), line(3, { heal: 0.5 })]).heal).toBe(1)
   })
 
   it('leans on the lane opponent while laning', () => {
@@ -67,6 +80,24 @@ describe('fitOf', () => {
     const mawTags = (id: number) => (id === 3156 ? ['Damage', 'SpellBlock'] : tags(id))
     expect(fitOf([3156], needs({ physical: 0.83, magic: 0.05, burst: 1 }), maw, mawTags)).toMatchObject({ misfit: false, answers: [] })
     expect(fitOf([3156], needs({ physical: 0.07, magic: 0.87, burst: 1 }), maw, mawTags).answers.map(answer => answer.need)).toEqual(['magic', 'burst'])
+  })
+
+  it('reads a resistance a draft rule makes due as fully needed', () => {
+    const even = needs({ physical: 0.55, magic: 0.45 })
+    const calm = fitOf([3047], even, reads, tags)
+    const due = fitOf([3047], even, reads, tags, { due: ['physical'] })
+    expect(due.answers[0]).toEqual({ need: 'physical', value: 1 })
+    expect(due.fit).toBeGreaterThan(calm.fit)
+    // Due, armor is no misfit even where little of the damage is physical.
+    expect(fitOf([3047], needs({ physical: 0.2, magic: 0.8 }), reads, tags, { due: ['physical'] }).misfit).toBe(false)
+  })
+
+  it('weighs items as told', () => {
+    const lockdown = needs({ physical: 0.5, cc: 1 })
+    const first = fitOf([3111, 6333], lockdown, reads, tags, { weights: [25, 2.5] })
+    const last = fitOf([6333, 3111], lockdown, reads, tags, { weights: [25, 2.5] })
+    expect(first.answers.find(answer => answer.need === 'cc')!.value).toBeCloseTo(0.97 * 25 / 27.5)
+    expect(last.answers.find(answer => answer.need === 'cc')).toBeUndefined()
   })
 
   it('offers where it was not measured only what answers the draft', () => {
@@ -133,6 +164,47 @@ describe('statistics', () => {
   it('does not compare a situational option\'s win rate, measured wherever the item was bought, with the slot\'s', () => {
     const stats = statsOf([option('o0', [1], { winRate: 0.56 }), option('o1', [2], { winRate: 0.56 }), option('o2', [3], { winRate: 0.497, games: 6179, situational: true })])
     expect(stats.o2).toBeCloseTo(0.5)
+  })
+
+  it('reads an item\'s WPA at the slot\'s place of the build, pulled toward its WPA elsewhere by how far slots truly stray', () => {
+    // Jinx's Infinity Edge (16.22, Emerald+): +1.41 points over 24,881 games, +0.74 as her second item over 4,943, +1.20 after Kraken Slayer over 2,319.
+    const ie = option('o1', [3031], { wpa: 0.01406, wpaGames: 24881 })
+    const atSlot = addedWinProbability({ ...ie, slotWpa: 0.00742, slotGames: 4943 })!
+    expect(atSlot).toBeLessThan(addedWinProbability(ie)!)
+    expect(atSlot).toBeGreaterThan(0.00742)
+    // A thin slot reading is pulled to the item's own WPA, not to nothing.
+    expect(addedWinProbability({ ...ie, slotWpa: -0.1, slotGames: 30 })).toBeCloseTo(addedWinProbability(ie)!, 3)
+    // An item bought only at that slot: its lane and slot readings are the same games, counted once.
+    const only = option('o2', [6676], { wpa: 0.04, wpaGames: 500 })
+    expect(addedWinProbability({ ...only, slotWpa: 0.04, slotGames: 500 })).toBeCloseTo(addedWinProbability(only)!, 2)
+    // After the items held before it, the path's reading narrows it again, as far as its games go: a little, toward +1.20.
+    const onPath = addedWinProbability({ ...ie, slotWpa: 0.00742, slotGames: 4943, pathWpa: 0.01195, pathGames: 2319 })!
+    expect(onPath).toBeLessThan(atSlot)
+    expect(onPath).toBeGreaterThan(0.01195)
+  })
+
+  it('compares a slot\'s items as measured at that place (Jinx\'s second item after Kraken Slayer)', () => {
+    const runaan = option('o0', [3085], { games: 19557, pickRate: 0.8, wpa: 0.00545, wpaGames: 28226 })
+    const ie = option('o1', [3031], { games: 2319, pickRate: 0.1, wpa: 0.01406, wpaGames: 24881 })
+    const dancer = option('o2', [3046], { games: 2112, pickRate: 0.1, wpa: 0.00648, wpaGames: 3959 })
+    // Over every slot, Infinity Edge's 0.9 points over Runaan's Hurricane read surely better…
+    expect(statsOf([runaan, ie, dancer], 'item').o1).toBeGreaterThan(0.5)
+    // …but as the second item, after Kraken Slayer, the edge is not sure.
+    const here = (entry: JevOption, slot: [number, number], path: [number, number]) => ({ ...entry, slotWpa: slot[0], slotGames: slot[1], pathWpa: path[0], pathGames: path[1] })
+    const stats = statsOf([here(runaan, [0.00416, 24836], [0.00519, 19557]), here(ie, [0.00742, 4943], [0.01195, 2319]), here(dancer, [0.0045, 3186], [0.00876, 2112])], 'item')
+    expect(stats.o1).toBeCloseTo(0.5)
+  })
+
+  it('pulls a thin option\'s rate toward the edge the same item\'s WPA shows, not toward nothing', () => {
+    const reference = option('o0', [1], { games: 30000, winRate: 0.5, pickRate: 0.6, wpa: 0, wpaGames: 30000 })
+    const thin = option('o1', [2], { games: 29, winRate: 0.7586, pickRate: 0.001 })
+    const known = { ...thin, wpa: -0.04, wpaGames: 20000 }
+    expect(credibleEdge(thin, reference, SELECTION.item, entry => entry.pickRate)).toBe(0)
+    // 75.9% over 29 games reads what the item does elsewhere: four points below the reference.
+    expect(credibleEdge(known, reference, SELECTION.item, entry => entry.pickRate, -0.04 * (20000 / 21000))).toBeLessThan(-0.03)
+    // In a slot not every option of which Blitz measured, the rates compare, each pulled toward its WPA.
+    const stats = statsOf([reference, known, option('o2', [3], { games: 400, winRate: 0.5, pickRate: 0.1 })], 'item')
+    expect(stats.o1).toBeLessThan(0.1)
   })
 
   it('leaves WPA out of a slot where an option was not measured on it', () => {

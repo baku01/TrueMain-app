@@ -2,6 +2,7 @@ import type { BuildOption } from '~/types/build'
 import type { ItemRead } from '~/utils/jev-read'
 import type { Answer, Needs } from '~/utils/jev-recommend'
 import { answersDraft, fitOf } from '~/utils/jev-recommend'
+import { BOOTS } from '~/utils/item-groups'
 
 /**
  * Jev's reading of the build list's rows (`BuildList`, the compact header's
@@ -12,7 +13,8 @@ import { answersDraft, fitOf } from '~/utils/jev-recommend'
  * are kept per patch, champion, lane and item. A row with a completed item
  * Jev did not read gets no mark — never a guess. The row that fits best is
  * Jev's pick for this draft; the player's previous build is read the same
- * way, which says whether the last build still suits this draft.
+ * way, which says whether the last build still suits this draft. The items
+ * weigh by their place, as LoLTheory weighs a build (`ROW_WEIGHTS`).
  */
 
 export interface RowFit {
@@ -23,6 +25,22 @@ export interface RowFit {
   misfit: boolean
   /** The row's items that answer the draft on their own. */
   answering: number[]
+}
+
+/**
+ * How much each of a row's items weighs in its fit: LoLTheory's build score
+ * weighs the first item 25, then 17.5, 12.5, 7.5 and 2.5, the boots 5 (its
+ * site's `v=[25,17.5,12.5,7.5,2.5]`; the rest of its 100 is runes, spells,
+ * skills and starter, which a row's fit does not read) — the first item is
+ * most of a build, the fifth little of it. A sixth, which LoLTheory does not
+ * score, weighs as the fifth.
+ */
+export const ROW_WEIGHTS = { items: [25, 17.5, 12.5, 7.5, 2.5], boots: 5 } as const
+
+/** Each item's weight in a row (`ROW_WEIGHTS`): boots as boots, the rest by their place among the row's items. */
+export function rowWeights(items: number[]): number[] {
+  let place = 0
+  return items.map(id => (BOOTS.has(id) ? ROW_WEIGHTS.boots : ROW_WEIGHTS.items[Math.min(place++, ROW_WEIGHTS.items.length - 1)]!))
 }
 
 /** A row's completed items: its path, then its boots. */
@@ -37,7 +55,7 @@ export function rowFit(items: number[], needs: Needs, readOf: (id: number) => It
     if (!read) return null
     reads.set(id, read)
   }
-  const fit = fitOf(items, needs, reads, tags)
+  const fit = fitOf(items, needs, reads, tags, { weights: rowWeights(items) })
   return {
     score: fit.fit * (fit.misfit ? 0.5 : 1),
     answers: fit.answers,

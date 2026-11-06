@@ -1,6 +1,7 @@
 import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells } from '#shared/types/champions'
 import type { BuildOptions, ItemOption, Measure, RunePageIds } from '~/utils/sources/model'
 import type { ItemStat } from '~/utils/blitz/item-stats'
+import type { ItemMeasure } from '~/utils/jev-item-stats'
 import { isBoots } from '~/utils/blitz/builds'
 import { STARTER_LINE, fitsWith } from '~/utils/item-groups'
 import { buysBoots } from '~/utils/sources/model'
@@ -17,7 +18,8 @@ import { buysBoots } from '~/utils/sources/model'
  * (`utils/jev-recommend`) live apart: this file holds no judgment.
  */
 
-export interface JevOption extends Measure {
+/** What Blitz measured of its items (win probability added) is `ItemMeasure`, set by `withItemStats` (`utils/jev-item-stats`). */
+export interface JevOption extends Measure, ItemMeasure {
   /** The option's key in its slot (`o0`, `o1`…): `o0` is the most played. */
   key: string
   label: string
@@ -31,13 +33,6 @@ export interface JevOption extends Measure {
   after?: number
   /** Not measured in this slot: added from the champion's measured items because it answers the draft. */
   situational?: boolean
-  /** Win probability added on the lane (Blitz's item stats), the option's items averaged; null where unmeasured. */
-  wpa?: number | null
-  /** The games behind `wpa`: the fewest of the option's items. */
-  wpaGames?: number
-  /** The same against the lane opponent, when the matchup has the games. */
-  vsWpa?: number | null
-  vsGames?: number
 }
 
 export type SlotKind = 'runes' | 'spells' | 'starter' | 'skills' | 'boots' | 'timing' | 'item'
@@ -324,24 +319,6 @@ export function candidateItems(options: BuildOptions, pool: ItemOption[]): numbe
   }
   for (const option of pool) if (option.games >= MIN_GAMES) ids.add(option.itemIds[0]!)
   return [...ids]
-}
-
-/** Each item option's win probability added, on the lane and against the lane opponent, its items averaged. */
-export function withItemStats(slots: JevSlot[], lane: Map<number, ItemStat>, versus: Map<number, ItemStat>): JevSlot[] {
-  const average = (ids: number[], stats: Map<number, ItemStat>) => {
-    const known = ids.map(id => stats.get(id)).filter(stat => !!stat)
-    return known.length ? { wpa: known.reduce((sum, stat) => sum + stat.wpa, 0) / known.length, games: Math.min(...known.map(stat => stat.games)) } : null
-  }
-  return slots.map(slot => (!slot.options.some(option => option.itemIds.length)
-    ? slot
-    : {
-        ...slot,
-        options: slot.options.map((option) => {
-          const onLane = average(option.itemIds, lane)
-          const against = average(option.itemIds, versus)
-          return { ...option, wpa: onLane?.wpa ?? null, wpaGames: onLane?.games ?? 0, vsWpa: against?.wpa ?? null, vsGames: against?.games ?? 0 }
-        }),
-      }))
 }
 
 /** A build laid out for the core view (`BuildCore`) and its purchase order. */
