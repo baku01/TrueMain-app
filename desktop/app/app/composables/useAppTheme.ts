@@ -45,7 +45,7 @@ export function paintTheme(choice: ThemeChoice) {
 export async function paintAppIcon(choice: ThemeChoice) {
   if (!insideTauri() || location.hash.startsWith('#/overlay/')) return
   const svg = appIconSvg(choice)
-  const icon = svg ? await rasterizeIcon(svg).catch(() => null) : null
+  const icon = svg ? await rasterizeIcon(svg, appIconSvg(choice, true)!).catch(() => null) : null
   if (svg && !icon) return
   const { invoke } = await import('@tauri-apps/api/core')
   await invoke('set_app_icon', icon ?? { png: null, rgba: null, size: 0 }).catch(() => {})
