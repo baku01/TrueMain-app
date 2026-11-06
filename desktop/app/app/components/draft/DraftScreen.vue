@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { DraftSelection } from '~/composables/useDraftAutoImport'
-import type { DraftSuggestionItem } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { ViewedPick } from '~/composables/useDraftSubject'
 import type { PickSubject } from '~/composables/useJevPick'
@@ -49,18 +48,6 @@ const banTime = computed(() => {
   return props.draft.timerPhase === 'PLANNING' && props.draft.myChampion !== null && !props.draft.myChampionLocked
 })
 const { bans, pending: banPending, error: banError } = useDraftBans(draft, lanePool, banTime, eloBracket)
-
-const pickSuggestions = computed<DraftSuggestionItem[]>(() => (recommendation.value?.candidates ?? []).map(candidate => ({
-  championId: candidate.championId,
-  reasons: candidate.reasons ?? [],
-  thin: candidate.thinSample,
-})))
-
-const banSuggestions = computed<DraftSuggestionItem[]>(() => (bans.value?.candidates ?? []).map(candidate => ({
-  championId: candidate.championId,
-  reasons: candidate.reasons,
-  thin: false,
-})))
 
 const enemyLanes = computed(() => recommendation.value?.enemyLanes ?? [])
 const { slots, pinned, hasCorrections, swap, reset } = useLaneAssignment(enemyLanes)
@@ -178,7 +165,9 @@ const jevPick = computed<PickSubject | null>(() => {
 })
 const jevPicks = useJevPick(jevPick)
 const jevBuildSubject = computed(() => (subject.value ? { championId: subject.value.championId, request: subject.value.request } : null))
-const jevBuild = useJevBuild(jevBuildSubject)
+// The family Jev ranks within (the lane, the matchup, a playstyle, the one-tricks), read while Jev is on.
+const jevBases = useJevBases(jevBuildSubject, withJev)
+const jevBuild = useJevBuild(jevBuildSubject, jevBases.chosen)
 const jevScores = computed(() => (withJev.value && jevPicks.status.value === 'ready' ? new Map(jevPicks.ranked.value.map(pick => [pick.championId, pick])) : null))
 
 // ─── The tabs ───────────────────────────────────────────────────────────────
@@ -193,19 +182,13 @@ function openTab(next: 'suggestions' | 'builds') {
 }
 const suggestionKind = computed<'pick' | 'ban'>(() => (banTime.value ? 'ban' : 'pick'))
 
-/** The picks in the grid: Jev's order once it answered, else the source's. */
-const shownPicks = computed<DraftSuggestionItem[]>(() => {
-  if (suggestionKind.value === 'ban') return banSuggestions.value
-  const scores = jevScores.value
-  if (!scores) return pickSuggestions.value
-  const byId = new Map(pickSuggestions.value.map(item => [item.championId, item]))
-  return jevPicks.ranked.value.map(pick => byId.get(pick.championId) ?? { championId: pick.championId, reasons: [], thin: false })
-})
+/** The cards in the grid: the bans, Jev's picks once it answered, else the source's re-ranked by the player's weights. */
+const { shownPicks, weighted } = useDraftSuggestionItems(draft, recommendation, bans, suggestionKind, { scores: jevScores, ranked: jevPicks.ranked })
 const jevStatus = computed(() => (tab.value === 'builds' ? jevBuild.status.value : jevPicks.status.value))
 const askJev = () => (tab.value === 'builds' ? jevBuild.ask() : jevPicks.ask())
 const jevReadings = computed(() => (!withJev.value ? null : tab.value === 'builds' ? (jevBuild.enemies.value.length ? jevBuild.enemies.value : null) : jevPicks.assessment.value?.readings ?? null))
 const subtitle = computed(() => {
-  if (!withJev.value) return t('draft.sugg.fromSource')
+  if (!withJev.value) return t('draft.weights.subtitle')
   return jevStatus.value === 'ready' ? t('draft.sugg.fromJev') : t('draft.sugg.askJev')
 })
 
@@ -237,7 +220,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
           :damage-picks="allyDamagePicks"
           @view="view('ally', $event)"
         />
-        <DraftSideLists class="min-h-0 flex-1" :groups="['tiers']" :position="draft.myPosition" :opponent-id="duel.opponentId" :opponent-counters="[]" :jev-readings="null" @preview="previewed = $event" />
+        <DraftSideLists class="min-h-0 flex-1" :groups="['favorites', 'tiers']" :position="draft.myPosition" :opponent-id="duel.opponentId" :opponent-counters="[]" :jev-readings="null" @preview="previewed = $event" />
       </aside>
 
       <!-- The card the draft is for, as Blitz tabs it: suggestions while our pick or ban is open, the build once there is one. -->
@@ -316,6 +299,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
               :position="draft.myPosition"
               :allies="lockedAllies"
               :jev-scores="suggestionKind === 'pick' ? jevScores : null"
+              :weighted="weighted"
               :subtitle="suggestionKind === 'pick' ? subtitle : null"
               @preview="previewed = $event"
             />
@@ -324,28 +308,8 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
 
         <!-- Builds: Jev's, or the source's. -->
         <div v-else class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-          <template v-if="withJev">
-            <UAlert v-if="jevStatus === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
-            <UAlert v-else-if="jevStatus === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="jevBuild.error.value ?? undefined" />
-            <JevBuildBody
-              v-if="jevStatus === 'ready' && subject"
-              :champion-id="subject.championId"
-              :position="subject.request.position"
-              :ranked="jevBuild.ranked.value"
-              :needs="jevBuild.needs.value"
-              :enemies="jevBuild.enemies.value"
-              :jev-build="jevBuild.jevBuild.value"
-              :standard-build="jevBuild.standardBuild.value"
-            />
-            <div v-else-if="jevStatus === 'loading'" class="flex flex-col gap-3">
-              <USkeleton class="h-40 rounded-2xl" />
-              <USkeleton class="h-64 rounded-2xl" />
-            </div>
-            <div v-else class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
-              <UIcon name="i-tabler-chess-knight" class="size-6 text-dimmed" />
-              <p class="max-w-md text-sm text-muted">{{ t('jev.coach.idleBuild') }}</p>
-            </div>
-          </template>
+          <!-- Jev's: the family it ranks within, then its answer, told to the automatic import like a picked row. -->
+          <DraftJevBuild v-if="withJev" :subject="subject" :jev="jevBuild" :bases="jevBases" @selection="importSelection = shownView === null && previewed === null ? $event : importSelection" />
 
           <BuildView
             v-else-if="subject"
@@ -355,6 +319,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
             :draft="{ build, pending: buildPending, error: buildError, opponentId: duel.opponentId, label: t('draft.screen.thisDraft'), request: subject.request }"
             :kits="kits"
             :item-advice="itemAdvice"
+            :jev-needs="jevBuild.status.value === 'ready' ? jevBuild.needs.value?.team ?? null : null"
             compact
             class="flex-1"
             @update:kit-id="pickKit"

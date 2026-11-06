@@ -1,7 +1,7 @@
 import type { ChampionDirectoryResponse } from '#shared/types/champion-directory'
 import type { ChampionSummaryResponse } from '#shared/types/champions'
 import { SOLO_QUEUE, blitzRows, blitzTier, truemainPosition } from '~/utils/blitz/client'
-import { readBlitzBuild } from '~/utils/blitz/builds'
+import { readBlitzBuild } from '~/utils/blitz/playstyles'
 
 /**
  * The champions list (`GET /champions/directory`) from Blitz: one row per

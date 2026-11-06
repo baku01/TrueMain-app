@@ -34,7 +34,7 @@ export async function blitzOptionsOf(doc: BlitzBuildDoc): Promise<BuildOptions> 
 }
 
 /** Below this many games against the opponent, its builds are too thin: the lane's stand in. */
-const MIN_MATCHUP_GAMES = 150
+export const MIN_MATCHUP_GAMES = 150
 
 export async function blitzOptions(championId: number, position: string, opponentChampionId: number | null = null): Promise<BuildOptions | null> {
   if (opponentChampionId) {

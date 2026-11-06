@@ -116,7 +116,7 @@ export function readJunglePaths(championId: number): Promise<JungleSide[]> {
         const { invoke } = await import('@tauri-apps/api/core')
         return parseJunglePaths(await invoke<string>('source_get', { source: 'opggweb', path, query: [] }))
       }
-      return parseJunglePaths(await $fetch<string>(`/__opggweb/${path}`, { responseType: 'text' }))
+      return parseJunglePaths(await $fetch<string>(`/__op-gg/${path}`, { responseType: 'text' }))
     }).catch(() => [])
     keepBounded(reads, championId, read)
   }

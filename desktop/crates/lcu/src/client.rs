@@ -9,6 +9,7 @@ use crate::error::{Error, Result};
 use crate::item_sets::{
     decode_item_sets, is_ours, plan_item_set_import, players_set_uids, without_ours, ItemSetDraft,
 };
+use crate::lobby::Lobby;
 use crate::model::{
     ChampSelectSession, ChampionMastery, CurrentSummoner, GameflowPhase, GameflowSession,
 };
@@ -358,34 +359,6 @@ impl LcuClient {
     }
 }
 
-/// The champion select chat: a line the player sends with a click — the
-/// team's damage split, as Blitz shares it.
-impl LcuClient {
-    /// Send `body` to the champion select's chat, in the player's name. Only
-    /// ever on a click: the line is the player's to send.
-    pub async fn send_champ_select_message(&self, body: &str) -> Result<()> {
-        #[derive(serde::Deserialize)]
-        struct Conversation {
-            id: String,
-            #[serde(rename = "type")]
-            kind: String,
-        }
-        let conversations: Vec<Conversation> = self.get_json("/lol-chat/v1/conversations").await?;
-        let room = conversations
-            .into_iter()
-            .find(|conversation| conversation.kind == "championSelect")
-            .ok_or(Error::NoChampSelectChat)?;
-        let message = serde_json::json!({ "body": body, "type": "chat" });
-        self.send(
-            reqwest::Method::POST,
-            &format!("/lol-chat/v1/conversations/{}/messages", room.id),
-            Some(&message),
-        )
-        .await?;
-        Ok(())
-    }
-}
-
 /// The write path into champion select (#1909): hover, lock, ban — each on the
 /// player's click only, like the rune import above.
 impl LcuClient {
@@ -432,6 +405,65 @@ impl LcuClient {
         )
         .await?;
         Ok(())
+    }
+}
+
+/// The lobby of a queue with no champion select (Swiftplay): the player's
+/// picks, read like the draft and written, like it, on a click only.
+impl LcuClient {
+    /// The lobby the player is in. `None` outside one, which the client
+    /// answers with a 404.
+    pub async fn lobby(&self) -> Result<Option<Lobby>> {
+        match self.get_json(crate::uri::LOBBY).await {
+            Ok(lobby) => Ok(Some(lobby)),
+            Err(Error::UnexpectedStatus { status: 404, .. }) => Ok(None),
+            Err(other) => Err(other),
+        }
+    }
+
+    /// The player's slots as the client returned them, every field kept, for
+    /// a write that changes one (`lobby::patch_player_slots`).
+    pub async fn lobby_player_slots(&self) -> Result<Vec<serde_json::Value>> {
+        let lobby: serde_json::Value = self.get_json(crate::uri::LOBBY).await?;
+        Ok(lobby["localMember"]["playerSlots"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default())
+    }
+
+    /// Champions the player may put in a slot: owned or free this week, and
+    /// not disabled. Read off champion select's grid, which the client serves
+    /// in the lobby too, as Blitz reads it.
+    pub async fn grid_champions(&self) -> Result<Vec<i64>> {
+        #[derive(serde::Deserialize, Default)]
+        #[serde(rename_all = "camelCase", default)]
+        struct GridChampion {
+            id: i64,
+            owned: bool,
+            free_to_play: bool,
+            disabled: bool,
+        }
+
+        let grid: Vec<GridChampion> = self
+            .get_json("/lol-champ-select/v1/all-grid-champions")
+            .await?;
+        Ok(grid
+            .into_iter()
+            .filter(|champion| !champion.disabled && (champion.owned || champion.free_to_play))
+            .map(|champion| champion.id)
+            .collect())
+    }
+
+    /// Write the player's slots back, whole — the only form the client takes.
+    ///
+    /// Call this from an explicit user action only, like the champion select
+    /// writes: a pick, its spells and its runes are the player's to make.
+    pub async fn set_player_slots(&self, slots: &[serde_json::Value]) -> Result<()> {
+        self.put_json(
+            "/lol-lobby/v1/lobby/members/localMember/player-slots",
+            &slots,
+        )
+        .await
     }
 }
 

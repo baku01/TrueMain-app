@@ -38,6 +38,8 @@ export interface TeamSlot {
   position: string
   locked: boolean
   isMe: boolean
+  /** `Name#TAG` when the client names the player; absent for a player it hides, or a bot. */
+  riotId?: string | null
 }
 
 export type GameflowPhase =
@@ -56,6 +58,23 @@ export interface AppState {
   /** The same champions with their mastery level and points, most first; at most 50. */
   championMastery: ChampionMastery[]
   draft: DraftState | null
+  /** The player's picks in a lobby with no champion select (Swiftplay); absent elsewhere. */
+  lobby?: LobbyState | null
+}
+
+/** Mirrors `LobbyState` in `crates/lcu/src/lobby.rs`. */
+export interface LobbyState {
+  queueId: number
+  /** The player's picks, in slot order — two in Swiftplay. */
+  slots: LobbySlot[]
+}
+
+/** Mirrors `LobbySlot` in `crates/lcu/src/lobby.rs`. */
+export interface LobbySlot {
+  /** Null for an empty slot. */
+  championId: number | null
+  /** Upper-case lane (`MIDDLE`), empty while none is picked. */
+  position: string
 }
 
 /** Mirrors `ChampionMastery` in `crates/lcu/src/model.rs`. */
@@ -69,7 +88,7 @@ export interface ChampionMastery {
 }
 
 /** Mirrors `Screen` in `crates/shell-state/src/lib.rs`. */
-export type Screen = 'no-client' | 'dashboard' | 'draft' | 'in-game'
+export type Screen = 'no-client' | 'dashboard' | 'draft' | 'in-game' | 'lobby'
 
 export const EMPTY_STATE: AppState = {
   connected: false,
@@ -80,4 +99,5 @@ export const EMPTY_STATE: AppState = {
   championPool: [],
   championMastery: [],
   draft: null,
+  lobby: null,
 }

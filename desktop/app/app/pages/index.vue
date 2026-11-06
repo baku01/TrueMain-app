@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { GameflowPhase, ChampionMastery  } from '~/types/lcu'
 import type { QueueFilter } from '~/utils/player-form'
+import type { RankedQueueType } from '~/utils/league-history'
 import { QUEUE_FILTERS, championLines, counted, gamesIn, laneLines, mainLane } from '~/utils/player-form'
 import { toMatchSummary, toProfileRanked } from '~/utils/match-summary'
 import { activityFromGames } from '~/utils/activity-from-games'
-import { dailyStandings, latestLpMoves } from '~/utils/lp-history'
+import { latestLpMoves } from '~/utils/lp-history'
 import { platformOf, readChampionMastery, regionOfPlatform } from '~/utils/blitz/player'
 import { readMasteryPoints } from '~/utils/sources/championmastery'
 
@@ -22,6 +23,13 @@ import { readMasteryPoints } from '~/utils/sources/championmastery'
  * clicked in a game, or found by the search — their record read from Blitz
  * (`useViewedPlayer`) on the same page, with "My profile" to come back. Both
  * carry the detailed stats and op.gg's ladder and seasons (`useProfileInsights`).
+ *
+ * Blitz's profile tabs head the page: the overview, the season's champion
+ * pool lane by lane, and the LP history of either ranked queue — each read
+ * from the source picked, else the next that carries it, and badged with it.
+ *
+ * A game that just ended opens here too (`?postMatch=`, set by `app.vue`): the
+ * game, opened over the history, with how it went (`DashboardPostMatch`).
  */
 const { t } = useT()
 const { state } = useLcuState()
@@ -59,7 +67,6 @@ const champions = computed(() => [...championsById.value.values()])
 const ranked = computed(() => toProfileRanked(record.value?.ranked.find(queue => queue.queueType === 'RANKED_SOLO_5x5') ?? null))
 const flex = computed(() => record.value?.ranked.find(queue => queue.queueType === 'RANKED_FLEX_SR') ?? null)
 const lpMoves = computed(() => latestLpMoves(loadedGames.value, rankHistory.value))
-const rankCurve = computed(() => dailyStandings(rankHistory.value))
 // The region's GM / Challenger lines on the LP curve, from TrueMain (#2174).
 const apexCutoffs = useApexCutoffs(() => record.value?.platformId)
 const shownRiotId = computed(() => (viewing.value
@@ -106,6 +113,23 @@ const insightsPlayer = computed(() => {
 })
 const { stats: detailed, opgg, loading: detailLoading } = useProfileInsights(insightsPlayer, insightsQueue)
 
+// The page's tabs, Blitz's; another player opens on the overview.
+type ProfileView = 'overview' | 'champions' | 'lp'
+const view = ref<ProfileView>('overview')
+watch(viewedTarget, () => (view.value = 'overview'))
+const viewTabs = computed(() => [
+  { value: 'overview' as const, label: t('dash.tab.overview') },
+  { value: 'champions' as const, label: t('dash.tab.champions') },
+  { value: 'lp' as const, label: t('dash.tab.lp') },
+])
+
+// LP over time in the queue picked on the ranked card or the LP tab — one choice for both.
+const lpQueue = ref<RankedQueueType>('RANKED_SOLO_5x5')
+const localHistory = computed(() => (viewing.value ? [] : own.rankHistory.value))
+const { history: league, loading: leagueLoading } = useLeagueHistory(insightsPlayer, lpQueue, localHistory)
+const { pool, status: poolStatus } = useChampionPool(insightsPlayer, filter, computed(() => view.value === 'champions'))
+const { playedWith } = usePlayedWith(insightsPlayer, computed(() => !viewing.value), loadedGames, computed(() => (viewing.value ? 'blitz' : 'client')))
+
 /** Without a chosen background the client shows the most-mastered champion; so does the app. Another player's: the one they played most of late. */
 const splashUrl = computed(() => {
   if (viewing.value) {
@@ -140,6 +164,22 @@ const POST_GAME: GameflowPhase[] = ['WaitingForStats', 'PreEndOfGame', 'EndOfGam
 watch(() => state.value.phase, (next, previous) => {
   if (next === 'EndOfGame' || (POST_GAME.includes(previous) && !POST_GAME.includes(next))) void own.refresh(true)
 })
+
+// The game that just ended, by the moment it did; closed, the URL drops it.
+const router = useRouter()
+const postMatchAt = computed(() => {
+  const at = Number(route.query.postMatch)
+  return Number.isFinite(at) && at > 0 ? at : null
+})
+// The game is shown over the overview's history: another tab open steps back to it.
+watch(postMatchAt, (at) => {
+  if (at) view.value = 'overview'
+}, { immediate: true })
+function closePostMatch() {
+  const query = { ...route.query }
+  delete query.postMatch
+  void router.replace({ query })
+}
 </script>
 
 <template>
@@ -169,19 +209,32 @@ watch(() => state.value.phase, (next, previous) => {
           />
         </template>
 
-        <!-- The queues as Blitz's page tabs, underlined. -->
+        <!-- Blitz's page tabs, underlined; the overview's queue on their right. -->
         <template #tabs>
           <button
-            v-for="tab in queueTabs"
+            v-for="tab in viewTabs"
             :key="tab.value"
             type="button"
             class="tm-tab shrink-0"
-            :data-active="filter === tab.value || undefined"
-            :aria-pressed="filter === tab.value"
-            @click="filter = tab.value"
+            :data-active="view === tab.value || undefined"
+            :aria-pressed="view === tab.value"
+            @click="view = tab.value"
           >
             {{ tab.label }}
           </button>
+          <AppSegmented v-if="view === 'overview'" v-model="filter" :items="queueTabs" class="mb-2 ml-auto shrink-0 self-end" />
+        </template>
+
+        <template v-if="view !== 'overview'" #view>
+          <DashboardChampionPool
+            v-if="view === 'champions'"
+            v-model:queue="filter"
+            :pool="pool"
+            :loading="poolStatus !== 'ready'"
+            :champions="champions"
+            :queues="queueTabs"
+          />
+          <DashboardLpHistory v-else v-model:queue="lpQueue" :history="league" :loading="leagueLoading" :cutoffs="apexCutoffs.cutoffs" />
         </template>
 
         <template #header>
@@ -204,6 +257,18 @@ watch(() => state.value.phase, (next, previous) => {
         </template>
 
         <template #history>
+          <DashboardPostMatch
+            v-if="postMatchAt && !viewing"
+            :ended-at="postMatchAt"
+            :games="loadedGames"
+            :tier="ranked?.tier ?? null"
+            :name-tag="nameTag"
+            :champions="champions"
+            :items="items"
+            :summoner-spells="summoners"
+            :rune-tree="runeTree"
+            @close="closePostMatch"
+          />
           <DashboardDetailedStats :games="historyGames" :champions="champions" :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
           <DashboardMatchHistory
             :games="historyGames"
@@ -225,14 +290,17 @@ watch(() => state.value.phase, (next, previous) => {
 
         <template #aside>
           <ProfileRankedCardSkeleton v-if="pending" />
-          <ProfileRankedCard v-else :ranked="ranked" :history="rankCurve" :history-loading="apexCutoffs.loading" :cutoffs="apexCutoffs.cutoffs">
-            <template #standing>
-              <DashboardFlexStanding :queue="flex" />
-            </template>
-            <template #moves>
-              <DashboardLpMoves :moves="lpMoves" />
-            </template>
-          </ProfileRankedCard>
+          <DashboardRankedCard
+            v-else
+            v-model:queue="lpQueue"
+            :solo="record?.ranked.find(queue => queue.queueType === 'RANKED_SOLO_5x5') ?? null"
+            :flex="flex"
+            :history="league"
+            :loading="leagueLoading || apexCutoffs.loading"
+            :cutoffs="apexCutoffs.cutoffs"
+            :moves="lpMoves"
+            @full="view = 'lp'"
+          />
           <DashboardSeasons :profile="opgg" />
           <DashboardTodayCard v-if="!pending && !viewing" :summary="today" />
           <template v-if="pending">
@@ -247,6 +315,7 @@ watch(() => state.value.phase, (next, previous) => {
             <DashboardChampionsCard :lines="championLines(games)" :champions="champions" />
             <DashboardMasteryCard :mastery="viewing ? viewedMastery : state.championMastery ?? []" :champions="champions" />
             <DashboardRolesCard :lanes="laneLines(games)" />
+            <DashboardPlayedWith :played-with="playedWith" :region="insightsPlayer?.region ?? null" />
           </template>
         </template>
       </PagePlayerProfile>

@@ -38,6 +38,14 @@ const props = defineProps<{
   destination: (row: DirectoryRow) => RouteLocationRaw
   runeTree: RuneTreeResponse | null | undefined
   itemsMap: Record<number, StaticItemData> | null | undefined
+  /**
+   * The lane's win-rate change since the patch before, on the 0–1 scale; null
+   * where it was not measured (a dash). Without it the column is not drawn —
+   * the site's API keeps no patch before; the desktop app reads one.
+   */
+  winRateChange?: ((championId: number, position: string) => number | null) | null
+  /** What the change column's header says it is measured from (`since 16.21 · Blitz data`). */
+  winRateChangeNote?: string | null
 }>()
 
 const emit = defineEmits<{ 'update:order': [order: DirectoryOrder] }>()
@@ -49,7 +57,7 @@ const FROM_2XL = 'hidden @2xl:table-cell'
 const FROM_4XL = 'hidden @4xl:table-cell'
 const FIGURE = 'w-14 text-right @2xl:w-16'
 
-const columns: TableColumn<DirectoryRow>[] = [
+const columns = computed<TableColumn<DirectoryRow>[]>(() => [
   { id: 'place', header: '#', meta: { class: { th: 'w-6 @xl:w-10', td: 'w-6 @xl:w-10' } } },
   { id: 'champion', header: t('champion.col.champion'), meta: { class: { th: 'w-full max-w-0', td: 'w-full max-w-0' } } },
   { id: 'lane', header: t('champion.col.lane'), meta: { class: { th: 'w-10 text-center', td: 'w-10' } } },
@@ -57,10 +65,19 @@ const columns: TableColumn<DirectoryRow>[] = [
   { id: 'runes', header: t('champion.col.runes'), meta: { class: { th: `${FROM_2XL} w-12 text-center`, td: `${FROM_2XL} w-12` } } },
   { id: 'build', header: t('champion.col.coreBuild'), meta: { class: { th: FROM_4XL, td: FROM_4XL } } },
   { id: 'winRate', accessorKey: 'winRate', enableSorting: true, meta: { class: { th: FIGURE, td: FIGURE } } },
+  ...(props.winRateChange ? [{ id: 'winRateChange', meta: { class: { th: `${FROM_XL} ${FIGURE}`, td: `${FROM_XL} ${FIGURE}` } } }] : []),
   { id: 'pickRate', accessorKey: 'pickRate', enableSorting: true, meta: { class: { th: FIGURE, td: FIGURE } } },
   { id: 'banRate', accessorKey: 'banRate', enableSorting: true, meta: { class: { th: `${FROM_XL} ${FIGURE}`, td: `${FROM_XL} ${FIGURE}` } } },
   { id: 'games', accessorKey: 'games', enableSorting: true, meta: { class: { th: `${FROM_XL} ${FIGURE}`, td: `${FROM_XL} ${FIGURE}` } } },
-]
+])
+
+/** A change in points with its sign: `+1.2`, `−0.4`; a dash where it was not measured. */
+function changeOf(row: DirectoryRow): { text: string, tone: string } {
+  const change = props.winRateChange?.(row.championId, row.position) ?? null
+  if (change === null) return { text: '—', tone: 'text-dimmed' }
+  const points = Math.round(Math.abs(change) * 1000) / 10
+  return { text: `${points === 0 ? '' : change > 0 ? '+' : '−'}${points.toFixed(1)}`, tone: winRateTone(0.5 + change) }
+}
 
 const SORTABLE: { id: string, label: string, title: string, align: 'center' | 'end' }[] = [
   { id: 'tier', label: t('champion.col.tier'), title: t('champion.col.tierTitle'), align: 'center' },
@@ -179,6 +196,14 @@ const buildPathOf = (row: DirectoryRow) => (row.topBuild?.itemPath ?? []).slice(
     <template #winRate-cell="{ row }">
       <USkeleton v-if="loading" class="ml-auto h-4 w-10" />
       <span v-else class="font-semibold tabular-nums" :class="winRateTone(row.original.winRate)">{{ formatPercentage(row.original.winRate, 0) }}</span>
+    </template>
+    <template #winRateChange-header>
+      <!-- Not sortable: the API orders by the columns it keeps, and it keeps no patch before. -->
+      <span class="block text-right text-[10px] font-medium uppercase leading-[1.2] tracking-[0.12em] text-dimmed" :title="[t('champion.col.wrChangeTitle'), winRateChangeNote].filter(Boolean).join(' · ')">{{ t('champion.col.wrChange') }}</span>
+    </template>
+    <template #winRateChange-cell="{ row }">
+      <USkeleton v-if="loading" class="ml-auto h-4 w-10" />
+      <span v-else class="tabular-nums" :class="changeOf(row.original).tone">{{ changeOf(row.original).text }}</span>
     </template>
     <template #pickRate-cell="{ row }">
       <USkeleton v-if="loading" class="ml-auto h-4 w-10" />

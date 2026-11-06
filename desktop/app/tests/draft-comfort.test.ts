@@ -125,6 +125,7 @@ describe('DraftSuggestions', () => {
     vi.stubGlobal('useTierList', () => ({ entryOf: () => null, status: ref('ready') }))
     vi.stubGlobal('useDamageProfiles', () => ({ profileOf: () => null }))
     vi.stubGlobal('usePlayerRecord', () => ({ games: ref([game(103, true), game(103, false), game(64, true)]) }))
+    vi.stubGlobal('useSuggestionWeights', () => ({ settings: ref({ weights: { meta: 0.25, counter: 0.25, teamFit: 0.25, comfort: 0.25 }, minMastery: 0 }) }))
     const { default: DraftSuggestions } = await import('../app/components/draft/DraftSuggestions.vue')
     return mount(DraftSuggestions, {
       props: {

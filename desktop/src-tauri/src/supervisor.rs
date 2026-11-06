@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use lcu::tape::{Played, Reading, Recorder, Tape};
-use lcu::{ChampSelectSession, ChampionMastery, CurrentSummoner, GameflowPhase, LcuClient};
+use lcu::{ChampSelectSession, ChampionMastery, CurrentSummoner, GameflowPhase, LcuClient, Lobby};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
@@ -164,6 +164,9 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
         .inspect_err(|error| tracing::debug!(%error, "no summoner yet"))
         .ok();
     let session = client.champ_select_session().await.ok().flatten();
+    // A queue with no champion select (Swiftplay) picks in the lobby: an app
+    // started there would otherwise show no pick until the player changed one.
+    let lobby = client.lobby().await.ok().flatten();
 
     if let Some(recorder) = &mut recorder {
         // Recorded from the parsed models rather than the raw bodies: the app
@@ -181,6 +184,7 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
         connected: true,
         phase,
         draft: session.map(|session| session.draft_state()),
+        lobby: lobby.as_ref().and_then(Lobby::lobby_state),
         ..AppState::default()
     };
     state.set_summoner(summoner.as_ref().filter(|s| !s.game_name.is_empty()));
@@ -189,6 +193,19 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
     // the draft never opens on an empty pool that fills a moment later.
     let mut mastery_read_for = None;
     refresh_pool(&client, &mut state, &mut mastery_read_for, &mut recorder).await;
+    if let (Some(recorder), Some(lobby)) = (&mut recorder, &lobby) {
+        // Recorded as the event it stands in for, the parsed model as its
+        // body: a replay derives the picks through the same `apply`, with no
+        // reading kind of its own. Only the local member's slots go in here;
+        // the lobby's live events that follow are kept whole, as champion
+        // select's session events are.
+        let wrap = |data: serde_json::Value| Reading::Event {
+            uri: lcu::uri::LOBBY.to_string(),
+            event_type: "Update".to_string(),
+            data,
+        };
+        record_reading(recorder, wrap, lobby);
+    }
     publish(app, shared, state.clone());
 
     let (sender, mut receiver) = mpsc::channel(64);

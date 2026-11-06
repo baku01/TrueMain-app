@@ -10,7 +10,9 @@ import { mostPlayedLane, statsFromSite } from '~/utils/site-build'
  * ProBuild: what truemain.lol measured for a champion — how often each
  * keystone, rune page, item and pair of spells was taken, and how often the
  * game was won (`useProBuilds`, `utils/site-build.ts`). A champion is picked;
- * the page opens on its most played lane, and the lanes narrow it.
+ * the page opens on its most played lane, and the lanes narrow it. Under it,
+ * the players a build is read from: the best on the champion, then its
+ * one-tricks (`ProbuildOneTricks`).
  */
 const { t } = useT()
 const { champions, nameOf, portraitOf } = useChampionStatics()
@@ -193,6 +195,8 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
       <!-- The best players on the champion: Blitz's pros with their games, every other source's ranked players. -->
       <ProbuildProMatches v-if="blitz && championId !== null" :champion-id="championId" :position="position" />
       <ProbuildTopPlayers v-else-if="championId !== null" :champion-id="championId" :position="position" />
+      <!-- Its one-tricks, from whichever source has them (TrueMain's true mains, Blitz's). -->
+      <ProbuildOneTricks v-if="championId !== null" :champion-id="championId" :position="position" />
     </div>
   </SharedPage>
 </template>

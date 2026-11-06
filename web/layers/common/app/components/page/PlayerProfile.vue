@@ -25,7 +25,9 @@ const { t } = useT()
  * truemain score on the site, the Today card in the app) — and the banner's art is
  * resolved by the host: the champion a true main mains on a profile, the skin
  * the player chose in the client on the dashboard (TrueMain cannot read it).
- * The player is drawn by `Account`, at its profile-header size (#2027).
+ * The player is drawn by `Account`, at its profile-header size (#2027). A
+ * host with more than the overview fills `#view` for its other tabs: it
+ * replaces the tiles and the history, the head of the page staying put.
  */
 const props = withDefaults(defineProps<{
   identity: AccountIdentity
@@ -165,15 +167,27 @@ const rankLabel = computed(() => {
       </div>
     </div>
 
+    <!-- No scrollbar: the active tab's underline overlaps the border by a
+         pixel, which a classic scrollbar (Windows) would otherwise answer. -->
     <nav
       v-if="$slots.tabs"
-      class="-mt-1 flex gap-6 overflow-x-auto border-b border-default"
+      class="-mt-1 flex gap-6 overflow-x-auto border-b border-default [scrollbar-width:none]"
     >
       <slot name="tabs" />
     </nav>
 
+    <!-- A tab of the page's other than its overview (the app's champion pool,
+         LP history) takes the place of the tiles and the history. -->
+    <slot
+      v-if="$slots.view"
+      name="view"
+    />
+
     <!-- `on-art`: the tiles keep their dark glass in the light theme too. -->
-    <div class="on-art grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div
+      v-if="!$slots.view"
+      class="on-art grid grid-cols-2 gap-2 sm:grid-cols-4"
+    >
       <template v-if="loading && !matches.length">
         <USkeleton
           v-for="index in 4"
@@ -197,6 +211,7 @@ const rankLabel = computed(() => {
     <!-- The history, and the column of cards on its right; one column when
          narrow, the history first. -->
     <div
+      v-if="!$slots.view"
       class="grid grid-cols-1 items-start gap-x-4 gap-y-5 lg:grid-cols-[minmax(0,1fr)_var(--aside-width)]"
       :style="{ '--aside-width': asideWidth }"
     >

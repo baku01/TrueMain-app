@@ -13,9 +13,10 @@ export const COMFORT_GAMES = 20
 
 /**
  * The player's comfort on a champion (#1906), from their own client's match
- * history: shown on the card as a fact, never part of the order (no composite
- * player score, #1671). Remakes are not games played. Null when the champion is
- * not among them.
+ * history: the line the card says on hover. Remakes are not games played. Null
+ * when the champion is not among them. The order weighs the same games only
+ * through the player's own suggestion weights, its comfort category
+ * (`utils/draft-weights`, `useDraftSuggestionItems`), which they can set to 0.
  */
 export function comfortOf(games: PlayerGame[], championId: number): Comfort | null {
   const recent = games.filter(game => !game.remake).slice(0, COMFORT_GAMES)

@@ -46,6 +46,14 @@ function tierOf(row: TeamRow): string | null {
 
 const dragging = ref<Lane | null>(null)
 
+/** The row whose player card is open; the riotIds of our side, for its duo line. */
+const card = ref<number | null>(null)
+function openCard(index: number, open: boolean) {
+  if (open) card.value = index
+  else if (card.value === index) card.value = null
+}
+const teammates = computed(() => props.rows.flatMap(row => (row.riotId ? [row.riotId] : [])))
+
 /** WebKit starts no drag that carries no data, so the lane rides along as text. */
 function onDragStart(event: DragEvent, lane: Lane | null) {
   dragging.value = lane
@@ -113,39 +121,53 @@ function label(row: TeamRow) {
       @drop.prevent="onDrop(row.lane)"
     >
       <div class="flex items-center gap-1" :class="team === 'enemy' && 'flex-row-reverse'">
-        <button
-          type="button"
-          class="block min-w-0 flex-1 rounded-md outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-primary enabled:hover:brightness-125 disabled:cursor-default"
-          :class="counters && countersOf(row).length ? 'h-[5.5rem]' : 'h-16'"
-          :disabled="!readable(row)"
-          :draggable="correctable && row.championId !== null"
-          :aria-label="label(row)"
-          @click="emit('view', row.championId!)"
-          @dragstart="onDragStart($event, row.lane)"
-          @dragend="dragging = null"
+        <!-- An ally the client names: who they are, on hover, as Blitz shows them (`DraftPlayerCard`).
+             The card is only `aria-disabled` while it has no build to open: a disabled button gets no hover. -->
+        <UPopover
+          mode="hover"
+          :open="card === index"
+          :open-delay="350"
+          :close-delay="120"
+          :content="{ side: team === 'ally' ? 'right' : 'left', align: 'start', sideOffset: 8 }"
+          @update:open="(open: boolean) => openCard(index, open && !!row.riotId)"
         >
-          <DraftCard
-            row
-            :team="team"
-            :champion-id="row.championId"
-            :tier="tierOf(row)"
-            :lane="row.lane"
-            :selected="selectedCell === index"
-            :opponent="opponentCell === index"
-            :tentative="row.championId !== null && !row.locked"
-            :drop-target="dragging !== null && row.lane !== null && dragging !== row.lane"
-            :suggested="row.me ? suggested : []"
-            :class="counters && countersOf(row).length ? 'items-start! pt-2.5' : ''"
+          <button
+            type="button"
+            class="block min-w-0 flex-1 rounded-md outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-primary"
+            :class="[counters && countersOf(row).length ? 'h-[5.5rem]' : 'h-16', readable(row) ? 'hover:brightness-125' : 'cursor-default']"
+            :aria-disabled="!readable(row)"
+            :draggable="correctable && row.championId !== null"
+            :aria-label="label(row)"
+            @click="readable(row) && emit('view', row.championId!)"
+            @dragstart="onDragStart($event, row.lane)"
+            @dragend="dragging = null"
           >
-            <!-- Who beats this enemy on its lane, on the band's inner side. -->
-            <span v-if="counters && countersOf(row).length" class="absolute bottom-2 z-10 flex items-center gap-3.5" :class="team === 'enemy' ? 'right-3' : 'left-3'" :title="t('draft.counters.label')">
-              <span v-for="counter in countersOf(row)" :key="counter.championId" class="flex items-center gap-1.5" :title="counterTip(counter, row.championId!)">
-                <img v-if="portraitOf(counter.championId)" :src="portraitOf(counter.championId)!" :alt="nameOf(counter.championId)" class="img-skeleton size-6 rounded ring-1 ring-white/15">
-                <span class="text-[11px] font-bold leading-none tabular-nums text-data-good">{{ Math.round(counter.winRate * 100) }}%</span>
+            <DraftCard
+              row
+              :team="team"
+              :champion-id="row.championId"
+              :tier="tierOf(row)"
+              :lane="row.lane"
+              :selected="selectedCell === index"
+              :opponent="opponentCell === index"
+              :tentative="row.championId !== null && !row.locked"
+              :drop-target="dragging !== null && row.lane !== null && dragging !== row.lane"
+              :suggested="row.me ? suggested : []"
+              :class="counters && countersOf(row).length ? 'items-start! pt-2.5' : ''"
+            >
+              <!-- Who beats this enemy on its lane, on the band's inner side. -->
+              <span v-if="counters && countersOf(row).length" class="absolute bottom-2 z-10 flex items-center gap-3.5" :class="team === 'enemy' ? 'right-3' : 'left-3'" :title="t('draft.counters.label')">
+                <span v-for="counter in countersOf(row)" :key="counter.championId" class="flex items-center gap-1.5" :title="counterTip(counter, row.championId!)">
+                  <img v-if="portraitOf(counter.championId)" :src="portraitOf(counter.championId)!" :alt="nameOf(counter.championId)" class="img-skeleton size-6 rounded ring-1 ring-white/15">
+                  <span class="text-[11px] font-bold leading-none tabular-nums text-data-good">{{ Math.round(counter.winRate * 100) }}%</span>
+                </span>
               </span>
-            </span>
-          </DraftCard>
-        </button>
+            </DraftCard>
+          </button>
+          <template #content>
+            <DraftPlayerCard v-if="row.riotId" :riot-id="row.riotId" :champion-id="row.championId" :position="row.lane" :me="!!row.me" :teammates="teammates.filter(id => id !== row.riotId)" />
+          </template>
+        </UPopover>
         <UDropdownMenu
           v-if="correctable && row.lane && row.championId !== null"
           :items="laneChoices(row)"

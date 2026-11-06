@@ -177,6 +177,7 @@ const tiles = computed(() => {
         :delta="tile.delta"
         :hint="hint"
         :loading="trendLoading && !current"
+        flush
       />
     </template>
   </PageHero>

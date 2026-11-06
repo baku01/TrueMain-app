@@ -20,7 +20,7 @@ import { itemSetOf } from '~/utils/jev-recommend'
  */
 export interface OpenedStep { name: string, label: string }
 
-const props = defineProps<{ ranked: RankedSlot[], championId: number, position?: string, importName?: string, build: LaidBuild, side: 'jev' | 'standard' }>()
+const props = defineProps<{ ranked: RankedSlot[], championId: number, position?: string, importName?: string, build: LaidBuild, side: 'jev' | 'standard', /** The heading, when the base names it ("Jev · Lethality"). */ title?: string }>()
 const opened = defineModel<OpenedStep | null>('opened', { default: null })
 const { t } = useT()
 const { nameOf } = useChampionStatics()
@@ -77,7 +77,7 @@ const levelsOf = (option: JevOption) => {
   <section class="surface flex flex-col gap-3 rounded-2xl p-4" :class="recommended ? 'ring-1 ring-primary/30' : ''">
     <header class="flex items-center gap-2">
       <UIcon :name="recommended ? 'i-tabler-chess-knight' : 'i-tabler-database'" class="size-4" :class="recommended ? 'text-primary' : 'text-muted'" />
-      <h3 class="text-sm font-semibold" :class="recommended ? 'text-primary' : 'text-highlighted'">{{ recommended ? t('jev.card.jevBuild') : t('jev.card.standardBuild') }}</h3>
+      <h3 class="text-sm font-semibold" :class="recommended ? 'text-primary' : 'text-highlighted'">{{ title ?? (recommended ? t('jev.card.jevBuild') : t('jev.card.standardBuild')) }}</h3>
       <!-- Into the client, on a click: this build's rune page and its item set. -->
       <span class="ml-auto flex items-center gap-1.5">
         <BuildRuneImport v-if="build.runePage" :page="build.runePage" :champion="importName ?? nameOf(championId)" labeled />

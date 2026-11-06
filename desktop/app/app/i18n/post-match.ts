@@ -1,0 +1,43 @@
+import type { MessageDictionary } from '#common/utils/i18n'
+
+/** The game just played, opened on the dashboard when it ends. */
+export default {
+  'en': {
+    'postMatch.label': 'The game you just played',
+    'postMatch.eyebrow': 'Game just played',
+    'postMatch.close': 'Close',
+    'postMatch.waiting': 'Your game just ended: its stats are on their way from the client…',
+    'postMatch.title': 'How it went',
+    'postMatch.badge.reading': 'Reading the benchmark…',
+    'postMatch.badge.none': 'No benchmark for this game',
+    'postMatch.badge.tier': '{source} · {tier}',
+    'postMatch.badge.own': 'Your last {games} games',
+    'postMatch.reference.tier': 'Your elo',
+    'postMatch.reference.own': 'Your average',
+    'postMatch.reference.missing': 'Nothing to compare it with.',
+    'postMatch.cs': 'CS per minute',
+    'postMatch.vision': 'Vision per minute',
+    'postMatch.deaths': 'Deaths',
+    'postMatch.deathless': 'Not a single death.',
+    'postMatch.deathSplit': '{lane} in lane (before {minute}:00), {late} after',
+  },
+  'pt-BR': {
+    'postMatch.label': 'A partida que você acabou de jogar',
+    'postMatch.eyebrow': 'Partida recém-jogada',
+    'postMatch.close': 'Fechar',
+    'postMatch.waiting': 'Sua partida acabou: as estatísticas estão a caminho do cliente…',
+    'postMatch.title': 'Como foi',
+    'postMatch.badge.reading': 'Lendo a referência…',
+    'postMatch.badge.none': 'Sem referência para esta partida',
+    'postMatch.badge.tier': '{source} · {tier}',
+    'postMatch.badge.own': 'Suas últimas {games} partidas',
+    'postMatch.reference.tier': 'Seu elo',
+    'postMatch.reference.own': 'Sua média',
+    'postMatch.reference.missing': 'Nada com que comparar.',
+    'postMatch.cs': 'CS por minuto',
+    'postMatch.vision': 'Visão por minuto',
+    'postMatch.deaths': 'Mortes',
+    'postMatch.deathless': 'Nenhuma morte.',
+    'postMatch.deathSplit': '{lane} na rota (antes de {minute}:00), {late} depois',
+  },
+} satisfies MessageDictionary

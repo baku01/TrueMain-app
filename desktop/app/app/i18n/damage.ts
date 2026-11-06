@@ -13,10 +13,7 @@ export default {
     'damage.meter.kind.magic': 'magic',
     'damage.meter.kind.true': 'true',
     'damage.meter.unmeasured': '{count} not measured',
-    'damage.share.title': 'Send to the champion select chat',
-    'damage.share.line': '{team}: {physical} AD · {magic} AP · {true} true',
-    'damage.share.sent': 'Sent to the chat',
-    'damage.share.failed': 'Could not send to the chat',
+    'damage.champion.title': 'Damage breakdown',
   },
   'pt-BR': {
     'damage.meter.ally': 'Dano do seu time',
@@ -29,9 +26,6 @@ export default {
     'damage.meter.kind.magic': 'mágico',
     'damage.meter.kind.true': 'verdadeiro',
     'damage.meter.unmeasured': '{count} sem medição',
-    'damage.share.title': 'Enviar ao chat da seleção',
-    'damage.share.line': '{team}: {physical} AD · {magic} AP · {true} verdadeiro',
-    'damage.share.sent': 'Enviado ao chat',
-    'damage.share.failed': 'Não foi possível enviar ao chat',
+    'damage.champion.title': 'Divisão de dano',
   },
 } satisfies MessageDictionary

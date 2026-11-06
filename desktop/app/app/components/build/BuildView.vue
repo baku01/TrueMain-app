@@ -6,10 +6,13 @@ import type { DraftItemPush } from '~/utils/draft-damage'
 import type { ImportChoice } from '~/composables/useDraftAutoImport'
 import type { ImportBuild } from '~/utils/recommended-item-set'
 import type { ItemSetSubject } from '~/composables/useItemSetImport'
+import type { Needs } from '~/utils/jev-recommend'
 import { externalSource, fromBlitz } from '~/utils/data-source'
 import { situationalFromTree } from '~/utils/item-set'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { kitPaths } from '~/utils/kit-tree'
+import { REMEMBER_BUILD, useBuildOptions, usePlaystylePreset } from '~/composables/useBuildOptions'
+import { useJevRowFits } from '~/composables/useJevRowFits'
 
 /**
  * A champion's build, laid out the way the reference client does after a pick
@@ -40,6 +43,8 @@ const props = defineProps<{
   itemAdvice?: DraftItemPush[]
   /** Champion select's layout: the build as Blitz lays it there, runes beside spells, path, situational and max order (`BuildCore`'s `compact`). */
   compact?: boolean
+  /** The team's needs of Jev's answer for this champion, lane and draft: each row is marked by how its items answer them. */
+  jevNeeds?: Needs | null
 }>()
 
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
@@ -48,48 +53,15 @@ const prosOpen = ref(false)
 const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) ?? null)
 
 const { t } = useT()
-const { response, pending: lanePending } = useChampionBuilds(toRef(props, 'championId'), toRef(props, 'position'))
-/** Blitz measures builds by lane matchup: against the draft's lane opponent, its builds in those games (Blitz's "matchup builds"). */
-const versusOpponent = computed(() => (fromBlitz() ? props.draft?.opponentId ?? null : null))
-const { response: versusResponse } = useChampionBuilds(toRef(props, 'championId'), toRef(props, 'position'), versusOpponent)
+// The rows: the previous build, the draft's, the matchup's, the lane's, the one-tricks' (`useBuildOptions`).
+const { options, pending: lanePending, versusOpponent, defaultKey, remember } = useBuildOptions(toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'draft'))
 const { items, summoners, runeTree, pending: staticPending, loadChampion, championStatic } = useStaticData()
+// Once Jev answered for this draft: how each row's items answer it, and the one that fits best — no new call.
+const jevRows = useJevRowFits(options, toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'jevNeeds'))
 const { patch } = useChampionStatics()
 
 // The champion's spells need the patch, which may land after the view does.
 watch(() => `${props.championId}:${patch.value}`, () => loadChampion(props.championId), { immediate: true })
-
-const options = computed<BuildOption[]>(() => {
-  const list: BuildOption[] = []
-  const draftBuild = props.draft?.build
-  if (draftBuild && draftBuild.championId === props.championId) {
-    list.push({
-      key: 'draft',
-      core: draftBuild.core,
-      firstItemId: draftBuild.firstItemId,
-      keystoneId: draftBuild.core.runePage?.primaryKeystoneId ?? null,
-      buildTree: draftBuild.buildTree,
-      games: draftBuild.games,
-      winRate: draftBuild.games > 0 ? draftBuild.wins / draftBuild.games : null,
-      standard: draftBuild.source === 'standard',
-    })
-  }
-  const versus = versusResponse.value?.championId === props.championId && versusOpponent.value ? versusResponse.value.builds : []
-  const rows = [...versus.map(build => ['versus', build] as const), ...(response.value?.builds ?? []).map(build => ['lane', build] as const)]
-  for (const [group, build] of rows) {
-    if (group === 'versus' && build.games <= 0) continue
-    list.push({
-      // The whole path: two builds may open on the same item with the same keystone (another source's cores do).
-      key: `${group}-${build.firstItemId}-${build.primaryKeystoneId}-${(build.core.itemPath?.itemIds ?? []).join('_')}-${(build.core.boots?.itemIds ?? []).join('_')}`,
-      core: build.core,
-      firstItemId: build.firstItemId,
-      keystoneId: build.primaryKeystoneId,
-      buildTree: build.buildTree,
-      games: build.games,
-      winRate: build.winRate,
-    })
-  }
-  return list
-})
 
 /** The row on screen: a build's key, or `pro` for the player picked in the list. */
 const selected = ref<string | null>(null)
@@ -98,11 +70,11 @@ const selected = ref<string | null>(null)
 // takes the first row too, unless a player's build is on screen.
 watch(() => `${props.championId}:${props.position}`, () => {
   pro.value = null
-  selected.value = options.value[0]?.key ?? null
+  selected.value = defaultKey.value
 })
-watch(() => options.value[0]?.key, (first) => {
-  if (selected.value !== 'pro') selected.value = first ?? null
-})
+watch(defaultKey, (first) => {
+  if (selected.value !== 'pro') selected.value = first
+}, { immediate: true })
 
 /** A pro picked in the list (Blitz only): their last game's build, and whose it is. */
 const blitz = fromBlitz()
@@ -113,12 +85,27 @@ function selectPro(option: BuildOption, player: string) {
   kitId.value = null
   pro.value = { option, player }
   selected.value = 'pro'
+  remember(option)
+}
+
+/** A row picked by hand: on screen, and the previous build next time (`useBuildOptions`). */
+function pick(key: string | null) {
+  selected.value = key
+  kitId.value = null
+  remember(options.value.find(option => option.key === key))
 }
 
 const shown = computed(() => {
   if (selected.value === 'pro' && pro.value) return pro.value.option
-  return options.value.find(option => option.key === selected.value) ?? options.value[0] ?? null
+  return options.value.find(option => option.key === (selected.value ?? defaultKey.value)) ?? options.value[0] ?? null
 })
+// An import of the build on screen keeps it as the previous build; a kit is the player's own already.
+provide(REMEMBER_BUILD, () => {
+  if (!kitShown.value) remember(shown.value)
+})
+/** A row named after a Blitz playstyle opens the panel on that playstyle's options. */
+const { preset: panelPreset, ready: panelReady } = usePlaystylePreset(toRef(props, 'championId'), toRef(props, 'position'), shown)
+const panelShown = computed(() => !!shown.value && ((external && shown.value.key.startsWith('lane-')) || (shown.value.key.startsWith('otp-') && !!panelPreset.value)))
 const { nameOf } = useChampionStatics()
 /** What an import is named after: the champion, against the draft's lane opponent when there is one (`TrueMain Aatrox vs Akali`). */
 const importName = computed(() => {
@@ -167,7 +154,7 @@ const selection = computed(() => {
   else if (shown.value) {
     chosen = choiceOf(shown.value, selected.value === 'pro' && pro.value ? `${pro.value.player} ${nameOf(props.championId)}` : titleOf(shown.value))
   }
-  return { championId: props.championId, selected: chosen, others: options.value.map(option => choiceOf(option, titleOf(option))) }
+  return { championId: props.championId, selected: chosen, others: options.value.filter(option => option.key !== 'previous').map(option => choiceOf(option, titleOf(option))) }
 })
 watch(() => JSON.stringify(selection.value), () => emit('selection', selection.value), { immediate: true })
 
@@ -187,13 +174,17 @@ const emptyMessage = computed(() => t('build.view.none'))
           type="button"
           class="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold tabular-nums ring-1 ring-inset transition-colors"
           :class="!kitShown && shown?.key === option.key ? 'bg-accented/70 text-highlighted ring-primary/50' : 'text-muted ring-default hover:text-highlighted'"
-          :title="option.key === 'draft' ? t('build.list.thisDraft') : undefined"
-          @click="selected = option.key; kitId = null"
+          :title="option.key === 'draft' ? t('build.list.thisDraft') : option.key === 'previous' ? t('buildx.previous') : option.name ?? undefined"
+          @click="pick(option.key)"
         >
+          <UIcon v-if="option.key === 'previous'" name="i-lucide-history" class="size-4 text-primary" />
+          <UIcon v-else-if="option.key.startsWith('otp-')" name="i-lucide-crosshair" class="size-4 text-primary" />
           <GameTooltipPerkIcon v-if="option.keystoneId && runeTree" :perk="runeTree.perks[option.keystoneId] ?? null" :width="20" :height="20" class="size-5 rounded-full bg-black/30" />
           <GameTooltipItemIcon :item="items[option.firstItemId] ?? null" :width="20" :height="20" class="rounded" />
           <span v-if="option.key === 'draft'">{{ t('build.compact.thisDraft') }}</span>
+          <span v-else-if="option.name" class="max-w-24 truncate">{{ option.name }}</span>
           <span v-else-if="option.winRate !== null">{{ formatPercentage(option.winRate, 1) }}</span>
+          <JevFitMark v-if="jevRows.fits.get(option.key)" :fit="jevRows.fits.get(option.key)!" :best="jevRows.best === option.key" compact />
         </button>
         <button
           v-for="kit in kits ?? []"
@@ -288,7 +279,9 @@ const emptyMessage = computed(() => t('build.view.none'))
           :draft-label="draft?.label"
           :draft-opponent="draft?.opponentId ?? null"
           :versus-opponent="versusOpponent"
-          @update:model-value="selected = $event; kitId = null"
+          :fits="jevRows.fits"
+          :jev-pick="jevRows.best"
+          @update:model-value="pick"
         />
         <section v-if="kits?.length">
           <h3 class="px-2 pb-1 stat-label">{{ t('kit.list.label') }}</h3>
@@ -316,8 +309,9 @@ const emptyMessage = computed(() => t('build.view.none'))
       <slot name="advice" />
 
       <!-- Settings reads from another source: a lane build shows every option it measured, each with its win rate. -->
+      <USkeleton v-if="panelShown && !panelReady" class="h-96 w-full rounded-xl" />
       <BuildSourcePanel
-        v-if="external && shown.key.startsWith('lane-')"
+        v-else-if="panelShown"
         :champion-id="championId"
         :position="position"
         :initial-core="shown.core.itemPath?.itemIds ?? null"
@@ -327,6 +321,7 @@ const emptyMessage = computed(() => t('build.view.none'))
         :summoners="summoners"
         :rune-tree="runeTree"
         :advice="itemAdvice ?? []"
+        :preset="panelPreset"
       />
       <BuildCore
         v-else

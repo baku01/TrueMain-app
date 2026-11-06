@@ -195,29 +195,6 @@ pub async fn champ_select_spells(
         .map_err(write_failed)
 }
 
-/// Send a line to the champion select's chat — the team's damage split the
-/// player shares with a click (`TeamDamageMeter`), as Blitz does. Only on the
-/// live client: the simulator has no chat, and a replay is read-only.
-#[tauri::command]
-pub async fn champ_select_chat(
-    writer: tauri::State<'_, ChampSelectWriter>,
-    message: String,
-) -> Result<(), String> {
-    let message = message.trim();
-    if message.is_empty() || message.chars().count() > 200 {
-        return Err("a chat line is one short line".to_string());
-    }
-    let client = match writer.target()? {
-        Target::Live(client) => client,
-        #[cfg(debug_assertions)]
-        Target::Sim(_) => return Err("the draft simulator has no chat".to_string()),
-    };
-    client
-        .send_champ_select_message(message)
-        .await
-        .map_err(write_failed)
-}
-
 /// What the client lets the player pick and ban right now, for the controls'
 /// disabled states. A list the client did not answer is `None` — unknown, not
 /// empty: the shell checks again before any write anyway.

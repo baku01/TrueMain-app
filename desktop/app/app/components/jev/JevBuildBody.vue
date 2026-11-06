@@ -3,6 +3,8 @@ import type { OpenedStep } from '~/components/jev/JevBuildPath.vue'
 import type { EnemyReading } from '~/composables/useJevBuild'
 import type { LaidBuild } from '~/utils/jev-build'
 import type { Needs, RankedSlot } from '~/utils/jev-recommend'
+import type { JevBase } from '~/utils/jev-bases'
+import { jevImportName, jevImportTitles } from '~/utils/jev-bases'
 
 /**
  * Jev's answer for a build (`useJevBuild`'s), laid out: what it is built
@@ -10,6 +12,9 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
  * (`JevEnemyRead`) — then the recommended and the most played build, each a
  * path of steps (`JevBuildPath`), and every option of the step opened
  * (`JevChoices`). Shared by the Jev matchup page and champion select's panel.
+ * Both builds are named after the base Jev ranked within (`utils/jev-bases`):
+ * "Jev · Lethality" beside that playstyle's most played, and so are their
+ * imports (`TrueMain Aatrox vs Akali · Jev Lethality`).
  */
 const props = defineProps<{
   championId: number
@@ -20,14 +25,20 @@ const props = defineProps<{
   enemies: EnemyReading[]
   jevBuild: LaidBuild | null
   standardBuild: LaidBuild | null
+  /** The base the answer was ranked within; the lane when absent. */
+  base?: JevBase | null
 }>()
 const { t } = useT()
 const { nameOf } = useChampionStatics()
-/** What its imports are named after: the champion against the lane opponent (`TrueMain Aatrox vs Akali`). */
-const importName = computed(() => {
-  const opponent = props.enemies.find(enemy => enemy.opponent)
-  return opponent ? `${nameOf(props.championId)} vs ${opponent.name}` : nameOf(props.championId)
-})
+const { short, tag } = useJevBaseLabels()
+/** What its imports are named after: the champion against the lane opponent, then the base (`TrueMain Aatrox vs Akali · Jev Lethality`). */
+const importName = computed(() => jevImportName(nameOf(props.championId), props.enemies.find(enemy => enemy.opponent)?.name ?? null))
+const titles = computed(() => jevImportTitles(importName.value, tag(props.base ?? null)))
+/** Each build's heading: "Jev · Lethality", and the base's most played. */
+const headings = computed(() => ({
+  jev: t('jevbase.jevTitle', { base: short(props.base ?? null) }),
+  standard: !props.base || props.base.kind === 'lane' ? t('jev.card.standardBuild') : t('jevbase.standardTitle', { base: short(props.base) }),
+}))
 
 /** The step opened below the builds: the one clicked, else the first where Jev parts from the most played. */
 const chosen = ref<OpenedStep | null>(null)
@@ -44,8 +55,8 @@ const opened = computed(() => {
     <JevEnemyRead v-if="needs" :needs="needs" :enemies="enemies" />
 
     <!-- The two builds stacked, step over step, then every option of the step opened. -->
-    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="importName" :build="jevBuild" side="jev" />
-    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="importName" :build="standardBuild" side="standard" />
+    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="titles.jev" :title="headings.jev" :build="jevBuild" side="jev" />
+    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="titles.standard" :title="headings.standard" :build="standardBuild" side="standard" />
     <section v-if="opened" class="surface min-w-0 rounded-2xl p-4">
       <header class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('jev.path.details', { slot: opened.label }) }}</h3>

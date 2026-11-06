@@ -22,6 +22,8 @@ const props = defineProps<{
   foot?: string
   loading?: boolean
   reference?: { text: string, tier: string, hint: string } | null
+  /** One cell of a strip of figures (`PageHero`'s, Blitz's way): no pane of its own, centred, the change under the value. */
+  flush?: boolean
 }>()
 
 const tone = computed(() => {
@@ -32,8 +34,11 @@ const tone = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-1.5 rounded-lg bg-ink-950/55 px-3 pb-2 pt-2.5 ring-1 ring-white/5 backdrop-blur-md transition-all duration-200 hover:ring-white/10 hover:bg-ink-950/70">
-    <div class="flex min-w-0 items-center justify-between gap-2">
+  <div
+    class="flex min-w-0 flex-col gap-1.5"
+    :class="flush ? 'items-center px-3 py-2.5 text-center' : 'rounded-lg bg-ink-950/55 px-3 pb-2 pt-2.5 ring-1 ring-white/5 backdrop-blur-md transition-all duration-200 hover:ring-white/10 hover:bg-ink-950/70'"
+  >
+    <div class="flex min-w-0 items-center gap-2" :class="flush ? 'justify-center' : 'justify-between'">
       <span class="stat-label truncate">{{ label }}</span>
       <UTooltip
         v-if="reference && !loading"
@@ -59,7 +64,8 @@ const tone = computed(() => {
     />
     <div
       v-else
-      class="flex items-baseline justify-between gap-2"
+      class="flex items-baseline gap-2"
+      :class="flush ? 'flex-col items-center gap-1' : 'justify-between'"
     >
       <span class="stat-value text-xl leading-none">{{ value }}</span>
       <UTooltip

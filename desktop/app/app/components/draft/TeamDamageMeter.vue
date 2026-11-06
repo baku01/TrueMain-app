@@ -46,22 +46,7 @@ const percent = (value: number) => `${Math.round(value * 100)}%`
         {{ team.title }}
         <span v-if="team.damage?.unmeasured" class="text-dimmed">· {{ t('damage.meter.unmeasured', { count: team.damage.unmeasured }) }}</span>
       </p>
-      <div class="flex h-7 gap-1" :class="!team.damage && 'opacity-50'">
-        <span
-          v-for="pill in team.pills"
-          :key="pill.key"
-          class="flex min-w-0 items-center justify-center overflow-hidden rounded-lg px-2 text-[11px] font-semibold tabular-nums whitespace-nowrap"
-          :style="{
-            width: `${pill.value * 100}%`,
-            color: pill.color,
-            background: `color-mix(in oklab, ${pill.color} 12%, transparent)`,
-            border: `1px solid color-mix(in oklab, ${pill.color} 30%, transparent)`,
-          }"
-          :title="`${t(`damage.meter.${pill.key}`)}: ${percent(pill.value)}`"
-        >
-          <template v-if="team.damage && pill.value > 0.06">{{ percent(pill.value) }}<template v-if="pill.value > pill.min">&nbsp;{{ pill.label }}</template></template>
-        </span>
-      </div>
+      <DamagePills :split="team.damage" />
       <p
         v-if="team.lean"
         class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium"

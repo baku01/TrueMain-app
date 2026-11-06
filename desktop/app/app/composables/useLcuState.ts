@@ -75,6 +75,10 @@ export function useLcuState() {
     switch (state.value.phase) {
       case 'ChampSelect': return 'draft'
       case 'InProgress': return 'in-game'
+      // A queue with no champion select picks in the lobby, through the queue and the ready check.
+      case 'Lobby':
+      case 'Matchmaking':
+      case 'ReadyCheck': return state.value.lobby ? 'lobby' : 'dashboard'
       default: return 'dashboard'
     }
   })

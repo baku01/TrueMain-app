@@ -20,18 +20,31 @@ const { t } = useT()
 // once per tier band and clipped to it, so its colour changes where it crosses
 // a threshold — fixed below Master, the day's Grandmaster / Challenger cutoff
 // above it (`utils/rank-chart-zones.ts`) — and the thresholds in view are drawn
-// as dashed lines, with the tier crests as the y-axis.
+// as dashed lines, with the tier crests as the y-axis. The ranked card draws
+// it at 150 px with the window's two ends dated; the app's LP history tab
+// draws it taller, with more dates, a dot per snapshot and its `markers` (a
+// season's start, dashed across the plot before the snapshot it names).
 const props = withDefaults(defineProps<{
   points: RankChartPoint[]
   cutoffs?: readonly ApexCutoff[]
+  height?: number
+  /** How many dates the axis reads, the two ends included. */
+  tickCount?: number
+  dots?: boolean
+  /** Lines drawn just before `points[index]`, labelled at the top of the plot. */
+  markers?: readonly { index: number, label: string }[]
 }>(), {
   cutoffs: () => [],
+  height: 150,
+  tickCount: 2,
+  dots: false,
+  markers: () => [],
 })
 
-const HEIGHT = 150
 /** Room under the plot for the date ticks. */
 const AXIS = 18
-const PLOT = HEIGHT - AXIS
+const HEIGHT = computed(() => props.height)
+const PLOT = computed(() => props.height - AXIS)
 
 const box = ref<HTMLElement | null>(null)
 const width = ref(0)
@@ -52,7 +65,7 @@ const frame = computed<PlotFrame>(() => {
   const count = series.value.length
   return {
     xs: series.value.map((_, i) => (count === 1 ? width.value / 2 : (i / (count - 1)) * width.value)),
-    height: PLOT,
+    height: PLOT.value,
     domain: domain.value,
   }
 })
@@ -62,7 +75,7 @@ const line = computed(() => monotonePath(curve.value))
 const area = computed(() => {
   const first = curve.value[0]
   const last = curve.value.at(-1)
-  return first && last ? `${line.value}L${last.x},${PLOT}L${first.x},${PLOT}Z` : ''
+  return first && last ? `${line.value}L${last.x},${PLOT.value}L${first.x},${PLOT.value}Z` : ''
 })
 
 const uid = useId()
@@ -88,9 +101,15 @@ const ticks = computed(() => {
   const count = props.points.length
   if (count === 0) return []
   const xs = frame.value.xs
-  const ends = count === 1 ? [{ x: width.value / 2, index: 0 }] : [{ x: xs[0]!, index: 0 }, { x: xs.at(-1)!, index: count - 1 }]
-  return ends.map(end => ({ x: end.x, label: rankChartDateLabel(props.points[end.index]!.entry.capturedAtUtc) }))
+  if (count === 1) return [{ x: width.value / 2, label: rankChartDateLabel(props.points[0]!.entry.capturedAtUtc) }]
+  const steps = Math.max(2, Math.min(props.tickCount, count))
+  const indices = [...new Set(Array.from({ length: steps }, (_, step) => Math.round((step * (count - 1)) / (steps - 1))))]
+  return indices.map(index => ({ x: xs[index]!, label: rankChartDateLabel(props.points[index]!.entry.capturedAtUtc) }))
 })
+
+const markerLines = computed(() => props.markers
+  .filter(marker => marker.index > 0 && marker.index < props.points.length)
+  .map(marker => ({ ...marker, x: (frame.value.xs[marker.index - 1]! + frame.value.xs[marker.index]!) / 2 })))
 
 const hovered = ref<number | null>(null)
 function hover(event: MouseEvent) {
@@ -139,6 +158,21 @@ const hoveredDot = computed(() => {
           <path :d="area" :fill="zone.color" :mask="`url(#${fadeMaskId})`" />
           <path :d="line" fill="none" :stroke="zone.color" stroke-width="2" stroke-linejoin="round" />
         </g>
+
+        <g v-for="marker in markerLines" :key="marker.index">
+          <line :x1="marker.x" :x2="marker.x" y1="0" :y2="PLOT" stroke="var(--ui-text-muted)" stroke-opacity="0.7" stroke-dasharray="4 3" />
+          <text
+            :x="marker.x + 4"
+            y="10"
+            :text-anchor="marker.x > width - 96 ? 'end' : 'start'"
+            :dx="marker.x > width - 96 ? -8 : 0"
+            class="fill-(--ui-text-muted) text-[10px] font-medium"
+          >{{ marker.label }}</text>
+        </g>
+
+        <template v-if="dots">
+          <circle v-for="(point, index) in curve" :key="index" :cx="point.x" :cy="point.y" r="2" :fill="tierHex(points[index]!.entry.tier)" />
+        </template>
 
         <path
           v-for="threshold in thresholds"

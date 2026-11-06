@@ -10,8 +10,10 @@ const { t } = useT()
 // and the LP curve over the rank-history window. The site's profile and
 // player-scoped champion page read the history from TrueMain; the app's
 // dashboard from its own local snapshots. The app adds what only the client
-// knows through two slots the site leaves empty: `standing` under the Solo/Duo
-// block (the Flex standing), `moves` under the curve (the latest games' LP).
+// knows through slots the site leaves empty: `standing` under the Solo/Duo
+// block (the Flex standing), `moves` under the curve (the latest games' LP),
+// and `title` for the heading (the app's Solo/Flex switch, when the card
+// draws the queue picked rather than Solo/Duo alone).
 const props = withDefaults(defineProps<{
   ranked: ProfileRanked | null
   history?: readonly RankHistoryEntry[]
@@ -33,9 +35,11 @@ const showEmptyChart = computed(
 
 <template>
   <section class="flex flex-col gap-3 surface rounded-lg px-4 py-3">
-    <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-      {{ t('profile.rankedSoloDuo') }}
-    </h2>
+    <slot name="title">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
+        {{ t('profile.rankedSoloDuo') }}
+      </h2>
+    </slot>
 
     <template v-if="ranked">
       <RankSummary
