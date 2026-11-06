@@ -6,11 +6,13 @@ import type { DraftItemPush } from '~/utils/draft-damage'
 import type { ImportChoice } from '~/composables/useDraftAutoImport'
 import type { ImportBuild } from '~/utils/recommended-item-set'
 import type { ItemSetSubject } from '~/composables/useItemSetImport'
+import type { Needs } from '~/utils/jev-recommend'
 import { externalSource, fromBlitz } from '~/utils/data-source'
 import { situationalFromTree } from '~/utils/item-set'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { kitPaths } from '~/utils/kit-tree'
 import { REMEMBER_BUILD, useBuildOptions, usePlaystylePreset } from '~/composables/useBuildOptions'
+import { useJevRowFits } from '~/composables/useJevRowFits'
 
 /**
  * A champion's build, laid out the way the reference client does after a pick
@@ -41,6 +43,8 @@ const props = defineProps<{
   itemAdvice?: DraftItemPush[]
   /** Champion select's layout: the build as Blitz lays it there, runes beside spells, path, situational and max order (`BuildCore`'s `compact`). */
   compact?: boolean
+  /** The team's needs of Jev's answer for this champion, lane and draft: each row is marked by how its items answer them. */
+  jevNeeds?: Needs | null
 }>()
 
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
@@ -52,6 +56,8 @@ const { t } = useT()
 // The rows: the previous build, the draft's, the matchup's, the lane's, the one-tricks' (`useBuildOptions`).
 const { options, pending: lanePending, versusOpponent, defaultKey, remember } = useBuildOptions(toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'draft'))
 const { items, summoners, runeTree, pending: staticPending, loadChampion, championStatic } = useStaticData()
+// Once Jev answered for this draft: how each row's items answer it, and the one that fits best — no new call.
+const jevRows = useJevRowFits(options, toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'jevNeeds'))
 const { patch } = useChampionStatics()
 
 // The champion's spells need the patch, which may land after the view does.
@@ -178,6 +184,7 @@ const emptyMessage = computed(() => t('build.view.none'))
           <span v-if="option.key === 'draft'">{{ t('build.compact.thisDraft') }}</span>
           <span v-else-if="option.name" class="max-w-24 truncate">{{ option.name }}</span>
           <span v-else-if="option.winRate !== null">{{ formatPercentage(option.winRate, 1) }}</span>
+          <JevFitMark v-if="jevRows.fits.get(option.key)" :fit="jevRows.fits.get(option.key)!" :best="jevRows.best === option.key" compact />
         </button>
         <button
           v-for="kit in kits ?? []"
@@ -272,6 +279,8 @@ const emptyMessage = computed(() => t('build.view.none'))
           :draft-label="draft?.label"
           :draft-opponent="draft?.opponentId ?? null"
           :versus-opponent="versusOpponent"
+          :fits="jevRows.fits"
+          :jev-pick="jevRows.best"
           @update:model-value="pick"
         />
         <section v-if="kits?.length">

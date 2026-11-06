@@ -180,7 +180,7 @@ export function familiarity(input: ComfortInput): number | null {
  * null without a game: the wins pulled toward the expected rate by twenty
  * games, five points under it 0, five over it 1.
  */
-export function performance(input: ComfortInput): number | null {
+export function winsOverExpected(input: ComfortInput): number | null {
   const games = input.games
   if (!finite(games) || games <= 0) return null
   const wins = Math.min(Math.max(input.wins ?? 0, 0), games)
@@ -190,7 +190,7 @@ export function performance(input: ComfortInput): number | null {
 
 /** The comfort category: familiarity and performance, the mean of the ones known; null when neither is. */
 export function comfortScore(input: ComfortInput): number | null {
-  return weighted([familiarity(input), performance(input)].filter(finite).map(score => ({ score, weight: 1 })))
+  return weighted([familiarity(input), winsOverExpected(input)].filter(finite).map(score => ({ score, weight: 1 })))
 }
 
 // ─── The total ──────────────────────────────────────────────────────────────

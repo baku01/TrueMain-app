@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BALANCED, DEFAULT_SETTINGS, PRESETS, PRESET_KEYS, WEIGHT_KEYS,
-  clearsMastery, comfortScore, familiarity, normalized, performance, presetOf, rateScore, rebalanced, settingsOf, shrunkRate, tierScore, weightedScore,
+  clearsMastery, comfortScore, familiarity, normalized, presetOf, rateScore, rebalanced, settingsOf, shrunkRate, tierScore, weightedScore, winsOverExpected,
 } from '~/utils/draft-weights'
 
 const sum = (weights: Record<string, number>) => WEIGHT_KEYS.reduce((total, key) => total + weights[key]!, 0)
@@ -90,9 +90,9 @@ describe('each category', () => {
     const now = Date.UTC(2026, 10, 6)
     expect(familiarity({ points: 100_000, games: 20, lastPlayedAt: now, now })).toBeCloseTo(1)
     expect(familiarity({})).toBeNull()
-    expect(performance({ games: 0 })).toBeNull()
+    expect(winsOverExpected({ games: 0 })).toBeNull()
     // 15 wins of 20 against an even lane: (15 + 10) / 40 − 0.5 = +12.5 points, past the +5 that reads 1.
-    expect(performance({ games: 20, wins: 15, expectedWinRate: 0.5 })).toBe(1)
+    expect(winsOverExpected({ games: 20, wins: 15, expectedWinRate: 0.5 })).toBe(1)
     expect(comfortScore({})).toBeNull()
     expect(comfortScore({ games: 20, wins: 15, points: 100_000, lastPlayedAt: now, now })).toBeCloseTo(1)
   })

@@ -3,15 +3,14 @@ import type { JevAnswer } from '~/utils/jev'
 import type { LaidBuild, Names } from '~/utils/jev-build'
 import type { FitRead, ItemRead, Request } from '~/utils/jev-read'
 import type { Needs, RankedSlot } from '~/utils/jev-recommend'
+import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import { candidateItems, closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool, withItemStats } from '~/utils/jev-build'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, rankSlot } from '~/utils/jev-recommend'
 import { readItemStats } from '~/utils/blitz/item-stats'
-import { combineOptions } from '~/utils/sources/combined'
-import { lolalyticsOptions } from '~/utils/sources/lolalytics'
-import { blitzOptions } from '~/utils/sources/blitz'
+import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
 export type JevStatus = 'idle' | 'loading' | 'ready' | 'noKey' | 'noOptions' | 'error'
 
@@ -21,9 +20,11 @@ export type { EnemyReading } from '~/composables/useJevEnemies'
  * The Jev matchup page's recommendation, on the player's click — Jev's calls
  * are paid. In order:
  *
- * 1. the measures: lolalytics' and Blitz's options on the lane pooled game by
- *    game, Blitz's item stats (win probability added, on the lane and against
- *    the lane opponent), the enemies' measured damage split;
+ * 1. the measures: the options of the base the player chose (`base`,
+ *    `utils/jev-bases`: the lane's — lolalytics' and Blitz's pooled game by
+ *    game — by default, else the matchup's, a playstyle's or the
+ *    one-tricks'), Blitz's item stats (win probability added, on the lane and
+ *    against the lane opponent), the enemies' measured damage split;
  * 2. what Jev reads (`utils/jev-read`): every enemy kit, every candidate item,
  *    the lane choices — three requests sent at once, only what this session has
  *    not read yet;
@@ -32,9 +33,15 @@ export type { EnemyReading } from '~/composables/useJevEnemies'
  *    the core item by item, then the items after the measured core closest to
  *    it, an item already in the build left out.
  *
- * Beside it, the most played option of every slot, for comparison.
+ * Beside it, the most played option of every slot of the same base, for
+ * comparison; `answered` says which base the answer is for — another chosen
+ * since waits for the next click.
  */
-export function useJevBuild(subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>) {
+export function useJevBuild(
+  subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>,
+  /** The base to rank within, read on the click; the lane when absent. */
+  base?: () => Promise<LoadedBase | null>,
+) {
   const { patch } = useChampionStatics()
   const { items, summoners, runeTree } = useStaticData()
   const { textOf, loadAll } = useChampionTexts()
@@ -48,6 +55,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
   const jevBuild = ref<LaidBuild | null>(null)
   const standardBuild = ref<LaidBuild | null>(null)
   const elapsedMs = ref<number | null>(null)
+  const answered = ref<JevBase | null>(null)
   let generation = 0
 
   // A new draft drops the last answer: it was for another board. The same board recomputed (champion select's clock) keeps it.
@@ -59,6 +67,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     enemies.value = []
     jevBuild.value = null
     standardBuild.value = null
+    answered.value = null
   })
 
   async function ask() {
@@ -76,11 +85,8 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       const enemyIds = request.enemies.map(enemy => enemy.championId)
 
       // 1. The measures.
-      const [options, laneStats, versusStats] = await Promise.all([
-        Promise.all([
-          lolalyticsOptions(championId, position).catch(() => null),
-          blitzOptions(championId, position).catch(() => null),
-        ]).then(([lolalytics, blitz]) => combineOptions(lolalytics, blitz)),
+      const [loaded, laneStats, versusStats] = await Promise.all([
+        base ? base() : laneOptions(championId, position).then(options => (options ? { base: LANE_BASE, options } : null)),
         readItemStats(championId, position).catch(() => new Map()),
         opponentId ? readItemStats(championId, position, opponentId).catch(() => new Map()) : new Map(),
         loadAll([championId, ...enemyIds]),
@@ -88,7 +94,8 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
         reader.load(),
       ])
       if (mine !== generation) return
-      if (!options || !options.cores.length) return void (status.value = 'noOptions')
+      const options = loaded?.options
+      if (!loaded || !options || !options.cores.length) return void (status.value = 'noOptions')
 
       const tree = runeTree.value
       const names: Names = {
@@ -207,6 +214,7 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
       jevBuild.value = laidBuild(pickOf('pick'), jevCore, jevLater)
       standardBuild.value = laidBuild(pickOf('standard'), sourceCore, standardLater)
       elapsedMs.value = Math.round(performance.now() - started)
+      answered.value = loaded.base
       status.value = 'ready'
     }
     catch (failure) {
@@ -216,5 +224,5 @@ export function useJevBuild(subject: Ref<{ championId: number, request: Composit
     }
   }
 
-  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, ask }
+  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, ask }
 }

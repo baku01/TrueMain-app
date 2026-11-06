@@ -2,6 +2,7 @@
 import { formatCount } from '#shared/utils/counts'
 import { formatPercentageOrDash } from '#shared/utils/ddragon'
 import type { BuildOption } from '~/types/build'
+import type { RowFit } from '~/utils/jev-row-fit'
 
 /**
  * The builds a view can switch between, one row each, drawn as icons alone:
@@ -25,6 +26,9 @@ const props = defineProps<{
   draftOpponent?: number | null
   /** The lane opponent the `versus-` rows were measured against: they list under "Matchup builds vs" and its portrait. */
   versusOpponent?: number | null
+  /** Once Jev answered for this draft: how each row's items answer it (`useJevRowFits`), and the row that fits best. */
+  fits?: Map<string, RowFit>
+  jevPick?: string | null
 }>()
 
 const selected = defineModel<string | null>({ default: null })
@@ -113,6 +117,7 @@ const groups = computed<Group[]>(() => [
         </div>
 
         <span v-if="option.name" class="min-w-0 flex-1 truncate text-[11px] font-semibold text-highlighted" :title="option.name">{{ option.name }}</span>
+        <JevFitMark v-if="fits?.get(option.key)" :fit="fits.get(option.key)!" :best="jevPick === option.key" :class="option.name ? '' : 'ml-auto'" />
         <div class="ml-auto shrink-0 text-right leading-tight">
           <p class="text-xs font-semibold tabular-nums" :class="winRateTone(option.winRate)">
             {{ formatPercentageOrDash(option.winRate, 0) }}
