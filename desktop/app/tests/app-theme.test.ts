@@ -38,6 +38,22 @@ describe('app theme', () => {
     expect(svg).toContain('stop-color="#ffcc00"')
   })
 
+  it('draws Cinnamoroll\'s puppy on its pink tile in place of the mark, rounded on the Dock', () => {
+    for (const theme of ['cinnamoroll', 'cinnamoroll-night'] as const) {
+      const svg = appIconSvg({ theme, accent: 'pink' }, true)!
+      expect(svg).toContain('fill="#f5d6e1"')
+      expect(svg).toContain('rx="14.4"')
+      expect(svg).toContain('#3d76c2')
+      expect(svg).not.toContain('M16 48V22')
+    }
+  })
+
+  it('takes #f5d6e1 as the night twin\'s accent, and its deep shade where the page is light', () => {
+    expect(flavorTokens('cinnamoroll-night', 'pink')['--ui-primary']).toBe('#f5d6e1')
+    expect(flavorTokens('cinnamoroll', 'pink')['--ui-bg']).toBe('#f5d6e1')
+    expect(THEMES.cinnamoroll.pair).toBe('cinnamoroll-night')
+  })
+
   it('mixes two colours channel by channel', () => {
     expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080')
     expect(mix('#1e1e2e', '#1e1e2e', 0.3)).toBe('#1e1e2e')

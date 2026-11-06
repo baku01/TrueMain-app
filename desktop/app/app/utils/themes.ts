@@ -1,5 +1,6 @@
 import type { Accent, Palette } from '~/utils/catppuccin'
 import { PALETTES, mix } from '~/utils/catppuccin'
+import { PUPPY } from '~/utils/theme-art'
 
 /**
  * Every theme painted from a palette (`utils/app-theme`), each written in
@@ -18,8 +19,11 @@ export interface ThemeDef {
   accent: Accent
   /** Its light or dark twin, for the top bar's switch; none goes to Catppuccin Latte (or back to the last dark theme). */
   pair?: string
-  /** The app icon's tile and mark, where the theme draws its own rather than its base and accent. */
-  icon?: { tile: string, mark: string }
+  /**
+   * The app icon's own tile and what is drawn on it, where the theme does not
+   * take its base and accent: the mark in a colour, or a drawing (`theme-art`).
+   */
+  icon?: { tile: string, mark: string } | { tile: string, art: string }
 }
 
 /** The greys between a palette's base and its text, at Catppuccin's own steps. */
@@ -97,6 +101,11 @@ export const THEMES = {
   'one-dark': { light: false, accent: 'blue', palette: palette({ base: '#282c34', mantle: '#21252b', crust: '#1b1f24', text: '#dcdfe4', red: '#e06c75', peach: '#d19a66', yellow: '#e5c07b', green: '#98c379', teal: '#56b6c2', sky: '#56b6c2', blue: '#61afef', mauve: '#c678dd', pink: '#e386c4' }) },
   // Soviet: the banner's red and gold on black, the posters' paper for type.
   'soviet': { light: false, accent: 'red', icon: { tile: '#b3000c', mark: '#ffcc00' }, palette: palette({ base: '#1c1515', mantle: '#161010', crust: '#0f0a0a', text: '#f2e6d0', red: '#e0161f', maroon: '#a3121a', peach: '#e0672a', yellow: '#ffcc00', green: '#7f9a3a', teal: '#5f9e8f', sky: '#8fb2c2', blue: '#5b7fb5', mauve: '#b06a8a', pink: '#e07a86', rosewater: '#f2d7b0', flamingo: '#e8a98a' }) },
+  // Cinnamoroll: a pastel pink page (#f5d6e1) under white panes, the puppy's sky blue beside it. On the light page
+  // the pink is too pale to be read (1.3:1 on white), so the accent there is its deep shade (4.65:1); the night
+  // twin takes the pink itself as its accent.
+  'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { tile: '#f5d6e1', art: PUPPY }, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
+  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { tile: '#f5d6e1', art: PUPPY }, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
 } satisfies Record<string, ThemeDef>
 
 export type PaletteTheme = keyof typeof THEMES

@@ -16,15 +16,18 @@ function star(x: number, y: number, r: number, fill: string): string {
  * The app icon in a palette theme: `desktop/app-icon.svg`'s M-check mark, its
  * stroke the accent's (`markStops`) on the theme's darkest tone (its lightest
  * on a light theme) — or the theme's own tile and mark where it draws one (the
- * Soviet theme's gold on red, under a gold star). Null for TrueMain: the shell
- * puts the bundle's own icon back.
+ * Soviet theme's gold on red, under a gold star), or its drawing in place of
+ * the mark (Cinnamoroll's puppy on pink). Null for TrueMain: the shell puts the
+ * bundle's own icon back.
  */
 export function appIconSvg(choice: Pick<ThemeChoice, 'theme' | 'accent'>, rounded = false): string | null {
   if (!isPaletteTheme(choice.theme)) return null
   const def = themeDef(choice.theme)
-  const [top, middle, foot] = markStops(def.icon?.mark ?? def.palette[choice.accent])
+  const own = def.icon && 'mark' in def.icon ? def.icon.mark : null
+  const [top, middle, foot] = markStops(own ?? def.palette[choice.accent])
   const tile = def.icon?.tile ?? (def.light ? def.palette.base : def.palette.crust)
-  const mark = MARK_PATH + (def.icon ? star(15, 11, 6.5, def.icon.mark) : '')
+  // A drawing in place of the mark (Cinnamoroll's puppy); the mark, with a gold star where the theme gives it its colour (Soviet).
+  const mark = def.icon && 'art' in def.icon ? def.icon.art : MARK_PATH + (own ? star(15, 11, 6.5, own) : '')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">`
     + `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="0.55" stop-color="${middle}"/><stop offset="1" stop-color="${foot}"/></linearGradient></defs>`
     + (rounded

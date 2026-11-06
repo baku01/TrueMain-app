@@ -1,6 +1,6 @@
 import type { MessageDictionary } from '#common/utils/i18n'
 
-/** The theme picker (`SettingsTheme`). The themes' and Catppuccin's accent names are their own, in every language; the Soviet theme's is translated. */
+/** The theme picker (`SettingsTheme`). The themes' and Catppuccin's accent names are their own, in every language; the Soviet theme's and Cinnamoroll Night's are translated. */
 const NAMES = {
   'appearance.theme.truemain': 'TrueMain',
   'appearance.theme.latte': 'Catppuccin Latte',
@@ -17,6 +17,7 @@ const NAMES = {
   'appearance.theme.solarized-dark': 'Solarized Dark',
   'appearance.theme.solarized-light': 'Solarized Light',
   'appearance.theme.one-dark': 'One Dark',
+  'appearance.theme.cinnamoroll': 'Cinnamoroll',
   'appearance.accent.rosewater': 'Rosewater',
   'appearance.accent.flamingo': 'Flamingo',
   'appearance.accent.pink': 'Pink',
@@ -37,6 +38,7 @@ export default {
   'en': {
     ...NAMES,
     'appearance.theme.soviet': 'Soviet Union',
+    'appearance.theme.cinnamoroll-night': 'Cinnamoroll Night',
     'appearance.title': 'Theme',
     'appearance.description': 'The whole app takes the theme\'s colours, its icon included. The top bar\'s switch goes between the theme\'s light and dark.',
     'appearance.mode.light': 'Light',
@@ -48,6 +50,7 @@ export default {
   'pt-BR': {
     ...NAMES,
     'appearance.theme.soviet': 'União Soviética',
+    'appearance.theme.cinnamoroll-night': 'Cinnamoroll Noite',
     'appearance.title': 'Tema',
     'appearance.description': 'O app inteiro muda de cor com o tema, o ícone também. O botão da barra superior alterna entre o claro e o escuro do tema.',
     'appearance.mode.light': 'Claro',
