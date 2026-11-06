@@ -20,6 +20,7 @@ const NO_SLOT: &str = "no-slot";
 
 /// The champions the player may put in a slot, for the picker. `None` when
 /// the client did not answer — unknown, not empty: the write checks again.
+/// An empty grid is no answer either: a player always has the free rotation.
 #[tauri::command]
 pub async fn lobby_choices(
     client: tauri::State<'_, SharedClient>,
@@ -32,7 +33,8 @@ pub async fn lobby_choices(
         .grid_champions()
         .await
         .inspect_err(|error| tracing::debug!(%error, "no lobby champions"))
-        .ok())
+        .ok()
+        .filter(|pickable| !pickable.is_empty()))
 }
 
 /// Change the slot at `slot` as `patch` says, every other field and slot
@@ -58,10 +60,11 @@ pub async fn lobby_slot_set(
     }
     let client = crate::record::attached(&client)?;
     if let Some(champion_id) = patch.champion_id {
-        // A list the client did not answer is no proof either way: the
-        // client refuses a champion the player cannot play on its own.
+        // A list the client did not answer, or answered empty, is no proof
+        // either way: the client refuses a champion the player cannot play
+        // on its own.
         if let Ok(pickable) = client.grid_champions().await {
-            if !pickable.contains(&champion_id) {
+            if !pickable.is_empty() && !pickable.contains(&champion_id) {
                 return Err(NOT_PICKABLE.to_string());
             }
         }

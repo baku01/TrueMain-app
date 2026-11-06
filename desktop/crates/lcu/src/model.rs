@@ -509,7 +509,11 @@ mod tests {
         };
         assert_eq!(named.riot_id().as_deref(), Some("Lumen#EUW"));
         named.name_visibility_type = "HIDDEN".into();
-        assert_eq!(named.riot_id(), None, "a name the client hides stays hidden");
+        assert_eq!(
+            named.riot_id(),
+            None,
+            "a name the client hides stays hidden"
+        );
         assert_eq!(player(0, 0, 0, "").riot_id(), None, "a bot has no Riot ID");
     }
 
