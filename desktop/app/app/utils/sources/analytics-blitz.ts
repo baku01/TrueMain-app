@@ -2,13 +2,16 @@ import type { ChampionAnalytics } from '~/utils/sources/analytics'
 import { emptyAnalytics, summaryFromOptions } from '~/utils/sources/analytics'
 import { SOLO_QUEUE, blitzRows, blitzTier, truemainPosition } from '~/utils/blitz/client'
 import { matchupsFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
+import { synergiesFromBlitz } from '~/utils/blitz/synergies'
+import { POSITIONS } from '#common/utils/positions'
 import { readProMatches } from '~/utils/blitz/pro'
 import { blitzOptions } from '~/utils/sources/blitz'
 
 /**
  * Blitz's analytics: the header with the patch before, the lanes, the build
- * panel's options, every opponent on the lane, the two patches' trend, and the
- * pros who played the champion lately.
+ * panel's options, every opponent on the lane, the allies on each other lane
+ * (their delta over the expected win rate, in points, as the delta), the two
+ * patches' trend, and the pros who played the champion lately.
  */
 const GRADE: Record<number, string> = { 1: 'S', 2: 'A', 3: 'B', 4: 'C', 5: 'D' }
 
@@ -26,7 +29,8 @@ interface Row {
 
 export async function blitzAnalytics(championId: number, position: string, eloBracket: unknown): Promise<ChampionAnalytics> {
   const query = { position, eloBracket }
-  const [rows, options, matchups, trend, pros] = await Promise.all([
+  const allies = POSITIONS.filter(lane => lane !== position)
+  const [rows, options, matchups, trend, pros, synergies] = await Promise.all([
     blitzRows<Row>('champion_postmatch_stats', {
       queue_id: SOLO_QUEUE,
       region: 'WORLD',
@@ -38,6 +42,7 @@ export async function blitzAnalytics(championId: number, position: string, eloBr
     matchupsFromBlitz(championId, query),
     trendFromBlitz(championId, query),
     readProMatches(championId, position).catch(() => []),
+    Promise.all(allies.map(ally => synergiesFromBlitz(championId, position, ally, eloBracket).catch(() => null))),
   ])
   const analytics = emptyAnalytics()
   const lanes = rows.filter(row => row.individual_position !== 'ALL')
@@ -70,6 +75,16 @@ export async function blitzAnalytics(championId: number, position: string, eloBr
     position,
     rows: matchups.matchups.map(entry => ({ championId: entry.opponentChampionId, winRate: entry.winRate, pickRate: entry.playRate, games: entry.games })),
   }]
+  analytics.synergies = allies.map((ally, index) => ({
+    position: ally,
+    rows: (synergies[index]?.rows ?? []).map(entry => ({
+      championId: entry.allyChampionId,
+      winRate: entry.winRate,
+      pickRate: null,
+      games: entry.games,
+      ...(entry.delta === null ? {} : { delta1: entry.delta * 100 }),
+    })),
+  })).filter(lane => lane.rows.length > 0)
   const series = (pick: (point: typeof trend.points[number]) => number) => [{ label: 'all', points: trend.points.map(point => ({ label: point.patch, value: pick(point) })) }]
   analytics.trend = { winRate: series(point => point.winRate), pickRate: series(point => point.pickRate), banRate: series(point => point.banRate ?? 0), games: series(point => point.games) }
 
