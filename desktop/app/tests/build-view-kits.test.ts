@@ -31,6 +31,7 @@ beforeEach(() => {
   vi.stubGlobal('watch', watch)
   vi.stubGlobal('toRef', toRef)
   vi.stubGlobal('useChampionBuilds', () => ({ response: ref(lane), pending: ref(false) }))
+  vi.stubGlobal('useTierList', () => ({ mainEntryOf: () => null }))
   vi.stubGlobal('useStaticData', () => ({ items: ref({}), summoners: ref({}), runeTree: ref(null), pending: ref(false), loadChampion: () => {}, championStatic: () => null }))
   vi.stubGlobal('useChampionStatics', () => ({ patch: ref('16.21.1'), nameOf: (id: number) => String(id) }))
 })

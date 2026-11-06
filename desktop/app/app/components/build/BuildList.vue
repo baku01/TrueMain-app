@@ -3,6 +3,7 @@ import { formatCount } from '#shared/utils/counts'
 import { formatPercentageOrDash } from '#shared/utils/ddragon'
 import type { BuildOption } from '~/types/build'
 import type { RowFit } from '~/utils/jev-row-fit'
+import { positionLabel } from '#common/utils/positions'
 
 /**
  * The builds a view can switch between, one row each, drawn as icons alone:
@@ -15,7 +16,9 @@ import type { RowFit } from '~/utils/jev-row-fit'
  * The player's previous build on the champion and lane heads the list
  * (`useBuildOptions`), and the one-tricks' builds close it, read from Blitz
  * whatever the source — its badge says so. A build the source names by its
- * playstyle (Blitz's Bruiser, Lethality…) carries the name on its row.
+ * playstyle (Blitz's Bruiser, Lethality…) carries the name on its row. On a
+ * lane the champion is rarely played on, a note says so and the main lane's
+ * builds follow the lane's (`useBuildOptions`' `thinLane`).
  */
 const props = defineProps<{
   options: BuildOption[]
@@ -29,6 +32,8 @@ const props = defineProps<{
   /** Once Jev answered for this draft: how each row's items answer it (`useJevRowFits`), and the row that fits best. */
   fits?: Map<string, RowFit>
   jevPick?: string | null
+  /** The lane's games when too few to stand for it, and the main lane whose builds are offered beside them. */
+  thinLane?: { games: number, main: string } | null
 }>()
 
 const selected = defineModel<string | null>({ default: null })
@@ -43,6 +48,7 @@ const previousOption = computed(() => props.options.find(option => option.key ==
 const versusOptions = computed(() => props.options.filter(option => option.key.startsWith('versus-')))
 const otpOptions = computed(() => props.options.filter(option => option.key.startsWith('otp-')))
 const laneOptions = computed(() => props.options.filter(option => option.key.startsWith('lane-')))
+const mainOptions = computed(() => props.options.filter(option => option.key.startsWith('main-')))
 
 interface Group { label: string, opponent: number | null, versus: string, options: BuildOption[], badge?: string, icon?: string }
 const groups = computed<Group[]>(() => [
@@ -59,12 +65,17 @@ const groups = computed<Group[]>(() => [
     ? [{ label: 'matchup', opponent: props.versusOpponent, versus: t('build.list.matchup'), options: versusOptions.value }]
     : []),
   ...(laneOptions.value.length ? [{ label: draftOption.value || versusOptions.value.length ? t('build.list.onLane') : t('build.list.builds'), opponent: null, versus: '', options: laneOptions.value }] : []),
+  ...(mainOptions.value.length && props.thinLane ? [{ label: t('buildx.main', { lane: positionLabel(props.thinLane.main) ?? props.thinLane.main }), opponent: null, versus: '', icon: 'i-lucide-route', options: mainOptions.value }] : []),
   ...(otpOptions.value.length ? [{ label: t('buildx.otp'), opponent: null, versus: '', icon: 'i-lucide-crosshair', badge: 'Blitz', options: otpOptions.value }] : []),
 ])
 </script>
 
 <template>
   <div class="flex flex-col gap-3">
+    <p v-if="thinLane" class="flex items-start gap-1.5 rounded-md bg-warning/10 px-2 py-1.5 text-[11px] leading-snug text-warning">
+      <UIcon name="i-lucide-circle-alert" class="mt-px size-3.5 shrink-0" />
+      {{ t('buildx.thin', { games: formatCount(thinLane.games), lane: positionLabel(thinLane.main) ?? thinLane.main }) }}
+    </p>
     <div v-for="group in groups" :key="group.label" class="flex flex-col gap-0.5">
       <h3 v-if="group.opponent" class="flex items-center gap-1.5 px-2 pb-1 stat-label">
         {{ group.versus }}
