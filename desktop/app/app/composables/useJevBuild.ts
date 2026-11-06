@@ -11,7 +11,7 @@ import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, rankSlot } from '~/utils/jev-recommend'
-import { bootsUrgency, dueAt, healCutFits } from '~/utils/jev-rules'
+import { bootsUrgency, dueAt, healCutFits, withDraftBoots } from '~/utils/jev-rules'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
@@ -175,7 +175,9 @@ export function useJevBuild(
       const { team, lane: laneOf } = assessment
       const context = { team, lane: laneOf, itemReads, tags, fits, urgency }
 
-      const result: RankedSlot[] = first.map(slot => rankSlot(slot, context))
+      // Boots past the three most played that answer the lane (`withDraftBoots`).
+      const bootsFor = (slot: (typeof first)[number]) => withItemStats([withDraftBoots(slot, options.boots, names.item, id => answersDraft(id, laneOf, itemReads, tags))], laneStats, versusStats)[0]!
+      const result: RankedSlot[] = first.map(slot => rankSlot(slot.kind === 'boots' ? bootsFor(slot) : slot, context))
       const pickOf = (side: 'pick' | 'standard') => (name: string) => result.find(entry => entry.slot.name === name)?.[side] ?? null
       // What a build may hold: its boots and items within the inventory (the starting item that grows keeps a slot), no limited group over its count.
       const roomOf = (side: 'pick' | 'standard') => roomFor(pickOf(side)('starter')?.itemIds ?? []) - (pickOf(side)('boots') ? 1 : 0)

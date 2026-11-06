@@ -1,5 +1,8 @@
 import type { ItemRead } from '~/utils/jev-read'
 import type { Resist } from '~/utils/jev-needs'
+import type { JevSlot } from '~/utils/jev-build'
+import type { ItemOption } from '~/utils/sources/model'
+import { MIN_GAMES } from '~/utils/jev-build'
 
 /**
  * LoLTheory's draft rules (blog.loltheory.gg), those the needs model can
@@ -63,4 +66,24 @@ export const healCutFits = (id: number, held: readonly number[], reads: Map<numb
 export function bootsUrgency(urgency: number | null, champion: { classes: string[] }, position: string): number | null {
   const enchanter = position === 'UTILITY' && champion.classes[0] === 'Support' && champion.classes[1] === 'Mage'
   return enchanter ? 0 : urgency
+}
+
+/**
+ * The boots slot offers its three most played pairs, and past them the pairs
+ * that answer this draft: Plated Steelcaps "for ADCs facing an AD assassin or
+ * heavy auto-attacks" (/what-is-armor-league-of-legends), Mercury's Treads
+ * into hard crowd control (/what-is-cc-league-of-legends) — on Caitlyn,
+ * Steelcaps are only the fifth pair (626 games), and the rule never had them
+ * to choose. Each still needs its games (`MIN_GAMES`); its statistics read as
+ * any option's, against the slot's most played.
+ */
+export function withDraftBoots(slot: JevSlot, boots: ItemOption[], label: (id: number) => string, answers: (id: number) => boolean): JevSlot {
+  if (slot.kind !== 'boots') return slot
+  const shown = new Set(slot.options.map(option => option.itemIds[0]))
+  const extra = boots.filter(pair => pair.games >= MIN_GAMES && !shown.has(pair.itemIds[0]) && answers(pair.itemIds[0]!))
+  if (!extra.length) return slot
+  return {
+    ...slot,
+    options: [...slot.options, ...extra.map((pair, index) => ({ key: `o${slot.options.length + index}`, games: pair.games, pickRate: pair.pickRate, winRate: pair.winRate, itemIds: pair.itemIds.slice(0, 1), label: label(pair.itemIds[0]!) }))],
+  }
 }

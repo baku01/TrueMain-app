@@ -3,7 +3,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { Needs } from '~/utils/jev-recommend'
 import { rankSlot } from '~/utils/jev-recommend'
-import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits } from '~/utils/jev-rules'
+import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, withDraftBoots } from '~/utils/jev-rules'
 
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 const TAGS: Record<number, string[]> = { 6333: ['Damage', 'Armor', 'Health'], 3071: ['Damage', 'Health', 'ArmorPenetration'], 3047: ['Armor', 'Boots'], 3065: ['SpellBlock', 'Health'] }
@@ -54,5 +54,26 @@ describe('an enchanter\'s boots (LoLTheory)', () => {
     expect(bootsUrgency(null, { classes: ['Support', 'Mage'] }, 'UTILITY')).toBe(0)
     expect(bootsUrgency(0.9, { classes: ['Tank', 'Support'] }, 'UTILITY')).toBe(0.9)
     expect(bootsUrgency(0.9, { classes: ['Support', 'Mage'] }, 'MIDDLE')).toBe(0.9)
+  })
+})
+
+describe('withDraftBoots', () => {
+  const slot: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [
+    { key: 'o0', label: '3006', itemIds: [3006], games: 47843, pickRate: 0.83, winRate: 0.5043 },
+    { key: 'o1', label: '3009', itemIds: [3009], games: 3868, pickRate: 0.067, winRate: 0.5057 },
+    { key: 'o2', label: '3008', itemIds: [3008], games: 2489, pickRate: 0.043, winRate: 0.538 },
+  ] }
+  const boots = [3006, 3009, 3008, 3047, 3111, 3158].map((id, index) => ({ itemIds: [id], games: [47843, 3868, 2489, 626, 399, 15][index]!, pickRate: 0.01, winRate: 0.5 }))
+
+  it('offers Plated Steelcaps past the three most played when they answer the lane (Caitlyn into AD assassins)', () => {
+    const offered = withDraftBoots(slot, boots, String, id => id === 3047 || id === 3158)
+    expect(offered.options.map(option => option.itemIds[0])).toEqual([3006, 3009, 3008, 3047])
+    expect(offered.options.at(-1)!.key).toBe('o3')
+  })
+
+  it('offers nothing more when no other pair answers the lane, or for another slot', () => {
+    expect(withDraftBoots(slot, boots, String, () => false)).toBe(slot)
+    const runes: JevSlot = { ...slot, name: 'runes', kind: 'runes' }
+    expect(withDraftBoots(runes, boots, String, () => true)).toBe(runes)
   })
 })
