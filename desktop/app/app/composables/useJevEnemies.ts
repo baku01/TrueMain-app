@@ -1,8 +1,9 @@
 import type { JevAnswer } from '~/utils/jev'
 import type { ChampionRead, ChampionText } from '~/utils/jev-read'
-import type { EnemyLine, Needs } from '~/utils/jev-recommend'
+import type { EnemyLine, Needs, Resist } from '~/utils/jev-needs'
 import { championReadKey, keepChampionRead, knownChampionRead, readChampion } from '~/utils/jev-read'
-import { laneNeeds, needsOf } from '~/utils/jev-recommend'
+import { laneNeeds, needsOf } from '~/utils/jev-needs'
+import { duesOf } from '~/utils/jev-rules'
 
 /** An enemy as the pages show Jev's reading of it. */
 export interface EnemyReading { id: number, name: string, opponent: boolean, read: ChampionRead }
@@ -12,6 +13,8 @@ export interface EnemyAssessment {
   team: Needs
   lane: Needs
   readings: EnemyReading[]
+  /** The resistances LoLTheory's rule calls for against this team (`duesOf`), every enemy counted, read or not. */
+  dues: Resist[]
 }
 
 /**
@@ -39,13 +42,17 @@ export function useJevEnemies() {
     }
   }
 
-  function lineOf(id: number, position: string | null): EnemyLine | null {
-    const read = knownChampionRead(championReadKey(version(), id))
-    if (!read) return null
+  /** An enemy's damage split, as Blitz measured it on its lane, else as Riot rates its kit. */
+  function splitOf(id: number, position: string | null) {
     const profile = damage.profileOf(id, position)
     const info = champions.value.get(id)?.info
     const rated = info ? info.magic / Math.max(1, info.magic + info.attack) : 0.5
-    return { id, read, physical: profile?.physicalShare ?? 1 - rated, magic: profile?.magicShare ?? rated, weight: profile?.damagePerGame ?? 1 }
+    return { physical: profile?.physicalShare ?? 1 - rated, magic: profile?.magicShare ?? rated, weight: profile?.damagePerGame ?? 1 }
+  }
+
+  function lineOf(id: number, position: string | null): EnemyLine | null {
+    const read = knownChampionRead(championReadKey(version(), id))
+    return read ? { id, read, ...splitOf(id, position) } : null
   }
 
   function assess(enemies: { championId: number, position: string | null }[], opponentId: number | null): EnemyAssessment {
@@ -56,6 +63,7 @@ export function useJevEnemies() {
       team,
       lane: laneNeeds(team, opponent ? needsOf([opponent]) : null),
       readings: lines.map(line => ({ id: line.id, name: champions.value.get(line.id)?.name ?? String(line.id), opponent: line.id === opponentId, read: line.read })),
+      dues: duesOf(enemies.map(enemy => splitOf(enemy.championId, enemy.position))),
     }
   }
 

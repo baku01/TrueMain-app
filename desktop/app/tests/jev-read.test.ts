@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JevAnswer } from '~/utils/jev'
-import { batches, enemyRequest, itemRequest, laneRequest, pickRequest, readChampion, readItem, readPick, scoreOf } from '~/utils/jev-read'
+import { batches, enemyRequest, itemRequest, laneRequest, readChampion, readItem, scoreOf } from '~/utils/jev-read'
+import { pickRequest, readPick } from '~/utils/jev-read-pick'
 
 const darius = { id: 122, name: 'Darius', classes: ['Fighter', 'Tank'], kit: [{ key: 'E', name: 'Apprehend', description: 'Pulls in enemies.' }] }
 const lux = { id: 99, name: 'Lux', classes: ['Mage'], kit: [{ key: 'Q', name: 'Light Binding', description: 'Roots two enemies.' }] }
@@ -8,9 +9,9 @@ const score = (value: number, confidence = 0.8): JevAnswer => ({ type: 'score', 
 const noul = (value: number): JevAnswer => ({ type: 'noul', noul: value })
 
 describe('what Jev is asked', () => {
-  it('asks five scales of each enemy kit, the state holding only the kits, no number', () => {
+  it('asks seven scales of each enemy kit, the state holding only the kits, no number', () => {
     const request = enemyRequest([darius, lux])
-    expect(Object.keys(request.questions)).toHaveLength(10)
+    expect(Object.keys(request.questions)).toHaveLength(14)
     expect(request.questions.e99_cc).toMatchObject({ type: 'score' })
     expect((request.questions.e99_cc as { criteria: string[] }).criteria).toHaveLength(3)
     expect(request.state).toEqual({ enemies: {
@@ -18,6 +19,15 @@ describe('what Jev is asked', () => {
       'Lux': { classes: 'Mage', abilities: { 'Q — Light Binding': 'Roots two enemies.' } },
     } })
     expect(JSON.stringify(request)).not.toMatch(/\d+(\.\d+)?%/)
+  })
+
+  it('asks how much of a kit\'s crowd control Tenacity shortens, and how much of its healing is done in fights (LoLTheory)', () => {
+    const request = enemyRequest([darius])
+    const levels = (key: string) => (request.questions[key] as { criteria: string[] }).criteria
+    expect(levels('e122_ccReducible')[0]).toMatch(/airborne.*suppression.*stasis.*sleep.*nearsight/)
+    expect(levels('e122_ccReducible')[2]).toMatch(/stuns, roots/)
+    expect(levels('e122_healInFight')[0]).toMatch(/Out of combat/)
+    expect(levels('e122_healInFight')[2]).toMatch(/During fights/)
   })
 
   it('asks five yes/no facts of each item and how it suits our champion', () => {
@@ -51,9 +61,10 @@ describe('reading the answers', () => {
     expect(scoreOf(noul(0.9))).toBeNull()
   })
 
-  it('reads a champion only when all five came back, its confidence averaged', () => {
-    const answers = { e99_cc: score(2, 1), e99_heal: score(0, 0.5), e99_burst: score(2, 1), e99_autos: score(0, 0.5), e99_tank: score(0, 1) }
-    expect(readChampion(99, answers)).toMatchObject({ cc: 1, burst: 1, tank: 0, confidence: 0.8 })
+  it('reads a champion only when all seven came back, its confidence averaged', () => {
+    const answers = { e99_cc: score(2, 1), e99_ccReducible: score(2, 0.8), e99_heal: score(0, 0.5), e99_healInFight: score(2, 0.8), e99_burst: score(2, 1), e99_autos: score(0, 0.5), e99_tank: score(0, 1) }
+    expect(readChampion(99, answers)).toMatchObject({ cc: 1, burst: 1, tank: 0 })
+    expect(readChampion(99, answers)!.confidence).toBeCloseTo(0.8)
     expect(readChampion(99, answers)!.heal).toBeCloseTo(0.15)
     expect(readChampion(99, { ...answers, e99_tank: undefined as unknown as JevAnswer })).toBeNull()
   })

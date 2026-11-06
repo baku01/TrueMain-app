@@ -119,6 +119,7 @@ const levelsOf = (option: JevOption) => {
               <span v-if="step.option.games" class="text-[10px] tabular-nums text-dimmed">{{ formatPercentage(step.option.pickRate, 1) }} · {{ compact.format(step.option.games) }}</span>
               <span v-if="has(step.option.wpa) || has(step.option.vsWpa)" class="flex flex-wrap justify-center gap-x-1.5 text-[10px] font-semibold tabular-nums">
                 <span v-if="has(step.option.wpa)" :class="wpaTone(step.option.wpa)" :title="t('jev.card.wpaHint')">WPA {{ signed(step.option.wpa) }}</span>
+                <span v-if="has(step.option.slotWpa)" :class="wpaTone(step.option.slotWpa)" :title="t('jev.card.slotWpaHint', { games: step.option.slotGames ?? 0 })">{{ t('jev.card.slot') }} {{ signed(step.option.slotWpa) }}</span>
                 <span v-if="has(step.option.vsWpa)" :class="wpaTone(step.option.vsWpa)" :title="t('jev.card.vsWpaHint', { games: step.option.vsGames ?? 0 })">{{ t('jev.card.vs') }} {{ signed(step.option.vsWpa) }}</span>
               </span>
               <UBadge v-if="step.option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" />
