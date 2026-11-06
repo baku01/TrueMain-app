@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { REMEMBER_BUILD } from '~/composables/useBuildOptions'
 import type { ItemSetBlocks, ItemSetSubject } from '~/composables/useItemSetImport'
 
 /**
@@ -15,6 +16,12 @@ const props = defineProps<{
 
 const { t } = useT()
 const { available, pending, done, importItemSet } = useItemSetImport()
+/** Inside a build view, an import keeps the build as the player's previous one (`useBuildOptions`). */
+const remember = inject(REMEMBER_BUILD, null)
+function run() {
+  remember?.()
+  void importItemSet(props.subject)
+}
 </script>
 
 <template>
@@ -29,7 +36,7 @@ const { available, pending, done, importItemSet } = useItemSetImport()
       :loading="pending"
       :aria-label="t('build.importItems')"
       :class="labeled ? '' : 'text-dimmed hover:text-highlighted'"
-      @click="importItemSet(props.subject)"
+      @click="run()"
     />
   </UTooltip>
 </template>

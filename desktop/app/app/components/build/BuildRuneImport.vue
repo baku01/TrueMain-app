@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { REMEMBER_BUILD } from '~/composables/useBuildOptions'
 import type { KitRunePage } from '#shared/types/kit'
 
 /**
@@ -15,6 +16,12 @@ const props = defineProps<{
 
 const { t } = useT()
 const { available, pending, done, importRunes } = useRuneImport()
+/** Inside a build view, an import keeps the build as the player's previous one (`useBuildOptions`). */
+const remember = inject(REMEMBER_BUILD, null)
+function run() {
+  remember?.()
+  void importRunes(props.page, props.champion)
+}
 </script>
 
 <template>
@@ -29,7 +36,7 @@ const { available, pending, done, importRunes } = useRuneImport()
       :loading="pending"
       :aria-label="t('build.importRunes')"
       :class="labeled ? '' : 'text-dimmed hover:text-highlighted'"
-      @click="importRunes(props.page, props.champion)"
+      @click="run()"
     />
   </UTooltip>
 </template>

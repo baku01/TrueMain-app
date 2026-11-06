@@ -6,6 +6,8 @@ import type { TierEntry } from '~/composables/useTierList'
 import type { DamageNote } from '~/utils/draft-damage'
 import type { RankedPick } from '~/utils/jev-recommend'
 import { PICK_WEIGHTS } from '~/utils/jev-recommend'
+import type { WeightedScore } from '~/utils/draft-weights'
+import { WEIGHT_KEYS } from '~/utils/draft-weights'
 
 /**
  * One suggested pick or ban as a poster (the splash, framed on the face, the rank a large numeral, the name in capitals over the floor): the champion's loading art whole,
@@ -21,7 +23,9 @@ import { PICK_WEIGHTS } from '~/utils/jev-recommend'
  * `action` slot sits over the art's corner, above it (the hover or ban control).
  * A pick that answers a one-sided team's damage mix carries a note (#1907), and
  * the player's own recent games on it are said on hover (#1906) — both said,
- * never scored.
+ * never scored. Ranked by the player's suggestion weights instead
+ * (`weighted`, Blitz's "Suggestion Weights"), it carries that score in the
+ * same ring, its four categories on hover, each with its weight and points.
  */
 const props = defineProps<{
   championId: number
@@ -41,6 +45,8 @@ const props = defineProps<{
   note?: DamageNote | null
   /** The player's own recent games on the champion, from their client — said, never scored. */
   comfort?: string | null
+  /** Its score under the player's suggestion weights, when those order the picks. */
+  weighted?: WeightedScore | null
 }>()
 
 const { nameOf } = useChampionStatics()
@@ -66,13 +72,21 @@ const why = computed(() => {
   return [...texts.value.map(text => text.full), props.thin ? t('draft.card.fewGamesBehind') : null, note, comfort].filter(Boolean).join('\n')
 })
 
-/** Jev's score, part by part: each part's share of the weight that counted, and the points it brings. */
+/** The ring's score: Jev's, else the weighted one; 0–1. */
+const score = computed(() => props.jev?.total ?? props.weighted?.total ?? null)
+
+/** The score, part by part: each part's share of the weight that counted, and the points it brings. */
 const breakdown = computed(() => {
   const parts = props.jev?.parts
-  if (!parts) return []
+  if (!parts) {
+    const weighted = props.weighted?.parts
+    return weighted
+      ? WEIGHT_KEYS.map(key => ({ key, label: t(`draft.weights.part.${key}`), hint: t(`draft.weights.part.${key}.hint`), ...weighted[key], points: weighted[key].points * 100 }))
+      : []
+  }
   const present = (['stats', 'lane', 'team', 'enemy'] as const).filter(part => parts[part] !== undefined)
   const weight = present.reduce((sum, part) => sum + PICK_WEIGHTS[part], 0)
-  return present.map(part => ({ part, value: parts[part]!, weight: PICK_WEIGHTS[part] / weight, points: (PICK_WEIGHTS[part] / weight) * parts[part]! * 100 }))
+  return present.map(part => ({ key: part, label: t(`jev.pick.part.${part}`), hint: t(`jev.pick.part.${part}.hint`), value: parts[part]!, weight: PICK_WEIGHTS[part] / weight, points: (PICK_WEIGHTS[part] / weight) * parts[part]! * 100 }))
 })
 </script>
 
@@ -88,25 +102,25 @@ const breakdown = computed(() => {
 
     <!-- The score: Jev's in its ring, its breakdown on hover; else the leading reason's figure. -->
     <div class="absolute right-2 top-2 z-10">
-      <UTooltip v-if="jev" :content="{ side: 'top' }" :delay-duration="100">
+      <UTooltip v-if="score !== null" :content="{ side: 'top' }" :delay-duration="100">
         <span class="flex items-center gap-1 rounded-md bg-ink-950/70 px-1.5 py-1 ring-1 ring-white/10 backdrop-blur">
-          <svg viewBox="0 0 20 20" class="size-4 -rotate-90"><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" class="stroke-white/15" /><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" stroke-linecap="round" class="stroke-primary" :stroke-dasharray="`${50.27 * jev.total} 50.27`" /></svg>
-          <span class="font-display text-xs font-bold tabular-nums text-white">{{ Math.round(jev.total * 100) }}</span>
+          <svg viewBox="0 0 20 20" class="size-4 -rotate-90"><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" class="stroke-white/15" /><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" stroke-linecap="round" class="stroke-primary" :stroke-dasharray="`${50.27 * score} 50.27`" /></svg>
+          <span class="font-display text-xs font-bold tabular-nums text-white">{{ Math.round(score * 100) }}</span>
         </span>
         <template #content>
           <div class="flex w-64 flex-col gap-1.5 rounded-md bg-default p-2 ring-1 ring-default">
-            <p class="text-xs font-semibold text-highlighted">{{ t('jev.pick.breakdown') }}</p>
+            <p class="text-xs font-semibold text-highlighted">{{ jev ? t('jev.pick.breakdown') : t('draft.weights.breakdown') }}</p>
             <div class="grid grid-cols-[minmax(0,1fr)_2.75rem_3rem] gap-x-2 gap-y-1 text-[11px] tabular-nums">
               <span class="text-dimmed">{{ t('jev.pick.signal') }}</span>
               <span class="text-right text-dimmed">{{ t('jev.pick.weight') }}</span>
               <span class="text-right text-dimmed">{{ t('jev.pick.points') }}</span>
-              <template v-for="row in breakdown" :key="row.part">
-                <span class="truncate text-muted" :title="t(`jev.pick.part.${row.part}.hint`)">{{ t(`jev.pick.part.${row.part}`) }} · {{ Math.round(row.value * 100) }}</span>
+              <template v-for="row in breakdown" :key="row.key">
+                <span class="truncate text-muted" :title="row.hint">{{ row.label }} · {{ Math.round(row.value * 100) }}</span>
                 <span class="text-right text-muted">{{ Math.round(row.weight * 100) }}%</span>
                 <span class="text-right font-semibold text-highlighted">{{ Math.round(row.points) }}</span>
               </template>
             </div>
-            <p v-if="jev.confidence !== null" class="text-[10px] text-dimmed">{{ t('jev.card.confidence', { value: `${Math.round(jev.confidence * 100)}%` }) }}</p>
+            <p v-if="jev && jev.confidence !== null" class="text-[10px] text-dimmed">{{ t('jev.card.confidence', { value: `${Math.round(jev.confidence * 100)}%` }) }}</p>
           </div>
         </template>
       </UTooltip>

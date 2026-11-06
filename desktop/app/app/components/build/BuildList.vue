@@ -11,6 +11,10 @@ import type { BuildOption } from '~/types/build'
  * width the build itself needs. The build computed for this draft comes first,
  * under its own heading ("vs Zed"), then the builds played in that matchup
  * when the source measures them (Blitz), then the champion's lane builds.
+ * The player's previous build on the champion and lane heads the list
+ * (`useBuildOptions`), and the one-tricks' builds close it, read from Blitz
+ * whatever the source — its badge says so. A build the source names by its
+ * playstyle (Blitz's Bruiser, Lethality…) carries the name on its row.
  */
 const props = defineProps<{
   options: BuildOption[]
@@ -31,10 +35,14 @@ const { nameOf, portraitOf } = useChampionStatics()
 const { perk, perkStyle, item } = useBuildResolvers(runeTree, items)
 
 const draftOption = computed(() => props.options.find(option => option.key === 'draft') ?? null)
+const previousOption = computed(() => props.options.find(option => option.key === 'previous') ?? null)
 const versusOptions = computed(() => props.options.filter(option => option.key.startsWith('versus-')))
-const laneOptions = computed(() => props.options.filter(option => option.key !== 'draft' && !option.key.startsWith('versus-')))
+const otpOptions = computed(() => props.options.filter(option => option.key.startsWith('otp-')))
+const laneOptions = computed(() => props.options.filter(option => option.key.startsWith('lane-')))
 
-const groups = computed(() => [
+interface Group { label: string, opponent: number | null, versus: string, options: BuildOption[], badge?: string, icon?: string }
+const groups = computed<Group[]>(() => [
+  ...(previousOption.value ? [{ label: t('buildx.previous'), opponent: null, versus: '', icon: 'i-lucide-history', options: [previousOption.value] }] : []),
   ...(draftOption.value
     ? [{
         label: draftOption.value.standard ? t('build.list.standard') : (props.draftLabel ?? t('build.list.thisDraft')),
@@ -47,6 +55,7 @@ const groups = computed(() => [
     ? [{ label: 'matchup', opponent: props.versusOpponent, versus: t('build.list.matchup'), options: versusOptions.value }]
     : []),
   ...(laneOptions.value.length ? [{ label: draftOption.value || versusOptions.value.length ? t('build.list.onLane') : t('build.list.builds'), opponent: null, versus: '', options: laneOptions.value }] : []),
+  ...(otpOptions.value.length ? [{ label: t('buildx.otp'), opponent: null, versus: '', icon: 'i-lucide-crosshair', badge: 'Blitz', options: otpOptions.value }] : []),
 ])
 </script>
 
@@ -57,7 +66,11 @@ const groups = computed(() => [
         {{ group.versus }}
         <img v-if="portraitOf(group.opponent)" :src="portraitOf(group.opponent)!" :alt="nameOf(group.opponent)" :title="nameOf(group.opponent)" class="img-skeleton size-4 rounded">
       </h3>
-      <h3 v-else class="truncate px-2 pb-1 stat-label">{{ group.label }}</h3>
+      <h3 v-else class="flex items-center gap-1.5 px-2 pb-1 stat-label">
+        <UIcon v-if="group.icon" :name="group.icon" class="size-3.5 shrink-0 text-primary" />
+        <span class="truncate">{{ group.label }}</span>
+        <span v-if="group.badge" class="ml-auto shrink-0 rounded bg-primary/15 px-1.5 py-px text-[9px] font-bold normal-case tracking-normal text-primary" :title="t('buildx.badge', { source: group.badge })">{{ group.badge }}</span>
+      </h3>
 
       <button
         v-for="option in group.options"
@@ -99,6 +112,7 @@ const groups = computed(() => [
           />
         </div>
 
+        <span v-if="option.name" class="min-w-0 flex-1 truncate text-[11px] font-semibold text-highlighted" :title="option.name">{{ option.name }}</span>
         <div class="ml-auto shrink-0 text-right leading-tight">
           <p class="text-xs font-semibold tabular-nums" :class="winRateTone(option.winRate)">
             {{ formatPercentageOrDash(option.winRate, 0) }}

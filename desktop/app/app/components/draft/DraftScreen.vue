@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { DraftSelection } from '~/composables/useDraftAutoImport'
-import type { DraftSuggestionItem } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { ViewedPick } from '~/composables/useDraftSubject'
 import type { PickSubject } from '~/composables/useJevPick'
@@ -49,18 +48,6 @@ const banTime = computed(() => {
   return props.draft.timerPhase === 'PLANNING' && props.draft.myChampion !== null && !props.draft.myChampionLocked
 })
 const { bans, pending: banPending, error: banError } = useDraftBans(draft, lanePool, banTime, eloBracket)
-
-const pickSuggestions = computed<DraftSuggestionItem[]>(() => (recommendation.value?.candidates ?? []).map(candidate => ({
-  championId: candidate.championId,
-  reasons: candidate.reasons ?? [],
-  thin: candidate.thinSample,
-})))
-
-const banSuggestions = computed<DraftSuggestionItem[]>(() => (bans.value?.candidates ?? []).map(candidate => ({
-  championId: candidate.championId,
-  reasons: candidate.reasons,
-  thin: false,
-})))
 
 const enemyLanes = computed(() => recommendation.value?.enemyLanes ?? [])
 const { slots, pinned, hasCorrections, swap, reset } = useLaneAssignment(enemyLanes)
@@ -193,19 +180,13 @@ function openTab(next: 'suggestions' | 'builds') {
 }
 const suggestionKind = computed<'pick' | 'ban'>(() => (banTime.value ? 'ban' : 'pick'))
 
-/** The picks in the grid: Jev's order once it answered, else the source's. */
-const shownPicks = computed<DraftSuggestionItem[]>(() => {
-  if (suggestionKind.value === 'ban') return banSuggestions.value
-  const scores = jevScores.value
-  if (!scores) return pickSuggestions.value
-  const byId = new Map(pickSuggestions.value.map(item => [item.championId, item]))
-  return jevPicks.ranked.value.map(pick => byId.get(pick.championId) ?? { championId: pick.championId, reasons: [], thin: false })
-})
+/** The cards in the grid: the bans, Jev's picks once it answered, else the source's re-ranked by the player's weights. */
+const { shownPicks, weighted } = useDraftSuggestionItems(draft, recommendation, bans, suggestionKind, { scores: jevScores, ranked: jevPicks.ranked })
 const jevStatus = computed(() => (tab.value === 'builds' ? jevBuild.status.value : jevPicks.status.value))
 const askJev = () => (tab.value === 'builds' ? jevBuild.ask() : jevPicks.ask())
 const jevReadings = computed(() => (!withJev.value ? null : tab.value === 'builds' ? (jevBuild.enemies.value.length ? jevBuild.enemies.value : null) : jevPicks.assessment.value?.readings ?? null))
 const subtitle = computed(() => {
-  if (!withJev.value) return t('draft.sugg.fromSource')
+  if (!withJev.value) return t('draft.weights.subtitle')
   return jevStatus.value === 'ready' ? t('draft.sugg.fromJev') : t('draft.sugg.askJev')
 })
 
@@ -237,7 +218,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
           :damage-picks="allyDamagePicks"
           @view="view('ally', $event)"
         />
-        <DraftSideLists class="min-h-0 flex-1" :groups="['tiers']" :position="draft.myPosition" :opponent-id="duel.opponentId" :opponent-counters="[]" :jev-readings="null" @preview="previewed = $event" />
+        <DraftSideLists class="min-h-0 flex-1" :groups="['favorites', 'tiers']" :position="draft.myPosition" :opponent-id="duel.opponentId" :opponent-counters="[]" :jev-readings="null" @preview="previewed = $event" />
       </aside>
 
       <!-- The card the draft is for, as Blitz tabs it: suggestions while our pick or ban is open, the build once there is one. -->
@@ -316,6 +297,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
               :position="draft.myPosition"
               :allies="lockedAllies"
               :jev-scores="suggestionKind === 'pick' ? jevScores : null"
+              :weighted="weighted"
               :subtitle="suggestionKind === 'pick' ? subtitle : null"
               @preview="previewed = $event"
             />

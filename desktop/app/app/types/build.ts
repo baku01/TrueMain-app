@@ -65,6 +65,8 @@ export interface ChampionBuild {
   pickRate: number
   winRate: number
   core: BuildCoreView
+  /** The playstyle the source names the build by (Blitz's tags: `Bruiser`, `Lethality · AD`); absent where the source names none. */
+  name?: string | null
 }
 
 export interface ChampionBuildResponse {
@@ -145,4 +147,6 @@ export interface BuildOption {
   winRate: number | null
   /** The draft's build fell back to the lane's standard one: the matchup was never recorded. */
   standard?: boolean
+  /** The playstyle the source names the build by (`ChampionBuild.name`). */
+  name?: string | null
 }

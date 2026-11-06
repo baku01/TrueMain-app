@@ -9,6 +9,8 @@ export function useDraftTeamRows(
   recommendation: Ref<DraftRecommendation | null>,
   slots: Ref<LaneSlot[]>,
 ) {
+  const { state: lcu } = useLcuState()
+
   /** Rows follow the lanes when the queue assigns them, so row n is a matchup. */
   const byLane = computed(() => draft.value.myPosition !== '')
 
@@ -22,6 +24,8 @@ export function useDraftTeamRows(
       lane: (slot?.position || (byLane.value ? POSITIONS[index] : null)) as Lane | null,
       locked: slot?.locked ?? false,
       me: slot?.isMe ?? false,
+      // Our own Riot ID is the client's; an ally's, when the session names them.
+      riotId: slot?.isMe ? lcu.value.riotId : (slot?.riotId ?? null),
     }))
   })
 

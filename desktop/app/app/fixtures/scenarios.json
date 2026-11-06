@@ -136,13 +136,15 @@
             "championId": null,
             "position": "TOP",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Zueb#EUW"
           },
           {
             "championId": null,
             "position": "JUNGLE",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Ascine#EUW"
           },
           {
             "championId": null,
@@ -154,7 +156,8 @@
             "championId": null,
             "position": "BOTTOM",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Doros#NVA"
           },
           {
             "championId": null,
@@ -204,13 +207,15 @@
             "championId": null,
             "position": "TOP",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Zueb#EUW"
           },
           {
             "championId": 64,
             "position": "JUNGLE",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Ascine#EUW"
           },
           {
             "championId": null,
@@ -222,7 +227,8 @@
             "championId": null,
             "position": "BOTTOM",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Doros#NVA"
           },
           {
             "championId": null,
@@ -272,13 +278,15 @@
             "championId": 266,
             "position": "TOP",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Zueb#EUW"
           },
           {
             "championId": null,
             "position": "JUNGLE",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Ascine#EUW"
           },
           {
             "championId": 103,
@@ -290,7 +298,8 @@
             "championId": null,
             "position": "BOTTOM",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Doros#NVA"
           },
           {
             "championId": null,
@@ -361,13 +370,15 @@
             "championId": 266,
             "position": "TOP",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Zueb#EUW"
           },
           {
             "championId": 254,
             "position": "JUNGLE",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Ascine#EUW"
           },
           {
             "championId": 103,
@@ -379,7 +390,8 @@
             "championId": null,
             "position": "BOTTOM",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Doros#NVA"
           },
           {
             "championId": null,
@@ -466,13 +478,15 @@
             "championId": 266,
             "position": "TOP",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Zueb#EUW"
           },
           {
             "championId": 254,
             "position": "JUNGLE",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Ascine#EUW"
           },
           {
             "championId": 103,
@@ -484,7 +498,8 @@
             "championId": 222,
             "position": "BOTTOM",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Doros#NVA"
           },
           {
             "championId": 412,
@@ -645,13 +660,15 @@
             "championId": 266,
             "position": "TOP",
             "locked": true,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Zueb#EUW"
           },
           {
             "championId": null,
             "position": "JUNGLE",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Ascine#EUW"
           },
           {
             "championId": 103,
@@ -663,7 +680,8 @@
             "championId": null,
             "position": "BOTTOM",
             "locked": false,
-            "isMe": false
+            "isMe": false,
+            "riotId": "Doros#NVA"
           },
           {
             "championId": null,

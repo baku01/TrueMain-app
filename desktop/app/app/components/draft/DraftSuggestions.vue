@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DraftSuggestionItem } from '~/types/draft'
 import type { RankedPick } from '~/utils/jev-recommend'
+import type { WeightedScore } from '~/utils/draft-weights'
 import { comfortOf, comfortText } from '~/utils/draft-comfort'
 import { damageNote } from '~/utils/draft-damage'
 
@@ -16,7 +17,9 @@ import { damageNote } from '~/utils/draft-damage'
  * Picks: "My pool" ranks the player's own champions (their most-mastered on
  * the lane); off, every champion played on the lane. Bans: the threats to the
  * pick the player declared, else to their pool; never a champion an ally
- * hovers or locks. Either way the order is the endpoint's.
+ * hovers or locks. The bans keep the endpoint's order; the picks are
+ * re-ranked by the player's suggestion weights (`DraftWeightsControl`), or
+ * by Jev once asked.
  */
 const props = defineProps<{
   mode: 'pick' | 'ban'
@@ -32,6 +35,8 @@ const props = defineProps<{
   allies: { championId: number, position: string | null }[]
   /** Jev's score of each pick, when Jev ranked them: the cards show it in place of the source's figure. */
   jevScores?: Map<number, RankedPick> | null
+  /** Each pick's score under the player's suggestion weights, while those order the picks (not Jev). */
+  weighted?: Map<number, WeightedScore> | null
   /** Under the title: where the order comes from. */
   subtitle?: string | null
 }>()
@@ -45,6 +50,7 @@ const { writable } = useChampSelectActions()
 const { entryOf, status: tierListStatus } = useTierList()
 const { profileOf } = useDamageProfiles()
 const { games } = usePlayerRecord()
+const { settings: weights } = useSuggestionWeights()
 
 /** What each pick does to our damage mix, when it answers a one-sided team (#1907). Never part of the order, never on a ban. */
 const notes = computed(() => {
@@ -111,6 +117,7 @@ const empty = computed(() => {
   if (props.pending) return { icon: 'i-lucide-loader-circle', text: props.mode === 'ban' ? t('draft.sugg.rankingBans') : t('draft.sugg.rankingPicks') }
   if (props.mode === 'ban') return { icon: 'i-lucide-search-x', text: t('draft.sugg.noBan') }
   if (search.value.trim()) return { icon: 'i-lucide-search-x', text: t('draft.sugg.noMatch') }
+  if (weights.value.minMastery > 0 && props.weighted) return { icon: 'i-lucide-filter-x', text: t('draft.weights.noneClear', { floor: weights.value.minMastery }) }
   if (myPool.value && props.hasPool) return { icon: 'i-lucide-search-x', text: t('draft.sugg.noPoolOnLane') }
   return { icon: 'i-lucide-search-x', text: t('draft.sugg.noneOnLane') }
 })
@@ -131,6 +138,7 @@ const cards = computed(() => shown.value)
       </div>
       <div class="flex items-center gap-3">
         <slot name="tools" />
+        <DraftWeightsControl v-if="mode === 'pick' && weighted" />
         <UIcon v-if="pending" name="i-lucide-loader-circle" class="size-4 animate-spin text-dimmed" />
         <UTooltip v-if="mode === 'pick'" :text="hasPool ? t('draft.sugg.poolTen') : t('draft.sugg.poolNeedsClient')">
           <USwitch :model-value="myPool && hasPool" :label="t('draft.sugg.myPool')" size="sm" :disabled="!hasPool" :ui="{ label: 'stat-label' }" @update:model-value="myPool = $event" />
@@ -151,6 +159,7 @@ const cards = computed(() => shown.value)
             :focused="focused === item.championId"
             :rank="index + 1"
             :jev="jevScores?.get(item.championId) ?? null"
+            :weighted="weighted?.get(item.championId) ?? null"
             :note="notes.get(item.championId) ?? null"
             :comfort="comforts.get(item.championId) ?? null"
           >

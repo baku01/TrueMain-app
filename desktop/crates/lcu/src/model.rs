@@ -201,9 +201,25 @@ pub struct ChampSelectPlayer {
     /// Populated for our own side in queues with assigned roles, and left empty
     /// for the enemy — which is the whole reason the lane guesser exists.
     pub assigned_position: String,
+    /// The player's Riot ID halves as the session lists them: our side's when
+    /// the client names them, empty for a bot.
+    pub game_name: String,
+    pub tag_line: String,
+    /// `HIDDEN` when the client keeps the player's name from the lobby.
+    pub name_visibility_type: String,
 }
 
 impl ChampSelectPlayer {
+    /// `Name#TAG` when the session names the player and the client shows the
+    /// name; `None` for a player it hides (`HIDDEN`), as Blitz reads them
+    /// ("Anonymous"), or one listed without a tag. What the champion select's
+    /// player card reads their history and rank by.
+    pub fn riot_id(&self) -> Option<String> {
+        let (name, tag) = (self.game_name.trim(), self.tag_line.trim());
+        let shown = !self.name_visibility_type.eq_ignore_ascii_case("HIDDEN");
+        (shown && !name.is_empty() && !tag.is_empty()).then(|| format!("{name}#{tag}"))
+    }
+
     /// The champion to show: locked if there is one, hovered otherwise.
     ///
     /// Returns `None` for an empty slot rather than `0`, so the UI draws an
@@ -306,6 +322,9 @@ pub struct TeamSlot {
     pub position: String,
     pub locked: bool,
     pub is_me: bool,
+    /// `Name#TAG` when the client names the player (`ChampSelectPlayer::riot_id`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub riot_id: Option<String>,
 }
 
 /// The client pads unused ban slots with 0; a zero here would render as a
@@ -377,6 +396,7 @@ impl ChampSelectSession {
                 position: player.assigned_position.to_uppercase(),
                 locked: player.is_locked(),
                 is_me: player.cell_id == self.local_player_cell_id,
+                riot_id: player.riot_id(),
             })
             .collect();
 
@@ -441,6 +461,7 @@ mod tests {
             champion_id,
             champion_pick_intent: intent,
             assigned_position: position.to_string(),
+            ..ChampSelectPlayer::default()
         }
     }
 
@@ -477,6 +498,19 @@ mod tests {
     #[test]
     fn an_empty_slot_is_unknown_rather_than_champion_zero() {
         assert_eq!(player(0, 0, 0, "").displayed_champion(), None);
+    }
+
+    #[test]
+    fn a_player_the_client_hides_has_no_riot_id() {
+        let mut named = ChampSelectPlayer {
+            game_name: "Lumen".into(),
+            tag_line: "EUW".into(),
+            ..ChampSelectPlayer::default()
+        };
+        assert_eq!(named.riot_id().as_deref(), Some("Lumen#EUW"));
+        named.name_visibility_type = "HIDDEN".into();
+        assert_eq!(named.riot_id(), None, "a name the client hides stays hidden");
+        assert_eq!(player(0, 0, 0, "").riot_id(), None, "a bot has no Riot ID");
     }
 
     #[test]
@@ -533,18 +567,21 @@ mod tests {
                     position: "UTILITY".into(),
                     locked: true,
                     is_me: false,
+                    riot_id: None,
                 },
                 TeamSlot {
                     champion_id: None,
                     position: "BOTTOM".into(),
                     locked: false,
                     is_me: false,
+                    riot_id: None,
                 },
                 TeamSlot {
                     champion_id: Some(103),
                     position: "MIDDLE".into(),
                     locked: true,
                     is_me: true,
+                    riot_id: None,
                 },
             ],
             "the team keeps its empty cells and its lanes"
