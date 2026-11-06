@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import type { AppTheme } from '~/utils/app-theme'
-import { APP_THEMES, isFlavor } from '~/utils/app-theme'
-import { ACCENTS, PALETTES } from '~/utils/catppuccin'
+import { APP_THEMES, isPaletteTheme } from '~/utils/app-theme'
+import { ACCENTS } from '~/utils/catppuccin'
+import { themeDef } from '~/utils/themes'
 
 /**
- * The theme (`useAppTheme`): TrueMain's or a Catppuccin flavour, each card a
- * small picture of its page — the page, a pane on it, the accent and the text
- * — and, under a flavour, its fourteen accents.
+ * The theme (`useAppTheme`): TrueMain's or a palette theme (`utils/themes`),
+ * each card a small picture of its page — the page, a pane on it, the accent
+ * and the text — and, under a palette theme, its fourteen accents.
  */
 const { t } = useT()
 const { choice, setTheme, setAccent } = useAppTheme()
 
-/** What a card draws: TrueMain's dark navy, or the flavour's own tones in the accent picked. */
+/** What a card draws: TrueMain's dark navy, or the theme's own tones in the accent it shows. */
 function preview(theme: AppTheme) {
-  if (!isFlavor(theme)) return { page: '#080c14', pane: '#101827', accent: '#52a8ff', text: '#e8eef9', dim: '#61708a' }
-  const palette = PALETTES[theme]
-  return { page: theme === 'latte' ? palette.crust : palette.mantle, pane: palette.base, accent: palette[choice.value.accent], text: palette.text, dim: palette.overlay1 }
+  if (!isPaletteTheme(theme)) return { page: '#080c14', pane: '#101827', accent: '#52a8ff', text: '#e8eef9', dim: '#61708a' }
+  const { palette, light, accent } = themeDef(theme)
+  const shown = choice.value.accents[theme] ?? (theme === choice.value.theme ? choice.value.accent : accent)
+  return { page: light ? palette.crust : palette.mantle, pane: palette.base, accent: palette[shown], text: palette.text, dim: palette.overlay1 }
 }
-const modeOf = (theme: AppTheme) => (theme === 'truemain' ? 'both' : theme === 'latte' ? 'light' : 'dark')
-const flavor = computed(() => (isFlavor(choice.value.theme) ? choice.value.theme : null))
+const modeOf = (theme: AppTheme) => (theme === 'truemain' ? 'both' : themeDef(theme).light ? 'light' : 'dark')
+const flavor = computed(() => (isPaletteTheme(choice.value.theme) ? choice.value.theme : null))
 </script>
 
 <template>
@@ -31,7 +33,7 @@ const flavor = computed(() => (isFlavor(choice.value.theme) ? choice.value.theme
       <p class="text-xs text-muted">{{ t('appearance.description') }}</p>
     </header>
 
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" role="radiogroup" :aria-label="t('appearance.title')">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6" role="radiogroup" :aria-label="t('appearance.title')">
       <button
         v-for="theme in APP_THEMES"
         :key="theme"
@@ -68,7 +70,7 @@ const flavor = computed(() => (isFlavor(choice.value.theme) ? choice.value.theme
             :aria-label="t(`appearance.accent.${accent}`)"
             class="size-7 rounded-full ring-offset-2 ring-offset-(--ui-bg-elevated) transition-transform hover:scale-110"
             :class="choice.accent === accent ? 'ring-2 ring-(--ui-text-highlighted)' : ''"
-            :style="{ background: PALETTES[flavor][accent] }"
+            :style="{ background: themeDef(flavor).palette[accent] }"
             @click="setAccent(accent)"
           />
         </UTooltip>

@@ -1,28 +1,40 @@
 import type { ThemeChoice } from '~/utils/app-theme'
-import { isFlavor, markStops } from '~/utils/app-theme'
-import { PALETTES } from '~/utils/catppuccin'
+import { isPaletteTheme, markStops } from '~/utils/app-theme'
+import { themeDef } from '~/utils/themes'
+
+/** A five-pointed star of radius `r` about (`x`, `y`), point up. */
+function star(x: number, y: number, r: number, fill: string): string {
+  const points = Array.from({ length: 10 }, (_, index) => {
+    const angle = -Math.PI / 2 + index * Math.PI / 5
+    const radius = index % 2 ? r * 0.4 : r
+    return `${(x + radius * Math.cos(angle)).toFixed(2)},${(y + radius * Math.sin(angle)).toFixed(2)}`
+  })
+  return `<polygon points="${points.join(' ')}" fill="${fill}"/>`
+}
 
 /**
- * The app icon in a Catppuccin flavour: `desktop/app-icon.svg`'s M-check
- * mark, its stroke the accent's (`markStops`) on the flavour's darkest tone
- * (its lightest for Latte). Null for TrueMain: the shell puts the bundle's own
- * icon back.
+ * The app icon in a palette theme: `desktop/app-icon.svg`'s M-check mark, its
+ * stroke the accent's (`markStops`) on the theme's darkest tone (its lightest
+ * on a light theme) — or the theme's own tile and mark where it draws one (the
+ * Soviet theme's gold on red, under a gold star). Null for TrueMain: the shell
+ * puts the bundle's own icon back.
  */
 export function appIconSvg(choice: Pick<ThemeChoice, 'theme' | 'accent'>, rounded = false): string | null {
-  if (!isFlavor(choice.theme)) return null
-  const palette = PALETTES[choice.theme]
-  const [top, middle, foot] = markStops(palette[choice.accent])
-  const tile = choice.theme === 'latte' ? palette.base : palette.crust
+  if (!isPaletteTheme(choice.theme)) return null
+  const def = themeDef(choice.theme)
+  const [top, middle, foot] = markStops(def.icon?.mark ?? def.palette[choice.accent])
+  const tile = def.icon?.tile ?? (def.light ? def.palette.base : def.palette.crust)
+  const mark = MARK_PATH + (def.icon ? star(15, 11, 6.5, def.icon.mark) : '')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">`
     + `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="0.55" stop-color="${middle}"/><stop offset="1" stop-color="${foot}"/></linearGradient></defs>`
     + (rounded
       // Apple's icon grid: the tile 824 of 1024, centred, its corners about 22.5 % of its side — the shape the Dock gives the bundle's icon.
-      ? `<g transform="translate(6.25 6.25) scale(0.8047)"><rect width="64" height="64" rx="14.4" fill="${tile}"/>${MARK}</g>`
-      : `<rect width="64" height="64" fill="${tile}"/>${MARK}`)
+      ? `<g transform="translate(6.25 6.25) scale(0.8047)"><rect width="64" height="64" rx="14.4" fill="${tile}"/>${mark}</g>`
+      : `<rect width="64" height="64" fill="${tile}"/>${mark}`)
     + `</svg>`
 }
 
-const MARK = `<path d="M16 48V22l14 16L48 16" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`
+const MARK_PATH = `<path d="M16 48V22l14 16L48 16" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`
 
 /** `svg` drawn on a `size`-pixel square. */
 async function draw(svg: string, size: number): Promise<HTMLCanvasElement> {

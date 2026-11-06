@@ -1,0 +1,104 @@
+import type { Accent, Palette } from '~/utils/catppuccin'
+import { PALETTES, mix } from '~/utils/catppuccin'
+
+/**
+ * Every theme painted from a palette (`utils/app-theme`), each written in
+ * Catppuccin's 26 names so one set of rules lays any of them out: Catppuccin's
+ * four flavours as they are, and ten more from their own published palettes,
+ * their colours put where Catppuccin's guide puts the same role — the page
+ * (`base`), the panes beside it (`mantle`, `crust`), type (`text`), and the
+ * accents. Where a palette has no colour for a name (Dracula has no blue,
+ * Rosé Pine no green), the nearest it has stands in, and its greys are laid
+ * between its base and its text the way Catppuccin's are.
+ */
+export interface ThemeDef {
+  palette: Palette
+  light: boolean
+  /** The accent the theme opens on: its signature colour. */
+  accent: Accent
+  /** Its light or dark twin, for the top bar's switch; none goes to Catppuccin Latte (or back to the last dark theme). */
+  pair?: string
+  /** The app icon's tile and mark, where the theme draws its own rather than its base and accent. */
+  icon?: { tile: string, mark: string }
+}
+
+/** The greys between a palette's base and its text, at Catppuccin's own steps. */
+const GREYS = { surface0: 0.12, surface1: 0.2, surface2: 0.28, overlay0: 0.37, overlay1: 0.46, overlay2: 0.55, subtext0: 0.66, subtext1: 0.78 } as const
+
+interface Spec {
+  base: string
+  mantle: string
+  crust: string
+  text: string
+  red: string
+  peach: string
+  yellow: string
+  green: string
+  teal: string
+  sky: string
+  blue: string
+  mauve: string
+  pink: string
+  maroon?: string
+  sapphire?: string
+  lavender?: string
+  rosewater?: string
+  flamingo?: string
+}
+
+function palette(spec: Spec): Palette {
+  const greys = Object.fromEntries(Object.entries(GREYS).map(([name, at]) => [name, mix(spec.base, spec.text, at)])) as Record<keyof typeof GREYS, string>
+  return {
+    ...greys,
+    base: spec.base,
+    mantle: spec.mantle,
+    crust: spec.crust,
+    text: spec.text,
+    red: spec.red,
+    maroon: spec.maroon ?? mix(spec.red, spec.text, 0.25),
+    peach: spec.peach,
+    yellow: spec.yellow,
+    green: spec.green,
+    teal: spec.teal,
+    sky: spec.sky,
+    sapphire: spec.sapphire ?? mix(spec.sky, spec.blue, 0.5),
+    blue: spec.blue,
+    lavender: spec.lavender ?? mix(spec.blue, spec.mauve, 0.5),
+    mauve: spec.mauve,
+    pink: spec.pink,
+    flamingo: spec.flamingo ?? mix(spec.pink, spec.red, 0.35),
+    rosewater: spec.rosewater ?? mix(spec.pink, spec.text, 0.55),
+  }
+}
+
+const SOLARIZED = { red: '#dc322f', peach: '#cb4b16', yellow: '#b58900', green: '#859900', teal: '#2aa198', sky: '#2aa198', blue: '#268bd2', mauve: '#6c71c4', pink: '#d33682' }
+
+export const THEMES = {
+  'latte': { palette: PALETTES.latte, light: true, accent: 'mauve' },
+  'frappe': { palette: PALETTES.frappe, light: false, accent: 'mauve' },
+  'macchiato': { palette: PALETTES.macchiato, light: false, accent: 'mauve' },
+  'mocha': { palette: PALETTES.mocha, light: false, accent: 'mauve' },
+  // Dracula (draculatheme.com).
+  'dracula': { light: false, accent: 'mauve', palette: palette({ base: '#282a36', mantle: '#21222c', crust: '#191a21', text: '#f8f8f2', red: '#ff5555', peach: '#ffb86c', yellow: '#f1fa8c', green: '#50fa7b', teal: '#8be9fd', sky: '#8be9fd', blue: '#6994f2', mauve: '#bd93f9', pink: '#ff79c6', lavender: '#d6acff' }) },
+  // Nord (nordtheme.com): Polar Night, Snow Storm, Frost, Aurora.
+  'nord': { light: false, accent: 'sky', palette: palette({ base: '#2e3440', mantle: '#292e39', crust: '#242933', text: '#eceff4', red: '#bf616a', peach: '#d08770', yellow: '#ebcb8b', green: '#a3be8c', teal: '#8fbcbb', sky: '#88c0d0', sapphire: '#81a1c1', blue: '#5e81ac', mauve: '#b48ead', pink: '#c895bf' }) },
+  // Gruvbox (morhetz/gruvbox), dark and light.
+  'gruvbox-dark': { light: false, accent: 'peach', pair: 'gruvbox-light', palette: palette({ base: '#282828', mantle: '#1d2021', crust: '#161819', text: '#ebdbb2', red: '#fb4934', maroon: '#cc241d', peach: '#fe8019', yellow: '#fabd2f', green: '#b8bb26', teal: '#8ec07c', sky: '#83a598', blue: '#83a598', sapphire: '#458588', mauve: '#d3869b', pink: '#d3869b' }) },
+  'gruvbox-light': { light: true, accent: 'peach', pair: 'gruvbox-dark', palette: palette({ base: '#fbf1c7', mantle: '#f2e5bc', crust: '#ebdbb2', text: '#3c3836', red: '#9d0006', peach: '#af3a03', yellow: '#b57614', green: '#79740e', teal: '#427b58', sky: '#076678', blue: '#076678', mauve: '#8f3f71', pink: '#8f3f71' }) },
+  // Tokyo Night (folke/tokyonight.nvim, night).
+  'tokyo-night': { light: false, accent: 'blue', palette: palette({ base: '#1a1b26', mantle: '#16161e', crust: '#121218', text: '#c0caf5', red: '#f7768e', peach: '#ff9e64', yellow: '#e0af68', green: '#9ece6a', teal: '#73daca', sky: '#7dcfff', sapphire: '#2ac3de', blue: '#7aa2f7', mauve: '#bb9af7', pink: '#ff75a0', lavender: '#b4f9f8' }) },
+  // Rosé Pine (rosepinetheme.com), main and Dawn: love, gold, rose, pine, foam, iris.
+  'rose-pine': { light: false, accent: 'rosewater', pair: 'rose-pine-dawn', palette: palette({ base: '#1f1d2e', mantle: '#191724', crust: '#13111c', text: '#e0def4', red: '#eb6f92', peach: '#f6c177', yellow: '#f6c177', green: '#9ccfd8', teal: '#9ccfd8', sky: '#9ccfd8', blue: '#3e8fb0', mauve: '#c4a7e7', pink: '#ebbcba', rosewater: '#ebbcba', flamingo: '#ebbcba' }) },
+  'rose-pine-dawn': { light: true, accent: 'rosewater', pair: 'rose-pine', palette: palette({ base: '#fffaf3', mantle: '#faf4ed', crust: '#f2e9e1', text: '#575279', red: '#b4637a', peach: '#ea9d34', yellow: '#ea9d34', green: '#56949f', teal: '#56949f', sky: '#56949f', blue: '#286983', mauve: '#907aa9', pink: '#d7827e', rosewater: '#d7827e', flamingo: '#d7827e' }) },
+  // Solarized (ethanschoonover.com/solarized), dark and light: the same eight accents on both.
+  'solarized-dark': { light: false, accent: 'blue', pair: 'solarized-light', palette: palette({ base: '#073642', mantle: '#002b36', crust: '#00212b', text: '#eee8d5', ...SOLARIZED }) },
+  'solarized-light': { light: true, accent: 'blue', pair: 'solarized-dark', palette: palette({ base: '#fdf6e3', mantle: '#eee8d5', crust: '#e4ddc8', text: '#073642', ...SOLARIZED }) },
+  // One Dark (Atom's).
+  'one-dark': { light: false, accent: 'blue', palette: palette({ base: '#282c34', mantle: '#21252b', crust: '#1b1f24', text: '#dcdfe4', red: '#e06c75', peach: '#d19a66', yellow: '#e5c07b', green: '#98c379', teal: '#56b6c2', sky: '#56b6c2', blue: '#61afef', mauve: '#c678dd', pink: '#e386c4' }) },
+  // Soviet: the banner's red and gold on black, the posters' paper for type.
+  'soviet': { light: false, accent: 'red', icon: { tile: '#b3000c', mark: '#ffcc00' }, palette: palette({ base: '#1c1515', mantle: '#161010', crust: '#0f0a0a', text: '#f2e6d0', red: '#e0161f', maroon: '#a3121a', peach: '#e0672a', yellow: '#ffcc00', green: '#7f9a3a', teal: '#5f9e8f', sky: '#8fb2c2', blue: '#5b7fb5', mauve: '#b06a8a', pink: '#e07a86', rosewater: '#f2d7b0', flamingo: '#e8a98a' }) },
+} satisfies Record<string, ThemeDef>
+
+export type PaletteTheme = keyof typeof THEMES
+export const PALETTE_THEMES = Object.keys(THEMES) as PaletteTheme[]
+export const themeDef = (theme: PaletteTheme): ThemeDef => THEMES[theme] as ThemeDef

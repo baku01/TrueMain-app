@@ -1,12 +1,22 @@
 import type { MessageDictionary } from '#common/utils/i18n'
 
-/** The theme picker (`SettingsTheme`). Catppuccin's flavour and accent names are its own, in every language. */
+/** The theme picker (`SettingsTheme`). The themes' and Catppuccin's accent names are their own, in every language; the Soviet theme's is translated. */
 const NAMES = {
   'appearance.theme.truemain': 'TrueMain',
   'appearance.theme.latte': 'Catppuccin Latte',
   'appearance.theme.frappe': 'Catppuccin Frappé',
   'appearance.theme.macchiato': 'Catppuccin Macchiato',
   'appearance.theme.mocha': 'Catppuccin Mocha',
+  'appearance.theme.dracula': 'Dracula',
+  'appearance.theme.nord': 'Nord',
+  'appearance.theme.gruvbox-dark': 'Gruvbox Dark',
+  'appearance.theme.gruvbox-light': 'Gruvbox Light',
+  'appearance.theme.tokyo-night': 'Tokyo Night',
+  'appearance.theme.rose-pine': 'Rosé Pine',
+  'appearance.theme.rose-pine-dawn': 'Rosé Pine Dawn',
+  'appearance.theme.solarized-dark': 'Solarized Dark',
+  'appearance.theme.solarized-light': 'Solarized Light',
+  'appearance.theme.one-dark': 'One Dark',
   'appearance.accent.rosewater': 'Rosewater',
   'appearance.accent.flamingo': 'Flamingo',
   'appearance.accent.pink': 'Pink',
@@ -26,6 +36,7 @@ const NAMES = {
 export default {
   'en': {
     ...NAMES,
+    'appearance.theme.soviet': 'Soviet Union',
     'appearance.title': 'Theme',
     'appearance.description': 'The whole app takes the theme\'s colours, its icon included. The top bar\'s switch goes between the theme\'s light and dark.',
     'appearance.mode.light': 'Light',
@@ -36,6 +47,7 @@ export default {
   },
   'pt-BR': {
     ...NAMES,
+    'appearance.theme.soviet': 'União Soviética',
     'appearance.title': 'Tema',
     'appearance.description': 'O app inteiro muda de cor com o tema, o ícone também. O botão da barra superior alterna entre o claro e o escuro do tema.',
     'appearance.mode.light': 'Claro',
