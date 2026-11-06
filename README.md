@@ -60,6 +60,7 @@ As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dad
 - **Swiftplay:** no lobby, os dois campeões escolhidos, cada um com a sua build; dá para trocar campeão e rota e importar runas (na página de cada campeão, como o Blitz faz), feitiços e itens.
 - **Partida e overlay:** o dano de cada time, o próximo item com a receita e a ordem da build, a ordem de habilidades com o próximo ponto, e por jogador o elo, duo ou trio, maestria e mais jogados; timers de objetivos e painéis sobre o jogo.
 - **Zoom:** ⌘/Ctrl + `+`, `−` e `0` ampliam o app como no navegador.
+- **Temas:** além do TrueMain (escuro e claro), os quatro sabores do [Catppuccin](https://catppuccin.com) — Latte (claro), Frappé, Macchiato e Mocha (escuros) — com as 14 cores de destaque dele, em Configurações. O app inteiro muda de cor, o overlay e o ícone também (no Dock e na barra de tarefas enquanto o app está aberto).
 - **Português do Brasil** em todo o app, inclusive nos nomes de itens, campeões e runas.
 
 ## Fontes de dados (Configurações)
@@ -85,6 +86,7 @@ Em **Configurações → Patch dos dados**, escolha de quais partidas as builds,
 Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
 
 - **Idioma:** o app desktop inteiro fala **português do Brasil** (e inglês), escolhido na barra superior. Os textos de itens, campeões, runas e feitiços acompanham o idioma. O site continua em inglês.
+- **Temas Catppuccin:** Latte, Frappé, Macchiato e Mocha, com cor de destaque, no app, no overlay e no ícone.
 - **Identidade visual:** layout inspirado no Blitz nas cores do TrueMain — azul-marinho com um azul de destaque, **tema escuro e claro**, Sora nos títulos e Figtree no texto, ícones em traço fino (Tabler) e medalhas para os tiers.
 - **Navegação:** menu lateral agrupado (Campeões, Builds, Em partida), recolhível, só com ícones em janelas estreitas; busca única de campeão e jogador (⌘K).
 - **Abas novas:** **Analytics**, **Habilidades**, **Meus kits**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).

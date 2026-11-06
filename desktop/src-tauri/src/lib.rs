@@ -353,6 +353,7 @@ pub fn run() {
         .manage(graphics)
         .invoke_handler(tauri::generate_handler![
             chrome::set_window_theme,
+            chrome::set_app_icon,
             chrome::focus_window,
             api::set_data_source,
             current_state,

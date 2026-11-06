@@ -19,13 +19,19 @@ const props = defineProps<{
   caption?: boolean
 }>()
 
-// Per tier: the metal's light and dark stops, its shine and its glow.
+// Per tier: the metal's light and dark stops, its shine and its glow — a Catppuccin theme's own (`--tm-metal-*`), else these.
+const metalOf = (tier: string, light: string, dark: string, shine: string, glow: string) => ({
+  light: `var(--tm-metal-${tier}-light, ${light})`,
+  dark: `var(--tm-metal-${tier}-dark, ${dark})`,
+  shine: `var(--tm-metal-${tier}-shine, ${shine})`,
+  glow: `var(--tm-metal-${tier}-glow, ${glow})`,
+})
 const METALS: Record<string, { light: string, dark: string, shine: string, glow: string }> = {
-  S: { light: '#d6e8ff', dark: '#2f6fe4', shine: '#f2f8ff', glow: 'rgb(96 165 250 / 0.7)' },
-  A: { light: '#ffe7a0', dark: '#c8921f', shine: '#fff6d6', glow: 'rgb(226 185 92 / 0.55)' },
-  B: { light: '#f3f6fa', dark: '#97a2b2', shine: '#ffffff', glow: 'rgb(185 194 205 / 0.35)' },
-  C: { light: '#f3bf8c', dark: '#9b5a27', shine: '#ffe2c6', glow: 'rgb(179 118 63 / 0.35)' },
-  D: { light: '#a7a2a8', dark: '#56525a', shine: '#cfcbd0', glow: 'transparent' },
+  S: metalOf('s', '#d6e8ff', '#2f6fe4', '#f2f8ff', 'rgb(96 165 250 / 0.7)'),
+  A: metalOf('a', '#ffe7a0', '#c8921f', '#fff6d6', 'rgb(226 185 92 / 0.55)'),
+  B: metalOf('b', '#f3f6fa', '#97a2b2', '#ffffff', 'rgb(185 194 205 / 0.35)'),
+  C: metalOf('c', '#f3bf8c', '#9b5a27', '#ffe2c6', 'rgb(179 118 63 / 0.35)'),
+  D: metalOf('d', '#a7a2a8', '#56525a', '#cfcbd0', 'transparent'),
 }
 
 const { t } = useT()
@@ -42,8 +48,8 @@ const glow = computed(() => (props.stacked && metal.value ? { filter: `drop-shad
     <svg v-if="metal" :width="side" :height="side" viewBox="0 0 28 28" fill="none" :style="glow" aria-hidden="true">
       <defs>
         <linearGradient :id="`${uid}-metal`" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" :stop-color="metal.light" />
-          <stop offset="1" :stop-color="metal.dark" />
+          <stop offset="0" :style="{ stopColor: metal.light }" />
+          <stop offset="1" :style="{ stopColor: metal.dark }" />
         </linearGradient>
       </defs>
       <!-- The dark rim that sets the crest off any background, art included. -->
@@ -51,8 +57,8 @@ const glow = computed(() => (props.stacked && metal.value ? { filter: `drop-shad
       <path d="M3.5 19.6 14 26.4l10.5-6.8v2.1L14 28.5 3.5 21.7Z" fill="#0c0e13" />
       <!-- The face, the chevron under it, and the shine along the top edge. -->
       <path d="M8 4.2h12A2.8 2.8 0 0 1 22.8 7v9.3a1 1 0 0 1-.45.84L14 22.6l-8.35-5.46a1 1 0 0 1-.45-.84V7A2.8 2.8 0 0 1 8 4.2Z" :fill="`url(#${uid}-metal)`" />
-      <path d="M5.2 19.9 14 25.6l8.8-5.7v1.1L14 26.7l-8.8-5.7Z" :fill="metal.dark" />
-      <path d="M7.2 4.9h13.6" :stroke="metal.shine" stroke-width="0.7" stroke-linecap="round" opacity="0.8" />
+      <path d="M5.2 19.9 14 25.6l8.8-5.7v1.1L14 26.7l-8.8-5.7Z" :style="{ fill: metal.dark }" />
+      <path d="M7.2 4.9h13.6" :style="{ stroke: metal.shine }" stroke-width="0.7" stroke-linecap="round" opacity="0.8" />
       <text x="14" y="13.6" text-anchor="middle" dominant-baseline="central" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="800" fill="#0c0e13">{{ normalized }}</text>
     </svg>
     <span v-else class="inline-flex h-6 min-w-7 items-center justify-center font-mono text-sm font-bold text-muted">–</span>
