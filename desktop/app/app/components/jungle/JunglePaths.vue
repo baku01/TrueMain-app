@@ -15,12 +15,14 @@ const props = withDefaults(defineProps<{ championId: number, bare?: boolean }>()
 const { t } = useT()
 const { patch } = useChampionStatics()
 
-const sides = ref<JungleSide[] | null>(null)
-watch(() => props.championId, async (championId) => {
-  sides.value = null
+/** `undefined` while read; null when op.gg could not be reached — not the same as a champion it lists no paths for. */
+const sides = ref<JungleSide[] | null | undefined>(undefined)
+async function load(championId = props.championId) {
+  sides.value = undefined
   const read = await readJunglePaths(championId)
   if (championId === props.championId) sides.value = read
-}, { immediate: true })
+}
+watch(() => props.championId, championId => load(championId), { immediate: true })
 
 const sideKey = ref<MapSide>('BLUE')
 const side = computed(() => sides.value?.find(entry => entry.side === sideKey.value) ?? sides.value?.[0] ?? null)
@@ -49,9 +51,13 @@ const percent = (share: number) => `${(share * 100).toFixed(share < 0.1 ? 1 : 0)
       <h3 class="text-sm font-semibold text-highlighted">{{ t('jungle.tab') }}</h3>
     </header>
 
-    <div v-if="sides === null" class="grid gap-3 md:grid-cols-[minmax(0,20rem)_1fr]">
+    <div v-if="sides === undefined" class="grid gap-3 md:grid-cols-[minmax(0,20rem)_1fr]">
       <USkeleton class="aspect-square w-full rounded-xl" />
       <USkeleton class="h-48 w-full rounded-xl" />
+    </div>
+    <div v-else-if="sides === null" class="flex flex-wrap items-center gap-3 text-sm text-muted">
+      <span>{{ t('jungle.unreachable') }}</span>
+      <UButton :label="t('jungle.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="outline" @click="load()" />
     </div>
     <p v-else-if="!side || !shown" class="text-sm text-muted">{{ t('jungle.none') }}</p>
     <div v-else class="grid gap-4 md:grid-cols-[minmax(0,20rem)_1fr]">
