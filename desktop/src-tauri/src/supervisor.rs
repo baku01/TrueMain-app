@@ -79,14 +79,17 @@ fn in_game(state: &AppState) -> bool {
     state.screen() == Screen::InGame
 }
 
-/// Whether the phase left a running game for its end: the moment the item
-/// sets written for that game are taken out (`itemsets::clear_after_game`).
-fn game_ended(before: GameflowPhase, after: GameflowPhase) -> bool {
-    before == GameflowPhase::InProgress
-        && matches!(
-            after,
-            GameflowPhase::WaitingForStats | GameflowPhase::PreEndOfGame | GameflowPhase::EndOfGame
-        )
+/// Whether the item sets written for a draft are done with, as Blitz clears
+/// its own: the game they were for ended, or the champion select left without
+/// one (a dodge, a player who did not lock) — the next draft writes its own.
+/// The moment `itemsets::clear_after_game` takes them out.
+fn builds_expired(before: GameflowPhase, after: GameflowPhase) -> bool {
+    use GameflowPhase::*;
+    match before {
+        InProgress => matches!(after, WaitingForStats | PreEndOfGame | EndOfGame),
+        ChampSelect => matches!(after, None | Lobby | Matchmaking | ReadyCheck),
+        _ => false,
+    }
 }
 
 /// Run until the app exits.
@@ -213,7 +216,7 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
         let Some(event) = event else { break };
         let before = state.phase;
         let mut changed = state.apply(&event);
-        if game_ended(before, state.phase) {
+        if builds_expired(before, state.phase) {
             tokio::spawn(crate::itemsets::clear_after_game(client.clone()));
         }
 
@@ -409,26 +412,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_game_ends_when_the_phase_leaves_it_for_its_end_only() {
-        assert!(game_ended(
-            GameflowPhase::InProgress,
-            GameflowPhase::WaitingForStats
-        ));
-        assert!(game_ended(
-            GameflowPhase::InProgress,
-            GameflowPhase::EndOfGame
-        ));
-        assert!(!game_ended(
-            GameflowPhase::InProgress,
-            GameflowPhase::InProgress
-        ));
-        assert!(!game_ended(
-            GameflowPhase::ChampSelect,
-            GameflowPhase::InProgress
-        ));
-        assert!(!game_ended(
-            GameflowPhase::WaitingForStats,
-            GameflowPhase::EndOfGame
-        ));
+    fn the_item_sets_go_when_their_game_ends_or_the_draft_leaves_without_one() {
+        use GameflowPhase::*;
+        assert!(builds_expired(InProgress, WaitingForStats));
+        assert!(builds_expired(InProgress, EndOfGame));
+        assert!(builds_expired(ChampSelect, Lobby));
+        assert!(builds_expired(ChampSelect, Matchmaking));
+        assert!(!builds_expired(ChampSelect, InProgress));
+        assert!(!builds_expired(ChampSelect, Unknown));
+        assert!(!builds_expired(InProgress, InProgress));
+        assert!(!builds_expired(WaitingForStats, EndOfGame));
+        assert!(!builds_expired(Lobby, ChampSelect));
     }
 }
