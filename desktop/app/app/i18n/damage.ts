@@ -13,6 +13,7 @@ export default {
     'damage.meter.kind.magic': 'magic',
     'damage.meter.kind.true': 'true',
     'damage.meter.unmeasured': '{count} not measured',
+    'damage.champion.title': 'Damage breakdown',
   },
   'pt-BR': {
     'damage.meter.ally': 'Dano do seu time',
@@ -25,5 +26,6 @@ export default {
     'damage.meter.kind.magic': 'mágico',
     'damage.meter.kind.true': 'verdadeiro',
     'damage.meter.unmeasured': '{count} sem medição',
+    'damage.champion.title': 'Divisão de dano',
   },
 } satisfies MessageDictionary

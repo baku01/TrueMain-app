@@ -90,16 +90,21 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
     </div>
 
     <div v-if="lane" class="flex min-h-0 flex-1 flex-col gap-3 p-4">
-      <UTabs
-        v-model="view"
-        :items="views"
-        :content="false"
-        variant="pill"
-        color="neutral"
-        size="xs"
-        class="shrink-0 self-start"
-        :ui="{ list: 'ring ring-default', indicator: 'rounded-md bg-accented shadow-none', trigger: 'px-3 data-[state=active]:text-highlighted' }"
-      />
+      <!-- The champion's views as the app's other pages lay theirs: underlined, Blitz's way. -->
+      <nav class="flex shrink-0 gap-6 border-b border-default">
+        <button
+          v-for="tab in views"
+          :key="tab.value"
+          type="button"
+          class="tm-tab flex items-center gap-1.5"
+          :data-active="view === tab.value || undefined"
+          :aria-pressed="view === tab.value"
+          @click="view = tab.value as View"
+        >
+          <UIcon :name="tab.icon" class="size-4" :class="view === tab.value ? 'text-primary' : ''" />
+          {{ tab.label }}
+        </button>
+      </nav>
       <KitPanel v-if="view === 'kits'" :champion-id="championId" :position="lane" class="min-h-0 flex-1" />
       <ChampionAbilities v-else-if="view === 'abilities'" :champion-id="championId" class="min-h-0 flex-1" />
       <div v-else-if="view === 'jungle'" class="min-h-0 flex-1 overflow-y-auto">
@@ -107,6 +112,9 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
         <JunglePaths :champion-id="championId" bare class="surface rounded-2xl p-4" />
       </div>
       <BuildView v-else :champion-id="championId" :position="lane" class="min-h-0 flex-1">
+        <template #advice>
+          <BuildDamageSplit :champion-id="championId" :position="lane" />
+        </template>
         <template #header>
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-semibold text-highlighted">{{ positionLabel(lane, { short: true }) }}</span>

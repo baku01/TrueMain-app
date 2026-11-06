@@ -3,7 +3,7 @@
  * The banner a detail page opens on — the desktop dashboard's (#1682), shared:
  * a splash art under two scrims (left for the title, bottom for the tiles), the
  * subject's portrait and name, actions in the top-right corner, and a row of
- * `KpiTile`s in the default slot, four abreast (two on a phone).
+ * `KpiTile`s (`flush`) in the default slot, one strip of four (two rows on a phone).
  *
  * The host resolves `splashUrl` (the site through its image proxy, the app
  * straight from Data Dragon), so this component never asks which app it runs in.
@@ -72,9 +72,10 @@ const artTop = computed(() => {
           <slot name="actions" />
         </div>
       </div>
+      <!-- The figures as one strip, cells split by hairlines (Blitz's way): the tiles drawn `flush`. -->
       <div
         v-if="$slots.default"
-        class="grid grid-cols-2 gap-2 sm:grid-cols-4"
+        class="grid grid-cols-2 overflow-hidden rounded-lg bg-ink-950/55 ring-1 ring-white/5 backdrop-blur-md sm:grid-cols-4 sm:divide-x sm:divide-white/5"
       >
         <slot />
       </div>
