@@ -14,6 +14,7 @@ mod itemsets;
 mod jev;
 mod kits;
 mod loading;
+mod lobby;
 mod menu;
 mod news;
 mod overlay;
@@ -389,6 +390,8 @@ pub fn run() {
             champselect::champ_select_lock,
             champselect::champ_select_choices,
             champselect::champ_select_spells,
+            lobby::lobby_choices,
+            lobby::lobby_slot_set,
             menu::set_menu_language,
             graphics::graphics_settings,
             graphics::set_graphics_settings,

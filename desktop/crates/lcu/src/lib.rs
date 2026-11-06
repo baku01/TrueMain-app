@@ -7,7 +7,8 @@
 //! Read-mostly by design. Nothing here injects, reads process memory, or takes
 //! an action on the player's behalf — the app talks to the same local HTTP API
 //! the client serves to its own web UI, and its few writes (a rune page, a
-//! champion select hover, lock or ban) are made on the player's click only.
+//! champion select hover, lock or ban, a lobby's pick) are made on the
+//! player's click only.
 
 pub mod champ_select;
 pub mod client;
@@ -19,6 +20,7 @@ pub mod form;
 pub mod item_sets;
 pub mod laning;
 pub mod live;
+pub mod lobby;
 pub mod marks;
 pub mod model;
 pub mod record;
@@ -39,6 +41,7 @@ pub use laning::{
     gaps_at_fifteen, laning_games, LaningForm, LaningGame, LANING_DEPTH, LANING_GAMES,
 };
 pub use live::LiveClient;
+pub use lobby::{Lobby, LobbySlot, LobbyState, SlotPatch};
 pub use marks::TimelineMark;
 pub use model::{
     ChampSelectSession, ChampionMastery, CurrentSummoner, DraftState, GameflowPhase,
@@ -57,8 +60,16 @@ pub mod uri {
     /// client is still at its login screen, so the reading taken at attach is
     /// empty and this event is how the Riot ID actually arrives.
     pub const CURRENT_SUMMONER: &str = "/lol-summoner/v1/current-summoner";
+    /// The lobby, followed for a queue with no champion select (Swiftplay):
+    /// the player's champions are picked there (`lobby`).
+    pub const LOBBY: &str = "/lol-lobby/v2/lobby";
 
     /// Every endpoint the app acts on — the recorder's allow-list, so a tape
     /// never holds anything else the client's socket carries.
-    pub const FOLLOWED: [&str; 3] = [GAMEFLOW_PHASE, CHAMP_SELECT_SESSION, CURRENT_SUMMONER];
+    pub const FOLLOWED: [&str; 4] = [
+        GAMEFLOW_PHASE,
+        CHAMP_SELECT_SESSION,
+        CURRENT_SUMMONER,
+        LOBBY,
+    ];
 }

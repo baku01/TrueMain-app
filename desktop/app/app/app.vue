@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { GameflowPhase } from '~/types/lcu'
 import { SERVER_FLAGS_KEY } from '#common/utils/server-flag'
 import DataSourcePicker from '~/components/settings/DataSourcePicker.vue'
 
-const { screen, ready } = useLcuState()
+const { state, screen, ready } = useLcuState()
 const router = useRouter()
 const route = useRoute()
 
@@ -40,11 +41,19 @@ onMounted(() => {
  * it takes the player back home — but only from the draft, so a page they
  * navigated to by hand is never pulled away from under them.
  *
- * The game opens its page the same way (#1748), from home or from the draft
- * the game started out of — never from a page the player opened by hand —
- * and its end takes the player home only from the game page.
+ * The game opens its page the same way (#1748), from home, the draft or the
+ * lobby the game started out of — never from a page the player opened by
+ * hand. Its end opens home on the game just played (`?postMatch=`, the time
+ * it ended: the dashboard opens that game's detail, as Blitz opens its match
+ * page), from the game page or from home.
+ *
+ * A queue with no champion select (Swiftplay) opens its lobby builds from
+ * home — but not over the game just played — or from the draft a dodge left,
+ * and leaving that lobby takes the player home from its page.
  */
-const PHASE_PAGES = { 'draft': '/draft', 'in-game': '/game' } as const
+const PHASE_PAGES = { 'draft': '/draft', 'in-game': '/game', 'lobby': '/lobby' } as const
+/** The phases a finished game goes through before the lobby. */
+const GAME_OVER: GameflowPhase[] = ['WaitingForStats', 'PreEndOfGame', 'EndOfGame']
 
 // Champion select brings the app to the front, as Blitz's does, unless the player turned it off (Settings).
 const { settings: autoImport } = useAutoImport()
@@ -56,15 +65,22 @@ async function comeForward() {
 
 watch(screen, (next, previous) => {
   if (standalone.value) return
-  const path = router.currentRoute.value.path
+  const current = router.currentRoute.value
+  const path = current.path
   if (next === 'draft') {
     if (path !== PHASE_PAGES.draft) void router.push(PHASE_PAGES.draft)
     if (previous !== 'draft') void comeForward()
   }
   else if (next === 'in-game') {
-    if (path === '/' || path === PHASE_PAGES.draft) void router.push(PHASE_PAGES['in-game'])
+    if (path === '/' || path === PHASE_PAGES.draft || path === PHASE_PAGES.lobby) void router.push(PHASE_PAGES['in-game'])
   }
-  else if ((previous === 'draft' || previous === 'in-game') && path === PHASE_PAGES[previous]) {
+  else if (next === 'lobby') {
+    if ((path === '/' && !current.query.postMatch) || path === PHASE_PAGES.draft) void router.push(PHASE_PAGES.lobby)
+  }
+  else if (previous === 'in-game' && GAME_OVER.includes(state.value.phase) && (path === '/' || path === PHASE_PAGES['in-game'])) {
+    void router.push({ path: '/', query: { postMatch: String(Date.now()) } })
+  }
+  else if ((previous === 'draft' || previous === 'in-game' || previous === 'lobby') && path === PHASE_PAGES[previous]) {
     void router.push('/')
   }
 })

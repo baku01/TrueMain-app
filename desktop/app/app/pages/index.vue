@@ -22,6 +22,9 @@ import { readMasteryPoints } from '~/utils/sources/championmastery'
  * clicked in a game, or found by the search — their record read from Blitz
  * (`useViewedPlayer`) on the same page, with "My profile" to come back. Both
  * carry the detailed stats and op.gg's ladder and seasons (`useProfileInsights`).
+ *
+ * A game that just ended opens here too (`?postMatch=`, set by `app.vue`): the
+ * game, opened over the history, with how it went (`DashboardPostMatch`).
  */
 const { t } = useT()
 const { state } = useLcuState()
@@ -140,6 +143,18 @@ const POST_GAME: GameflowPhase[] = ['WaitingForStats', 'PreEndOfGame', 'EndOfGam
 watch(() => state.value.phase, (next, previous) => {
   if (next === 'EndOfGame' || (POST_GAME.includes(previous) && !POST_GAME.includes(next))) void own.refresh(true)
 })
+
+// The game that just ended, by the moment it did; closed, the URL drops it.
+const router = useRouter()
+const postMatchAt = computed(() => {
+  const at = Number(route.query.postMatch)
+  return Number.isFinite(at) && at > 0 ? at : null
+})
+function closePostMatch() {
+  const query = { ...route.query }
+  delete query.postMatch
+  void router.replace({ query })
+}
 </script>
 
 <template>
@@ -204,6 +219,18 @@ watch(() => state.value.phase, (next, previous) => {
         </template>
 
         <template #history>
+          <DashboardPostMatch
+            v-if="postMatchAt && !viewing"
+            :ended-at="postMatchAt"
+            :games="loadedGames"
+            :tier="ranked?.tier ?? null"
+            :name-tag="nameTag"
+            :champions="champions"
+            :items="items"
+            :summoner-spells="summoners"
+            :rune-tree="runeTree"
+            @close="closePostMatch"
+          />
           <DashboardDetailedStats :games="historyGames" :champions="champions" :stats="detailed" :loading="detailLoading" :benchmark="formBenchmark" :tier="ranked?.tier ?? null" />
           <DashboardMatchHistory
             :games="historyGames"

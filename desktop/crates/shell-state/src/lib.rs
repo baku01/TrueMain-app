@@ -14,6 +14,7 @@ pub mod window;
 
 use lcu::{
     ChampSelectSession, ChampionMastery, CurrentSummoner, DraftState, GameflowPhase, LcuEvent,
+    Lobby, LobbyState,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,6 +50,10 @@ pub struct AppState {
     pub champion_mastery: Vec<ChampionMastery>,
     /// Present only in champ select.
     pub draft: Option<DraftState>,
+    /// The player's picks in a lobby with no champion select (Swiftplay);
+    /// absent in any other lobby, and outside one.
+    #[serde(default)]
+    pub lobby: Option<LobbyState>,
 }
 
 impl Default for AppState {
@@ -62,6 +67,7 @@ impl Default for AppState {
             champion_pool: Vec::new(),
             champion_mastery: Vec::new(),
             draft: None,
+            lobby: None,
         }
     }
 }
@@ -91,6 +97,16 @@ impl AppState {
                     .ok()
                     .map(|session| session.draft_state());
                 true
+            }
+            lcu::uri::LOBBY => {
+                // A lobby left is deleted with a `null` body, which reads as
+                // no lobby; one with a champion select reads as no picks.
+                let lobby = serde_json::from_value::<Lobby>(event.data.clone())
+                    .ok()
+                    .and_then(|lobby| lobby.lobby_state());
+                let changed = lobby != self.lobby;
+                self.lobby = lobby;
+                changed
             }
             lcu::uri::CURRENT_SUMMONER => {
                 // The reading taken at attach is empty whenever the app started
@@ -180,6 +196,13 @@ impl AppState {
         match self.phase {
             GameflowPhase::ChampSelect => Screen::Draft,
             GameflowPhase::InProgress => Screen::InGame,
+            // A queue with no champion select picks in the lobby, and keeps
+            // the picks through the queue and the ready check.
+            GameflowPhase::Lobby | GameflowPhase::Matchmaking | GameflowPhase::ReadyCheck
+                if self.lobby.is_some() =>
+            {
+                Screen::Lobby
+            }
             _ => Screen::Dashboard,
         }
     }
@@ -187,7 +210,8 @@ impl AppState {
 
 /// The screens the shell can show. `InGame` is the game page (`/game`, #1748),
 /// and the only screen during which the running game is read: the shell's game
-/// feed follows this rule rather than a second test of the phase.
+/// feed follows this rule rather than a second test of the phase. `Lobby` is
+/// the lobby builds of a queue with no champion select (`/lobby`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Screen {
@@ -195,6 +219,7 @@ pub enum Screen {
     Dashboard,
     Draft,
     InGame,
+    Lobby,
 }
 
 #[cfg(test)]
@@ -421,6 +446,62 @@ mod tests {
         ));
         assert_eq!(state.phase, GameflowPhase::InProgress);
         assert!(state.draft.is_none());
+    }
+
+    fn swiftplay_lobby() -> serde_json::Value {
+        serde_json::json!({
+            "gameConfig": { "queueId": 480 },
+            "localMember": {
+                "playerSlots": [
+                    { "championId": 103, "positionPreference": "MIDDLE" },
+                    { "championId": 64, "positionPreference": "JUNGLE" }
+                ]
+            }
+        })
+    }
+
+    #[test]
+    fn a_swiftplay_lobby_opens_the_lobby_builds_until_the_game() {
+        let mut state = connected(GameflowPhase::Lobby);
+        assert!(state.apply(&event(lcu::uri::LOBBY, swiftplay_lobby())));
+        let lobby = state.lobby.as_ref().expect("the picks");
+        assert_eq!(lobby.queue_id, 480);
+        assert_eq!(lobby.slots[1].champion_id, Some(64));
+        for phase in [
+            GameflowPhase::Lobby,
+            GameflowPhase::Matchmaking,
+            GameflowPhase::ReadyCheck,
+        ] {
+            state.phase = phase;
+            assert_eq!(state.screen(), Screen::Lobby, "{phase:?}");
+        }
+        state.phase = GameflowPhase::InProgress;
+        assert_eq!(state.screen(), Screen::InGame);
+        assert_eq!(
+            serde_json::to_value(Screen::Lobby).unwrap(),
+            serde_json::json!("lobby")
+        );
+
+        // The same reading again is no change, so nothing is published.
+        state.phase = GameflowPhase::Lobby;
+        assert!(!state.apply(&event(lcu::uri::LOBBY, swiftplay_lobby())));
+    }
+
+    #[test]
+    fn a_lobby_with_a_champion_select_or_a_left_lobby_shows_the_dashboard() {
+        let mut state = connected(GameflowPhase::Lobby);
+        state.apply(&event(lcu::uri::LOBBY, swiftplay_lobby()));
+        state.apply(&event(
+            lcu::uri::LOBBY,
+            serde_json::json!({ "gameConfig": { "queueId": 420 }, "localMember": { "playerSlots": [] } }),
+        ));
+        assert!(state.lobby.is_none());
+        assert_eq!(state.screen(), Screen::Dashboard);
+
+        state.apply(&event(lcu::uri::LOBBY, swiftplay_lobby()));
+        assert!(state.apply(&event(lcu::uri::LOBBY, serde_json::Value::Null)));
+        assert!(state.lobby.is_none());
+        assert_eq!(state.screen(), Screen::Dashboard);
     }
 
     #[test]
