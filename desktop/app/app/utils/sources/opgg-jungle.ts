@@ -101,10 +101,13 @@ export function parseJunglePaths(html: string): JungleSide[] {
   return sides
 }
 
-const reads = new Map<number, Promise<JungleSide[]>>()
+const reads = new Map<number, Promise<JungleSide[] | null>>()
 
-/** A champion's jungle paths, kept for the session; empty when op.gg has none or cannot be read. */
-export function readJunglePaths(championId: number): Promise<JungleSide[]> {
+/**
+ * A champion's jungle paths, kept for the session; empty when op.gg has none,
+ * null when its page could not be read — not kept, so the next look asks again.
+ */
+export function readJunglePaths(championId: number): Promise<JungleSide[] | null> {
   let read = reads.get(championId)
   if (!read) {
     // The page is named by Riot's alias (`monkeyking`, `nunu`), not by the champion's name.
@@ -117,7 +120,11 @@ export function readJunglePaths(championId: number): Promise<JungleSide[]> {
         return parseJunglePaths(await invoke<string>('source_get', { source: 'opggweb', path, query: [] }))
       }
       return parseJunglePaths(await $fetch<string>(`/__op-gg/${path}`, { responseType: 'text' }))
-    }).catch(() => [])
+    }).catch((error: unknown) => {
+      console.warn('[jungle] op.gg paths unread', error)
+      reads.delete(championId)
+      return null
+    })
     keepBounded(reads, championId, read)
   }
   return read

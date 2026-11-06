@@ -8,9 +8,10 @@ const gradient = `tm-mark-${useId()}`
   <svg viewBox="0 0 64 64" aria-hidden="true">
     <defs>
       <linearGradient :id="gradient" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#a5d4ff" />
-        <stop offset="0.55" stop-color="#3b97f7" />
-        <stop offset="1" stop-color="#1659ad" />
+        <!-- The theme's accent (`--tm-mark-*`, a Catppuccin flavour's); the app's blue ramp otherwise. -->
+        <stop offset="0" :style="{ stopColor: 'var(--tm-mark-1, #a5d4ff)' }" />
+        <stop offset="0.55" :style="{ stopColor: 'var(--tm-mark-2, #3b97f7)' }" />
+        <stop offset="1" :style="{ stopColor: 'var(--tm-mark-3, #1659ad)' }" />
       </linearGradient>
     </defs>
     <path

@@ -18,6 +18,8 @@ export default {
     'jungle.games': '{count} games',
     'jungle.source': 'op.gg, ranked games',
     'jungle.none': 'op.gg lists no jungle paths for this champion.',
+    'jungle.unreachable': 'Could not reach op.gg for the jungle paths.',
+    'jungle.retry': 'Try again',
   },
   'pt-BR': {
     'jungle.tab': 'Rotas da selva',
@@ -35,5 +37,7 @@ export default {
     'jungle.games': '{count} partidas',
     'jungle.source': 'op.gg, partidas ranqueadas',
     'jungle.none': 'O op.gg não lista rotas da selva para este campeão.',
+    'jungle.unreachable': 'Não foi possível ler as rotas da selva no op.gg.',
+    'jungle.retry': 'Tentar de novo',
   },
 } satisfies MessageDictionary

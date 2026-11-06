@@ -39,6 +39,19 @@ export function synergyTier(delta: number | null): string {
   return 'D'
 }
 
+/** An ally met in fewer than this share of the lane's pairs is noise, as for the counters (`MIN_COUNTER_SHARE`). */
+export const MIN_SYNERGY_SHARE = 0.005
+
+/**
+ * The allies met often enough to say anything: lolalytics, op.gg and TrueMain
+ * list every ally ever played with, so an off-role pick seen once (Samira as a
+ * support, 1 game, 100 % won) would top the tier sort.
+ */
+export function withEnoughGames(rows: SynergyRow[]): SynergyRow[] {
+  const total = rows.reduce((sum, row) => sum + row.games, 0)
+  return rows.filter(row => row.games >= total * MIN_SYNERGY_SHARE)
+}
+
 const TIER_RANK: Record<string, number> = { S: 0, A: 1, B: 2, C: 3, D: 4 }
 
 /** Best tier first, the higher win rate first within a tier. */

@@ -25,11 +25,11 @@ const tiles = computed(() => {
     { key: 'games', value: header.games.toLocaleString(), delta: null },
   ]
 })
-// The app's theme carries no stock palette: the three damage colours are written out.
+// The three damage colours are the stats' (`DamagePills`'), which a theme restates.
 const DAMAGE = [
-  { key: 'physical', color: '#f0913a' },
-  { key: 'magic', color: '#4fb4f0' },
-  { key: 'true', color: '#e6e8ee' },
+  { key: 'physical', color: 'var(--color-stat-ad)' },
+  { key: 'magic', color: 'var(--color-stat-ap)' },
+  { key: 'true', color: 'var(--color-stat-true)' },
 ] as const
 </script>
 

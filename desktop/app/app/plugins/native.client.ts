@@ -1,11 +1,13 @@
 import { syncDataSourceWithShell } from '~/utils/data-source'
+import { captionColor } from '~/utils/app-theme'
 /**
  * What makes the window read as an app rather than a page:
  *
  * - the platform on `<html>` (`platform-macos`, `platform-windows`), for the
  *   CSS that differs — the scrollbars;
  * - the native title bar dark or light as the page is (`set_window_theme`,
- *   which on Windows 11 also paints the caption the top bar's colour);
+ *   which on Windows 11 also paints the caption the top bar's colour, a
+ *   Catppuccin flavour's own);
  * - on macOS the title bar is drawn over by the top bar (`tauri.macos.conf.json`):
  *   `in-tauri` and `fullscreen` say when the traffic lights sit in it;
  * - the routes the shell asks for (`app://navigate`: ⌘, opens Settings);
@@ -40,9 +42,12 @@ export default defineNuxtPlugin(() => {
   })
 
   const colorMode = useColorMode()
+  const { choice } = useAppTheme()
   const router = useRouter()
   void import('@tauri-apps/api/core').then(({ invoke }) => {
-    watch(() => colorMode.value, value => void invoke('set_window_theme', { dark: value !== 'light' }).catch(() => {}), { immediate: true })
+    // A Catppuccin flavour's caption is its own top bar's colour; TrueMain's, the shell's.
+    watch(() => [colorMode.value, choice.value.theme, choice.value.accent] as const, ([value]) =>
+      void invoke('set_window_theme', { dark: value !== 'light', caption: captionColor(choice.value) }).catch(() => {}), { immediate: true })
   })
   void import('@tauri-apps/api/event').then(({ listen }) => listen<string>('app://navigate', event => void router.push(event.payload)))
 

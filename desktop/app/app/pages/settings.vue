@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * Settings: where the numbers come from (`SettingsDataSource`) and how the
- * window draws (`SettingsGraphics`). The app reads players by Riot ID through
+ * Settings: the theme (`SettingsTheme`), where the numbers come from
+ * (`SettingsDataSource`) and how the window draws (`SettingsGraphics`). The app reads players by Riot ID through
  * Blitz (the Player page), so there is no Riot API key to keep here.
  */
 const { t } = useT()
@@ -11,6 +11,7 @@ const { t } = useT()
   <SharedPage :eyebrow="t('settings.eyebrow')" :title="t('settings.title')">
     <div class="mx-auto tm-narrow space-y-5 p-6">
       <PageHeader :eyebrow="t('settings.eyebrow')" :title="t('settings.title')" />
+      <SettingsTheme />
       <SettingsDataSource />
       <SettingsDataWindow />
       <SettingsAutoImport />

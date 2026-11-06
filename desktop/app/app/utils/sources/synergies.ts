@@ -3,7 +3,7 @@ import type { DataSource } from '~/utils/data-source'
 import type { SynergyRow } from '~/utils/synergies'
 import { apiGet } from '~/composables/useApi'
 import { dataSource } from '~/utils/data-source'
-import { synergyTier } from '~/utils/synergies'
+import { synergyTier, withEnoughGames } from '~/utils/synergies'
 import { duosFromBlitz, synergiesFromBlitz } from '~/utils/blitz/synergies'
 import { lolalyticsLane, readLolalyticsTeam } from '~/utils/sources/lolalytics'
 import { POSITION as OPGG_POSITION, analysis, asList, num } from '~/utils/sources/opgg'
@@ -55,8 +55,13 @@ const READERS: Partial<Record<DataSource, (championId: number, position: string,
 
 const blank = (answer: Read) => !answer.rows.length
 
+/** A champion's allies on `ally`, the ones met too rarely to mean anything left out (`withEnoughGames`). */
 export async function readSynergies(championId: number, position: string, ally: string): Promise<SynergySourceRead> {
-  const { source, answer } = await readFirst(standInOrder(dataSource.value, SYNERGY_SOURCES), source => READERS[source]!(championId, position, ally), blank)
+  const read = async (source: DataSource) => {
+    const answer = await READERS[source]!(championId, position, ally)
+    return { ...answer, rows: withEnoughGames(answer.rows) }
+  }
+  const { source, answer } = await readFirst(standInOrder(dataSource.value, SYNERGY_SOURCES), read, blank)
   return { source, ...answer }
 }
 
