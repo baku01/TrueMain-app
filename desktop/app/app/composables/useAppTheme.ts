@@ -1,6 +1,7 @@
 import type { AppTheme, ThemeChoice } from '~/utils/app-theme'
 import type { Accent } from '~/utils/catppuccin'
-import { ACCENT_KEY, DARK_FLAVOR_KEY, THEME_KEY, isFlavor, readThemeChoice, themeCss } from '~/utils/app-theme'
+import { ACCENTS_KEY, DARK_FLAVOR_KEY, THEME_KEY, accentOf, isLight, isPaletteTheme, readThemeChoice, themeCss } from '~/utils/app-theme'
+import { themeDef } from '~/utils/themes'
 import { appIconSvg, rasterizeIcon } from '~/utils/app-icon'
 
 const STYLE_ID = 'tm-theme'
@@ -8,7 +9,7 @@ const STYLE_ID = 'tm-theme'
 function store(choice: ThemeChoice) {
   try {
     localStorage.setItem(THEME_KEY, choice.theme)
-    localStorage.setItem(ACCENT_KEY, choice.accent)
+    localStorage.setItem(ACCENTS_KEY, JSON.stringify(choice.accents))
     localStorage.setItem(DARK_FLAVOR_KEY, choice.darkFlavor)
   }
   catch {
@@ -52,10 +53,11 @@ export async function paintAppIcon(choice: ThemeChoice) {
 }
 
 /**
- * The theme the player picked (`utils/app-theme`): TrueMain's or a Catppuccin
- * flavour, its accent, and the dark flavour the top bar's switch returns to.
- * A flavour sets the colour mode with it (Latte light, the others dark), so
- * Nuxt UI's `dark` class and the stylesheets' light and dark blocks follow.
+ * The theme the player picked (`utils/app-theme`): TrueMain's or a palette
+ * theme, the accent each theme was given, and the dark theme the top bar's
+ * switch returns to. A palette theme sets the colour mode with it (light or
+ * dark as it is), so Nuxt UI's `dark` class and the stylesheets' light and
+ * dark blocks follow.
  */
 export function useAppTheme() {
   const choice = useState<ThemeChoice>('app-theme', () => readThemeChoice(import.meta.client ? localStorage : undefined))
@@ -64,19 +66,34 @@ export function useAppTheme() {
   function apply(next: ThemeChoice) {
     choice.value = next
     store(next)
-    if (isFlavor(next.theme)) colorMode.preference = next.theme === 'latte' ? 'light' : 'dark'
+    if (isPaletteTheme(next.theme)) colorMode.preference = isLight(next.theme) ? 'light' : 'dark'
     paintTheme(next)
     void paintAppIcon(next)
   }
 
-  const setTheme = (theme: AppTheme) => apply({ ...choice.value, theme, darkFlavor: isFlavor(theme) && theme !== 'latte' ? theme : choice.value.darkFlavor })
-  const setAccent = (accent: Accent) => apply({ ...choice.value, accent })
+  function setTheme(theme: AppTheme) {
+    const { accents, darkFlavor } = choice.value
+    apply({ ...choice.value, theme, accent: accentOf(theme, accents), darkFlavor: isPaletteTheme(theme) && !isLight(theme) ? theme : darkFlavor })
+  }
+  function setAccent(accent: Accent) {
+    const { theme, accents } = choice.value
+    apply({ ...choice.value, accent, accents: isPaletteTheme(theme) ? { ...accents, [theme]: accent } : accents })
+  }
 
-  /** The top bar's switch: TrueMain's light and dark, or Latte and the dark flavour last used. */
+  /**
+   * The top bar's switch: TrueMain's light and dark; a theme's twin (Gruvbox,
+   * Rosé Pine, Solarized); else Catppuccin Latte from a dark theme, and from
+   * a light one the dark theme last used.
+   */
   function toggleMode() {
     const { theme, darkFlavor } = choice.value
-    if (!isFlavor(theme)) colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
-    else setTheme(theme === 'latte' ? darkFlavor : 'latte')
+    if (!isPaletteTheme(theme)) {
+      colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
+      return
+    }
+    const pair = themeDef(theme).pair
+    if (pair && isPaletteTheme(pair)) setTheme(pair)
+    else setTheme(isLight(theme) ? darkFlavor : 'latte')
   }
 
   return { choice: readonly(choice), setTheme, setAccent, toggleMode }

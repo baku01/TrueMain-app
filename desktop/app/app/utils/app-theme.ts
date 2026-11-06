@@ -1,35 +1,57 @@
-import type { Accent, Flavor, Palette } from '~/utils/catppuccin'
-import { ACCENTS, FLAVORS, PALETTES, mix } from '~/utils/catppuccin'
+import type { Accent, Palette } from '~/utils/catppuccin'
+import type { PaletteTheme } from '~/utils/themes'
+import { ACCENTS, mix } from '~/utils/catppuccin'
+import { PALETTE_THEMES, THEMES, themeDef } from '~/utils/themes'
 
 /**
  * The app's themes: TrueMain's own (navy and blue, dark or light by the top
- * bar's switch) or one of Catppuccin's flavours — Latte light, Frappé,
- * Macchiato and Mocha dark — in one of its fourteen accents. Kept across
- * launches, in every window (the overlay's panels too).
+ * bar's switch) or one painted from a palette (`utils/themes`) — Catppuccin's
+ * four flavours, Dracula, Nord, Gruvbox, Tokyo Night, Rosé Pine, Solarized,
+ * One Dark — in any of its fourteen accents, each theme keeping its own.
+ * Kept across launches, in every window (the overlay's panels too).
  *
- * TrueMain's colours are the stylesheet's (`assets/css/main.css`). A
- * Catppuccin flavour restates the same custom properties from its palette
- * (`themeCss`), so every component — written against the tokens, never a hex
- * — takes it without knowing: the page, the panes and their ladder, text,
- * borders, the accent and its ramp, the data and tier colours, the stats', the
- * two teams', the tier medals' metals and the app's mark.
+ * TrueMain's colours are the stylesheet's (`assets/css/main.css`). A palette
+ * theme restates the same custom properties (`themeCss`), so every component —
+ * written against the tokens, never a hex — takes it without knowing: the
+ * page, the panes and their ladder, text, borders, the accent and its ramp,
+ * the data and tier colours, the stats', the two teams', the tier medals'
+ * metals and the app's mark.
  */
-export const APP_THEMES = ['truemain', ...FLAVORS] as const
-export type AppTheme = typeof APP_THEMES[number]
+export const APP_THEMES = ['truemain', ...PALETTE_THEMES] as const
+export type AppTheme = 'truemain' | PaletteTheme
 
 export const THEME_KEY = 'truemain-theme'
+/** The accent each theme was last given, by theme (JSON). */
+export const ACCENTS_KEY = 'truemain-theme-accents'
+/** The one accent kept before themes had their own: Catppuccin's flavours start on it. */
 export const ACCENT_KEY = 'truemain-theme-accent'
-/** The dark flavour the top bar's switch goes back to from Latte. */
+/** The dark theme the top bar's switch goes back to from a light one with no twin. */
 export const DARK_FLAVOR_KEY = 'truemain-theme-dark'
 
-export const DEFAULT_ACCENT: Accent = 'mauve'
+const CATPPUCCIN = new Set<string>(['latte', 'frappe', 'macchiato', 'mocha'])
 
-export const isFlavor = (theme: string): theme is Flavor => (FLAVORS as readonly string[]).includes(theme)
+export const isPaletteTheme = (theme: string): theme is PaletteTheme => theme in THEMES
 export const isAccent = (accent: string): accent is Accent => (ACCENTS as readonly string[]).includes(accent)
+export const isLight = (theme: AppTheme) => isPaletteTheme(theme) && themeDef(theme).light
 
-export interface ThemeChoice { theme: AppTheme, accent: Accent, darkFlavor: Exclude<Flavor, 'latte'> }
+export interface ThemeChoice {
+  theme: AppTheme
+  /** The accent on screen: the theme's own pick, else its signature colour. */
+  accent: Accent
+  /** Every theme's accent picked so far. */
+  accents: Partial<Record<PaletteTheme, Accent>>
+  darkFlavor: PaletteTheme
+}
 
-/** The choice kept in `storage`; TrueMain, mauve and Mocha where nothing (or nothing valid) is. */
+/** The accent `theme` shows: the one picked for it, else (a Catppuccin flavour) the one kept before, else its own. */
+export function accentOf(theme: AppTheme, accents: ThemeChoice['accents'], legacy: string | null = null): Accent {
+  if (!isPaletteTheme(theme)) return 'mauve'
+  const picked = accents[theme]
+  if (picked) return picked
+  return legacy && isAccent(legacy) && CATPPUCCIN.has(theme) ? legacy : themeDef(theme).accent
+}
+
+/** The choice kept in `storage`; TrueMain and Mocha where nothing (or nothing valid) is. */
 export function readThemeChoice(storage: Pick<Storage, 'getItem'> | undefined): ThemeChoice {
   const read = (key: string) => {
     try {
@@ -39,13 +61,22 @@ export function readThemeChoice(storage: Pick<Storage, 'getItem'> | undefined): 
       return ''
     }
   }
-  const theme = read(THEME_KEY)
-  const accent = read(ACCENT_KEY)
+  const stored = read(THEME_KEY)
+  const theme: AppTheme = isPaletteTheme(stored) ? stored : 'truemain'
+  let accents: ThemeChoice['accents'] = {}
+  try {
+    const parsed = JSON.parse(read(ACCENTS_KEY) || '{}') as Record<string, string>
+    accents = Object.fromEntries(Object.entries(parsed).filter(([name, accent]) => isPaletteTheme(name) && isAccent(accent))) as ThemeChoice['accents']
+  }
+  catch {
+    // A broken record: every theme on its own accent.
+  }
   const dark = read(DARK_FLAVOR_KEY)
   return {
-    theme: theme === 'truemain' || isFlavor(theme) ? theme : 'truemain',
-    accent: isAccent(accent) ? accent : DEFAULT_ACCENT,
-    darkFlavor: isFlavor(dark) && dark !== 'latte' ? dark : 'mocha',
+    theme,
+    accent: accentOf(theme, accents, read(ACCENT_KEY)),
+    accents,
+    darkFlavor: isPaletteTheme(dark) && !themeDef(dark).light ? dark : 'mocha',
   }
 }
 
@@ -87,9 +118,8 @@ const metal = (name: string, color: string): Record<string, string> => ({
 export const markStops = (color: string): [string, string, string] => [mix(color, WHITE, 0.45), color, mix(color, BLACK, 0.4)]
 
 /** Every token a flavour restates, as custom properties. */
-export function flavorTokens(flavor: Flavor, accent: Accent): Record<string, string> {
-  const p = PALETTES[flavor]
-  const light = flavor === 'latte'
+export function flavorTokens(theme: PaletteTheme, accent: Accent): Record<string, string> {
+  const { palette: p, light } = themeDef(theme)
   const a = p[accent]
   const tokens: Record<string, string> = {
     'color-scheme': light ? 'light' : 'dark',
@@ -177,13 +207,16 @@ const block = (selector: string, tokens: Record<string, string>) =>
  * one there. Null for TrueMain: its colours are the stylesheet's.
  */
 export function themeCss(choice: Pick<ThemeChoice, 'theme' | 'accent'>): string | null {
-  if (!isFlavor(choice.theme)) return null
+  if (!isPaletteTheme(choice.theme)) return null
+  const def = themeDef(choice.theme)
   const sheets = [block(`html:root[data-theme="${choice.theme}"]`, flavorTokens(choice.theme, choice.accent))]
-  if (choice.theme === 'latte') sheets.push(block(`html:root[data-theme="latte"] .on-art`, flavorTokens('mocha', choice.accent)))
+  // Over art a light theme takes its dark twin's tones, else Mocha's.
+  const dark = def.pair && isPaletteTheme(def.pair) ? def.pair : 'mocha'
+  if (def.light) sheets.push(block(`html:root[data-theme="${choice.theme}"] .on-art`, flavorTokens(dark, choice.accent)))
   return sheets.join('\n')
 }
 
 /** The native title bar's colour on Windows 11 (the top bar's, `--ui-bg-elevated`); null for TrueMain, whose own the shell keeps. */
 export function captionColor(choice: Pick<ThemeChoice, 'theme' | 'accent'>): string | null {
-  return isFlavor(choice.theme) ? flavorTokens(choice.theme, choice.accent)['--ui-bg-elevated']! : null
+  return isPaletteTheme(choice.theme) ? flavorTokens(choice.theme, choice.accent)['--ui-bg-elevated']! : null
 }

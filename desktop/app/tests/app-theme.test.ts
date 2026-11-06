@@ -1,15 +1,41 @@
 import { describe, expect, it } from 'vitest'
 import { appIconSvg } from '~/utils/app-icon'
-import { ACCENT_KEY, DARK_FLAVOR_KEY, THEME_KEY, captionColor, flavorTokens, readThemeChoice, themeCss } from '~/utils/app-theme'
+import { ACCENTS_KEY, ACCENT_KEY, DARK_FLAVOR_KEY, THEME_KEY, captionColor, flavorTokens, readThemeChoice, themeCss } from '~/utils/app-theme'
+import { THEMES } from '~/utils/themes'
 import { PALETTES, mix } from '~/utils/catppuccin'
 
 const storage = (values: Record<string, string>) => ({ getItem: (key: string) => values[key] ?? null })
 
 describe('app theme', () => {
-  it('reads the kept choice, falling back to TrueMain, mauve and Mocha on anything unknown', () => {
-    expect(readThemeChoice(undefined)).toEqual({ theme: 'truemain', accent: 'mauve', darkFlavor: 'mocha' })
-    expect(readThemeChoice(storage({ [THEME_KEY]: 'frappe', [ACCENT_KEY]: 'teal', [DARK_FLAVOR_KEY]: 'macchiato' }))).toEqual({ theme: 'frappe', accent: 'teal', darkFlavor: 'macchiato' })
-    expect(readThemeChoice(storage({ [THEME_KEY]: 'dracula', [ACCENT_KEY]: 'cyan', [DARK_FLAVOR_KEY]: 'latte' }))).toEqual({ theme: 'truemain', accent: 'mauve', darkFlavor: 'mocha' })
+  it('reads the kept choice, falling back to TrueMain and Mocha on anything unknown', () => {
+    expect(readThemeChoice(undefined)).toEqual({ theme: 'truemain', accent: 'mauve', accents: {}, darkFlavor: 'mocha' })
+    expect(readThemeChoice(storage({ [THEME_KEY]: 'frappe', [ACCENT_KEY]: 'teal', [DARK_FLAVOR_KEY]: 'macchiato' }))).toEqual({ theme: 'frappe', accent: 'teal', accents: {}, darkFlavor: 'macchiato' })
+    expect(readThemeChoice(storage({ [THEME_KEY]: 'vaporwave', [DARK_FLAVOR_KEY]: 'latte' }))).toEqual({ theme: 'truemain', accent: 'mauve', accents: {}, darkFlavor: 'mocha' })
+  })
+
+  it('gives each theme its own accent: the one picked for it, else its signature', () => {
+    expect(readThemeChoice(storage({ [THEME_KEY]: 'nord' })).accent).toBe('sky')
+    expect(readThemeChoice(storage({ [THEME_KEY]: 'nord', [ACCENT_KEY]: 'teal' })).accent).toBe('sky')
+    expect(readThemeChoice(storage({ [THEME_KEY]: 'nord', [ACCENTS_KEY]: '{"nord":"green","dracula":"nope"}' }))).toMatchObject({ accent: 'green', accents: { nord: 'green' } })
+  })
+
+  it('lays every theme out: a full palette, its text away from its page', () => {
+    for (const [name, def] of Object.entries(THEMES)) {
+      const tokens = flavorTokens(name as keyof typeof THEMES, def.accent)
+      expect(Object.values(tokens).every(value => /^#[0-9a-f]{6}([0-9a-f]{2})?$|^(light|dark)$/.test(value)), name).toBe(true)
+      expect(tokens['--ui-text-highlighted'], name).not.toBe(tokens['--ui-bg'])
+    }
+  })
+
+  it('keeps a light theme\'s art banners in its dark twin\'s tones', () => {
+    expect(themeCss({ theme: 'gruvbox-light', accent: 'peach' })).toContain(`--ui-primary: ${THEMES['gruvbox-dark'].palette.peach};`)
+  })
+
+  it('draws the Soviet theme\'s own icon: gold on red, under a star', () => {
+    const svg = appIconSvg({ theme: 'soviet', accent: 'red' })!
+    expect(svg).toContain('fill="#b3000c"')
+    expect(svg).toContain('<polygon')
+    expect(svg).toContain('stop-color="#ffcc00"')
   })
 
   it('mixes two colours channel by channel', () => {
