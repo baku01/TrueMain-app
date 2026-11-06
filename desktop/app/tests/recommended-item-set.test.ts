@@ -19,6 +19,11 @@ describe('recommended item sets', () => {
     expect(finalBuild(ezreal)).toEqual([3146, 3020, 3100, 4645, 3089, 4646])
   })
 
+  it('puts the boots where the build buys them, as Blitz\'s final build does', () => {
+    expect(finalBuild({ ...ezreal, bootsAt: 0 })).toEqual([3020, 3146, 3100, 4645, 3089, 4646])
+    expect(finalBuild({ ...ezreal, bootsAt: 2 })).toEqual([3146, 3100, 3020, 4645, 3089, 4646])
+  })
+
   it('reads the buying order like Blitz: measured components, else the recipe dearest first', () => {
     expect(buyingOrder(finalBuild(ezreal), ezreal.starter, items, orders)).toEqual([3145, 1052, 1053, 3146, 1001, 3020, 3057, 3113, 1026, 3100])
     expect(componentsOf(3146, items)).toEqual([3145, 1053].sort((a, b) => items[b]!.totalGold - items[a]!.totalGold))

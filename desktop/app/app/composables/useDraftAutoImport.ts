@@ -4,7 +4,7 @@ import type { ImportBuild, ItemOrders } from '~/utils/recommended-item-set'
 import { tr } from '#common/utils/i18n'
 import { spellsInOrder } from '~/composables/useAutoImport'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
-import { recommendedSets } from '~/utils/recommended-item-set'
+import { blockTitles, recommendedSets } from '~/utils/recommended-item-set'
 
 /** The build selected in the draft, with what goes beyond its items: its rune page and spells. */
 export interface ImportChoice extends ImportBuild {
@@ -40,7 +40,6 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
   const { state } = useLcuState()
   const { items } = useStaticData()
   const { nameOf, champions } = useChampionStatics()
-  const { t } = useT()
   const toast = useToast()
 
   const locked = computed(() => draft.value.myChampionLocked && draft.value.myChampion !== null)
@@ -98,8 +97,7 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
 
       const championKey = champions.value.get(current.championId)?.alias
       if (settings.value.items && championKey) {
-        const titles = { starting: t('autoImport.block.starting'), order: t('autoImport.block.order'), final: t('autoImport.block.final'), situational: t('autoImport.block.situational'), boots: t('autoImport.block.boots') }
-        const sets = recommendedSets(chosen, current.others, championKey, titles, items.value, await ordersFor(current.championId, draft.value.myPosition))
+        const sets = recommendedSets(chosen, current.others, championKey, blockTitles(), items.value, await ordersFor(current.championId, draft.value.myPosition))
         const key = JSON.stringify(sets)
         if (sets.length && written.items !== key) {
           written.items = key

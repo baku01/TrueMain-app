@@ -380,7 +380,6 @@ pub fn run() {
             overlay::overlay_fit,
             loading::loading_players,
             runes::import_runes,
-            itemsets::import_item_set,
             itemsets::import_kit_item_set,
             itemsets::write_recommended_item_sets,
             kits::kits_get,

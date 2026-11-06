@@ -330,6 +330,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
             <JevBuildBody
               v-if="jevStatus === 'ready' && subject"
               :champion-id="subject.championId"
+              :position="subject.request.position"
               :ranked="jevBuild.ranked.value"
               :needs="jevBuild.needs.value"
               :enemies="jevBuild.enemies.value"

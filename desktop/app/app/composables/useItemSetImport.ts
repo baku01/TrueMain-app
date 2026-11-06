@@ -3,6 +3,8 @@ import type { BuildOption } from '~/types/build'
 import { tr } from '#common/utils/i18n'
 import type { ItemSetBuild } from '~/utils/item-set'
 import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
+import { readBlitzBuildDoc } from '~/utils/blitz/builds'
+import { blockTitles, recommendedSet } from '~/utils/recommended-item-set'
 
 /** What the shell answers when it could not read the client's list (`itemsets.rs`). */
 const READ_FAILED = 'read-failed'
@@ -23,14 +25,18 @@ export interface ItemSetSubject {
 export interface ItemSetBlocks {
   championId: number
   champion: string
+  /** The lane, for Blitz's measured buying order of each item; none reads the recipe. */
+  position?: string
   blocks: ItemSetBuild
 }
 
 /**
  * The item set import button's one call (#1908): the build on screen written
- * into the client as the one TrueMain item set, replacing the previous one.
- * Only ever run on a click — the shell's write path is built on that rule
- * (`lcu::item_sets`).
+ * the way Blitz writes its own and the draft's automatic import does
+ * (`recommended-item-set.ts`) — a recommended set the shop opens on in game,
+ * block for block: starting items, the buying order of the first items, the
+ * final build of six, the situational items that are also good, the boots
+ * options. Only ever run on a click.
  *
  * The situational block needs the item context, asked for here, on the click,
  * rather than for every build the view shows.
@@ -38,6 +44,7 @@ export interface ItemSetBlocks {
 export function useItemSetImport() {
   const { state } = useLcuState()
   const { items } = useStaticData()
+  const { champions } = useChampionStatics()
   const toast = useToast()
   const pending = ref(false)
   const done = ref(false)
@@ -62,16 +69,20 @@ export function useItemSetImport() {
 
   const known = (itemId: number) => itemId in items.value
 
-  /** The one write path: the blocks made on the click, checked, written, and every outcome told. */
-  async function write(championId: number, champion: string, blocks: () => Promise<ItemSetBuild>) {
+  /** The one write path: the blocks made on the click, laid out as Blitz's, written, and every outcome told. */
+  async function write(championId: number, champion: string, position: string | undefined, blocks: () => Promise<ItemSetBuild>) {
     if (pending.value) return
     pending.value = true
     try {
       const build = await blocks()
       if (!hasItems(build)) throw new Error(EMPTY_BUILD)
       if (insideTauri()) {
+        const championKey = champions.value.get(championId)?.alias
+        if (!championKey) throw new Error(EMPTY_BUILD)
+        const orders = position ? await readBlitzBuildDoc(championId, position).then(doc => doc?.itemOrders ?? null).catch(() => null) : null
+        const set = recommendedSet({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt }, championKey, blockTitles(), items.value, orders)
         const { invoke } = await import('@tauri-apps/api/core')
-        await invoke('import_item_set', { championId, champion, build })
+        await invoke('write_recommended_item_sets', { sets: [set] })
       }
       done.value = true
       clearTimeout(doneTimer)
@@ -95,10 +106,10 @@ export function useItemSetImport() {
   async function importItemSet(subject: ItemSetSubject | ItemSetBlocks) {
     if ('blocks' in subject) {
       const keep = (ids: number[]) => ids.filter(known)
-      const { starter, boots, core, situational: rest } = subject.blocks
-      return write(subject.championId, subject.champion, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest) }))
+      const { starter, boots, core, situational: rest, bootsAt } = subject.blocks
+      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt }))
     }
-    return write(subject.championId, subject.champion, async () => itemSetBuild(subject.build.core, await situational(subject), known))
+    return write(subject.championId, subject.champion, subject.position, async () => itemSetBuild(subject.build.core, await situational(subject), known))
   }
 
   onScopeDispose(() => clearTimeout(doneTimer))

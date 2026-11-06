@@ -1,12 +1,13 @@
-//! The item set import button (#1908): the build's items pushed into the
-//! client as the one TrueMain item set, on the player's click.
-//!
-//! The rules that keep this from touching the player's own sets — the whole
-//! list read right before it is written, every set not ours written back as
-//! read, nothing written after a failed read — live in `lcu::item_sets` and
-//! `LcuClient::import_item_set`; this is the command the button calls.
+//! The item sets this app writes. A build's (#1908) — the button's and the
+//! draft's automatic import alike — as Blitz writes its own: recommended-set
+//! files the shop opens on in game (`write_recommended_item_sets`). A kit's
+//! (#2185) into the client as the one TrueMain item set, on the player's
+//! click: the rules that keep that from touching the player's own sets — the
+//! whole list read right before it is written, every set not ours written
+//! back as read, nothing written after a failed read — live in
+//! `lcu::item_sets` and `LcuClient::import_item_set`.
 
-use lcu::{BuildItems, Error, ItemSetDraft, LcuClient, NamedBlock};
+use lcu::{Error, ItemSetDraft, LcuClient, NamedBlock};
 
 use crate::record::SharedClient;
 
@@ -21,23 +22,9 @@ const SETS_CHANGED: &str = "sets-changed";
 /// What the command answers for a build with no item to write.
 const EMPTY_BUILD: &str = "empty-build";
 
-/// Write `build` into the client as the TrueMain item set, offered on
-/// `champion_id` on Summoner's Rift. Only ever called from the button.
-#[tauri::command]
-pub async fn import_item_set(
-    client: tauri::State<'_, SharedClient>,
-    champion_id: i64,
-    champion: String,
-    build: BuildItems,
-) -> Result<(), String> {
-    let draft = ItemSetDraft::from_build(&champion, champion_id, &build)
-        .ok_or_else(|| EMPTY_BUILD.to_string())?;
-    write(&client, &draft).await
-}
-
-/// Write a kit's tree into the client as the same TrueMain item set, one
-/// block per path after the starter and the boots (#2185). Only ever called
-/// from the button, like `import_item_set`.
+/// Write a kit's tree into the client as the TrueMain item set, one block per
+/// path after the starter and the boots (#2185). Only ever called from the
+/// button.
 #[tauri::command]
 pub async fn import_kit_item_set(
     client: tauri::State<'_, SharedClient>,

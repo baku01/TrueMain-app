@@ -41,7 +41,7 @@ watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { imm
     </div>
 
     <template v-else-if="status === 'ready'">
-      <JevBuildBody :champion-id="championId" :ranked="ranked" :needs="needs" :enemies="enemies" :jev-build="jevBuild" :standard-build="standardBuild" />
+      <JevBuildBody :champion-id="championId" :position="request.position" :ranked="ranked" :needs="needs" :enemies="enemies" :jev-build="jevBuild" :standard-build="standardBuild" />
     </template>
   </section>
 </template>
