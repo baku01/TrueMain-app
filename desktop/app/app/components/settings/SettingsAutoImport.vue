@@ -27,6 +27,13 @@ const PARTS = ['runes', 'items', 'spells'] as const
       @update:model-value="update({ [part]: $event })"
     />
 
+    <USwitch
+      :model-value="settings.focus"
+      :label="t('autoImport.focus')"
+      :description="t('autoImport.focusDescription')"
+      @update:model-value="update({ focus: $event })"
+    />
+
     <div v-if="settings.spells" class="flex items-center gap-3 pl-11">
       <span class="text-sm text-default">{{ t('autoImport.flash') }}</span>
       <div class="flex gap-1" role="radiogroup" :aria-label="t('autoImport.flash')">

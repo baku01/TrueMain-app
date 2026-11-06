@@ -33,7 +33,7 @@ describe('recommended item sets', () => {
     const titles = { starting: 'S', order: 'O', final: 'F', situational: 'X', boots: 'B' }
     const sets = recommendedSets(ezreal, [ezreal, { ...ezreal, key: 'lane-1', title: 'Other' }], 'Ezreal', titles, items, orders)
     expect(sets).toHaveLength(1)
-    expect(sets[0]!.title).toBe('TrueMain: Ezreal')
+    expect(sets[0]!.title).toBe('TrueMain Ezreal')
     expect(sets[0]!.blocks.map(block => block.type)).toEqual(['S', 'O', 'F', 'X', 'B'])
     expect(sets[0]!.blocks[0]!.items).toEqual([{ id: '2003', count: 1 }, { id: '1055', count: 1 }])
   })

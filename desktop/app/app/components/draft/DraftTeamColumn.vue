@@ -35,6 +35,32 @@ const split = computed(() => {
   return picks?.length ? teamDamage(picks.map(pick => profileOf(pick.championId, pick.position))) : null
 })
 const percent = (value: number) => `${Math.round(value * 100)}%`
+
+/** The split sent to the lobby's chat on a click, as Blitz shares it: the line is the player's to send. */
+const toast = useToast()
+const sharing = ref(false)
+async function share() {
+  const damage = split.value
+  if (!damage || sharing.value || !insideTauri()) return
+  sharing.value = true
+  const message = t('damage.share.line', {
+    team: props.team === 'ally' ? t('damage.meter.ally') : t('damage.meter.enemy'),
+    physical: percent(damage.physicalShare),
+    magic: percent(damage.magicShare),
+    true: percent(damage.trueShare),
+  })
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('champ_select_chat', { message })
+    toast.add({ title: t('damage.share.sent'), description: message, icon: 'i-lucide-check', color: 'success' })
+  }
+  catch (error) {
+    toast.add({ title: t('damage.share.failed'), description: String(error), icon: 'i-lucide-circle-x', color: 'error' })
+  }
+  finally {
+    sharing.value = false
+  }
+}
 </script>
 
 <template>
@@ -49,6 +75,18 @@ const percent = (value: number) => `${Math.round(value * 100)}%`
         <span v-if="split" class="ml-auto text-[10px] font-semibold tabular-nums text-muted" :class="team === 'enemy' && 'ml-0 mr-auto'">
           <span class="text-(--dmg-ad)">{{ percent(split.physicalShare) }} AD</span> · <span class="text-(--dmg-ap)">{{ percent(split.magicShare) }} AP</span>
         </span>
+        <UButton
+          v-if="split && insideTauri()"
+          icon="i-lucide-message-square-share"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          :loading="sharing"
+          :title="t('damage.share.title')"
+          :aria-label="t('damage.share.title')"
+          class="-my-1"
+          @click="share"
+        />
       </div>
       <div v-if="split" class="flex h-1 w-full overflow-hidden rounded-full bg-accented/40" :class="team === 'enemy' && 'flex-row-reverse'" :title="team === 'ally' ? t('damage.meter.ally') : t('damage.meter.enemy')">
         <span class="bg-(--dmg-ad)" :style="{ width: percent(split.physicalShare) }" />

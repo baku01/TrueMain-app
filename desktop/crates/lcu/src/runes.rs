@@ -16,8 +16,18 @@
 use serde::{Deserialize, Serialize};
 
 /// Marks the one page this app owns, so it can be reused across games instead
-/// of accumulating a new page every draft.
-pub const OWNED_PAGE_PREFIX: &str = "TrueMain: ";
+/// of accumulating a new page every draft: `TrueMain Aatrox vs Akali`, as
+/// Blitz names its own (`Blitz: Aatrox vs Akali`).
+pub const OWNED_PAGE_PREFIX: &str = "TrueMain ";
+
+/// How this app named its pages and sets before (`TrueMain: Ahri`): still ours,
+/// so an older page is reused rather than left behind.
+const OWNED_BEFORE: &str = "TrueMain: ";
+
+/// Whether a page or set of this name is this app's.
+pub fn owned_name(name: &str) -> bool {
+    name.starts_with(OWNED_PAGE_PREFIX) || name.starts_with(OWNED_BEFORE)
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +57,7 @@ impl RunePage {
     /// a player who renames one of their own pages to match takes it over, which
     /// is a deliberate act and the only false positive available.
     pub fn is_ours(&self) -> bool {
-        self.name.starts_with(OWNED_PAGE_PREFIX)
+        owned_name(&self.name)
     }
 }
 
@@ -194,6 +204,8 @@ mod tests {
 
     #[test]
     fn recognises_only_our_own_prefix() {
+        assert!(page(1, "TrueMain Ahri vs Zed", true).is_ours());
+        // The name this app gave its pages before is still its own.
         assert!(page(1, "TrueMain: Ahri", true).is_ours());
         assert!(!page(1, "truemain ahri", true).is_ours());
         assert!(!page(1, "My TrueMain page", true).is_ours());

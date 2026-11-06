@@ -33,6 +33,8 @@ const props = defineProps<{
   championId?: number | null
   /** The max order alone, left-aligned, without the level-by-level grid — where the pane is tight (champion select). */
   priorityOnly?: boolean
+  /** The level the player is at, in game: its column marked, the point it calls for. */
+  current?: number | null
 }>()
 
 const { t } = useT()
@@ -101,7 +103,7 @@ function warm() {
           :aria-label="t('build.skillGrid.label')"
         >
           <span role="columnheader" />
-          <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
+          <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums" :class="level === current ? 'rounded-md bg-primary/20 font-bold text-primary' : 'text-dimmed'">{{ level }}</span>
           <template v-for="key in SKILL_ROWS" :key="key">
             <span role="rowheader" class="grid place-items-center">
               <AbilityHover v-if="championId && spell(key)" :champion-id="championId" :spell-key="key">
@@ -115,7 +117,7 @@ function warm() {
               :key="`${key}-${level}`"
               role="cell"
               class="grid aspect-square max-h-9 w-full max-w-9 place-items-center self-center justify-self-center rounded-md"
-              :class="grid[level] === key ? [colorOf(key).text, colorOf(key).cell] : 'bg-accented/25'"
+              :class="[grid[level] === key ? [colorOf(key).text, colorOf(key).cell] : 'bg-accented/25', level === current && 'ring-1 ring-primary/60', current && level < current && 'opacity-50']"
             >{{ grid[level] === key ? key : '' }}</span>
           </template>
         </div>

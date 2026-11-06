@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn sends_every_perk_in_the_clients_order_under_our_name() {
         let draft = page().draft("Ahri").expect("a complete page");
-        assert_eq!(draft.name, "TrueMain: Ahri");
+        assert_eq!(draft.name, "TrueMain Ahri");
         assert_eq!(draft.primary_style_id, 8100);
         assert_eq!(draft.sub_style_id, 8200);
         assert_eq!(

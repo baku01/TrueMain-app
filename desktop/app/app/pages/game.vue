@@ -56,7 +56,7 @@ const waiting = computed(() => {
 
 <template>
   <div class="h-full">
-    <GameScreen v-if="screen === 'in-game' && game" :game="game" :sync="sync" :lines="loading.players">
+    <GameScreen v-if="screen === 'in-game' && game" :game="game" :sync="sync" :lines="loading.players" :platform-id="loading.platformId">
       <template #actions>
         <UButton icon="i-lucide-layers" color="neutral" variant="ghost" size="sm" to="/overlay" :aria-label="t('game.overlay.settings')" :title="t('game.overlay.settings')" />
       </template>

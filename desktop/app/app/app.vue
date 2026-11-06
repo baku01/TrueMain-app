@@ -46,11 +46,20 @@ onMounted(() => {
  */
 const PHASE_PAGES = { 'draft': '/draft', 'in-game': '/game' } as const
 
+// Champion select brings the app to the front, as Blitz's does, unless the player turned it off (Settings).
+const { settings: autoImport } = useAutoImport()
+async function comeForward() {
+  if (overlay || !autoImport.value.focus || !insideTauri()) return
+  const { invoke } = await import('@tauri-apps/api/core')
+  await invoke('focus_window').catch(() => {})
+}
+
 watch(screen, (next, previous) => {
   if (standalone.value) return
   const path = router.currentRoute.value.path
   if (next === 'draft') {
     if (path !== PHASE_PAGES.draft) void router.push(PHASE_PAGES.draft)
+    if (previous !== 'draft') void comeForward()
   }
   else if (next === 'in-game') {
     if (path === '/' || path === PHASE_PAGES.draft) void router.push(PHASE_PAGES['in-game'])

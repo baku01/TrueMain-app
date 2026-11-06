@@ -35,18 +35,22 @@ const lane = computed<Lane | null>({
 
 const entry = computed(() => entryOf(championId.value, lane.value))
 
-/** The lane's builds, the player's own kits on it (#2185), or the champion's abilities with its insights under them; kept in the URL like the lane. */
-type View = 'builds' | 'kits' | 'abilities'
-const VIEWS: View[] = ['builds', 'kits', 'abilities']
+/** The lane's builds, the player's own kits on it (#2185), the champion's abilities with its insights under them, or a jungler's paths; kept in the URL like the lane. */
+type View = 'builds' | 'kits' | 'abilities' | 'jungle'
+const VIEWS: View[] = ['builds', 'kits', 'abilities', 'jungle']
 const view = computed<View>({
-  // The insights' old address opens the abilities, where they now are.
-  get: () => (route.query.view === 'insights' ? 'abilities' : VIEWS.includes(route.query.view as View) ? route.query.view as View : 'builds'),
+  // The insights' old address opens the abilities, where they now are; the jungle paths are a jungler's only.
+  get: () => {
+    const asked = route.query.view === 'insights' ? 'abilities' : VIEWS.includes(route.query.view as View) ? route.query.view as View : 'builds'
+    return asked === 'jungle' && lane.value !== 'JUNGLE' ? 'builds' : asked
+  },
   set: value => void router.replace({ query: { ...route.query, view: value === 'builds' ? undefined : value } }),
 })
 const views = computed(() => [
   { label: t('dash.champion.builds'), value: 'builds', icon: 'i-tabler-list-details' },
   { label: t('dash.champion.kits'), value: 'kits', icon: 'i-tabler-backpack' },
   { label: t('abilities.tab'), value: 'abilities', icon: 'i-tabler-book-2' },
+  ...(lane.value === 'JUNGLE' ? [{ label: t('jungle.tab'), value: 'jungle', icon: 'i-tabler-route' }] : []),
 ])
 
 // The banner's figures, as on the site: the lane's patch against the one before.
@@ -98,6 +102,10 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
       />
       <KitPanel v-if="view === 'kits'" :champion-id="championId" :position="lane" class="min-h-0 flex-1" />
       <ChampionAbilities v-else-if="view === 'abilities'" :champion-id="championId" class="min-h-0 flex-1" />
+      <div v-else-if="view === 'jungle'" class="min-h-0 flex-1 overflow-y-auto">
+        <!-- The tab names it: the card holds the paths alone. -->
+        <JunglePaths :champion-id="championId" bare class="surface rounded-2xl p-4" />
+      </div>
       <BuildView v-else :champion-id="championId" :position="lane" class="min-h-0 flex-1">
         <template #header>
           <div class="flex items-center justify-between gap-2">

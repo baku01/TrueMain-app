@@ -377,6 +377,8 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
             <UIcon name="i-lucide-scroll-text" class="size-6 text-dimmed" />
             <p class="text-sm text-muted">{{ t('draft.screen.buildEmpty') }}</p>
           </div>
+          <!-- A jungler's paths under the build (op.gg), the clear to open the game on. -->
+          <JunglePaths v-if="subject && subject.request.position === 'JUNGLE'" :champion-id="subject.championId" class="mt-3" />
         </div>
       </section>
 

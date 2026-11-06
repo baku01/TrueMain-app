@@ -13,10 +13,12 @@ export interface AutoImportSettings {
   spells: boolean
   /** The key Flash goes on, as the player plays it. */
   flash: 'D' | 'F'
+  /** Champion select brings the app to the front, as Blitz's does (its "auto pop-up", on by default). */
+  focus: boolean
 }
 
 const STORAGE_KEY = 'truemain-auto-import'
-const DEFAULTS: AutoImportSettings = { runes: false, items: false, spells: false, flash: 'D' }
+const DEFAULTS: AutoImportSettings = { runes: false, items: false, spells: false, flash: 'D', focus: true }
 
 function stored(): AutoImportSettings {
   try {

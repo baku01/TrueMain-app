@@ -352,6 +352,7 @@ pub fn run() {
         .manage(graphics)
         .invoke_handler(tauri::generate_handler![
             chrome::set_window_theme,
+            chrome::focus_window,
             api::set_data_source,
             current_state,
             current_screen,
@@ -388,6 +389,7 @@ pub fn run() {
             champselect::champ_select_lock,
             champselect::champ_select_choices,
             champselect::champ_select_spells,
+            champselect::champ_select_chat,
             menu::set_menu_language,
             graphics::graphics_settings,
             graphics::set_graphics_settings,

@@ -358,6 +358,34 @@ impl LcuClient {
     }
 }
 
+/// The champion select chat: a line the player sends with a click — the
+/// team's damage split, as Blitz shares it.
+impl LcuClient {
+    /// Send `body` to the champion select's chat, in the player's name. Only
+    /// ever on a click: the line is the player's to send.
+    pub async fn send_champ_select_message(&self, body: &str) -> Result<()> {
+        #[derive(serde::Deserialize)]
+        struct Conversation {
+            id: String,
+            #[serde(rename = "type")]
+            kind: String,
+        }
+        let conversations: Vec<Conversation> = self.get_json("/lol-chat/v1/conversations").await?;
+        let room = conversations
+            .into_iter()
+            .find(|conversation| conversation.kind == "championSelect")
+            .ok_or(Error::NoChampSelectChat)?;
+        let message = serde_json::json!({ "body": body, "type": "chat" });
+        self.send(
+            reqwest::Method::POST,
+            &format!("/lol-chat/v1/conversations/{}/messages", room.id),
+            Some(&message),
+        )
+        .await?;
+        Ok(())
+    }
+}
+
 /// The write path into champion select (#1909): hover, lock, ban — each on the
 /// player's click only, like the rune import above.
 impl LcuClient {

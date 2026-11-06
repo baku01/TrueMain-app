@@ -44,6 +44,10 @@ pub enum Error {
     #[error("the item set was written, but the player's own sets no longer read the same")]
     PlayerItemSetsChanged,
 
+    /// No champion select chat to write to: the draft is over, or not begun.
+    #[error("there is no champion select chat")]
+    NoChampSelectChat,
+
     /// A recorded session that cannot be read back. Dev tooling, but an error
     /// rather than a skipped line: a replay that drops a pick is a fixture
     /// that lies.

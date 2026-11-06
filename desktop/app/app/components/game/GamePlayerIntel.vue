@@ -4,6 +4,7 @@ import { formatKdaRatio } from '#shared/utils/kda'
 import { isChampionPosition, positionLabel } from '#common/utils/positions'
 import type { RouteLocationRaw } from 'vue-router'
 import type { LoadingPlayer } from '~/types/loading'
+import type { Premade } from '~/utils/premade'
 import { formatLeaguePoints, formatRank, tierColor } from '#common/utils/tiers'
 import {
   GOOD_KDA,
@@ -20,8 +21,10 @@ import {
  * K/D/A the game already shows: their standing, whether they are on their
  * role or autofilled, how they do on the champion they are on, their streak
  * and their latest games — all read through the player's own client by the
- * loading screen (`useLoadingPlayers`). Drawn mirrored for the right-hand
- * team, so each lane reads as a face-off.
+ * loading screen (`useLoadingPlayers`) — and, as Blitz's game page has them,
+ * the friends they queued with, their mastery on the champion, the champions
+ * they play most and the damage their champion deals. Drawn mirrored for the
+ * right-hand team, so each lane reads as a face-off.
  */
 const props = withDefaults(defineProps<{
   riotId: string
@@ -35,10 +38,15 @@ const props = withDefaults(defineProps<{
   mirrored?: boolean
   /** The route to the player's profile; the name links there when set. */
   profile?: RouteLocationRaw | null
-}>(), { mirrored: false, profile: null })
+  /** The group they queued with (`premades`); null alone or unknown. */
+  premade?: Premade | null
+  /** Their mastery level on the champion (`useGameMasteries`); null when unknown. */
+  mastery?: number | null
+}>(), { mirrored: false, profile: null, premade: null, mastery: null })
 
 const { t } = useT()
-const { nameOf } = useChampionStatics()
+const { nameOf, portraitOf } = useChampionStatics()
+const { profileOf } = useDamageProfiles()
 
 const name = computed(() => props.riotId.split('#')[0] ?? '')
 const tag = computed(() => props.riotId.split('#')[1] ?? '')
@@ -90,6 +98,17 @@ const championTitle = computed(() => {
 })
 
 const streak = computed(() => (form.value ? streakOf(form.value) : null))
+
+// ─── Group, most played, damage ─────────────────────────────────────────────
+
+/** Two groups on one team told apart by their tone. */
+const PREMADE_TONES = ['text-primary', 'text-data-good']
+/** The champions they play most, the one they are on left out when it leads. */
+const mostPlayed = computed(() => (form.value?.champions ?? []).slice(0, 3))
+const mostPlayedLine = (entry: { championId: number, games: number, wins: number, kills: number, deaths: number, assists: number }) =>
+  t('game.intel.mostPlayedLine', { champion: nameOf(entry.championId), games: entry.games, wins: entry.wins, losses: entry.games - entry.wins, kda: formatKdaRatio((entry.kills + entry.assists) / Math.max(1, entry.deaths)) })
+const damage = computed(() => profileOf(props.championId, props.position || props.line?.position))
+const share = (value: number | null) => `${Math.round((value ?? 0) * 100)}%`
 const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null))
 </script>
 
@@ -122,7 +141,21 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
         <span v-else-if="line?.rankRead" class="text-[11px] text-dimmed">{{ t('game.intel.unranked') }}</span>
       </div>
 
-      <div v-if="fit || streak" class="flex flex-wrap items-center gap-1" :class="mirrored && 'flex-row-reverse'">
+      <div v-if="fit || streak || premade || mastery" class="flex flex-wrap items-center gap-1" :class="mirrored && 'flex-row-reverse'">
+        <span
+          v-if="premade"
+          class="inline-flex items-center gap-1 rounded-md bg-elevated/60 px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-default"
+          :class="PREMADE_TONES[premade.group % PREMADE_TONES.length]"
+          :title="t('game.intel.premadeTitle')"
+        >
+          <span class="flex gap-0.5"><span v-for="dot in premade.size" :key="dot" class="size-1 rounded-full bg-current" /></span>
+          {{ premade.size === 2 ? t('game.intel.duo') : premade.size === 3 ? t('game.intel.trio') : t('game.intel.premade', { size: premade.size }) }}
+        </span>
+        <span
+          v-if="mastery"
+          class="rounded-md bg-elevated/60 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted ring-1 ring-default"
+          :title="t('game.intel.masteryTitle', { level: mastery, champion: championName })"
+        >{{ t('game.intel.mastery', { level: mastery }) }}</span>
         <span
           v-if="fit"
           class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1"
@@ -145,6 +178,18 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
           <UIcon :name="streak.wins ? 'i-lucide-flame' : 'i-lucide-trending-down'" class="size-3" />
           {{ t(streak.wins ? 'game.intel.wonRow' : 'game.intel.lostRow', { games: streak.games }) }}
         </span>
+      </div>
+
+      <div v-if="mostPlayed.length" class="flex items-center gap-1" :class="mirrored && 'flex-row-reverse'" :aria-label="t('game.intel.mostPlayed')">
+        <img
+          v-for="entry in mostPlayed"
+          :key="entry.championId"
+          :src="portraitOf(entry.championId) ?? undefined"
+          :alt="nameOf(entry.championId)"
+          :title="mostPlayedLine(entry)"
+          class="size-4 rounded-sm ring-1"
+          :class="entry.championId === championId ? 'ring-primary/60' : 'ring-default'"
+        >
       </div>
     </div>
 
@@ -176,6 +221,17 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
         <USkeleton class="h-4 w-20" />
       </template>
       <span v-else-if="line?.failed" class="text-[11px] text-dimmed">{{ t('game.intel.historyUnavailable') }}</span>
+      <!-- The champion's damage, as the team meters read it: physical, magic, true. -->
+      <div
+        v-if="damage?.physicalShare != null"
+        class="flex h-1 w-20 overflow-hidden rounded-full bg-accented/40 [--dmg-ad:oklch(0.8_0.07_70)] [--dmg-ap:color-mix(in_oklch,var(--ui-primary)_65%,oklch(0.8_0.09_290))] [--dmg-true:oklch(0.88_0_0/0.55)]"
+        :class="mirrored && 'flex-row-reverse'"
+        :title="t('game.intel.damage', { physical: share(damage.physicalShare), magic: share(damage.magicShare), true: share(damage.trueShare), champion: championName })"
+      >
+        <span class="bg-(--dmg-ad)" :style="{ width: share(damage.physicalShare) }" />
+        <span class="bg-(--dmg-ap)" :style="{ width: share(damage.magicShare) }" />
+        <span class="bg-(--dmg-true)" :style="{ width: share(damage.trueShare) }" />
+      </div>
     </div>
   </div>
 </template>
