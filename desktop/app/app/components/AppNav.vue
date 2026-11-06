@@ -50,8 +50,11 @@ const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
   ] },
   { label: t('nav.inGame'), tabs: [
     // Lit while the client is in champion select, wherever the player is; the
-    // rest of the time the page is a draft to play by hand.
-    { label: t('nav.champSelect'), icon: 'i-tabler-users-group', to: '/draft', active: isActive('/draft'), lit: screen.value === 'draft' ? live.value : undefined },
+    // rest of the time the page is a draft to play by hand. A queue with no
+    // champion select (Swiftplay) picks in its lobby, so there it is the lobby builds.
+    screen.value === 'lobby'
+      ? { label: t('nav.champSelect'), icon: 'i-tabler-users-group', to: '/lobby', active: isActive('/lobby'), lit: live.value }
+      : { label: t('nav.champSelect'), icon: 'i-tabler-users-group', to: '/draft', active: isActive('/draft'), lit: screen.value === 'draft' ? live.value : undefined },
     // Lit while a game runs, wherever the player is.
     { label: t('nav.game'), icon: 'i-tabler-crosshair', to: '/game', active: isActive('/game'), lit: screen.value === 'in-game' ? live.value : undefined },
     { label: t('nav.overlay'), icon: 'i-tabler-eye', to: '/overlay', active: route.path === '/overlay' },
