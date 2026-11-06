@@ -38,6 +38,8 @@ export interface TeamSlot {
   position: string
   locked: boolean
   isMe: boolean
+  /** `Name#TAG` when the client names the player; absent for a player it hides, or a bot. */
+  riotId?: string | null
 }
 
 export type GameflowPhase =

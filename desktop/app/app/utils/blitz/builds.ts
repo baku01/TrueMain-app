@@ -34,6 +34,9 @@ export interface BlitzBuildDoc {
   situationalItems?: { itemId: number, games: number, wins: number, pick_rate: number }[]
   /** Each completed item's components in the order players buy them, most played first. */
   itemOrders?: Record<string, (Tally & { items_order: number[], pick_rate_rank?: number })[]>
+  /** The playstyle the document's builds are tagged with (`["Bruiser", "Lethality"]`); Blitz names its build rows by them. */
+  name_tags?: string[]
+  build_id?: { primary_tags_f3pie?: string } | null
 }
 
 /** Builds kept per lane: the most played core paths, as many as TrueMain's page usually shows. */
@@ -189,28 +192,36 @@ export function buildsFromBlitz(championId: number, position: string, doc: Blitz
   return { championId, patch: doc.patch ?? null, position, totalGames: doc.games, builds }
 }
 
-/** The lane documents read this session, by `champion:position:opponent`: the build views and the Blitz panel share one read. */
-const docs = new Map<string, Promise<BlitzBuildDoc | undefined>>()
+/** The lane's rows read this session, by `champion:position:opponent:otp`: the build views and the Blitz panel share one read. */
+const rows = new Map<string, Promise<BlitzBuildDoc[]>>()
 
-/** Blitz's whole document for a champion's lane — every option it measured, not just the most played. */
-export function readBlitzBuildDoc(championId: number, position: string, opponentChampionId: number | null = null): Promise<BlitzBuildDoc | undefined> {
-  const key = `${championId}:${position}:${opponentChampionId ?? ''}`
-  let read = docs.get(key)
+/**
+ * Every document Blitz answers for a champion's lane: one per playstyle its
+ * builds are tagged with (`name_tags`: Bruiser, Lethality, AD…), each a whole
+ * document of its own. `otp` reads the one-tricks' games instead — Blitz
+ * drops the build tier for those (`is_otp=true` with `build_tier` answers no
+ * row at all).
+ */
+export function readBlitzBuildRows(championId: number, position: string, opponentChampionId: number | null = null, otp = false): Promise<BlitzBuildDoc[]> {
+  const key = `${championId}:${position}:${opponentChampionId ?? ''}:${otp ? 'otp' : ''}`
+  let read = rows.get(key)
   if (!read) {
     read = blitzRows<BlitzBuildDoc>('champion_builds_tags', {
       champion_id: championId,
       queue_id: SOLO_QUEUE,
-      build_tier: 'Standard',
+      build_tier: otp ? undefined : 'Standard',
+      is_otp: otp ? 'true' : undefined,
       individual_position: blitzRole(position),
       match_up_champion_id: opponentChampionId,
-    }).then(rows => most(rows))
+    })
     // A failed read is not kept: the next view asks again.
-    read.catch(() => docs.delete(key))
-    keepBounded(docs, key, read)
+    read.catch(() => rows.delete(key))
+    keepBounded(rows, key, read)
   }
   return read
 }
 
-export async function readBlitzBuild(championId: number, position: string, opponentChampionId: number | null = null): Promise<ChampionBuildResponse> {
-  return buildsFromBlitz(championId, position, await readBlitzBuildDoc(championId, position, opponentChampionId))
+/** Blitz's whole document for a champion's lane — every option it measured, not just the most played: its most played playstyle's. */
+export function readBlitzBuildDoc(championId: number, position: string, opponentChampionId: number | null = null): Promise<BlitzBuildDoc | undefined> {
+  return readBlitzBuildRows(championId, position, opponentChampionId).then(list => most(list))
 }

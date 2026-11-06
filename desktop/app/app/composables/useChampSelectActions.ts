@@ -195,5 +195,8 @@ function create(draft: Ref<DraftState>) {
     picked.value.size,
   ].join(':'), refresh, { immediate: true })
 
-  return { writable: computed(() => choices.value.writable), kind, shownKind, hovered, canLock, turnLabel, pending, availability, allyHovering, allyName, hover, ban, lock }
+  /** Champions nobody can pick or ban any more: banned, or locked by either side. */
+  const taken = computed(() => new Set([...banned.value, ...picked.value]))
+
+  return { writable: computed(() => choices.value.writable), kind, shownKind, hovered, canLock, turnLabel, pending, availability, taken, allyHovering, allyName, hover, ban, lock }
 }

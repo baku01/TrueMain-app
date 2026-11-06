@@ -7,8 +7,10 @@ import { positionLabel } from '#common/utils/positions'
 
 /**
  * The suggestions' side lists, as Blitz keeps them beside its suggestion
- * grid: folding groups of compact rows — who beats our lane opponent, the
- * lane's tier list, and, once Jev has read them, the enemies' kits. A row's
+ * grid: folding groups of compact rows — the player's favourite champions
+ * still to be had (Blitz's "Your Favorite Picks"), who beats our lane
+ * opponent, the lane's tier list, and, once Jev has read them, the enemies'
+ * kits. A row's
  * click opens that champion's build; its control hovers (or bans) it in the
  * client. Each group scrolls on its own rather than stretch the screen.
  */
@@ -20,14 +22,27 @@ const props = defineProps<{
   /** The enemies as Jev read them; null until Jev is asked. */
   jevReadings: EnemyReading[] | null
   /** Which groups this column shows. */
-  groups: ('counters' | 'tiers' | 'jev')[]
+  groups: ('favorites' | 'counters' | 'tiers' | 'jev')[]
 }>()
 const emit = defineEmits<{ preview: [championId: number] }>()
 const { t } = useT()
 const { nameOf } = useChampionStatics()
-const { laneEntries } = useTierList()
+const { laneEntries, entryOf } = useTierList()
+const { champions: favoriteChampions } = useFavoriteChampions()
+const { taken, shownKind } = useChampSelectActions()
 
 const tierList = computed(() => laneEntries(props.position))
+
+/**
+ * The champions the player starred (`useFavoriteChampions`) for our lane or
+ * for every lane, newest first, the ones banned or locked left out: a pick a
+ * click away, hovered or banned with the same control as a suggestion.
+ */
+const favorites = computed(() => [...new Set(favoriteChampions.value
+  .filter(entry => entry.position === null || !props.position || entry.position === props.position)
+  .map(entry => entry.championId))]
+  .filter(championId => !taken.value.has(championId))
+  .map(championId => ({ championId, entry: entryOf(championId, props.position) })))
 
 const FACTS = ['cc', 'heal', 'burst', 'autos', 'tank'] as const
 const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fact] >= 0.34).sort((a, b) => reading.read[b] - reading.read[a])
@@ -35,6 +50,30 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
 
 <template>
   <div class="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto">
+    <!-- The player's favourites still to be had. -->
+    <details v-if="groups.includes('favorites')" open class="rounded-lg bg-accented/20">
+      <summary class="flex cursor-pointer items-center gap-2 px-2.5 py-2 text-sm font-semibold text-highlighted">
+        <UIcon name="i-lucide-star" class="size-5 text-primary" />
+        {{ shownKind === 'ban' ? t('draft.side.favoriteBans') : t('draft.side.favoritePicks') }}
+        <span v-if="favorites.length" class="ml-auto text-xs font-normal text-dimmed">{{ favorites.length }}</span>
+      </summary>
+      <ul v-if="favorites.length" class="flex flex-col px-1.5 pb-1.5">
+        <li v-for="{ championId, entry } in favorites" :key="championId" class="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accented/40">
+          <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-left" @click="emit('preview', championId)">
+            <ChampionPortrait :champion-id="championId" size="sm" class="size-8! rounded-md!" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-xs font-semibold text-highlighted">{{ nameOf(championId) }}</span>
+              <span v-if="entry" class="flex items-center gap-1 text-[10px] text-dimmed"><TierBadge :caption="false" :size="14" :tier="entry.tier" />{{ formatPercentage(entry.pickRate) }}</span>
+              <span v-else class="text-[10px] text-dimmed">{{ t('draft.side.offLane') }}</span>
+            </span>
+            <span v-if="entry" class="w-11 text-right text-xs font-semibold tabular-nums" :class="winRateTone(entry.winRate)">{{ formatPercentage(entry.winRate) }}</span>
+          </button>
+          <DraftChampionAction :champion-id="championId" compact class="opacity-0 transition-opacity group-hover:opacity-100" />
+        </li>
+      </ul>
+      <p v-else class="px-2.5 pb-2.5 text-[11px] text-dimmed">{{ t('draft.side.favoritesEmpty') }}</p>
+    </details>
+
     <!-- Who beats our lane opponent. -->
     <details v-if="groups.includes('counters') && opponentId !== null && opponentCounters.length" open class="rounded-lg bg-accented/20">
       <summary class="flex cursor-pointer items-center gap-2 px-2.5 py-2 text-sm font-semibold text-data-good">

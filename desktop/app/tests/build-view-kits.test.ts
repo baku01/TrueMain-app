@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, ref, toRef, watch } from 'vue'
+import { computed, provide, ref, shallowRef, toRef, watch } from 'vue'
+import { PREVIOUS_BUILDS_KEY, storePreviousBuild } from '../app/utils/previous-build'
 import BuildView from '../app/components/build/BuildView.vue'
 import { kit } from './kit-fixtures'
 
@@ -25,6 +26,8 @@ const lane = { builds: [{ firstItemId: 6655, primaryKeystoneId: 8112, core: { ru
 beforeEach(() => {
   vi.stubGlobal('computed', computed)
   vi.stubGlobal('ref', ref)
+  vi.stubGlobal('shallowRef', shallowRef)
+  vi.stubGlobal('provide', provide)
   vi.stubGlobal('watch', watch)
   vi.stubGlobal('toRef', toRef)
   vi.stubGlobal('useChampionBuilds', () => ({ response: ref(lane), pending: ref(false) }))
@@ -32,7 +35,10 @@ beforeEach(() => {
   vi.stubGlobal('useChampionStatics', () => ({ patch: ref('16.21.1'), nameOf: (id: number) => String(id) }))
 })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  localStorage.removeItem(PREVIOUS_BUILDS_KEY)
+})
 
 describe('BuildView with kits', () => {
   it('lists the kits beside the builds, the build first, and swaps the pane on a pick', async () => {
@@ -56,5 +62,19 @@ describe('BuildView with kits', () => {
   it('has no kits section without kits', () => {
     const wrapper = mount(BuildView, { props: { championId: 103, position: 'MIDDLE' }, global })
     expect(wrapper.text()).not.toContain('Your kits')
+  })
+
+  it('offers the previous build first, keeps the lane build the default, and remembers a row picked by hand', async () => {
+    const previous = { key: 'lane-3071', core: { runePage: null }, firstItemId: 3071, keystoneId: 8010, buildTree: [], games: 5, winRate: 0.6 }
+    storePreviousBuild(localStorage, 103, 'MIDDLE', previous as never)
+    const wrapper = mount(BuildView, { props: { championId: 103, position: 'MIDDLE' }, global })
+    expect(wrapper.findAll('.build').map(button => button.text())).toEqual(['previous', 'lane-6655-8112--'])
+    expect(wrapper.get('.builds').attributes('data-selected')).toBe('lane-6655-8112--')
+
+    await wrapper.findAll('.build')[1]!.trigger('click')
+    const stored = JSON.parse(localStorage.getItem(PREVIOUS_BUILDS_KEY)!)
+    expect(stored['103:MIDDLE'].option).toMatchObject({ key: 'previous', firstItemId: 6655 })
+    // The list still offers the earlier visit's build: the click is next time's.
+    expect(wrapper.findAll('.build')[0]!.text()).toBe('previous')
   })
 })

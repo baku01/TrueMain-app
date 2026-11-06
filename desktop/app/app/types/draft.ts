@@ -122,6 +122,8 @@ export interface TeamRow {
   /** A pick locked in; false while it is only hovered. */
   locked: boolean
   me?: boolean
+  /** `Name#TAG` when the client names the player — ours always; what the player card reads. */
+  riotId?: string | null
 }
 
 /** A draft slot's position. The order, names and icons live in the shared `utils/positions.ts`. */
