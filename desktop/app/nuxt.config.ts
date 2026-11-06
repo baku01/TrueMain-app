@@ -73,7 +73,8 @@ export default defineNuxtConfig({
       '/__tencent': { target: 'https://lol.qq.com/act/lbp/common/guides', changeOrigin: true },
       '/__championmastery': { target: 'https://championmastery.gg', changeOrigin: true },
       // op.gg's own pages, asked as the shell asks them: by the app's name, not the browser's (`sources.rs`).
-      '/__opggweb': { target: 'https://op.gg', changeOrigin: true, followRedirects: true, headers: { 'user-agent': 'TrueMain-Desktop (dev)' } },
+      // Not `/__opggweb`: a prefix matches a longer path, so `/__opgg` (its API) would take it.
+      '/__op-gg': { target: 'https://op.gg', changeOrigin: true, followRedirects: true, headers: { 'user-agent': 'TrueMain-Desktop (dev)' } },
       '/__jev': { target: 'https://api.typesafe.ai', changeOrigin: true },
       '/__blitz/data': { target: 'https://data.v2.iesdev.com/api/v1/query_objects/prod/lol', changeOrigin: true },
       '/__blitz/lol': { target: 'https://lol.v2.iesdev.com', changeOrigin: true },
