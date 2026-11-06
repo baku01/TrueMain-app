@@ -98,10 +98,12 @@ fn remove_recommended(folder: &std::path::Path) {
     }
 }
 
-/// When a game ends, the item sets this app wrote for it go, as Blitz's do:
-/// the TrueMain set in the account's list (`LcuClient::remove_item_sets`)
-/// and the automatic import's recommended files. The next draft writes its
-/// own; between games the shop lists none of ours.
+/// When a draft's builds are done with — its game ended, or the champion
+/// select left without one (`supervisor::builds_expired`) — the item sets this
+/// app wrote for it go, as Blitz's do: the recommended files, and a TrueMain
+/// set an older version left in the account's list
+/// (`LcuClient::remove_item_sets`). The next draft writes its own; between
+/// games the shop lists none of ours and the account keeps none.
 pub async fn clear_after_game(client: std::sync::Arc<LcuClient>) {
     match client.remove_item_sets().await {
         Ok(removed) => tracing::debug!(removed, "item set cleared after the game"),
