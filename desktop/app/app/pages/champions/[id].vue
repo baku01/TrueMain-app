@@ -103,7 +103,8 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
       <KitPanel v-if="view === 'kits'" :champion-id="championId" :position="lane" class="min-h-0 flex-1" />
       <ChampionAbilities v-else-if="view === 'abilities'" :champion-id="championId" class="min-h-0 flex-1" />
       <div v-else-if="view === 'jungle'" class="min-h-0 flex-1 overflow-y-auto">
-        <JunglePaths :champion-id="championId" />
+        <!-- The tab names it: the card holds the paths alone. -->
+        <JunglePaths :champion-id="championId" bare class="surface rounded-2xl p-4" />
       </div>
       <BuildView v-else :champion-id="championId" :position="lane" class="min-h-0 flex-1">
         <template #header>
