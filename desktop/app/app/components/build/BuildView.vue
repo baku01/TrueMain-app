@@ -54,7 +54,7 @@ const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) 
 
 const { t } = useT()
 // The rows: the previous build, the draft's, the matchup's, the lane's, the one-tricks' (`useBuildOptions`).
-const { options, pending: lanePending, versusOpponent, defaultKey, remember } = useBuildOptions(toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'draft'))
+const { options, pending: lanePending, versusOpponent, defaultKey, remember, thinLane } = useBuildOptions(toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'draft'))
 const { items, summoners, runeTree, pending: staticPending, loadChampion, championStatic } = useStaticData()
 // Once Jev answered for this draft: how each row's items answer it, and the one that fits best — no new call.
 const jevRows = useJevRowFits(options, toRef(props, 'championId'), toRef(props, 'position'), toRef(props, 'jevNeeds'))
@@ -281,6 +281,7 @@ const emptyMessage = computed(() => t('build.view.none'))
           :versus-opponent="versusOpponent"
           :fits="jevRows.fits"
           :jev-pick="jevRows.best"
+          :thin-lane="thinLane"
           @update:model-value="pick"
         />
         <section v-if="kits?.length">

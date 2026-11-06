@@ -1,8 +1,9 @@
 import type { EnemyAssessment } from '~/composables/useJevEnemies'
-import type { PickRead } from '~/utils/jev-read'
+import type { PickRead } from '~/utils/jev-read-pick'
 import type { RankedPick } from '~/utils/jev-recommend'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { batches, enemyRequest, pickRequest, readPick } from '~/utils/jev-read'
+import { batches, enemyRequest } from '~/utils/jev-read'
+import { pickRequest, readPick } from '~/utils/jev-read-pick'
 import { rankPicks } from '~/utils/jev-recommend'
 
 /** The draft a pick is chosen for. */

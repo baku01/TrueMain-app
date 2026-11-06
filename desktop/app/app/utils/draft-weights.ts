@@ -9,10 +9,16 @@
  *
  * Each category is read 0–1, 0.5 when nothing is known of it, the way Blitz
  * reads them: a win rate pulled toward an even one by its games, then placed
- * between 40% and 60%; the tier as a step from D to S; comfort as the mean of
- * how familiar the champion is (mastery, games, how recently) and how the
- * player wins on it against what the lane expects. A suggestion's total is
- * each category times its weight, summed — what the card's breakdown shows.
+ * between 40% and 60%; comfort as the mean of how familiar the champion is
+ * (mastery, games, how recently) and how the player wins on it against what
+ * the lane expects. A suggestion's total is each category times its weight,
+ * summed — what the card's breakdown shows.
+ *
+ * Two readings are TrueMain's, after LoLTheory's: the meta category reads the
+ * champion's win rate with its players' experience taken out
+ * (`utils/draft-experience`) where Blitz reads its tier, and a pick made
+ * before the lane opponent is known gives up its counter-pick risk
+ * (`utils/draft-risk`) from the counter category.
  *
  * Blitz splits its counter category between the matchup's game and lane win
  * rates; the sources' draft answers carry the game's only, so the split is
@@ -134,6 +140,28 @@ export function tierScore(tier: string | null | undefined): number {
   return ({ S: 1, A: 0.75, B: 0.5, C: 0.25 } as Record<string, number>)[(tier ?? '').trim().charAt(0).toUpperCase()] ?? 0
 }
 
+/**
+ * Where a lane win rate reads 0 and 1 on Blitz's tier step: the least-squares
+ * line from win rate to `tierScore` over Blitz's 274 champion-lanes played at
+ * least 10% of their games there (16.22, Emerald+), which reaches D at 46.3%
+ * and S at 52.5% — Platinum+ 45.8% and 52.5%, Diamond+ 46.2% and 52.9%.
+ * Blitz's tier is that win rate graded (their correlation 0.89; with the pick
+ * rate −0.08), so the meta category keeps the spread the tier gave it while
+ * reading the rate itself, which the tier cannot correct for experience.
+ */
+const META_D = 0.463
+const META_S = 0.525
+
+/**
+ * The meta category: the lane win rate on the tier's scale, pulled toward even
+ * by its games — a source that counts none (Tencent) taken as it stands. An
+ * untiered champion counts as D, as Blitz counts it.
+ */
+export function metaScore(rate: number | null, games: number): number {
+  if (!finite(rate)) return 0
+  return band(games > 0 ? shrunkRate(rate, games) : clamp01(rate), META_D, META_S)
+}
+
 export interface ComfortInput {
   /** Mastery points on the champion, when known. */
   points?: number | null
@@ -196,8 +224,9 @@ export function comfortScore(input: ComfortInput): number | null {
 // ─── The total ──────────────────────────────────────────────────────────────
 
 export interface WeightedInput {
-  /** The champion's tier on the lane. */
-  tier: string | null
+  /** The champion's win rate on the lane, its players' experience taken out where Blitz measured it, and its games; null when it is not tiered there. */
+  winRate: number | null
+  games: number
   /** Its win rate against the lane opponent minus its own on the lane, and the games. */
   matchupDelta: number
   matchupGames: number
@@ -206,22 +235,34 @@ export interface WeightedInput {
   synergyGames: number
   /** `comfortScore`, null when nothing is known of the player on it. */
   comfort: number | null
+  /** `counterRisk`: what a counter-pick may cost it, in win-rate points (0.01 is one); 0 once the lane opponent is known. */
+  counterRisk?: number
 }
 
-/** Each category 0–1, and its points: the category times its weight. The total is the points summed. */
+/**
+ * Each category 0–1, and its points: the category times its weight. The
+ * total is the points summed, less the points the counter-pick risk takes:
+ * the risk comes off the counter category's win rate, before it is placed
+ * between 40% and 60% — one point of risk is 0.05 of the category, so under
+ * Balanced (counter 35.8%) 1.8 points of 100.
+ */
 export interface WeightedScore {
   total: number
   parts: Record<WeightKey, { value: number, weight: number, points: number }>
+  risk: { rate: number, points: number }
 }
 
 export function weightedScore(input: WeightedInput, settings: SuggestionWeights): WeightedScore {
   const weights = normalized(settings)
+  const matchup = shrunkRate(NEUTRAL + input.matchupDelta, input.matchupGames)
   const values: Record<WeightKey, number> = {
-    meta: tierScore(input.tier),
-    counter: rateScore(shrunkRate(NEUTRAL + input.matchupDelta, input.matchupGames)),
+    meta: metaScore(input.winRate, input.games),
+    counter: rateScore(matchup),
     teamFit: rateScore(shrunkRate(NEUTRAL + input.synergyDelta, input.synergyGames)),
     comfort: input.comfort ?? NEUTRAL,
   }
   const parts = Object.fromEntries(WEIGHT_KEYS.map(key => [key, { value: values[key], weight: weights[key], points: values[key] * weights[key] }])) as WeightedScore['parts']
-  return { total: clamp01(WEIGHT_KEYS.reduce((sum, key) => sum + parts[key].points, 0)), parts }
+  const rate = finite(input.counterRisk) ? Math.max(input.counterRisk, 0) : 0
+  const risk = { rate, points: (values.counter - rateScore(matchup - rate)) * weights.counter }
+  return { total: clamp01(WEIGHT_KEYS.reduce((sum, key) => sum + parts[key].points, 0) - risk.points), parts, risk }
 }

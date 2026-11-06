@@ -38,6 +38,32 @@ describe('app theme', () => {
     expect(svg).toContain('stop-color="#ffcc00"')
   })
 
+  it('draws Cinnamoroll\'s puppy on its pink tile in place of the mark, rounded on the Dock', () => {
+    for (const theme of ['cinnamoroll', 'cinnamoroll-night'] as const) {
+      const svg = appIconSvg({ theme, accent: 'pink' }, true)!
+      expect(svg).toContain('fill="#f5d6e1"')
+      expect(svg).toContain('rx="14.4"')
+      expect(svg).toContain('#3d76c2')
+      expect(svg).not.toContain('M16 48V22')
+    }
+  })
+
+  it('takes #f5d6e1 as the night twin\'s accent, and its deep shade where the page is light', () => {
+    expect(flavorTokens('cinnamoroll-night', 'pink')['--ui-primary']).toBe('#f5d6e1')
+    // On the light page the frame — the side rail and the top bar — is the pink itself.
+    expect(flavorTokens('cinnamoroll', 'pink')['--ui-bg-elevated']).toBe('#f5d6e1')
+    expect(themeCss({ theme: 'cinnamoroll-night', accent: 'pink' })).toContain('html:root[data-theme="cinnamoroll-night"] .rail-item[data-active] { background-color: #f5d6e1;')
+    expect(THEMES.cinnamoroll.pair).toBe('cinnamoroll-night')
+  })
+
+  it('lays Cinnamoroll Sakura out: the sakura frame, the puppy on its pink tile, a rose small text can carry', () => {
+    const tokens = flavorTokens('cinnamoroll-sakura', 'pink')
+    expect(tokens['--ui-bg-elevated']).toBe('#ffd9e4')
+    expect(tokens['--ui-primary']).toBe('#cf3f74')
+    expect(tokens['--color-ally']).toBe('#2f7fc2')
+    expect(appIconSvg({ theme: 'cinnamoroll-sakura', accent: 'pink' }, true)).toContain('fill="#ffd2e0"')
+  })
+
   it('mixes two colours channel by channel', () => {
     expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080')
     expect(mix('#1e1e2e', '#1e1e2e', 0.3)).toBe('#1e1e2e')

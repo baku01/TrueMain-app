@@ -37,11 +37,15 @@ export interface ChampionText {
 /** What Jev read of an enemy champion's kit, each 0 (none) to 1 (the most). */
 export interface ChampionRead {
   cc: number
+  /** How much of its hard crowd control Tenacity shortens: none of airborne, suppression, stasis, drowsy or nearsight. */
+  ccReducible: number
   heal: number
+  /** How much of its healing is done in fights, where Grievous Wounds reaches it, not regenerated out of them. */
+  healInFight: number
   burst: number
   autos: number
   tank: number
-  /** How sure Jev was over the five, TypeSafe's measure averaged. */
+  /** How sure Jev was over the seven, TypeSafe's measure averaged. */
   confidence: number
 }
 
@@ -60,7 +64,8 @@ export interface FitRead { fit: number, confidence: number }
 
 export interface Request { state: Record<string, unknown>, questions: Record<string, JevQuestion> }
 
-const kitOf = (champion: ChampionText) => ({
+/** A champion's classes and abilities as a state reads them. */
+export const kitOf = (champion: ChampionText) => ({
   classes: champion.classes.join(', ') || 'unknown',
   abilities: Object.fromEntries(champion.kit.map(ability => [`${ability.key} — ${ability.name}`, ability.description])),
 })
@@ -81,12 +86,30 @@ const CHAMPION_SCALES: Record<keyof Omit<ChampionRead, 'confidence'>, { ask: (na
       'Several hard crowd-control abilities, or a long or area lockdown: suppression, chained stuns, area knock-ups',
     ],
   },
+  // LoLTheory (blog.loltheory.gg/what-is-cc-league-of-legends): "Airborne, drowsy, nearsight, stasis, and suppression always apply for their full duration."
+  ccReducible: {
+    ask: name => `How much of ${name}'s hard crowd control can Tenacity shorten? Read enemies["${name}"].`,
+    levels: [
+      'None of it: its hard crowd control is airborne (knock-ups, knock-backs, pulls), suppression, stasis, sleep or nearsight — or it has none',
+      'Part of it: airborne or suppression beside stuns, roots, fears, charms, taunts or silences',
+      'All of it: its hard crowd control is stuns, roots, fears, charms, taunts, silences or blinds',
+    ],
+  },
   heal: {
     ask: name => `How much does ${name} heal? Read enemies["${name}"].`,
     levels: [
       'Little or no healing',
       'Heals itself or allies with one ability or passive',
       'Healing or lifesteal is central to how it wins fights: it out-heals damage in long fights',
+    ],
+  },
+  // LoLTheory (blog.loltheory.gg/grievous-wounds-lol): "Skip GW against Garen, Tahm Kench, and Warmog's Armor users."
+  healInFight: {
+    ask: name => `When does ${name}'s healing happen? Read enemies["${name}"].`,
+    levels: [
+      'Out of combat: regeneration that starts once it stops taking damage (Garen\'s passive) — or it barely heals',
+      'Both: some healing during fights, some regeneration between them',
+      'During fights: lifesteal, omnivamp or heals from its abilities as it trades and fights',
     ],
   },
   burst: {
@@ -115,7 +138,7 @@ const CHAMPION_SCALES: Record<keyof Omit<ChampionRead, 'confidence'>, { ask: (na
   },
 }
 
-/** The enemy kits as one request: five scales per champion. */
+/** The enemy kits as one request: seven scales per champion. */
 export function enemyRequest(enemies: ChampionText[]): Request {
   const questions: Record<string, JevQuestion> = {}
   for (const enemy of enemies) {
@@ -220,79 +243,6 @@ export function laneRequest(input: {
     },
     questions,
   }
-}
-
-/** What Jev read of a champion we could pick, each 0 (bad) to 1 (good); null where the draft gave nothing to judge against. */
-export interface PickRead {
-  lane: number | null
-  team: number | null
-  enemy: number | null
-  confidence: number
-}
-
-const PICK_SCALES = {
-  lane: {
-    ask: (name: string) => `How does candidates["${name}"] fare laning against laneOpponent?`,
-    levels: [
-      'laneOpponent wins the lane: its kit punishes this champion in lane',
-      'An even lane: neither kit has the edge',
-      'This champion wins the lane: its kit punishes laneOpponent',
-    ],
-  },
-  team: {
-    ask: (name: string) => `How well does candidates["${name}"] complete ourTeam?`,
-    levels: [
-      'Doubles what ourTeam already has and leaves its gaps open',
-      'Fits ourTeam without filling a gap',
-      'Gives ourTeam what it lacks: a frontline, engage, the other damage type, or the range it misses',
-    ],
-  },
-  enemy: {
-    ask: (name: string) => `How does candidates["${name}"] fare against enemyTeam as a whole?`,
-    levels: [
-      'enemyTeam shuts it down: its crowd control, burst or range beats this champion',
-      'Neither side has the edge',
-      'This champion punishes what enemyTeam relies on',
-    ],
-  },
-} as const
-
-/**
- * The champions we could pick as one request: against the lane opponent, with
- * our team, against the enemy team — each a scale of situations, asked only
- * where the draft has someone to judge against. Short kits: many champions
- * share the state, and only what they do matters here.
- */
-export function pickRequest(input: {
-  position: string
-  opponent: ChampionText | null
-  allies: ChampionText[]
-  enemies: ChampionText[]
-  candidates: ChampionText[]
-}): Request {
-  const asked = (Object.keys(PICK_SCALES) as (keyof typeof PICK_SCALES)[]).filter(fact => (fact === 'lane' ? !!input.opponent : fact === 'team' ? input.allies.length > 0 : input.enemies.length > 0))
-  const questions: Record<string, JevQuestion> = {}
-  for (const candidate of input.candidates) {
-    for (const fact of asked) questions[`p${candidate.id}_${fact}`] = { type: 'score', instructions: PICK_SCALES[fact].ask(candidate.name), criteria: [...PICK_SCALES[fact].levels] }
-  }
-  return {
-    state: {
-      ourRole: input.position,
-      ...(input.opponent ? { laneOpponent: { name: input.opponent.name, ...kitOf(input.opponent) } } : {}),
-      ourTeam: Object.fromEntries(input.allies.map(ally => [ally.name, kitOf(ally)])),
-      enemyTeam: Object.fromEntries(input.enemies.map(enemy => [enemy.name, kitOf(enemy)])),
-      candidates: Object.fromEntries(input.candidates.map(candidate => [candidate.name, kitOf(candidate)])),
-    },
-    questions,
-  }
-}
-
-export function readPick(id: number, answers: Record<string, JevAnswer>): PickRead | null {
-  const reads = (Object.keys(PICK_SCALES) as (keyof typeof PICK_SCALES)[]).map(fact => [fact, scoreOf(answers[`p${id}_${fact}`])] as const)
-  const known = reads.filter(([, read]) => read)
-  if (!known.length) return null
-  const value = (fact: keyof typeof PICK_SCALES) => reads.find(([name]) => name === fact)?.[1]?.value ?? null
-  return { lane: value('lane'), team: value('team'), enemy: value('enemy'), confidence: known.reduce((sum, [, read]) => sum + read!.confidence, 0) / known.length }
 }
 
 /**

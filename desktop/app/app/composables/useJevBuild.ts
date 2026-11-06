@@ -5,10 +5,13 @@ import type { FitRead, ItemRead, Request } from '~/utils/jev-read'
 import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
-import { candidateItems, closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool, withItemStats } from '~/utils/jev-build'
+import type { SlotStats } from '~/utils/jev-item-stats'
+import { INVENTORY, candidateItems, closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool } from '~/utils/jev-build'
+import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, rankSlot } from '~/utils/jev-recommend'
+import { bootsUrgency, dueAt, healCutFits, withDraftBoots } from '~/utils/jev-rules'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
@@ -23,15 +26,18 @@ export type { EnemyReading } from '~/composables/useJevEnemies'
  * 1. the measures: the options of the base the player chose (`base`,
  *    `utils/jev-bases`: the lane's — lolalytics' and Blitz's pooled game by
  *    game — by default, else the matchup's, a playstyle's or the
- *    one-tricks'), Blitz's item stats (win probability added, on the lane and
- *    against the lane opponent), the enemies' measured damage split;
+ *    one-tricks'), Blitz's item stats (win probability added, on the lane,
+ *    against the lane opponent, at each place of the buying order and after
+ *    the items the build holds before it), the enemies' measured damage split;
  * 2. what Jev reads (`utils/jev-read`): every enemy kit, every candidate item,
  *    the lane choices — three requests sent at once, only what this session has
  *    not read yet;
  * 3. the ranking (`utils/jev-recommend`): the team's needs, each option's fit,
  *    its measured signal and how well it suits our champion, slot by slot —
  *    the core item by item, then the items after the measured core closest to
- *    it, an item already in the build left out.
+ *    it, an item already in the build left out — and LoLTheory's rules
+ *    (`utils/jev-rules`): a resistance due by its item slot, one Grievous
+ *    Wounds item, an enchanter's boots after its second item.
  *
  * Beside it, the most played option of every slot of the same base, for
  * comparison; `answered` says which base the answer is for — another chosen
@@ -85,10 +91,11 @@ export function useJevBuild(
       const enemyIds = request.enemies.map(enemy => enemy.championId)
 
       // 1. The measures.
-      const [loaded, laneStats, versusStats] = await Promise.all([
+      const [loaded, laneStats, versusStats, slotStats] = await Promise.all([
         base ? base() : laneOptions(championId, position).then(options => (options ? { base: LANE_BASE, options } : null)),
         readItemStats(championId, position).catch(() => new Map()),
         opponentId ? readItemStats(championId, position, opponentId).catch(() => new Map()) : new Map(),
+        Promise.all(Array.from({ length: INVENTORY }, (_, index) => readItemStats(championId, position, null, { slot: index + 1 }).catch(() => new Map()))),
         loadAll([championId, ...enemyIds]),
         english.load(),
         reader.load(),
@@ -161,41 +168,53 @@ export function useJevBuild(
         const read = scoreOf(answer)
         if (read) fits[key] = { fit: read.value, confidence: read.confidence }
       }
-      const urgency = scoreOf(answers.bootsTiming)?.value ?? null
+      const urgency = bootsUrgency(scoreOf(answers.bootsTiming)?.value ?? null, ours, position)
 
       // 3. The ranking: the team's needs, then every slot.
       const assessment = reader.assess(request.enemies, opponentId)
       const { team, lane: laneOf } = assessment
       const context = { team, lane: laneOf, itemReads, tags, fits, urgency }
 
-      const result: RankedSlot[] = first.map(slot => rankSlot(slot, context))
+      // Boots past the three most played that answer the lane (`withDraftBoots`).
+      const bootsFor = (slot: (typeof first)[number]) => withItemStats([withDraftBoots(slot, options.boots, names.item, id => answersDraft(id, laneOf, itemReads, tags))], laneStats, versusStats)[0]!
+      const result: RankedSlot[] = first.map(slot => rankSlot(slot.kind === 'boots' ? bootsFor(slot) : slot, context))
       const pickOf = (side: 'pick' | 'standard') => (name: string) => result.find(entry => entry.slot.name === name)?.[side] ?? null
       // What a build may hold: its boots and items within the inventory (the starting item that grows keeps a slot), no limited group over its count.
       const roomOf = (side: 'pick' | 'standard') => roomFor(pickOf(side)('starter')?.itemIds ?? []) - (pickOf(side)('boots') ? 1 : 0)
       const jevCore: number[] = []
       const jevLater: number[] = []
       const jevHeld = () => [...jevCore, ...(pickOf('pick')('boots')?.itemIds ?? []), ...jevLater]
-      for (const slot of withItemStats(coreSlots(options, names), laneStats, versusStats)) {
+      const fitsBuild = (id: number) => fitsWith(id, jevHeld()) && healCutFits(id, jevHeld(), itemReads)
+      // The place the next item takes, boots apart: its slot of the buying order, the items before it, and the resistances due there.
+      const bought = () => [...jevCore, ...jevLater]
+      const dueNow = () => dueAt(assessment.dues, bought().length + 1, bought(), tags)
+      const placeStats = async (): Promise<SlotStats> => ({
+        slot: slotStats[bought().length],
+        path: bought().length ? await readItemStats(championId, position, null, { path: bought() }).catch(() => new Map()) : undefined,
+      })
+      for (const slot of coreSlots(options, names)) {
         if (jevCore.length >= roomOf('pick')) break
-        const open = slot.options.filter(option => option.itemIds.every(id => fitsWith(id, jevHeld())))
+        const open = slot.options.filter(option => option.itemIds.every(fitsBuild))
         if (!open.length) continue
-        const entry = rankSlot({ ...slot, options: open }, context)
+        const [measured] = withItemStats([{ ...slot, options: open }], laneStats, versusStats, await placeStats())
+        if (mine !== generation) return
+        const entry = rankSlot(measured!, { ...context, due: dueNow() })
         jevCore.push(...entry.pick.itemIds)
         result.push(entry)
       }
       const follows = closestCore(options.cores, jevCore)
       // After the core, the draft's answers the build can use: none of the other kind of damage than the core's (Udyr on Liandry's Torment takes no Black Cleaver).
       const coreKind = jevCore.map(id => damageKind(tags(id))).find(kind => kind !== null) ?? null
-      const situational = {
-        pool,
-        answersDraft: (id: number) => answersDraft(id, team, itemReads, tags),
-        suits: (id: number) => { const kind = damageKind(tags(id)); return !kind || !coreKind || kind === coreKind },
-      }
+      const suits = (id: number) => { const kind = damageKind(tags(id)); return !kind || !coreKind || kind === coreKind }
       for (const number of laterSlotNumbers(options, follows)) {
         if (jevCore.length + jevLater.length >= roomOf('pick')) break
-        const next = laterSlot(options, follows, number, jevHeld(), names, situational)
-        if (!next) continue
-        const entry = rankSlot(withItemStats([next], laneStats, versusStats)[0]!, context)
+        const due = dueNow()
+        const next = laterSlot(options, follows, number, jevHeld(), names, { pool, suits, answersDraft: id => healCutFits(id, jevHeld(), itemReads) && answersDraft(id, team, itemReads, tags, due) })
+        const open = next?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
+        if (!next || !open.length) continue
+        const [measured] = withItemStats([{ ...next, options: open }], laneStats, versusStats, await placeStats())
+        if (mine !== generation) return
+        const entry = rankSlot(measured!, { ...context, due })
         jevLater.push(...entry.pick.itemIds)
         result.push(entry)
       }
