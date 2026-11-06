@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CounterRow } from '~/utils/counters'
 import type { SynergyRow } from '~/utils/synergies'
 import { counterTables, counterTier, formatPoints } from '~/utils/counters'
-import { bySynergy, searchPairs, synergyTier } from '~/utils/synergies'
+import { bySynergy, searchPairs, synergyTier, withEnoughGames } from '~/utils/synergies'
 import { masteryRows, visibleMastery } from '~/utils/blitz/mastery'
 import { readFirst, standInOrder } from '~/utils/sources/stand-in'
 
@@ -52,6 +52,12 @@ describe('synergies', () => {
   it('sorts the best tier first, the higher win rate within a tier, the ungraded last', () => {
     const rows = [pair(1, 2, 'B', 0.55), pair(3, 4, '', 0.6), pair(5, 6, 'S', 0.5), pair(7, 8, 'B', 0.57)]
     expect([...rows].sort(bySynergy).map(row => row.championId)).toEqual([5, 7, 1, 3])
+  })
+
+  it('leaves out the allies met in under half a percent of the pairs, however well they did', () => {
+    const thin = { ...pair(9, 360, 'S', 1), games: 1 }
+    const rows = [{ ...pair(1, 412, 'B', 0.49), games: 4_000 }, { ...pair(1, 117, 'B', 0.5), games: 3_000 }, thin]
+    expect(withEnoughGames(rows).map(row => row.allyChampionId)).toEqual([412, 117])
   })
 
   it('finds a pair by either champion\'s name, accents ignored', () => {
