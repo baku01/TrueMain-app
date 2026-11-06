@@ -8,17 +8,21 @@ import { PALETTES } from '~/utils/catppuccin'
  * (its lightest for Latte). Null for TrueMain: the shell puts the bundle's own
  * icon back.
  */
-export function appIconSvg(choice: Pick<ThemeChoice, 'theme' | 'accent'>): string | null {
+export function appIconSvg(choice: Pick<ThemeChoice, 'theme' | 'accent'>, rounded = false): string | null {
   if (!isFlavor(choice.theme)) return null
   const palette = PALETTES[choice.theme]
   const [top, middle, foot] = markStops(palette[choice.accent])
   const tile = choice.theme === 'latte' ? palette.base : palette.crust
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">`
     + `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="0.55" stop-color="${middle}"/><stop offset="1" stop-color="${foot}"/></linearGradient></defs>`
-    + `<rect width="64" height="64" fill="${tile}"/>`
-    + `<path d="M16 48V22l14 16L48 16" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`
+    + (rounded
+      // Apple's icon grid: the tile 824 of 1024, centred, its corners about 22.5 % of its side — the shape the Dock gives the bundle's icon.
+      ? `<g transform="translate(6.25 6.25) scale(0.8047)"><rect width="64" height="64" rx="14.4" fill="${tile}"/>${MARK}</g>`
+      : `<rect width="64" height="64" fill="${tile}"/>${MARK}`)
     + `</svg>`
 }
+
+const MARK = `<path d="M16 48V22l14 16L48 16" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`
 
 /** `svg` drawn on a `size`-pixel square. */
 async function draw(svg: string, size: number): Promise<HTMLCanvasElement> {
@@ -37,10 +41,10 @@ export const ICON_PIXELS = 128
 
 /**
  * What the shell is handed (`set_app_icon`): a 512-pixel PNG for the Dock,
- * which AppKit decodes, and the `ICON_PIXELS` square as raw RGBA.
+ * which AppKit decodes — `dockSvg`, rounded: macOS masks only the bundle's own icon —, and the `ICON_PIXELS` square as raw RGBA.
  */
-export async function rasterizeIcon(svg: string): Promise<{ png: number[], rgba: number[], size: number }> {
-  const big = await draw(svg, 512)
+export async function rasterizeIcon(svg: string, dockSvg = svg): Promise<{ png: number[], rgba: number[], size: number }> {
+  const big = await draw(dockSvg, 512)
   const blob = await new Promise<Blob | null>(resolve => big.toBlob(resolve, 'image/png'))
   if (!blob) throw new Error('the icon could not be drawn')
   const small = await draw(svg, ICON_PIXELS)
