@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::{Error, Result};
-use crate::runes::OWNED_PAGE_PREFIX;
+use crate::runes::{owned_name, OWNED_PAGE_PREFIX};
 
 /// Marks the one set this app owns. The rune page's prefix, so both objects
 /// the app writes read alike in the client.
@@ -106,7 +106,7 @@ impl ItemSetDraft {
     }
 
     /// The set for a kit (#2185): the blocks as the app titled them, in its
-    /// order, each only when it has items — the same one `TrueMain: ` set the
+    /// order, each only when it has items — the same one `TrueMain ` set the
     /// build's import writes, so a kit replaces it rather than adding one.
     pub fn from_blocks(champion: &str, champion_id: i64, named: &[NamedBlock]) -> Option<Self> {
         let blocks: Vec<ItemSetBlock> = named
@@ -182,7 +182,7 @@ fn block(title: &str, ids: &[i64]) -> Option<ItemSetBlock> {
 pub fn is_ours(set: &Value) -> bool {
     set.get("title")
         .and_then(Value::as_str)
-        .is_some_and(|title| title.starts_with(OWNED_SET_PREFIX))
+        .is_some_and(owned_name)
 }
 
 /// The account's item-set document, and its list of sets.
@@ -309,7 +309,7 @@ mod tests {
             },
         ];
         let draft = ItemSetDraft::from_blocks("Ahri", 103, &named).expect("a kit with items");
-        assert_eq!(draft.title, "TrueMain: Ahri");
+        assert_eq!(draft.title, "TrueMain Ahri");
         let titles: Vec<&str> = draft.blocks.iter().map(|b| b.title.as_str()).collect();
         assert_eq!(titles[..3], ["Starter", "Boots", "Items"]);
         assert_eq!(draft.blocks.len(), 4);
@@ -342,7 +342,7 @@ mod tests {
         let draft = draft();
         let titles: Vec<&str> = draft.blocks.iter().map(|b| b.title.as_str()).collect();
         assert_eq!(titles, vec!["Starter", "Boots", "Core"]);
-        assert_eq!(draft.title, "TrueMain: Ahri");
+        assert_eq!(draft.title, "TrueMain Ahri");
         assert_eq!(draft.associated_champions, vec![103]);
         assert_eq!(draft.associated_maps, vec![SUMMONERS_RIFT]);
         let core: Vec<&str> = draft.blocks[2]
@@ -371,7 +371,7 @@ mod tests {
         assert_eq!(planned[0], existing[0]);
         let ours = &planned[1];
         assert_eq!(ours["uid"], "fresh");
-        assert_eq!(ours["title"], "TrueMain: Ahri");
+        assert_eq!(ours["title"], "TrueMain Ahri");
         assert_eq!(ours["type"], "custom");
         assert_eq!(ours["associatedChampions"], json!([103]));
         assert_eq!(ours["associatedMaps"], json!([11]));
@@ -395,7 +395,7 @@ mod tests {
         assert_eq!(planned[2], existing[2]);
         assert_eq!(planned[1]["uid"], "ours");
         assert_eq!(planned[1]["sortrank"], 7);
-        assert_eq!(planned[1]["title"], "TrueMain: Ahri");
+        assert_eq!(planned[1]["title"], "TrueMain Ahri");
         assert_eq!(planned[1]["associatedChampions"], json!([103]));
         assert_eq!(planned[1]["blocks"].as_array().map(Vec::len), Some(3));
     }
@@ -442,6 +442,7 @@ mod tests {
 
     #[test]
     fn recognises_only_our_own_prefix() {
+        assert!(is_ours(&json!({ "title": "TrueMain Ahri vs Zed" })));
         assert!(is_ours(&json!({ "title": "TrueMain: Ahri" })));
         assert!(!is_ours(&json!({ "title": "truemain ahri" })));
         assert!(!is_ours(&json!({ "title": "My TrueMain set" })));

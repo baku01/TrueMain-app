@@ -18,6 +18,20 @@ export interface PlayerForm {
   streak: number
   /** The latest of those, newest first, at most ten. */
   recent: RecentGame[]
+  /** The champions played most over those games, at most three, most played first. */
+  champions: ChampionGames[]
+  /** Every one of those games' ids, newest first: who played together (`utils/premade.ts`). */
+  gameIds: number[]
+}
+
+/** Mirrors `ChampionGames` in `crates/lcu/src/form.rs`. */
+export interface ChampionGames {
+  championId: number
+  games: number
+  wins: number
+  kills: number
+  deaths: number
+  assists: number
 }
 
 /** Mirrors `PositionGames` in `crates/lcu/src/form.rs`. */

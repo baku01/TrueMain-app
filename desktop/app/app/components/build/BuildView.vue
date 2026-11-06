@@ -119,18 +119,22 @@ const shown = computed(() => {
   if (selected.value === 'pro' && pro.value) return pro.value.option
   return options.value.find(option => option.key === selected.value) ?? options.value[0] ?? null
 })
-/** What the item set button imports: the build on screen, named for the set's title. */
-const itemSetSubject = computed((): ItemSetSubject | null => {
+const { nameOf } = useChampionStatics()
+/** What an import is named after: the champion, against the draft's lane opponent when there is one (`TrueMain Aatrox vs Akali`). */
+const importName = computed(() => {
   const name = championStatic(props.championId)?.championName
-  return shown.value && name ? { championId: props.championId, champion: name, position: props.position, build: shown.value } : null
+  if (!name) return null
+  return props.draft?.opponentId ? `${name} vs ${nameOf(props.draft.opponentId)}` : name
 })
+/** What the item set button imports: the build on screen, named for the set's title. */
+const itemSetSubject = computed((): ItemSetSubject | null =>
+  shown.value && importName.value ? { championId: props.championId, champion: importName.value, position: props.position, build: shown.value } : null)
 /**
  * What the draft's automatic import writes (`useDraftAutoImport`): the build
  * on screen — a row, a pro's, a kit — and every other row, each as an item
  * set. Told on every change, so another build picked is imported in turn.
  */
 const emit = defineEmits<{ selection: [value: { championId: number, selected: ImportChoice | null, others: ImportBuild[] }] }>()
-const { nameOf } = useChampionStatics()
 function choiceOf(option: BuildOption, title: string): ImportChoice {
   const path = option.core.itemPath?.itemIds ?? []
   const spells = option.core.summonerSpells
@@ -251,7 +255,7 @@ const emptyMessage = computed(() => t('build.view.none'))
       :summoners-pending="staticPending"
       :rune-tree="runeTree"
       :no-runes-message="shown.key === 'draft' ? t('build.view.noRunes') : null"
-      :champion-name="championStatic(championId)?.championName || null"
+      :champion-name="importName"
       :champion-id="championId"
       :item-path="shown.core.itemPath"
       :situational="situationalFromTree(shown.buildTree, shown.core.itemPath?.itemIds ?? [])"
@@ -318,7 +322,7 @@ const emptyMessage = computed(() => t('build.view.none'))
         :position="position"
         :initial-core="shown.core.itemPath?.itemIds ?? null"
         :champion-static="championStatic(championId)"
-        :champion-name="championStatic(championId)?.championName || null"
+        :champion-name="importName"
         :items="items"
         :summoners="summoners"
         :rune-tree="runeTree"
@@ -337,7 +341,7 @@ const emptyMessage = computed(() => t('build.view.none'))
         :summoners-pending="staticPending"
         :rune-tree="runeTree"
         :no-runes-message="shown.key === 'draft' ? t('build.view.noRunes') : null"
-        :champion-name="championStatic(championId)?.championName || null"
+        :champion-name="importName"
         :champion-id="championId"
       >
         <template #tree>

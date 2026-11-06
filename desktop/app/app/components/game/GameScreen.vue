@@ -8,6 +8,7 @@ import type { GamePlayer, GameState, GameTeam } from '~/types/game'
 import type { LoadingPlayer } from '~/types/loading'
 import { laneRows, leftTeam } from '~/utils/item-value'
 import { loadingLineOf } from '~/utils/player-intel'
+import { premades } from '~/utils/premade'
 
 /**
  * The running game, read through its own API (#1748): the ten players, lane
@@ -27,6 +28,8 @@ const props = defineProps<{
   sync: ClockSync
   /** The loading screen's players (`useLoadingPlayers`); empty until the roster is read. */
   lines?: LoadingPlayer[]
+  /** The shard the game is played on (`LoadingView.platformId`), for the players' mastery. */
+  platformId?: string
 }>()
 
 // ─── The clock ──────────────────────────────────────────────────────────────
@@ -54,6 +57,14 @@ const lineOf = (player: GamePlayer | null) =>
 const reading = computed(() => (props.lines?.length ?? 0) > 0)
 /** Each lane's edge, by position (#1863). */
 const edges = useLaneEdges(() => props.lines ?? [])
+/** Who queued together, and each player's mastery on their champion — Blitz's game page's cards. */
+const groups = computed(() => premades(props.lines ?? []))
+const masteries = useGameMasteries(() => props.lines ?? [], () => props.platformId ?? '')
+const premadeOf = (line: LoadingPlayer | null) => (line?.riotId ? groups.value.get(line.riotId) ?? null : null)
+const masteryOf = (line: LoadingPlayer | null) => (line?.riotId ? masteries.value.get(line.riotId) ?? null : null)
+/** Each side's picks, for the teams' damage split. */
+const picksOf = (team: GameTeam) => props.game.players.filter(player => player.team === team).map(player => ({ championId: idOfAlias.value.get(player.champion.toLowerCase()) ?? 0, position: player.position || null })).filter(pick => pick.championId > 0)
+const me = computed(() => props.game.players.find(player => player.isMe) ?? null)
 
 /** Lane by lane, so each row is a lane's face-off (`utils/item-value.ts`, shared with the overlay). */
 const rows = computed(() => {
@@ -101,7 +112,11 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
       </div>
     </header>
 
+    <!-- Each team's damage split, as Blitz's game page leads with it. -->
+    <DraftTeamDamageMeter :allies="picksOf(left)" :enemies="picksOf(right)" class="surface rounded-xl px-4 py-3" :aria-label="t('game.team.damage')" />
+
     <GameNextItem v-if="game.myTeam" :game="game" />
+    <GameSkillOrder v-if="me" :player="me" :champion-id="idOfAlias.get(me.champion.toLowerCase()) ?? null" />
 
     <section class="surface overflow-hidden rounded-xl">
       <div class="grid grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-3 border-b border-default px-4 py-2">
@@ -127,6 +142,8 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
             :clock="row.ally?.dead ? clock : 0"
             :line="row.allyLine"
             :reading="reading"
+            :premade="premadeOf(row.allyLine)"
+            :mastery="masteryOf(row.allyLine)"
             class="-mx-2 rounded-lg px-2 py-1.5"
             :class="row.ally?.isMe && 'bg-primary/5 ring-1 ring-primary/15'"
           />
@@ -139,6 +156,8 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
             :clock="row.enemy?.dead ? clock : 0"
             :line="row.enemyLine"
             :reading="reading"
+            :premade="premadeOf(row.enemyLine)"
+            :mastery="masteryOf(row.enemyLine)"
             mirrored
             class="-mx-2 rounded-lg px-2 py-1.5"
           />

@@ -56,6 +56,9 @@ fn base(source: &str) -> Option<&'static str> {
         // Any player's mastery points per champion, which Blitz does not keep:
         // the page itself, handed over as text for the app to read.
         "championmastery" => Some("https://championmastery.gg/"),
+        // op.gg's own champion pages, for what its API does not carry (a
+        // jungler's paths): the page itself, handed over as text.
+        "opggweb" => Some("https://op.gg/"),
         _ => None,
     }
 }
@@ -158,7 +161,7 @@ pub async fn source_get(
         .map_err(|error| error.to_string())?;
     let value = if source == "tencent" {
         script_object(&text)
-    } else if source == "championmastery" {
+    } else if source == "championmastery" || source == "opggweb" {
         serde_json::value::to_raw_value(&text).map_err(|error| error.to_string())
     } else {
         RawValue::from_string(text).map_err(|error| error.to_string())

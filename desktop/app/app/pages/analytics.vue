@@ -153,6 +153,9 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
           />
           <AnalyticsSection v-else :title="t('analytics.section.build')" empty :source="source" />
 
+          <!-- A jungler's paths, op.gg's (the only source that measures them). -->
+          <JunglePaths v-if="championId && position === 'JUNGLE'" :champion-id="championId" />
+
           <AnalyticsSection :title="t('analytics.section.trend')" :empty="trendEmpty" :source="source">
             <AnalyticsTrend :trend="analytics.trend" />
           </AnalyticsSection>

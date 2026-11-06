@@ -22,6 +22,12 @@ const props = defineProps<{
   standardBuild: LaidBuild | null
 }>()
 const { t } = useT()
+const { nameOf } = useChampionStatics()
+/** What its imports are named after: the champion against the lane opponent (`TrueMain Aatrox vs Akali`). */
+const importName = computed(() => {
+  const opponent = props.enemies.find(enemy => enemy.opponent)
+  return opponent ? `${nameOf(props.championId)} vs ${opponent.name}` : nameOf(props.championId)
+})
 
 /** The step opened below the builds: the one clicked, else the first where Jev parts from the most played. */
 const chosen = ref<OpenedStep | null>(null)
@@ -38,8 +44,8 @@ const opened = computed(() => {
     <JevEnemyRead v-if="needs" :needs="needs" :enemies="enemies" />
 
     <!-- The two builds stacked, step over step, then every option of the step opened. -->
-    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :build="jevBuild" side="jev" />
-    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :build="standardBuild" side="standard" />
+    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="importName" :build="jevBuild" side="jev" />
+    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="importName" :build="standardBuild" side="standard" />
     <section v-if="opened" class="surface min-w-0 rounded-2xl p-4">
       <header class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('jev.path.details', { slot: opened.label }) }}</h3>

@@ -2,6 +2,7 @@
 import type { StaticSummonerSpellData } from '#shared/types/static-data'
 import type { GamePlayer } from '~/types/game'
 import type { LoadingPlayer } from '~/types/loading'
+import type { Premade } from '~/utils/premade'
 import { regionOfPlatform, splitRiotId } from '~/utils/blitz/player'
 
 /**
@@ -24,7 +25,11 @@ const props = withDefaults(defineProps<{
   /** The loading screen is reading the game. */
   reading?: boolean
   mirrored?: boolean
-}>(), { mirrored: false, line: null, reading: false })
+  /** The group they queued with (`premades`). */
+  premade?: Premade | null
+  /** Their mastery level on the champion (`useGameMasteries`). */
+  mastery?: number | null
+}>(), { mirrored: false, line: null, reading: false, premade: null, mastery: null })
 
 const { champions, portraitOf, patch } = useChampionStatics()
 const { summoners, pending } = useStaticData()
@@ -107,6 +112,8 @@ const respawnIn = computed(() => {
       :line="line"
       :reading="reading"
       :mirrored="mirrored"
+      :premade="premade"
+      :mastery="mastery"
     />
   </div>
 

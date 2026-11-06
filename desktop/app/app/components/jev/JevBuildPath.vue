@@ -20,7 +20,7 @@ import { itemSetOf } from '~/utils/jev-recommend'
  */
 export interface OpenedStep { name: string, label: string }
 
-const props = defineProps<{ ranked: RankedSlot[], championId: number, position?: string, build: LaidBuild, side: 'jev' | 'standard' }>()
+const props = defineProps<{ ranked: RankedSlot[], championId: number, position?: string, importName?: string, build: LaidBuild, side: 'jev' | 'standard' }>()
 const opened = defineModel<OpenedStep | null>('opened', { default: null })
 const { t } = useT()
 const { nameOf } = useChampionStatics()
@@ -60,7 +60,7 @@ const path = computed(() => {
   })
 })
 /** The build as the client's item set (`itemSetOf`). */
-const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: nameOf(props.championId), position: props.position, blocks: itemSetOf(props.ranked, props.build) }))
+const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: props.importName ?? nameOf(props.championId), position: props.position, blocks: itemSetOf(props.ranked, props.build) }))
 const others = (step: Step) => step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => score(step.entry, b) - score(step.entry, a))
 
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)
@@ -80,7 +80,7 @@ const levelsOf = (option: JevOption) => {
       <h3 class="text-sm font-semibold" :class="recommended ? 'text-primary' : 'text-highlighted'">{{ recommended ? t('jev.card.jevBuild') : t('jev.card.standardBuild') }}</h3>
       <!-- Into the client, on a click: this build's rune page and its item set. -->
       <span class="ml-auto flex items-center gap-1.5">
-        <BuildRuneImport v-if="build.runePage" :page="build.runePage" :champion="nameOf(championId)" labeled />
+        <BuildRuneImport v-if="build.runePage" :page="build.runePage" :champion="importName ?? nameOf(championId)" labeled />
         <BuildItemSetImport :subject="itemSet" labeled />
       </span>
     </header>

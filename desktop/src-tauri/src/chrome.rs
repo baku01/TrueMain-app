@@ -37,3 +37,13 @@ fn caption(window: &WebviewWindow, (r, g, b): (u8, u8, u8)) {
 
 #[cfg(not(windows))]
 fn caption(_window: &WebviewWindow, _colour: (u8, u8, u8)) {}
+
+/// Bring the calling window to the front: out of the dock or the taskbar,
+/// shown, focused — what champion select does when the player keeps the
+/// setting on (`useAutoImport`'s `focus`), as Blitz's auto pop-up does.
+#[tauri::command]
+pub fn focus_window(window: WebviewWindow) -> Result<(), String> {
+    window.unminimize().map_err(|error| error.to_string())?;
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
+}

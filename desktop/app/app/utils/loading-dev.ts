@@ -29,12 +29,15 @@ export function devLoadingView(): LoadingView {
     const games = run === -1 ? latest.length : run
     return first.win ? games : -games
   }
+  // Each sample player's own games: no two share one unless the sample says so.
+  let nextGameId = 5000
   const form = (
     games: number,
     championGames: number,
     championWins: number,
     latest: RecentGame[],
     positions: PositionGames[],
+    gameIds: number[] = latest.map(() => nextGameId++),
   ): PlayerForm => ({
     games,
     championGames,
@@ -45,7 +48,16 @@ export function devLoadingView(): LoadingView {
     positions,
     streak: streakOf(latest),
     recent: latest,
+    // The champions of the latest games, most played first, as the shell names them.
+    champions: [...new Set(latest.map(game => game.championId))]
+      .map(championId => latest.filter(game => game.championId === championId))
+      .map(played => ({ championId: played[0]!.championId, games: played.length, wins: played.filter(game => game.win).length, kills: played.reduce((sum, game) => sum + game.kills, 0), deaths: played.reduce((sum, game) => sum + game.deaths, 0), assists: played.reduce((sum, game) => sum + game.assists, 0) }))
+      .sort((a, b) => b.games - a.games)
+      .slice(0, 3),
+    gameIds,
   })
+  // The games the sample's duo — our mid and our top — played together.
+  const DUO = [1001, 1002, 1003]
   const roles = (...entries: [string, number][]) => entries.map(([position, games]) => ({ position, games }))
   const rank = (tier: string, division: string, leaguePoints: number, queueType = 'RANKED_SOLO_5x5'): RankedQueue =>
     ({ queueType, tier, division, leaguePoints, wins: 48, losses: 41, isProvisional: false, provisionalGamesRemaining: 0 })
@@ -54,9 +66,9 @@ export function devLoadingView(): LoadingView {
     ({ games, wins, measured: games, goldDiff15: gold, csDiff15: cs, xpDiff15: xp })
   return {
     players: [
-      { riotId: 'Synthetic#TAPE', championId: 103, team: 'ORDER', position: 'MIDDLE', isMe: true, anonymous: false, form: form(20, 14, 9, recent(103, 'MIDDLE', 'WWWLWLLWWL'), roles(['MIDDLE', 15], ['TOP', 2])), failed: false, rank: rank('EMERALD', 'II', 63), rankRead: true, rankFailed: false, laning: laning(10, 7, 640, 11, 380) },
+      { riotId: 'Synthetic#TAPE', championId: 103, team: 'ORDER', position: 'MIDDLE', isMe: true, anonymous: false, form: form(20, 14, 9, recent(103, 'MIDDLE', 'WWWLWLLWWL'), roles(['MIDDLE', 15], ['TOP', 2]), [...DUO, 1100, 1101]), failed: false, rank: rank('EMERALD', 'II', 63), rankRead: true, rankFailed: false, laning: laning(10, 7, 640, 11, 380) },
       { riotId: 'Wrenfield#FR1', championId: 61, team: 'CHAOS', position: 'MIDDLE', isMe: false, anonymous: false, form: form(20, 2, 0, recent(61, 'JUNGLE', 'LLLLWWLWLW'), roles(['JUNGLE', 14], ['UTILITY', 3], ['MIDDLE', 1])), failed: false, rank: rank('PLATINUM', 'I', 12), rankRead: true, rankFailed: false, laning: laning(2, 0, -900, -14, -520) },
-      { riotId: 'Harrowgate#0001', championId: 266, team: 'ORDER', position: 'TOP', isMe: false, anonymous: false, form: form(18, 11, 7, recent(266, 'TOP', 'WLWWLWLWWL'), roles(['TOP', 9], ['JUNGLE', 6])), failed: false, rank: rank('DIAMOND', 'IV', 0), rankRead: true, rankFailed: false, laning: laning(10, 6, 210, 4, 150) },
+      { riotId: 'Harrowgate#0001', championId: 266, team: 'ORDER', position: 'TOP', isMe: false, anonymous: false, form: form(18, 11, 7, recent(266, 'TOP', 'WLWWLWLWWL'), roles(['TOP', 9], ['JUNGLE', 6]), [...DUO, 1200]), failed: false, rank: rank('DIAMOND', 'IV', 0), rankRead: true, rankFailed: false, laning: laning(10, 6, 210, 4, 150) },
       { riotId: 'Lumen#0001', championId: 254, team: 'ORDER', position: 'JUNGLE', isMe: false, anonymous: false, form: form(20, 6, 3, recent(254, 'JUNGLE', 'LWLWWLLWLW'), roles(['JUNGLE', 18])), failed: false, rank: rank('GOLD', 'I', 88, 'RANKED_FLEX_SR'), rankRead: true, rankFailed: false, laning: laning(6, 3, -350, -3, -200) },
       { riotId: 'Orrin#EUW', championId: 222, team: 'ORDER', position: 'BOTTOM', isMe: false, anonymous: false, form: null, failed: false, rank: null, rankRead: false, rankFailed: false, laning: null },
       { riotId: 'Nyrox#LOL', championId: 412, team: 'ORDER', position: 'UTILITY', isMe: false, anonymous: false, form: form(20, 17, 11, recent(412, 'UTILITY', 'WWWWWLLWLW'), roles(['UTILITY', 19])), failed: false, rank: rank('MASTER', 'I', 214), rankRead: true, rankFailed: false, laning: laning(10, 7, 120, 2, 60) },

@@ -15,7 +15,7 @@ import { isBoots } from '~/utils/blitz/builds'
 export interface ImportBuild {
   /** The build's row in the list (`draft`, `lane-…`, `pro`, a kit's id): a new one is a new import. */
   key: string
-  /** What the set is called in the shop, after "TrueMain: ". */
+  /** What the set is called in the shop, after "TrueMain " (`Aatrox vs Akali`). */
   title: string
   starter: number[]
   /** The completed items in buying order, boots apart. */
@@ -132,7 +132,7 @@ export function recommendedSet(build: ImportBuild, championKey: string, titles: 
     block(titles.situational, situational),
     block(titles.boots, [...new Set(known(build.boots))]),
   ].filter(entry => entry.items.length > 0)
-  return { title: `TrueMain: ${build.title}`, championKey, map: 'any', mode: 'any', type: 'custom', blocks }
+  return { title: `TrueMain ${build.title}`, championKey, map: 'any', mode: 'any', type: 'custom', blocks }
 }
 
 /** Every build's set, the selected first; two builds whose blocks read the same are written once. */

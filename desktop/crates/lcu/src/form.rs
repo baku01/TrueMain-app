@@ -38,6 +38,27 @@ pub struct PlayerForm {
     pub streak: i32,
     /// The latest counted games, newest first, at most `RECENT_GAMES`.
     pub recent: Vec<RecentGame>,
+    /// The champions played most over the counted games, at most
+    /// `MOST_PLAYED`, the most played first (the latest on a tie).
+    pub champions: Vec<ChampionGames>,
+    /// Every counted game's id, newest first: two players of one team who
+    /// share several played together (`utils/premade.ts`).
+    pub game_ids: Vec<i64>,
+}
+
+/// How many champions the form names as the player's most played.
+pub const MOST_PLAYED: usize = 3;
+
+/// A player's games on one champion, over the counted games.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChampionGames {
+    pub champion_id: i64,
+    pub games: u32,
+    pub wins: u32,
+    pub kills: i64,
+    pub deaths: i64,
+    pub assists: i64,
 }
 
 /// How many of a player's games were played in one role.
@@ -76,6 +97,28 @@ impl PlayerForm {
                 continue;
             };
             form.games += 1;
+            form.game_ids.push(game.game_id);
+            match form
+                .champions
+                .iter_mut()
+                .find(|c| c.champion_id == me.champion_id)
+            {
+                Some(seen) => {
+                    seen.games += 1;
+                    seen.wins += u32::from(me.stats.win);
+                    seen.kills += me.stats.kills;
+                    seen.deaths += me.stats.deaths;
+                    seen.assists += me.stats.assists;
+                }
+                None => form.champions.push(ChampionGames {
+                    champion_id: me.champion_id,
+                    games: 1,
+                    wins: u32::from(me.stats.win),
+                    kills: me.stats.kills,
+                    deaths: me.stats.deaths,
+                    assists: me.stats.assists,
+                }),
+            }
             if me.champion_id == champion_id {
                 form.champion_games += 1;
                 form.champion_wins += u32::from(me.stats.win);
@@ -111,6 +154,8 @@ impl PlayerForm {
         }
         // A stable sort: a tie keeps the role played most recently first.
         form.positions.sort_by_key(|p| std::cmp::Reverse(p.games));
+        form.champions.sort_by_key(|c| std::cmp::Reverse(c.games));
+        form.champions.truncate(MOST_PLAYED);
         form
     }
 }
@@ -139,6 +184,32 @@ mod tests {
             })
             .collect();
         serde_json::from_value(serde_json::json!({ "games": { "games": games } })).unwrap()
+    }
+
+    #[test]
+    fn names_the_most_played_champions_and_every_counted_game() {
+        let mut games = history(&[
+            (420, 7, true, 1800),
+            (420, 103, true, 1700),
+            (420, 7, false, 1600),
+            (420, 64, true, 1900),
+            (420, 103, true, 1500),
+            (420, 7, true, 1650),
+            (420, 99, true, 200),
+            (420, 122, false, 1800),
+        ]);
+        for (index, game) in games.games.games.iter_mut().enumerate() {
+            game.game_id = 100 + index as i64;
+        }
+        let form = PlayerForm::from_history(&games, 7);
+        let most: Vec<(i64, u32, u32)> = form
+            .champions
+            .iter()
+            .map(|c| (c.champion_id, c.games, c.wins))
+            .collect();
+        assert_eq!(most, vec![(7, 3, 2), (103, 2, 2), (64, 1, 1)]);
+        // The remake is no counted game.
+        assert_eq!(form.game_ids, vec![100, 101, 102, 103, 104, 105, 107]);
     }
 
     #[test]
