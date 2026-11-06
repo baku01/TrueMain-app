@@ -62,8 +62,9 @@ const ring = computed(() => {
       />
       <span class="absolute inset-0" :class="team === 'ally' ? 'bg-gradient-to-r from-ink-950/95 via-ink-950/70 to-ink-950/10' : 'bg-gradient-to-l from-ink-950/95 via-ink-950/70 to-ink-950/10'" />
       <span class="relative min-w-0 flex-1" :class="team === 'enemy' ? 'text-right' : ''">
-        <span class="block truncate font-display text-[13px] font-bold uppercase tracking-[0.08em] text-highlighted">{{ nameOf(championId) }}</span>
-        <span v-if="tentative" class="block text-[10px] font-semibold uppercase tracking-widest text-muted">{{ t('draft.card.hovering') }}</span>
+        <!-- Light in both themes: the band is always dark under its gradient. -->
+        <span class="block truncate font-display text-[13px] font-bold uppercase tracking-[0.08em] text-white">{{ nameOf(championId) }}</span>
+        <span v-if="tentative" class="block text-[10px] font-semibold uppercase tracking-widest text-white/60">{{ t('draft.card.hovering') }}</span>
       </span>
       <TierBadge v-if="tier && !tentative" :caption="false" :size="20" :tier="tier" class="relative shrink-0" />
     </template>
