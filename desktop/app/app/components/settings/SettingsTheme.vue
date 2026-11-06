@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppTheme } from '~/utils/app-theme'
-import { APP_THEMES, isPaletteTheme } from '~/utils/app-theme'
+import { APP_THEMES, flavorTokens, isPaletteTheme } from '~/utils/app-theme'
 import { ACCENTS } from '~/utils/catppuccin'
 import { themeDef } from '~/utils/themes'
 
@@ -12,12 +12,12 @@ import { themeDef } from '~/utils/themes'
 const { t } = useT()
 const { choice, setTheme, setAccent } = useAppTheme()
 
-/** What a card draws: TrueMain's dark navy, or the theme's own tones in the accent it shows. */
+/** What a card draws: TrueMain's dark navy, or the theme's own tokens in the accent it shows — the frame (rail and top bar), the page, a pane, text and the accent. */
 function preview(theme: AppTheme) {
-  if (!isPaletteTheme(theme)) return { page: '#080c14', pane: '#101827', accent: '#52a8ff', text: '#e8eef9', dim: '#61708a' }
-  const { palette, light, accent } = themeDef(theme)
-  const shown = choice.value.accents[theme] ?? (theme === choice.value.theme ? choice.value.accent : accent)
-  return { page: light ? palette.crust : palette.mantle, pane: palette.base, accent: palette[shown], text: palette.text, dim: palette.overlay1 }
+  if (!isPaletteTheme(theme)) return { frame: '#131a27', page: '#080c14', pane: '#101827', accent: '#52a8ff', text: '#e8eef9', dim: '#61708a' }
+  const shown = choice.value.accents[theme] ?? (theme === choice.value.theme ? choice.value.accent : themeDef(theme).accent)
+  const tokens = flavorTokens(theme, shown)
+  return { frame: tokens['--ui-bg-elevated'], page: tokens['--ui-bg'], pane: tokens['--tm-pane'], accent: tokens['--ui-primary'], text: tokens['--ui-text-highlighted'], dim: tokens['--ui-text-dimmed'] }
 }
 const modeOf = (theme: AppTheme) => (theme === 'truemain' ? 'both' : themeDef(theme).light ? 'light' : 'dark')
 const flavor = computed(() => (isPaletteTheme(choice.value.theme) ? choice.value.theme : null))
@@ -44,8 +44,8 @@ const flavor = computed(() => (isPaletteTheme(choice.value.theme) ? choice.value
         :class="choice.theme === theme ? 'ring-2 ring-primary' : 'ring-default hover:ring-accented'"
         @click="setTheme(theme)"
       >
-        <!-- The page, a pane on it with a line of text, and the accent. -->
-        <span class="flex aspect-[4/3] w-full flex-col justify-end gap-1.5 overflow-hidden rounded-lg p-2" :style="{ background: preview(theme).page }">
+        <!-- The frame along the top, the page, a pane on it with a line of text, and the accent. -->
+        <span class="flex aspect-[4/3] w-full flex-col justify-end gap-1.5 overflow-hidden rounded-lg border-t-[6px] p-2" :style="{ background: preview(theme).page, borderTopColor: preview(theme).frame }">
           <span class="flex flex-col gap-1 rounded-md p-1.5" :style="{ background: preview(theme).pane }">
             <span class="h-1.5 w-3/4 rounded-full" :style="{ background: preview(theme).text }" />
             <span class="h-1.5 w-1/2 rounded-full" :style="{ background: preview(theme).dim }" />

@@ -24,6 +24,10 @@ export interface ThemeDef {
    * take its base and accent: the mark in a colour, or a drawing (`theme-art`).
    */
   icon?: { tile: string, mark: string } | { tile: string, art: string }
+  /** Tokens the theme sets by hand over what its palette lays out (`flavorTokens`). */
+  tokens?: Record<string, string>
+  /** Rules of its own, `&` standing for the theme's root (`themeCss`). */
+  css?: string
 }
 
 /** The greys between a palette's base and its text, at Catppuccin's own steps. */
@@ -75,6 +79,58 @@ function palette(spec: Spec): Palette {
   }
 }
 
+/**
+ * Cinnamoroll's pink (#f5d6e1) where it is seen first: on the light theme the
+ * frame — the side rail and the top bar (`--ui-bg-elevated`) — is the pink
+ * itself, the page a paler pink under white panes, hovers and borders its
+ * deeper tints, the open section of the rail a white pill on it; on the
+ * night twin that section is a pill of the pink, read in the dark text that
+ * stays legible on it (6.8:1).
+ */
+const CINNAMOROLL_LIGHT: Record<string, string> = {
+  '--ui-bg-elevated': '#f5d6e1',
+  '--ui-bg': '#fdf0f5',
+  '--ui-bg-muted': '#fae4ec',
+  '--ui-bg-accented': '#efc3d4',
+  '--ui-bg-surface': '#ffffff',
+  '--tm-pane': '#ffffff',
+  '--tm-pane-2': '#fdf0f5',
+  '--ui-border': '#f0cada',
+  '--ui-border-accented': '#e6b2c6',
+}
+const CINNAMOROLL_NIGHT: Record<string, string> = {
+  '--ui-border': '#463a4c',
+  '--ui-border-accented': '#5e4c62',
+}
+// On the light frame, already the pink, the open section is a white pill; on the night's dark frame, a pill of the pink.
+const CINNAMOROLL_CSS = `& .rail-item[data-active] { background-color: #ffffff; color: #4b4363; box-shadow: 0 1px 3px rgb(184 77 120 / 0.2); }
+& .rail-item[data-active] .rail-icon { color: #b84d78; }
+& .rail-item[data-active]::before { background: #b84d78; }`
+const CINNAMOROLL_NIGHT_CSS = `& .rail-item[data-active] { background-color: #f5d6e1; color: #2b2433; }
+& .rail-item[data-active] .rail-icon { color: #b84d78; }
+& .rail-item[data-active]::before { background: #f5d6e1; }`
+
+/**
+ * Cinnamoroll Sakura: a sakura-pink frame (#ffd9e4) around a paler pink page
+ * and white panes, the puppy's own colours for the rest — its blue outline
+ * for type (8.9:1 on white), its sky blue for the allies and information, a
+ * rose for the accent that small text can carry (4.55:1 on white).
+ */
+const SAKURA_LIGHT: Record<string, string> = {
+  '--ui-bg-elevated': '#ffd9e4',
+  '--ui-bg': '#fff0f4',
+  '--ui-bg-muted': '#ffe6ee',
+  '--ui-bg-accented': '#ffc9da',
+  '--ui-bg-surface': '#ffffff',
+  '--tm-pane': '#ffffff',
+  '--tm-pane-2': '#fff5f8',
+  '--ui-border': '#fbd0de',
+  '--ui-border-accented': '#f5b5ca',
+}
+const SAKURA_CSS = `& .rail-item[data-active] { background-color: #ffffff; color: #3d4a66; box-shadow: 0 1px 3px rgb(207 63 116 / 0.18); }
+& .rail-item[data-active] .rail-icon { color: #cf3f74; }
+& .rail-item[data-active]::before { background: #cf3f74; }`
+
 const SOLARIZED = { red: '#dc322f', peach: '#cb4b16', yellow: '#b58900', green: '#859900', teal: '#2aa198', sky: '#2aa198', blue: '#268bd2', mauve: '#6c71c4', pink: '#d33682' }
 
 export const THEMES = {
@@ -104,8 +160,9 @@ export const THEMES = {
   // Cinnamoroll: a pastel pink page (#f5d6e1) under white panes, the puppy's sky blue beside it. On the light page
   // the pink is too pale to be read (1.3:1 on white), so the accent there is its deep shade (4.65:1); the night
   // twin takes the pink itself as its accent.
-  'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { tile: '#f5d6e1', art: PUPPY }, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
-  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { tile: '#f5d6e1', art: PUPPY }, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
+  'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { tile: '#f5d6e1', art: PUPPY }, tokens: CINNAMOROLL_LIGHT, css: CINNAMOROLL_CSS, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
+  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { tile: '#f5d6e1', art: PUPPY }, tokens: CINNAMOROLL_NIGHT, css: CINNAMOROLL_NIGHT_CSS, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
+  'cinnamoroll-sakura': { light: true, accent: 'pink', icon: { tile: '#ffd2e0', art: PUPPY }, tokens: SAKURA_LIGHT, css: SAKURA_CSS, palette: palette({ base: '#ffffff', mantle: '#fff0f4', crust: '#ffd9e4', text: '#3d4a66', red: '#d6435e', peach: '#e07a4f', yellow: '#c08a1e', green: '#3f9a6f', teal: '#2a9d9a', sky: '#3b9ad6', blue: '#2f7fc2', mauve: '#9a6fd0', pink: '#cf3f74', rosewater: '#f4a3bd', flamingo: '#ec8fae', lavender: '#7f8ce0' }) },
 } satisfies Record<string, ThemeDef>
 
 export type PaletteTheme = keyof typeof THEMES

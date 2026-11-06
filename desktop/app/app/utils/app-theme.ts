@@ -193,7 +193,7 @@ export function flavorTokens(theme: PaletteTheme, accent: Accent): Record<string
   accentRamp(a, p, light).forEach((color, index) => (tokens[`--color-rosegold-${STEPS[index]}`] = color))
   for (const [family, name] of Object.entries(TAILWIND)) accentRamp(p[name], p, light).forEach((color, index) => (tokens[`--color-${family}-${STEPS[index]}`] = color))
   inkRamp(p, light).forEach((color, index) => (tokens[`--color-ink-${STEPS[index]}`] = color))
-  return tokens
+  return Object.assign(tokens, themeDef(theme).tokens)
 }
 
 const block = (selector: string, tokens: Record<string, string>) =>
@@ -209,7 +209,9 @@ const block = (selector: string, tokens: Record<string, string>) =>
 export function themeCss(choice: Pick<ThemeChoice, 'theme' | 'accent'>): string | null {
   if (!isPaletteTheme(choice.theme)) return null
   const def = themeDef(choice.theme)
-  const sheets = [block(`html:root[data-theme="${choice.theme}"]`, flavorTokens(choice.theme, choice.accent))]
+  const root = `html:root[data-theme="${choice.theme}"]`
+  const sheets = [block(root, flavorTokens(choice.theme, choice.accent))]
+  if (def.css) sheets.push(def.css.replaceAll('&', root))
   // Over art a light theme takes its dark twin's tones, else Mocha's.
   const dark = def.pair && isPaletteTheme(def.pair) ? def.pair : 'mocha'
   if (def.light) sheets.push(block(`html:root[data-theme="${choice.theme}"] .on-art`, flavorTokens(dark, choice.accent)))

@@ -18,6 +18,7 @@ const NAMES = {
   'appearance.theme.solarized-light': 'Solarized Light',
   'appearance.theme.one-dark': 'One Dark',
   'appearance.theme.cinnamoroll': 'Cinnamoroll',
+  'appearance.theme.cinnamoroll-sakura': 'Cinnamoroll Sakura',
   'appearance.accent.rosewater': 'Rosewater',
   'appearance.accent.flamingo': 'Flamingo',
   'appearance.accent.pink': 'Pink',
