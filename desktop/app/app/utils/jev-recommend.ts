@@ -1,6 +1,7 @@
 import type { ChampionRead, FitRead, ItemRead, PickRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot, LaidBuild } from '~/utils/jev-build'
 import type { ItemSetBuild } from '~/utils/item-set'
+import { statsOf } from '~/utils/jev-stats'
 
 /**
  * The Jev matchup page's ranking, all arithmetic and all in code — TypeSafe's
@@ -175,74 +176,6 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
   return { fit: 1 - Math.exp(-1.6 * raw), answers, misfit: per.some(item => item.misfit) }
 }
 
-const known = (value: number | null | undefined): value is number => value !== null && value !== undefined
-
-/**
- * Games of evidence a measure is pulled toward what is known without it: a
- * win rate over a thousand games is about as uncertain (±1.6 points) as
- * options of one slot usually differ, so a rare option's high win rate counts
- * for little — and so does the win probability Blitz says an item adds.
- */
-const PRIOR_GAMES = 1000
-const pull = (games: number) => games / (games + PRIOR_GAMES)
-
-/**
- * The win probability an option adds, as far as its games show it: the
- * lane's, pulled toward nothing by its games, then moved toward the one
- * against the lane opponent by the matchup's games. Blitz's own estimate is
- * barely shrunk (Eclipse on Aatrox into Akali: −9.6 points over 87 games read
- * −8.3), and taken whole such a matchup outweighed thousands of lane games.
- * Null where Blitz did not measure the option on the lane.
- */
-export function addedWinProbability(option: JevOption): number | null {
-  if (!known(option.wpa)) return null
-  const lane = option.wpa * pull(option.wpaGames ?? 0)
-  return known(option.vsWpa) ? lane + (option.vsWpa - lane) * pull(option.vsGames ?? 0) : lane
-}
-
-/**
- * The win probability added each option of a slot is weighed by
- * (`addedWinProbability`), or null when the slot cannot be compared on it:
- * only when every measured option has it (an option Blitz did not measure
- * would otherwise read as even, and beat every option measured below even —
- * boots all read negative); centred on the slot's own average, so what a
- * slot's items share (every boots' timing) does not count.
- */
-export function slotWpa(options: JevOption[]): ((option: JevOption) => number) | null {
-  const measuredOptions = options.filter(option => option.games > 0)
-  if (!measuredOptions.length || !measuredOptions.every(option => known(option.wpa))) return null
-  const games = measuredOptions.reduce((sum, option) => sum + option.games, 0)
-  const mean = measuredOptions.reduce((sum, option) => sum + addedWinProbability(option)! * option.games, 0) / games
-  return option => (addedWinProbability(option) ?? mean) - mean
-}
-
-/** How far over its slot an option's signal must be to read about 0.73: three points of win rate. */
-const SPREAD = 0.03
-
-/**
- * Each option's measured signal on 0–1 (0.5 even with its slot): its win rate
- * shrunk toward the slot's by its sample, plus half its win probability added
- * over the slot's (`slotWpa`); three points over the slot read about 0.73.
- * A situational option's win rate was measured wherever the item was bought,
- * not at this place of the build — a fifth item wins more than a second, the
- * game having gone on — so it is not compared: only its win probability
- * added, measured alike for every item, counts. Null for an option nothing
- * measured.
- */
-export function statsOf(options: JevOption[]): Record<string, number | null> {
-  if (!options.some(option => option.games > 0)) return Object.fromEntries(options.map(option => [option.key, null]))
-  const compared = options.filter(option => option.games > 0 && !option.situational)
-  const games = compared.reduce((sum, option) => sum + option.games, 0)
-  const average = games ? compared.reduce((sum, option) => sum + option.winRate * option.games, 0) / games : 0
-  const wpa = slotWpa(options)
-  return Object.fromEntries(options.map((option) => {
-    if (!option.games) return [option.key, null]
-    const rate = option.situational || !games ? 0 : option.winRate * pull(option.games) + average * (1 - pull(option.games)) - average
-    const signal = rate + 0.5 * (wpa ? wpa(option) : 0)
-    return [option.key, 1 / (1 + Math.exp(-signal / SPREAD))]
-  }))
-}
-
 /** How the parts weigh in a total, by what the slot is. A part missing (unread, unmeasured) gives its weight to the others. */
 export const WEIGHTS: Record<'item' | 'starter' | 'choice' | 'skills', Partial<Record<keyof Parts, number>>> = {
   item: { stats: 0.4, draft: 0.35, kit: 0.25 },
@@ -294,7 +227,7 @@ function total(parts: Parts, weights: Partial<Record<keyof Parts, number>>): num
 
 /** Every option of a slot scored, and the one it takes. */
 export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
-  const stats = statsOf(slot.options)
+  const stats = statsOf(slot.options, slot.kind === 'item' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
   const scored: Record<string, Scored> = {}
   for (const option of slot.options) {
     const parts: Parts = {}

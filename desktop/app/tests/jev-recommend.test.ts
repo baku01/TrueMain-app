@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { addedWinProbability, answersDraft, fitOf, itemSetOf, laneNeeds, needsOf, rankPicks, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
+import { answersDraft, fitOf, itemSetOf, laneNeeds, needsOf, rankPicks, rankSlot } from '~/utils/jev-recommend'
+import { SELECTION, addedWinProbability, credibleEdge, slotWpa, statsOf } from '~/utils/jev-stats'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, heal: 0, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
@@ -76,12 +77,33 @@ describe('fitOf', () => {
 })
 
 describe('statistics', () => {
-  it('reads an option even with its slot as 0.5, the sample pulling a rare one in', () => {
+  it('reads the slot\'s most played option as 0.5, and every other by its credible edge over it', () => {
     const stats = statsOf([option('o0', [1], { winRate: 0.5 }), option('o1', [2], { winRate: 0.5 }), option('o2', [3], { winRate: 0.56, games: 40 }), option('o3', [4], { winRate: 0.53, games: 3000 }), option('o4', [5], { games: 0 })])
+    expect(stats.o3).toBeCloseTo(0.5)
     expect(stats.o0).toBeLessThan(0.5)
-    expect(stats.o3).toBeGreaterThan(0.5)
-    expect(stats.o2).toBeLessThan(stats.o3!)
+    // Forty games cannot vouch for an edge, however well they went: below the reference, not above it.
+    expect(stats.o2).toBeLessThan(0.5)
     expect(stats.o4).toBeNull()
+  })
+
+  it('takes the selection a rare pair of boots wins by off its rate (Caitlyn: Grevas Vorazes 4% at 53.8%, Berserker\'s Greaves 83% at 50.4%)', () => {
+    const berserker = option('o0', [3006], { games: 47843, winRate: 0.5043, pickRate: 0.8314 })
+    const voracious = option('o1', [3008], { games: 2489, winRate: 0.538, pickRate: 0.0433 })
+    const steelcaps = option('o2', [3047], { games: 615, winRate: 0.5561, pickRate: 0.0107 })
+    // +3.4 points, of which the share explains +2.8: what is left is not sure.
+    expect(credibleEdge(voracious, berserker, SELECTION.boots, entry => entry.pickRate)).toBeLessThan(0)
+    const stats = statsOf([berserker, voracious, steelcaps], 'boots')
+    expect(stats.o0).toBeCloseTo(0.5)
+    expect(stats.o1).toBeLessThan(0.5)
+    expect(stats.o2).toBeLessThan(0.5)
+  })
+
+  it('takes no selection off a choice made before the game: only chance stands between it and the reference', () => {
+    const teleport = option('o0', [], { games: 15800, winRate: 0.479, pickRate: 0.54 })
+    // Jayce top: Ignite over 13,419 games, +2.6 points — sure.
+    expect(credibleEdge(option('o1', [], { games: 13419, winRate: 0.505, pickRate: 0.458 }), teleport, SELECTION.choice, entry => entry.pickRate)).toBeGreaterThan(0.005)
+    // The same +2.6 points over 600 games is not.
+    expect(credibleEdge(option('o2', [], { games: 600, winRate: 0.505, pickRate: 0.02 }), teleport, SELECTION.choice, entry => entry.pickRate)).toBeLessThan(0)
   })
 
   it('pulls WPA toward nothing by its games, and toward the matchup\'s only as far as the matchup\'s games go', () => {
@@ -93,12 +115,17 @@ describe('statistics', () => {
     expect(slotWpa(slot)!(slot[0]!)).toBeCloseTo(0.005)
   })
 
-  it('does not let a thin matchup outweigh the lane (Aatrox into Akali: Eclipse over Spear of Shojin)', () => {
+  it('weighs a thin matchup by its games, no further than the measured spread allows (Aatrox into Akali)', () => {
     const eclipse = option('o0', [6692], { games: 2219, winRate: 0.5588, wpa: -0.0045, wpaGames: 6179, vsWpa: -0.0834, vsGames: 87 })
     const shojin = option('o1', [3161], { games: 92, winRate: 0.5435, wpa: -0.0006, wpaGames: 5191, vsWpa: 0.0482, vsGames: 64 })
-    const stats = statsOf([eclipse, shojin])
-    expect(stats.o1! - stats.o0!).toBeLessThan(0.08)
-    expect(stats.o1).toBeLessThan(0.6)
+    const full = statsOf([eclipse, shojin], 'item')
+    const lane = statsOf([{ ...eclipse, vsGames: 0 }, { ...shojin, vsGames: 0 }], 'item')
+    // −8.3 and +4.8 points over 87 and 64 games: a 13-point gap that moves the estimate by under one.
+    const gap = (one: JevOption, other: JevOption) => addedWinProbability(one)! - addedWinProbability(other)!
+    expect(gap(shojin, eclipse) - gap({ ...shojin, vsGames: 0 }, { ...eclipse, vsGames: 0 })).toBeLessThan(0.01)
+    // Neither the lane's 0.4 points nor the matchup's games make Spear of Shojin surely better than Eclipse.
+    expect(full.o1).toBeLessThan(0.5)
+    expect(lane.o1).toBeLessThan(0.5)
   })
 
   it('does not compare a situational option\'s win rate, measured wherever the item was bought, with the slot\'s', () => {
