@@ -38,6 +38,7 @@ const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
     { label: t('nav.tierlist'), icon: 'i-tabler-chart-bar', to: '/tierlist', active: isActive('/tierlist') },
     { label: t('nav.analytics'), icon: 'i-tabler-chart-line', to: '/analytics', active: isActive('/analytics') },
     { label: t('nav.classes'), icon: 'i-tabler-hierarchy-2', to: '/classes', active: isActive('/classes') },
+    { label: t('nav.stats'), icon: 'i-tabler-chart-dots', to: '/stats', active: isActive('/stats') },
     { label: t('nav.matchup'), icon: 'i-tabler-scale', to: '/matchup', active: isActive('/matchup') },
     { label: t('nav.jev'), icon: 'i-tabler-chess-knight', to: '/jev', active: isActive('/jev') },
   ] },

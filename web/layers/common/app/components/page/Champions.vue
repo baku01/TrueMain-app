@@ -9,6 +9,14 @@ import { firstParamValue } from '#common/utils/route-params'
 import { directoryOrderToQuery, parseDirectoryOrder, type DirectoryOrder } from '#common/utils/table-sorting'
 
 const { t } = useT()
+// The desktop app's win-rate change column, measured from the patch before
+// (`DirectoryTable`), and what it says it is measured from; the site's API
+// keeps no patch before and passes neither. The `note` slot is where the app
+// names the change's source, over the table.
+defineProps<{
+  winRateChange?: ((championId: number, position: string) => number | null) | null
+  winRateChangeNote?: string | null
+}>()
 
 // Mirrors the backend default; the page size is fixed in the UI (no
 // per-page selector) so the only stateful pagination value carried in the
@@ -177,6 +185,9 @@ await directory.ready
           :on-retry="() => directory.refresh()"
         />
 
+        <div v-if="$slots.note" class="flex justify-end">
+          <slot name="note" />
+        </div>
         <ChampionDirectoryTable
           v-if="isColdLoading || rows.length > 0"
           :rows="rows"
@@ -188,6 +199,8 @@ await directory.ready
           :destination="rowDestination"
           :rune-tree="runeTree"
           :items-map="itemsMap"
+          :win-rate-change="winRateChange"
+          :win-rate-change-note="winRateChangeNote"
           @update:order="setOrder"
         />
 
@@ -224,6 +237,7 @@ await directory.ready
           :destination="rowDestination"
           :rune-tree="null"
           :items-map="null"
+          :win-rate-change="winRateChange"
         />
       </template>
     </ClientOnly>

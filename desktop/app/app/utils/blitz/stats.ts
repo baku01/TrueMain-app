@@ -1,4 +1,4 @@
-import type { ChampionMatchups, ChampionTierListResponse, ChampionTrendResponse } from '#shared/types/champions'
+import type { ChampionMatchupEntry, ChampionMatchups, ChampionTierListResponse, ChampionTrendResponse } from '#shared/types/champions'
 import type { DamageProfile, DamageProfilesResponse } from '~/utils/damage-profile'
 import { SOLO_QUEUE, blitzRole, blitzRows, blitzTier, truemainPosition } from '~/utils/blitz/client'
 
@@ -69,6 +69,19 @@ interface BlitzMatchupRow {
   pick_rate: number
   lane_win_rate: number | null
   num_lanes: number | null
+  matchup_score: number | null
+  lane_matchup_score: number | null
+}
+
+/**
+ * A Blitz matchup with the two scores its counters rank by (`utils/counters.ts`): the
+ * win rate, and the lane win rate, minus what the two champions' own rates
+ * predict — on the 0–1 scale, so 0.02 is two percentage points. TrueMain's
+ * shape has no such field; the other readers ignore it.
+ */
+export interface BlitzMatchupEntry extends ChampionMatchupEntry {
+  matchupScore: number | null
+  laneMatchupScore: number | null
 }
 
 /**
@@ -85,7 +98,7 @@ function wilson(wins: number, games: number): [number, number] {
   return [(centre - spread) / denominator, (centre + spread) / denominator]
 }
 
-export async function matchupsFromBlitz(championId: number, query: Record<string, unknown>): Promise<ChampionMatchups> {
+export async function matchupsFromBlitz(championId: number, query: Record<string, unknown>): Promise<Omit<ChampionMatchups, 'matchups'> & { matchups: BlitzMatchupEntry[] }> {
   const position = typeof query.position === 'string' && query.position ? query.position : 'MIDDLE'
   const rows = await blitzRows<BlitzMatchupRow>('champion_matchups_stats', {
     champion_id: championId,
@@ -97,7 +110,7 @@ export async function matchupsFromBlitz(championId: number, query: Record<string
   const opponent = Number(query.opponent) || null
   const matchups = rows
     .filter(row => opponent === null || row.matchup_champion_id === opponent)
-    .map((row) => {
+    .map((row): BlitzMatchupEntry => {
       const [low, high] = wilson(row.wins, row.games)
       return {
         opponentChampionId: row.matchup_champion_id,
@@ -114,10 +127,15 @@ export async function matchupsFromBlitz(championId: number, query: Record<string
         goldDiffLaneGames: 0,
         averageXpDiffAt15: null,
         xpDiffLaneGames: 0,
+        matchupScore: row.matchup_score ?? null,
+        laneMatchupScore: row.lane_matchup_score ?? null,
       }
     })
     .sort((a, b) => b.games - a.games)
-  return { championId, position, patch: rows[0]?.patch ?? null, matchups }
+  // Each opponent's row is the last patch it was measured on — a rare one's
+  // can be a season old —, so the read's patch is the newest among them.
+  const patch = rows.map(row => row.patch).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0] ?? null
+  return { championId, position, patch, matchups }
 }
 
 interface BlitzTrendRow {
