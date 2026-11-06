@@ -81,8 +81,8 @@ describe('statistics', () => {
     const stats = statsOf([option('o0', [1], { winRate: 0.5 }), option('o1', [2], { winRate: 0.5 }), option('o2', [3], { winRate: 0.56, games: 40 }), option('o3', [4], { winRate: 0.53, games: 3000 }), option('o4', [5], { games: 0 })])
     expect(stats.o3).toBeCloseTo(0.5)
     expect(stats.o0).toBeLessThan(0.5)
-    // Forty games cannot vouch for an edge, however well they went: below the reference, not above it.
-    expect(stats.o2).toBeLessThan(0.5)
+    // Forty games cannot vouch for an edge, however well they went: even with the reference, not above it.
+    expect(stats.o2).toBeCloseTo(0.5)
     expect(stats.o4).toBeNull()
   })
 
@@ -91,11 +91,11 @@ describe('statistics', () => {
     const voracious = option('o1', [3008], { games: 2489, winRate: 0.538, pickRate: 0.0433 })
     const steelcaps = option('o2', [3047], { games: 615, winRate: 0.5561, pickRate: 0.0107 })
     // +3.4 points, of which the share explains +2.8: what is left is not sure.
-    expect(credibleEdge(voracious, berserker, SELECTION.boots, entry => entry.pickRate)).toBeLessThan(0)
+    expect(credibleEdge(voracious, berserker, SELECTION.boots, entry => entry.pickRate)).toBe(0)
     const stats = statsOf([berserker, voracious, steelcaps], 'boots')
     expect(stats.o0).toBeCloseTo(0.5)
-    expect(stats.o1).toBeLessThan(0.5)
-    expect(stats.o2).toBeLessThan(0.5)
+    expect(stats.o1).toBeCloseTo(0.5)
+    expect(stats.o2).toBeCloseTo(0.5)
   })
 
   it('takes no selection off a choice made before the game: only chance stands between it and the reference', () => {
@@ -103,7 +103,9 @@ describe('statistics', () => {
     // Jayce top: Ignite over 13,419 games, +2.6 points — sure.
     expect(credibleEdge(option('o1', [], { games: 13419, winRate: 0.505, pickRate: 0.458 }), teleport, SELECTION.choice, entry => entry.pickRate)).toBeGreaterThan(0.005)
     // The same +2.6 points over 600 games is not.
-    expect(credibleEdge(option('o2', [], { games: 600, winRate: 0.505, pickRate: 0.02 }), teleport, SELECTION.choice, entry => entry.pickRate)).toBeLessThan(0)
+    expect(credibleEdge(option('o2', [], { games: 600, winRate: 0.505, pickRate: 0.02 }), teleport, SELECTION.choice, entry => entry.pickRate)).toBe(0)
+    // A shortfall counts at its estimate.
+    expect(credibleEdge(option('o3', [], { games: 13419, winRate: 0.459, pickRate: 0.458 }), teleport, SELECTION.choice, entry => entry.pickRate)).toBeLessThan(-0.005)
   })
 
   it('pulls WPA toward nothing by its games, and toward the matchup\'s only as far as the matchup\'s games go', () => {
@@ -124,8 +126,8 @@ describe('statistics', () => {
     const gap = (one: JevOption, other: JevOption) => addedWinProbability(one)! - addedWinProbability(other)!
     expect(gap(shojin, eclipse) - gap({ ...shojin, vsGames: 0 }, { ...eclipse, vsGames: 0 })).toBeLessThan(0.01)
     // Neither the lane's 0.4 points nor the matchup's games make Spear of Shojin surely better than Eclipse.
-    expect(full.o1).toBeLessThan(0.5)
-    expect(lane.o1).toBeLessThan(0.5)
+    expect(full.o1).toBeCloseTo(0.5)
+    expect(lane.o1).toBeCloseTo(0.5)
   })
 
   it('does not compare a situational option\'s win rate, measured wherever the item was bought, with the slot\'s', () => {
@@ -164,6 +166,13 @@ describe('rankSlot', () => {
     const caitlyn = needs({ physical: 0.85, magic: 0.1, autos: 0.6 })
     const ranked = rankSlot(boots, context(caitlyn, new Map([[3006, item({ kit: 1 })], [3047, item({ vsAutos: 0.9, kit: 0.5 })]])))
     expect(ranked.pick.itemIds).toEqual([3006])
+  })
+
+  it('takes Plated Steelcaps on a marksman into physical burst (Caitlyn into Jhin, Zed and Pyke): there armor answers whatever the kit makes of it', () => {
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006], { games: 47843, winRate: 0.5043, pickRate: 0.83 }), option('o1', [3047], { games: 615, winRate: 0.5561, pickRate: 0.0107 })] }
+    const assassins = needs({ physical: 0.9, magic: 0.05, burst: 0.8, autos: 0.2 })
+    const ranked = rankSlot(boots, context(assassins, new Map([[3006, item({ kit: 1 })], [3047, item({ antiBurst: 0.6, vsAutos: 0.9, kit: 0.5 })]])))
+    expect(ranked.pick.itemIds).toEqual([3047])
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {

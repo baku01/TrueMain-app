@@ -225,6 +225,9 @@ function total(parts: Parts, weights: Partial<Record<keyof Parts, number>>): num
   return weight ? present.reduce((sum, part) => sum + weights[part]! * parts[part]!, 0) / weight : 0
 }
 
+/** A draft whose damage is physical and comes in bursts: armor answers it whatever our champion makes of armor. */
+const PHYSICAL_BURST = { physical: 0.8, burst: 0.5 }
+
 /** Every option of a slot scored, and the one it takes. */
 export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
   const stats = statsOf(slot.options, slot.kind === 'item' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
@@ -240,8 +243,12 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       const reads = option.itemIds.map(id => context.itemReads.get(id)).filter(read => !!read)
       if (reads.length) parts.kit = reads.reduce((sum, read) => sum + read.kit, 0) / reads.length
       // Answering nothing of the draft is neutral, not a fault: a damage item answers it by killing.
-      // And an answer counts as far as our champion makes use of the item: armor boots answer a physical lane, not for a marksman.
-      parts.draft = 0.5 + 0.5 * fit.fit * (parts.kit ?? 1)
+      // And an answer counts as far as our champion makes use of the item: armor boots answer a physical lane, not for a marksman —
+      // unless what the armor answers is physical burst, assassins that kill the marksman before it attacks
+      // (LoLTheory: Plated Steelcaps for a marksman into an AD assassin, blog.loltheory.gg/what-is-armor-league-of-legends).
+      const needs = slot.lane ? context.lane : context.team
+      const intoBurst = needs.physical >= PHYSICAL_BURST.physical && needs.burst >= PHYSICAL_BURST.burst && fit.answers.some(answer => answer.need === 'physical')
+      parts.draft = 0.5 + 0.5 * fit.fit * (intoBurst ? 1 : parts.kit ?? 1)
       answers = fit.answers
       misfit = fit.misfit
       weights = WEIGHTS.item

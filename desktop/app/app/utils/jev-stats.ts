@@ -74,7 +74,7 @@ export function slotWpa(options: JevOption[]): ((option: JevOption) => number) |
  * expected selection taken off, then shrunk toward no difference by how much
  * of what is left is noise — sampling (`se²`) and the selection the share
  * does not explain (`σ²`) — against how much options of a slot truly differ
- * (`τ²`, WPA's own spread), and counted at its 95% lower bound (`SURE`). Where Blitz measured the slot's items, their WPA
+ * (`τ²`, WPA's own spread); an edge counts at its 95% lower bound (`SURE`). Where Blitz measured the slot's items, their WPA
  * is the effect and the raw rates are left out: they are mostly selection.
  */
 export interface SelectionModel {
@@ -98,15 +98,18 @@ const SPREAD = 0.01
 /**
  * How sure an edge over the reference must be to count: the posterior's lower
  * bound at 95% (one-sided), as Wilson's interval ranks a rate by what it is
- * surely worth. A deviation from what the bracket plays has to be earned; an
- * edge the games cannot vouch for reads below the reference, never above it.
+ * surely worth. A deviation from what the bracket plays has to be earned: an
+ * edge the games cannot vouch for reads even with the reference — unproven,
+ * not bad, so a draft reason can still carry it. A shortfall counts at its
+ * estimate.
  */
 const SURE = 1.645
 
-/** The lower bound of a normal–normal posterior: the estimate `edge` (its noise `noise2`) shrunk by a prior of spread `tau`. */
+/** A normal–normal posterior of the estimate `edge` (its noise `noise2`), shrunk by a prior of spread `tau`: an edge at its lower bound, a shortfall at its mean. */
 function surely(edge: number, noise2: number, tau: number): number {
   const keep = tau ** 2 / (tau ** 2 + noise2)
-  return edge * keep - SURE * Math.sqrt(keep * noise2)
+  const mean = edge * keep
+  return mean > 0 ? Math.max(0, mean - SURE * Math.sqrt(keep * noise2)) : mean
 }
 
 /**
