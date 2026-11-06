@@ -38,14 +38,17 @@ describe('app theme', () => {
     expect(svg).toContain('stop-color="#ffcc00"')
   })
 
-  it('draws Cinnamoroll\'s puppy on its pink tile in place of the mark, rounded on the Dock', () => {
-    for (const theme of ['cinnamoroll', 'cinnamoroll-night'] as const) {
+  it('fills the icon with the player\'s Cinnamoroll pictures, rounded on the Dock, in place of the mark', () => {
+    for (const theme of ['cinnamoroll', 'cinnamoroll-night', 'cinnamoroll-sakura'] as const) {
       const svg = appIconSvg({ theme, accent: 'pink' }, true)!
-      expect(svg).toContain('fill="#f5d6e1"')
+      expect(svg).toContain('<image href="data:image/png;base64,')
       expect(svg).toContain('rx="14.4"')
-      expect(svg).toContain('#3d76c2')
       expect(svg).not.toContain('M16 48V22')
     }
+    // The night twin has its own picture, the two light themes share one.
+    const href = (theme: 'cinnamoroll' | 'cinnamoroll-night' | 'cinnamoroll-sakura') => appIconSvg({ theme, accent: 'pink' })!.match(/href="([^"]+)"/)![1]
+    expect(href('cinnamoroll-night')).not.toBe(href('cinnamoroll'))
+    expect(href('cinnamoroll-sakura')).toBe(href('cinnamoroll'))
   })
 
   it('takes #f5d6e1 as the night twin\'s accent, and its deep shade where the page is light', () => {
@@ -56,12 +59,11 @@ describe('app theme', () => {
     expect(THEMES.cinnamoroll.pair).toBe('cinnamoroll-night')
   })
 
-  it('lays Cinnamoroll Sakura out: the sakura frame, the puppy on its pink tile, a rose small text can carry', () => {
+  it('lays Cinnamoroll Sakura out: the sakura frame, a rose small text can carry, the puppy\'s sky blue for the allies', () => {
     const tokens = flavorTokens('cinnamoroll-sakura', 'pink')
     expect(tokens['--ui-bg-elevated']).toBe('#ffd9e4')
     expect(tokens['--ui-primary']).toBe('#cf3f74')
     expect(tokens['--color-ally']).toBe('#2f7fc2')
-    expect(appIconSvg({ theme: 'cinnamoroll-sakura', accent: 'pink' }, true)).toContain('fill="#ffd2e0"')
   })
 
   it('mixes two colours channel by channel', () => {

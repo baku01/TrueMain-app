@@ -16,25 +16,29 @@ function star(x: number, y: number, r: number, fill: string): string {
  * The app icon in a palette theme: `desktop/app-icon.svg`'s M-check mark, its
  * stroke the accent's (`markStops`) on the theme's darkest tone (its lightest
  * on a light theme) — or the theme's own tile and mark where it draws one (the
- * Soviet theme's gold on red, under a gold star), or its drawing in place of
- * the mark (Cinnamoroll's puppy on pink). Null for TrueMain: the shell puts the
- * bundle's own icon back.
+ * Soviet theme's gold on red, under a gold star), or its own picture filling
+ * the tile (Cinnamoroll's). `rounded`, on Apple's icon grid as the Dock rounds
+ * the bundle's icon. Null for TrueMain: the shell puts the bundle's own back.
  */
 export function appIconSvg(choice: Pick<ThemeChoice, 'theme' | 'accent'>, rounded = false): string | null {
   if (!isPaletteTheme(choice.theme)) return null
   const def = themeDef(choice.theme)
+  const svg = (defs: string, body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512"><defs>${defs}</defs>${body}</svg>`
+  // Apple's icon grid: the tile 824 of 1024, centred, its corners about 22.5 % of its side — the shape the Dock gives the bundle's icon.
+  const onGrid = (body: string) => (rounded ? `<g transform="translate(6.25 6.25) scale(0.8047)">${body}</g>` : body)
+  const corner = rounded ? 14.4 : 0
+  if (def.icon && 'image' in def.icon) {
+    return svg(`<clipPath id="t"><rect width="64" height="64" rx="${corner}"/></clipPath>`, onGrid(`<image href="${def.icon.image}" width="64" height="64" preserveAspectRatio="xMidYMid slice" clip-path="url(#t)"/>`))
+  }
   const own = def.icon && 'mark' in def.icon ? def.icon.mark : null
   const [top, middle, foot] = markStops(own ?? def.palette[choice.accent])
-  const tile = def.icon?.tile ?? (def.light ? def.palette.base : def.palette.crust)
-  // A drawing in place of the mark (Cinnamoroll's puppy); the mark, with a gold star where the theme gives it its colour (Soviet).
-  const mark = def.icon && 'art' in def.icon ? def.icon.art : MARK_PATH + (own ? star(15, 11, 6.5, own) : '')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">`
-    + `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="0.55" stop-color="${middle}"/><stop offset="1" stop-color="${foot}"/></linearGradient></defs>`
-    + (rounded
-      // Apple's icon grid: the tile 824 of 1024, centred, its corners about 22.5 % of its side — the shape the Dock gives the bundle's icon.
-      ? `<g transform="translate(6.25 6.25) scale(0.8047)"><rect width="64" height="64" rx="14.4" fill="${tile}"/>${mark}</g>`
-      : `<rect width="64" height="64" fill="${tile}"/>${mark}`)
-    + `</svg>`
+  const tile = def.icon && 'tile' in def.icon ? def.icon.tile : def.light ? def.palette.base : def.palette.crust
+  // The mark, with a gold star where the theme gives it its colour (Soviet).
+  const mark = MARK_PATH + (own ? star(15, 11, 6.5, own) : '')
+  return svg(
+    `<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="0.55" stop-color="${middle}"/><stop offset="1" stop-color="${foot}"/></linearGradient>`,
+    onGrid(`<rect width="64" height="64" rx="${corner}" fill="${tile}"/>${mark}`),
+  )
 }
 
 const MARK_PATH = `<path d="M16 48V22l14 16L48 16" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`
