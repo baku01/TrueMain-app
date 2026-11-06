@@ -53,13 +53,18 @@ export function masteryRows(rows: BlitzMasteryRow[]): MasteryRow[] {
   })
 }
 
-export async function masteryFromBlitz(eloBracket?: unknown): Promise<{ patch: string | null, rows: MasteryRow[] }> {
-  const rows = await blitzRows<BlitzMasteryRow>('champion_postmatch_stats', {
+/** Blitz's rows as it answers them, every bracket and lane kept: the table's read, and the draft's (`utils/draft-experience`). */
+export function masteryStatsFromBlitz(eloBracket?: unknown): Promise<BlitzMasteryRow[]> {
+  return blitzRows<BlitzMasteryRow>('champion_postmatch_stats', {
     queue_id: SOLO_QUEUE,
     tier: blitzTier(eloBracket),
     region: 'WORLD',
     columns: 'champion_id,individual_position,patch,win_rate,role_pct_games,mastery_stats',
   })
+}
+
+export async function masteryFromBlitz(eloBracket?: unknown): Promise<{ patch: string | null, rows: MasteryRow[] }> {
+  const rows = await masteryStatsFromBlitz(eloBracket)
   return { patch: rows[0]?.patch ?? null, rows: masteryRows(rows) }
 }
 

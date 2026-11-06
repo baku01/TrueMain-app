@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BALANCED, DEFAULT_SETTINGS, PRESETS, PRESET_KEYS, WEIGHT_KEYS,
-  clearsMastery, comfortScore, familiarity, normalized, presetOf, rateScore, rebalanced, settingsOf, shrunkRate, tierScore, weightedScore, winsOverExpected,
+  clearsMastery, comfortScore, familiarity, metaScore, normalized, presetOf, rateScore, rebalanced, settingsOf, shrunkRate, tierScore, weightedScore, winsOverExpected,
 } from '~/utils/draft-weights'
 
 const sum = (weights: Record<string, number>) => WEIGHT_KEYS.reduce((total, key) => total + weights[key]!, 0)
@@ -86,6 +86,16 @@ describe('each category', () => {
     expect(tierScore(null)).toBe(0)
   })
 
+  it('reads the meta as the win rate on the tier\'s scale, D at 46.3%, S at 52.5%, an untiered champion as D', () => {
+    expect(metaScore(0.525, 1_000_000)).toBeCloseTo(1, 2)
+    expect(metaScore(0.494, 1_000_000)).toBeCloseTo(0.5, 2)
+    expect(metaScore(0.44, 1_000_000)).toBe(0)
+    expect(metaScore(0.6, 0)).toBe(1)
+    expect(metaScore(0.6, 100)).toBe(1)
+    expect(metaScore(0.52, 100)).toBeLessThan(metaScore(0.52, 10_000))
+    expect(metaScore(null, 5000)).toBe(0)
+  })
+
   it('reads comfort from mastery, games, recency and wins, and nothing as unknown', () => {
     const now = Date.UTC(2026, 10, 6)
     expect(familiarity({ points: 100_000, games: 20, lastPlayedAt: now, now })).toBeCloseTo(1)
@@ -99,8 +109,8 @@ describe('each category', () => {
 })
 
 describe('a suggestion\'s weighted score', () => {
-  const counterPick = { tier: 'C', matchupDelta: 0.06, matchupGames: 900, synergyDelta: 0, synergyGames: 0, comfort: null }
-  const metaPick = { tier: 'S', matchupDelta: -0.02, matchupGames: 900, synergyDelta: 0, synergyGames: 0, comfort: null }
+  const counterPick = { winRate: 0.487, games: 20_000, matchupDelta: 0.06, matchupGames: 900, synergyDelta: 0, synergyGames: 0, comfort: null }
+  const metaPick = { winRate: 0.53, games: 20_000, matchupDelta: -0.02, matchupGames: 900, synergyDelta: 0, synergyGames: 0, comfort: null }
 
   it('is each category times its weight, summed', () => {
     const score = weightedScore(metaPick, BALANCED)
@@ -116,5 +126,24 @@ describe('a suggestion\'s weighted score', () => {
 
   it('reads an unknown opponent as an even matchup', () => {
     expect(weightedScore({ ...counterPick, matchupGames: 0 }, BALANCED).parts.counter.value).toBe(0.5)
+  })
+
+  it('takes the counter-pick risk off the counter category\'s win rate, a point of risk 0.05 of it', () => {
+    const blind = { ...counterPick, matchupGames: 0 }
+    const safe = weightedScore(blind, BALANCED)
+    const risky = weightedScore({ ...blind, counterRisk: 0.01 }, BALANCED)
+    expect(safe.risk).toEqual({ rate: 0, points: 0 })
+    expect(risky.parts.counter.value).toBe(0.5)
+    expect(risky.risk.rate).toBe(0.01)
+    expect(risky.risk.points).toBeCloseTo(0.05 * BALANCED.counter)
+    expect(risky.total).toBeCloseTo(safe.total - 0.05 * BALANCED.counter)
+    expect(risky.total).toBeCloseTo(WEIGHT_KEYS.reduce((total, key) => total + risky.parts[key].points, 0) - risky.risk.points)
+  })
+
+  it('never takes more than the counter category holds, and ignores a risk that is no number', () => {
+    const lost = weightedScore({ ...counterPick, matchupDelta: -0.12, matchupGames: 1_000_000, counterRisk: 0.05 }, BALANCED)
+    expect(lost.parts.counter.value).toBe(0)
+    expect(lost.risk.points).toBe(0)
+    expect(weightedScore({ ...counterPick, counterRisk: Number.NaN }, BALANCED).risk.rate).toBe(0)
   })
 })

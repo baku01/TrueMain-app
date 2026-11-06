@@ -3,6 +3,7 @@ import type { DraftState } from '~/types/lcu'
 import type { RankedPick } from '~/utils/jev-recommend'
 import type { WeightedScore } from '~/utils/draft-weights'
 import { COMFORT_GAMES } from '~/utils/draft-comfort'
+import { shiftOf } from '~/utils/draft-experience'
 import { clearsMastery, comfortScore, weightedScore } from '~/utils/draft-weights'
 
 /**
@@ -15,7 +16,10 @@ import { clearsMastery, comfortScore, weightedScore } from '~/utils/draft-weight
  *
  * Comfort is read from the player's own client: the mastery it lists, and
  * their latest games (the comfort line's twenty) for the games, the wins and
- * the last time on the champion.
+ * the last time on the champion. The meta category reads the tier list's win
+ * rate moved by Blitz's experience shift (`useExperienceShifts`) — the
+ * player's own experience stays comfort's —, and the counter category gives up
+ * the counter-pick risk while the lane opponent is still to come (`useDraftRisk`).
  */
 export function useDraftSuggestionItems(
   draft: Ref<DraftState>,
@@ -29,6 +33,8 @@ export function useDraftSuggestionItems(
   const { nameOf } = useChampionStatics()
   const { state: lcu } = useLcuState()
   const { games } = usePlayerRecord()
+  const shifts = useExperienceShifts()
+  const risks = useDraftRisk(draft, recommendation, computed(() => kind.value === 'pick' && !jev.scores.value))
 
   const mastery = computed(() => new Map((lcu.value.championMastery ?? []).map(entry => [entry.championId, entry])))
   const topLevel = computed(() => Math.max(0, ...(lcu.value.championMastery ?? []).map(entry => entry.championLevel)))
@@ -56,17 +62,22 @@ export function useDraftSuggestionItems(
     const weights = settings.value.weights
     return (recommendation.value?.candidates ?? [])
       .filter(candidate => clearsMastery(mastery.value.get(candidate.championId)?.championLevel, topLevel.value, settings.value.minMastery))
-      .map(candidate => ({
-        candidate,
-        score: weightedScore({
-          tier: entryOf(candidate.championId, position)?.tier ?? null,
-          matchupDelta: candidate.matchupDelta,
-          matchupGames: candidate.matchupGames,
-          synergyDelta: candidate.synergyDelta,
-          synergyGames: candidate.synergyGames,
-          comfort: comfortOf(candidate.championId, position),
-        }, weights),
-      }))
+      .map((candidate) => {
+        const entry = entryOf(candidate.championId, position)
+        return {
+          candidate,
+          score: weightedScore({
+            winRate: entry ? entry.winRate + shiftOf(shifts.value, candidate.championId, position) : null,
+            games: entry?.games ?? 0,
+            matchupDelta: candidate.matchupDelta,
+            matchupGames: candidate.matchupGames,
+            synergyDelta: candidate.synergyDelta,
+            synergyGames: candidate.synergyGames,
+            comfort: comfortOf(candidate.championId, position),
+            counterRisk: risks.value.get(candidate.championId) ?? 0,
+          }, weights),
+        }
+      })
       .sort((a, b) => b.score.total - a.score.total || b.score.parts.comfort.points - a.score.parts.comfort.points || nameOf(a.candidate.championId).localeCompare(nameOf(b.candidate.championId)))
   })
 

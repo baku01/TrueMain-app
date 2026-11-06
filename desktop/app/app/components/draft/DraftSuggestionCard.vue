@@ -8,6 +8,8 @@ import type { RankedPick } from '~/utils/jev-recommend'
 import { PICK_WEIGHTS } from '~/utils/jev-recommend'
 import type { WeightedScore } from '~/utils/draft-weights'
 import { WEIGHT_KEYS } from '~/utils/draft-weights'
+import { formatPoints } from '~/utils/counters'
+import { riskLevel } from '~/utils/draft-risk'
 
 /**
  * One suggested pick or ban as a poster (the splash, framed on the face, the rank a large numeral, the name in capitals over the floor): the champion's loading art whole,
@@ -25,7 +27,9 @@ import { WEIGHT_KEYS } from '~/utils/draft-weights'
  * the player's own recent games on it are said on hover (#1906) — both said,
  * never scored. Ranked by the player's suggestion weights instead
  * (`weighted`, Blitz's "Suggestion Weights"), it carries that score in the
- * same ring, its four categories on hover, each with its weight and points.
+ * same ring, its four categories on hover, each with its weight and points,
+ * and — picked before the lane opponent — the points its counter-pick risk
+ * takes off, with LoLTheory's word for how much.
  */
 const props = defineProps<{
   championId: number
@@ -88,6 +92,15 @@ const breakdown = computed(() => {
   const weight = present.reduce((sum, part) => sum + PICK_WEIGHTS[part], 0)
   return present.map(part => ({ key: part, label: t(`jev.pick.part.${part}`), hint: t(`jev.pick.part.${part}.hint`), value: parts[part]!, weight: PICK_WEIGHTS[part] / weight, points: (PICK_WEIGHTS[part] / weight) * parts[part]! * 100 }))
 })
+
+const RISK_TONE = { medium: 'text-warning bg-warning/10', high: 'text-error bg-error/10', extreme: 'text-inverted bg-error' } as const
+
+/** The counter-pick risk under the weighted breakdown: its level, its win-rate points, the score points it takes. */
+const risk = computed(() => {
+  const read = props.jev ? null : props.weighted?.risk
+  const level = read ? riskLevel(read.rate) : 'none'
+  return read && level !== 'none' ? { label: t(`draft.weights.risk.${level}`), tone: RISK_TONE[level], rate: formatPoints(-read.rate), points: read.points * 100 } : null
+})
 </script>
 
 <template>
@@ -118,6 +131,13 @@ const breakdown = computed(() => {
                 <span class="truncate text-muted" :title="row.hint">{{ row.label }} · {{ Math.round(row.value * 100) }}</span>
                 <span class="text-right text-muted">{{ Math.round(row.weight * 100) }}%</span>
                 <span class="text-right font-semibold text-highlighted">{{ Math.round(row.points) }}</span>
+              </template>
+              <template v-if="risk">
+                <span class="col-span-2 flex min-w-0 items-center gap-1.5 text-muted" :title="t('draft.weights.risk.hint')">
+                  <span class="truncate">{{ t('draft.weights.risk') }} · {{ risk.rate }}</span>
+                  <span class="shrink-0 rounded px-1 text-[9px] font-bold uppercase leading-4 tracking-wide" :class="risk.tone">{{ risk.label }}</span>
+                </span>
+                <span class="text-right font-semibold text-highlighted">−{{ Math.round(risk.points) }}</span>
               </template>
             </div>
             <p v-if="jev && jev.confidence !== null" class="text-[10px] text-dimmed">{{ t('jev.card.confidence', { value: `${Math.round(jev.confidence * 100)}%` }) }}</p>
