@@ -5,7 +5,7 @@ import type { Kit } from '#shared/types/kit'
 import type { DraftItemPush } from '~/utils/draft-damage'
 import type { ImportChoice } from '~/composables/useDraftAutoImport'
 import type { ImportBuild } from '~/utils/recommended-item-set'
-import type { ItemSetBlocks, ItemSetSubject } from '~/composables/useItemSetImport'
+import type { ItemSetSubject } from '~/composables/useItemSetImport'
 import { externalSource, fromBlitz } from '~/utils/data-source'
 import { situationalFromTree } from '~/utils/item-set'
 import { formatPercentage } from '#shared/utils/ddragon'
@@ -119,19 +119,10 @@ const shown = computed(() => {
   if (selected.value === 'pro' && pro.value) return pro.value.option
   return options.value.find(option => option.key === selected.value) ?? options.value[0] ?? null
 })
-/**
- * What the item set button imports: the build on screen, named for the set's
- * title. The draft's own build was read against the draft: it goes whole, in
- * buying order, with no situational block — the draft's answers are in it.
- */
-const itemSetSubject = computed((): ItemSetSubject | ItemSetBlocks | null => {
+/** What the item set button imports: the build on screen, named for the set's title. */
+const itemSetSubject = computed((): ItemSetSubject | null => {
   const name = championStatic(props.championId)?.championName
-  if (!shown.value || !name) return null
-  const core = shown.value.core
-  if (shown.value.key === 'draft') {
-    return { championId: props.championId, champion: name, blocks: { starter: core.starterItems?.itemIds ?? [], boots: core.boots?.itemIds ?? [], core: core.itemPath?.itemIds ?? [], situational: [] } }
-  }
-  return { championId: props.championId, champion: name, position: props.position, build: shown.value }
+  return shown.value && name ? { championId: props.championId, champion: name, position: props.position, build: shown.value } : null
 })
 /**
  * What the draft's automatic import writes (`useDraftAutoImport`): the build
@@ -151,8 +142,7 @@ function choiceOf(option: BuildOption, title: string): ImportChoice {
     starter: option.core.starterItems?.itemIds ?? [],
     path,
     boots: option.core.boots?.itemIds ?? [],
-    // The draft's own build is whole already; a lane's row keeps its tree's other branches to turn to.
-    situational: option.key === 'draft' ? [] : situationalFromTree(option.buildTree, path),
+    situational: situationalFromTree(option.buildTree, path),
   }
 }
 function titleOf(option: BuildOption): string {

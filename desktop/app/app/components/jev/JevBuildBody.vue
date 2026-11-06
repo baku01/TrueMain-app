@@ -13,6 +13,8 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
  */
 const props = defineProps<{
   championId: number
+  /** The lane, for Blitz's buying order in the imported item set. */
+  position?: string
   ranked: RankedSlot[]
   needs: { team: Needs, lane: Needs } | null
   enemies: EnemyReading[]
@@ -36,8 +38,8 @@ const opened = computed(() => {
     <JevEnemyRead v-if="needs" :needs="needs" :enemies="enemies" />
 
     <!-- The two builds stacked, step over step, then every option of the step opened. -->
-    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :build="jevBuild" side="jev" />
-    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :build="standardBuild" side="standard" />
+    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :build="jevBuild" side="jev" />
+    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :build="standardBuild" side="standard" />
     <section v-if="opened" class="surface min-w-0 rounded-2xl p-4">
       <header class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('jev.path.details', { slot: opened.label }) }}</h3>

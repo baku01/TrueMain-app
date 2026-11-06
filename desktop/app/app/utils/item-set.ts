@@ -14,6 +14,8 @@ export interface ItemSetBuild {
   boots: number[]
   core: number[]
   situational: number[]
+  /** How many core items come before the boots, as the build buys them; second by default. */
+  bootsAt?: number
 }
 
 /**

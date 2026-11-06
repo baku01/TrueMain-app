@@ -1,4 +1,5 @@
 import type { StaticItemData } from '#shared/types/static-data'
+import { tr } from '#common/utils/i18n'
 import { isBoots } from '~/utils/blitz/builds'
 
 /**
@@ -21,6 +22,8 @@ export interface ImportBuild {
   path: number[]
   boots: number[]
   situational: number[]
+  /** How many of the path's items come before the boots, as the build buys them; second by default. */
+  bootsAt?: number
 }
 
 /** How a component path is measured: Blitz's `itemOrders`, per completed item, most played first. */
@@ -47,6 +50,15 @@ export interface RecommendedSet {
 
 export interface BlockTitles { starting: string, order: string, final: string, situational: string, boots: string }
 
+/** The blocks' titles in the app's language, Blitz's own words. */
+export const blockTitles = (): BlockTitles => ({
+  starting: tr('autoImport.block.starting'),
+  order: tr('autoImport.block.order'),
+  final: tr('autoImport.block.final'),
+  situational: tr('autoImport.block.situational'),
+  boots: tr('autoImport.block.boots'),
+})
+
 /** The basic boots, left out of the buying order when the starter already holds boots. */
 const BASIC_BOOTS = 1001
 /** The support quest's upgraded stage, never bought. */
@@ -64,11 +76,11 @@ export function componentsOf(itemId: number, items: Record<number, StaticItemDat
     .map(item => item.id)
 }
 
-/** The final build: the path with the boots second, filled up to six from the situational items. */
+/** The final build: the path with the boots where it buys them (second by default), filled up to six from the situational items. */
 export function finalBuild(build: ImportBuild): number[] {
   const path = build.path.filter(id => !isBoots(id))
   const list = [...path]
-  if (build.boots[0] !== undefined) list.splice(Math.min(1, list.length), 0, build.boots[0])
+  if (build.boots[0] !== undefined) list.splice(Math.min(build.bootsAt ?? 1, list.length), 0, build.boots[0])
   for (const id of build.situational) {
     if (list.length >= FINAL) break
     if (!list.includes(id) && !isBoots(id)) list.push(id)

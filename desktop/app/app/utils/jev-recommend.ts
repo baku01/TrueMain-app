@@ -1,5 +1,6 @@
 import type { ChampionRead, FitRead, ItemRead, PickRead } from '~/utils/jev-read'
-import type { JevOption, JevSlot } from '~/utils/jev-build'
+import type { JevOption, JevSlot, LaidBuild } from '~/utils/jev-build'
+import type { ItemSetBuild } from '~/utils/item-set'
 
 /**
  * The Jev matchup page's ranking, all arithmetic and all in code — TypeSafe's
@@ -369,4 +370,22 @@ export function rankPicks(candidates: { championId: number, score: number }[], r
     const total = present.reduce((sum, part) => sum + PICK_WEIGHTS[part] * parts[part]!, 0) / weight
     return { championId: candidate.championId, total, parts, confidence: read?.confidence ?? null }
   }).sort((a, b) => b.total - a.total)
+}
+
+/**
+ * A build as the client's item set, laid out as Blitz's: its starter, its
+ * boots where the build buys them, every item in buying order (the final
+ * build), then as situational every other item its slots offered, best score
+ * first — what also suits this draft when the game asks for it.
+ */
+export function itemSetOf(ranked: RankedSlot[], build: LaidBuild): ItemSetBuild {
+  const boots = build.boots?.itemIds ?? []
+  const core = build.order.filter(id => !boots.includes(id))
+  const at = build.order.findIndex(id => boots.includes(id))
+  const offered = ranked
+    .filter(entry => entry.slot.kind === 'item')
+    .flatMap(entry => entry.slot.options.map(option => ({ id: option.itemIds[0]!, score: entry.scored[option.key]?.total ?? 0 })))
+    .filter(option => !core.includes(option.id))
+    .sort((a, b) => b.score - a.score)
+  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined }
 }

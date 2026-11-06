@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { addedWinProbability, answersDraft, fitOf, laneNeeds, needsOf, rankPicks, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
+import { addedWinProbability, answersDraft, fitOf, itemSetOf, laneNeeds, needsOf, rankPicks, rankSlot, slotWpa, statsOf } from '~/utils/jev-recommend'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, heal: 0, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
@@ -170,5 +170,20 @@ describe('rankPicks', () => {
 
   it('ranks on the source alone when Jev read nothing', () => {
     expect(rankPicks([{ championId: 1, score: 1 }, { championId: 2, score: 2 }], new Map()).map(pick => pick.championId)).toEqual([2, 1])
+  })
+})
+
+describe('itemSetOf', () => {
+  it('lays a build out as Blitz\'s set: the whole build in buying order, the boots where bought, every other option after it by score', () => {
+    const slot = (name: string, options: JevOption[]): JevSlot => ({ name, kind: 'item', lane: false, options })
+    const scored = (totals: Record<string, number>) => Object.fromEntries(Object.entries(totals).map(([key, total]) => [key, { total, parts: {}, answers: [], misfit: false }]))
+    const first = slot('item1', [option('o0', [6692]), option('o1', [3161])])
+    const later = slot('item4', [option('o0', [3071]), option('o1', [3156]), option('o2', [6333])])
+    const ranked = [
+      { slot: first, pick: first.options[0]!, standard: first.options[0]!, scored: scored({ o0: 0.6, o1: 0.5 }) },
+      { slot: later, pick: later.options[0]!, standard: later.options[0]!, scored: scored({ o0: 0.62, o1: 0.4, o2: 0.58 }) },
+    ]
+    const build = { runePage: null, summonerSpells: null, starterItems: { itemIds: [1055, 2003], games: 1, pickRate: 1, winRate: 0.5 }, skillOrder: null, boots: { itemIds: [3047], games: 1, pickRate: 1, winRate: 0.5 }, order: [6692, 3047, 6610, 3071] }
+    expect(itemSetOf(ranked, build)).toEqual({ starter: [1055, 2003], boots: [3047], core: [6692, 6610, 3071], situational: [6333, 3161, 3156], bootsAt: 1 })
   })
 })
