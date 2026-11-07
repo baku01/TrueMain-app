@@ -29,7 +29,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://cmsassets.rgpub.io https://blitz-cdn.blitz.gg https://opgg-static.akamaized.net https://d28xe8vt774jo5.cloudfront.net data:; media-src 'self' https://d28xe8vt774jo5.cloudfront.net https://blitz-cdn-videos.blitz.gg; connect-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://cmsassets.rgpub.io https://blitz-cdn.blitz.gg https://opgg-static.akamaized.net https://d28xe8vt774jo5.cloudfront.net data:; media-src 'self' blob: https://d28xe8vt774jo5.cloudfront.net https://blitz-cdn-videos.blitz.gg; connect-src 'self' https://ddragon.leagueoflegends.com https://raw.communitydragon.org; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {
