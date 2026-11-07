@@ -30,6 +30,8 @@ beforeEach(() => {
   vi.stubGlobal('useT', () => ({ t: tr }))
   vi.stubGlobal('useStaticData', () => ({ items: ref({}) }))
   vi.stubGlobal('useChampionStatics', () => ({ champions: ref(new Map()), portraitOf: () => null, patch: ref('') }))
+  // The objectives' sample tip is not the lane gold's concern.
+  vi.stubGlobal('useTipSettings', () => ({ settings: ref({ enabled: false }) }))
 })
 afterEach(() => vi.unstubAllGlobals())
 

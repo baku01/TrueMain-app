@@ -91,104 +91,108 @@ onBeforeUnmount(() => void preview(false))
     <UAlert v-else-if="view?.notice" color="neutral" variant="subtle" icon="i-lucide-info" :description="view.notice" />
 
     <USkeleton v-if="!current" class="aspect-video w-full rounded-lg" />
-    <OverlayLayoutEditor
-      v-else
-      :settings="current"
-      :chords="view?.chords"
-      :hud="view?.hud"
-      :class="!current.enabled && 'opacity-60'"
-      @place="place"
-      @show="show"
-      @hide="hide"
-    >
-      <section class="flex flex-col gap-2">
-        <h3 class="stat-label">{{ t('overlay.settings.onScreen') }}</h3>
-        <p class="text-xs text-muted">
-          {{ view?.preview ? t('overlay.settings.onScreenPreviewing') : t('overlay.settings.onScreenIdle') }}
-        </p>
-        <div class="flex gap-2">
-          <UButton
-            :label="view?.preview ? t('overlay.settings.done') : t('overlay.settings.placeOnScreen')"
-            :icon="view?.preview ? 'i-lucide-check' : 'i-lucide-move'"
-            size="xs"
-            :color="view?.preview ? 'primary' : 'neutral'"
-            :variant="view?.preview ? 'solid' : 'outline'"
-            :disabled="!view?.supported"
-            @click="preview(!view?.preview)"
+    <!-- In a block of its own: the editor fills a column, which would squeeze it under the tips below. -->
+    <div v-else class="shrink-0">
+      <OverlayLayoutEditor
+        :settings="current"
+        :chords="view?.chords"
+        :hud="view?.hud"
+        :class="!current.enabled && 'opacity-60'"
+        @place="place"
+        @show="show"
+        @hide="hide"
+      >
+        <section class="flex flex-col gap-2">
+          <h3 class="stat-label">{{ t('overlay.settings.onScreen') }}</h3>
+          <p class="text-xs text-muted">
+            {{ view?.preview ? t('overlay.settings.onScreenPreviewing') : t('overlay.settings.onScreenIdle') }}
+          </p>
+          <div class="flex gap-2">
+            <UButton
+              :label="view?.preview ? t('overlay.settings.done') : t('overlay.settings.placeOnScreen')"
+              :icon="view?.preview ? 'i-lucide-check' : 'i-lucide-move'"
+              size="xs"
+              :color="view?.preview ? 'primary' : 'neutral'"
+              :variant="view?.preview ? 'solid' : 'outline'"
+              :disabled="!view?.supported"
+              @click="preview(!view?.preview)"
+            />
+            <UButton v-if="moved" :label="t('overlay.settings.resetPositions')" icon="i-lucide-rotate-ccw" size="xs" color="neutral" variant="ghost" @click="resetPositions" />
+          </div>
+        </section>
+
+        <section v-if="current.nextItem.enabled" class="flex flex-col gap-2">
+          <h3 class="stat-label">{{ t('overlay.settings.buildPathShows') }}</h3>
+          <AppSegmented :model-value="current.show" :items="SHOWS" @update:model-value="apply({ show: $event })" />
+        </section>
+
+        <section v-if="shownPanels.length" class="flex flex-col gap-3">
+          <h3 class="stat-label">{{ t('overlay.settings.inGameShown') }}</h3>
+          <OverlayTriggerPicker
+            v-for="panel in shownPanels"
+            :key="panel"
+            :panel="panel"
+            :trigger="current[PANEL_KEY[panel]].trigger"
+            :chord="view?.chords[panel] ?? null"
+            @change="setTrigger(panel, $event)"
           />
-          <UButton v-if="moved" :label="t('overlay.settings.resetPositions')" icon="i-lucide-rotate-ccw" size="xs" color="neutral" variant="ghost" @click="resetPositions" />
-        </div>
-      </section>
+        </section>
 
-      <section v-if="current.nextItem.enabled" class="flex flex-col gap-2">
-        <h3 class="stat-label">{{ t('overlay.settings.buildPathShows') }}</h3>
-        <AppSegmented :model-value="current.show" :items="SHOWS" @update:model-value="apply({ show: $event })" />
-      </section>
+        <section v-if="current.laneGold.enabled" class="flex flex-col gap-2">
+          <div class="flex items-baseline justify-between">
+            <h3 class="stat-label">{{ t('overlay.settings.laneGoldNudge') }}</h3>
+            <span class="stat-value text-sm">{{ nudgeLabel(nudge) }}</span>
+          </div>
+          <USlider
+            :model-value="nudge"
+            :min="-SCOREBOARD_NUDGE"
+            :max="SCOREBOARD_NUDGE"
+            :step="2"
+            size="sm"
+            @update:model-value="(value) => { nudge = value ?? nudge; settle({ scoreboardNudge: nudge }) }"
+          />
+        </section>
 
-      <section v-if="shownPanels.length" class="flex flex-col gap-3">
-        <h3 class="stat-label">{{ t('overlay.settings.inGameShown') }}</h3>
-        <OverlayTriggerPicker
-          v-for="panel in shownPanels"
-          :key="panel"
-          :panel="panel"
-          :trigger="current[PANEL_KEY[panel]].trigger"
-          :chord="view?.chords[panel] ?? null"
-          @change="setTrigger(panel, $event)"
-        />
-      </section>
+        <section class="flex flex-col gap-2">
+          <div class="flex items-baseline justify-between">
+            <h3 class="stat-label">{{ t('overlay.settings.size') }}</h3>
+            <span class="stat-value text-sm">{{ formatPercentage(scale, 0) }}</span>
+          </div>
+          <USlider
+            :model-value="scale"
+            :min="OVERLAY_SCALE.min"
+            :max="OVERLAY_SCALE.max"
+            :step="0.05"
+            size="sm"
+            @update:model-value="(value) => { scale = value ?? scale; settle({ scale }) }"
+          />
+        </section>
 
-      <section v-if="current.laneGold.enabled" class="flex flex-col gap-2">
-        <div class="flex items-baseline justify-between">
-          <h3 class="stat-label">{{ t('overlay.settings.laneGoldNudge') }}</h3>
-          <span class="stat-value text-sm">{{ nudgeLabel(nudge) }}</span>
-        </div>
-        <USlider
-          :model-value="nudge"
-          :min="-SCOREBOARD_NUDGE"
-          :max="SCOREBOARD_NUDGE"
-          :step="2"
-          size="sm"
-          @update:model-value="(value) => { nudge = value ?? nudge; settle({ scoreboardNudge: nudge }) }"
-        />
-      </section>
+        <section class="flex flex-col gap-2">
+          <div class="flex items-baseline justify-between">
+            <h3 class="stat-label">{{ t('overlay.settings.opacity') }}</h3>
+            <span class="stat-value text-sm">{{ formatPercentage(opacity, 0) }}</span>
+          </div>
+          <USlider
+            :model-value="opacity"
+            :min="OVERLAY_OPACITY.min"
+            :max="OVERLAY_OPACITY.max"
+            :step="0.05"
+            size="sm"
+            @update:model-value="(value) => { opacity = value ?? opacity; settle({ opacity }) }"
+          />
+        </section>
 
-      <section class="flex flex-col gap-2">
-        <div class="flex items-baseline justify-between">
-          <h3 class="stat-label">{{ t('overlay.settings.size') }}</h3>
-          <span class="stat-value text-sm">{{ formatPercentage(scale, 0) }}</span>
-        </div>
-        <USlider
-          :model-value="scale"
-          :min="OVERLAY_SCALE.min"
-          :max="OVERLAY_SCALE.max"
-          :step="0.05"
-          size="sm"
-          @update:model-value="(value) => { scale = value ?? scale; settle({ scale }) }"
-        />
-      </section>
+        <section class="flex flex-col gap-2">
+          <h3 class="stat-label">{{ t('overlay.settings.shortcut') }}</h3>
+          <div class="flex items-center gap-2 text-xs text-muted">
+            <UKbd size="md">{{ view?.shortcut }}</UKbd>
+            <span>{{ t('overlay.settings.shortcutHint') }}</span>
+          </div>
+        </section>
+      </OverlayLayoutEditor>
+    </div>
 
-      <section class="flex flex-col gap-2">
-        <div class="flex items-baseline justify-between">
-          <h3 class="stat-label">{{ t('overlay.settings.opacity') }}</h3>
-          <span class="stat-value text-sm">{{ formatPercentage(opacity, 0) }}</span>
-        </div>
-        <USlider
-          :model-value="opacity"
-          :min="OVERLAY_OPACITY.min"
-          :max="OVERLAY_OPACITY.max"
-          :step="0.05"
-          size="sm"
-          @update:model-value="(value) => { opacity = value ?? opacity; settle({ opacity }) }"
-        />
-      </section>
-
-      <section class="flex flex-col gap-2">
-        <h3 class="stat-label">{{ t('overlay.settings.shortcut') }}</h3>
-        <div class="flex items-center gap-2 text-xs text-muted">
-          <UKbd size="md">{{ view?.shortcut }}</UKbd>
-          <span>{{ t('overlay.settings.shortcutHint') }}</span>
-        </div>
-      </section>
-    </OverlayLayoutEditor>
+    <OverlayTipsSettings v-if="current" :objectives="current.objectives" />
   </div>
 </template>
