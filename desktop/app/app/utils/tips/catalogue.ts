@@ -59,11 +59,14 @@ interface TipRule {
   ttl: number
 }
 
+/** From this priority a tip is a countdown about to run out (half a minute, Smite): the pane marks it. */
+export const URGENT_PRIORITY = 5
+
 const rule = (category: TipCategory, priority: number, ttl: number): TipRule => ({ category, priority, ttl })
 // A countdown goes stale with the clock: a minute's warning shown 20 s late says the wrong thing.
 const minute = rule('objective', 4, 8)
-const halfMinute = rule('objective', 5, 8)
-const smite = rule('objective', 5, 5)
+const halfMinute = rule('objective', URGENT_PRIORITY, 8)
+const smite = rule('objective', URGENT_PRIORITY, 5)
 
 export const TIP_RULES: Record<TipKey, TipRule> = {
   'objective.dragon.60s': minute,

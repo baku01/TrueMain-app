@@ -4,8 +4,9 @@ import type { GameState } from '~/types/game'
 import type { Tip } from '~/utils/tips/catalogue'
 import type { ShownTip } from '~/utils/tips/queue'
 import type { TipRole } from '~/utils/tips/settings'
+import { tipText } from '~/utils/tips/display'
 import { emptyMemory, evaluate } from '~/utils/tips/engine'
-import { TipQueue } from '~/utils/tips/queue'
+import { TipQueue, readingSeconds } from '~/utils/tips/queue'
 import { speaks, tipsRunning } from '~/utils/tips/settings'
 
 /** How often the engine reads the game: the countdowns' marks are seconds apart, the queue's turns a few. */
@@ -28,7 +29,7 @@ export function useTipFeed(game: () => GameState | null, sync: () => ClockSync, 
   const { settings } = useTipSettings()
   const { items } = useStaticData()
   const voice = useTipVoice()
-  const queue = new TipQueue()
+  const queue = new TipQueue(tip => readingSeconds(tipText(tip)))
   let memory = emptyMemory()
   const shown = shallowRef<ShownTip | null>(null)
   const saying = () => role().speak && speaks(settings.value)

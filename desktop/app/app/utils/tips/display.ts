@@ -10,6 +10,13 @@ export function tipText(tip: Pick<Tip, 'key' | 'params'>): string {
   return tr(`tip.${tip.key}`, params)
 }
 
+/** How long ago a tip left, in the active language: "now" under 5 s, then to the nearest 10 s up to a minute, then whole minutes. */
+export function tipAgo(seconds: number): string {
+  const ago = new Intl.RelativeTimeFormat(getActiveLocale(), { numeric: 'auto', style: 'short' })
+  if (seconds < 60) return ago.format(-(seconds < 5 ? 0 : Math.round(seconds / 10) * 10), 'second')
+  return ago.format(-Math.floor(seconds / 60), 'minute')
+}
+
 /** An objective's tip shows the game's own minimap icon of it, the drake's element included; the others their category's icon. */
 export function tipImage(tip: Pick<Tip, 'key' | 'category' | 'params'>): string | null {
   if (tip.category !== 'objective') return null

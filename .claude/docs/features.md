@@ -612,8 +612,11 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (`useAppTipFeed`, mounted by `app.vue`), so the voice never needs the overlay and a tip is said once. The panel is a
   window like the stats panel's — the same pane, always there while a game is read, saying "No tip right now" between
   two tips —, placed like the other panels in the layout editor; until dragged it sits on its own place (`TIPS_PLACE`, centred under the objectives strip,
-  where League prints its announcements — the five anchors are the other panels'). In a browser-only dev run the overlay page runs its own feed. One at a time for 6 s
-  with a hairline running out, an icon per category (an objective's own minimap icon). A pure engine
+  where League prints its announcements — the five anchors are the other panels'). In a browser-only dev run the overlay page runs its own feed. One at a time, for as long
+  as its words take to read (`readingSeconds`: 2 s to find it and 0.45 s a word, 4 to 9 s) with a hairline running
+  out, a bar and the category's name in its colour, an icon per category (an objective's own minimap icon); a
+  countdown within half a minute or Smite's has the pane's edge breathe, and gets the screen from a calmer tip that
+  has been up 3 s when it would go stale waiting; between two tips the pane keeps the last one dim, with how long ago it left. A pure engine
   (`engine.ts`, `rules-clock.ts`, `rules-players.ts`) reads each game reading against the clock; a queue (`queue.ts`)
   orders them: priority, first come first, a ttl, a cooldown per category. Rules after ABSOL's coach, as far as the
   data goes: objective warnings at 60 s and 30 s (Elder once a side holds the soul) and a jungler's Smite line at
