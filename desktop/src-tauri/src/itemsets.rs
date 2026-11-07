@@ -62,8 +62,11 @@ async fn write(client: &SharedClient, draft: &ItemSetDraft) -> Result<(), String
 /// `!!!truemain-0.json` and on, sorted ahead of the game's own.
 const RECOMMENDED_PREFIX: &str = "!!!truemain-";
 /// The game ranks recommended sets by `sortrank`; Riot's own sit at 4 and
-/// 4999, so ours start far above them, the selected build first.
-const RECOMMENDED_RANK: i64 = 1_000_000_000;
+/// 4999, so ours start far above them, the selected build first. Blitz writes
+/// its own from 1,000,000,000 down, and the game lists its files for every
+/// champion whatever their `championKey` — a tie put a leftover Blitz set ahead
+/// of ours. So ours start above Blitz's, still within the game's 32-bit rank.
+const RECOMMENDED_RANK: i64 = 2_000_000_000;
 
 /// The game's `Config/Global/Recommended` folders, where the game is: the
 /// client says where it is installed (a client that does not falls back to
