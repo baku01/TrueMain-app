@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TipKey } from '../app/utils/tips/catalogue'
 import { CATEGORY_COOLDOWNS, makeTip } from '../app/utils/tips/catalogue'
-import { SHOW_SECONDS, TipQueue } from '../app/utils/tips/queue'
+import { SHOW_SECONDS, TipQueue, readingSeconds } from '../app/utils/tips/queue'
 
 const SHOW = SHOW_SECONDS * 1000
 
@@ -75,5 +75,48 @@ describe('TipQueue', () => {
     queue.push(makeTip('gold.behind'), 0)
     queue.clear()
     expect(screen(queue, [1])).toEqual([null])
+  })
+
+  it('keeps a short line up for a short while and a long one to its end, within bounds', () => {
+    expect(readingSeconds('Glance at the minimap.')).toBe(4)
+    expect(readingSeconds('Drake in 30 seconds, get vision on the pit.')).toBeCloseTo(2 + 9 * 0.45)
+    expect(readingSeconds(Array.from({ length: 40 }, () => 'word').join(' '))).toBe(9)
+    expect(readingSeconds('')).toBe(4)
+  })
+
+  it('holds each tip for the time its queue was told, and a category\'s quiet runs from there', () => {
+    const queue = new TipQueue(tip => (tip.key === 'gold.ahead' ? 4 : 8))
+    queue.push(makeTip('gold.ahead'), 0)
+    queue.push(makeTip('map.minimap'), 0)
+    expect(screen(queue, [0, 3999])).toEqual(['gold.ahead', 'gold.ahead'])
+    expect(screen(queue, [4000])).toEqual(['map.minimap'])
+    expect(screen(queue, [11999])).toEqual(['map.minimap'])
+    expect(screen(queue, [12000])).toEqual([null])
+  })
+
+  it('lets a tip give way to a more urgent one that would be stale before it leaves', () => {
+    const queue = new TipQueue(() => 9)
+    queue.push(makeTip('farm.ok'), 0)
+    expect(screen(queue, [0])).toEqual(['farm.ok'])
+    // The warning keeps 8 s; the farm would stay until 9 s.
+    queue.push(makeTip('objective.baron.30s'), 1000)
+    // Not before the farm has had its first 3 s…
+    expect(screen(queue, [2999])).toEqual(['farm.ok'])
+    // …then the warning takes the screen.
+    expect(screen(queue, [3000])).toEqual(['objective.baron.30s'])
+  })
+
+  it('does not give way to a tip that can wait, or that is not more urgent', () => {
+    const queue = new TipQueue(() => 9)
+    queue.push(makeTip('objective.baron.60s'), 0)
+    queue.current(0)
+    // Same priority never cuts in; a higher one that still has time waits its turn.
+    queue.push(makeTip('jungle.spotted'), 0)
+    expect(screen(queue, [5000])).toEqual(['objective.baron.60s'])
+    const calm = new TipQueue(() => 3)
+    calm.push(makeTip('farm.ok'), 0)
+    calm.current(0)
+    calm.push(makeTip('objective.baron.30s'), 0)
+    expect(screen(calm, [2999])).toEqual(['farm.ok'])
   })
 })
