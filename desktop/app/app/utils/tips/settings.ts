@@ -57,5 +57,11 @@ export function readTipSettings(raw: string | null): TipSettings {
 /** Whether the tips are spoken: the voice on and a pack chosen. */
 export const speaks = (settings: TipSettings) => settings.voice && settings.pack !== null
 
-/** Whether the tips are read at all: shown (`onScreen`, the overlay's tips panel on), or spoken. */
-export const tipsRunning = (settings: TipSettings, onScreen: boolean) => onScreen || speaks(settings)
+/** What a window does with the tips it reads: show them (the tips panel's), say them, or both. */
+export interface TipRole {
+  show: boolean
+  speak: boolean
+}
+
+/** Whether a window in `role` reads the tips at all: it shows them, or says them. */
+export const tipsRunning = (settings: TipSettings, role: TipRole) => role.show || (role.speak && speaks(settings))

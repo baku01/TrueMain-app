@@ -2,17 +2,17 @@
 import { formatPercentage } from '#shared/utils/ddragon'
 import type { OverlayPanel, OverlayPanelSettings, OverlaySettings, OverlayShow, PanelTrigger } from '~/types/overlay'
 import type { Point } from '~/utils/overlay-layout'
-import { OVERLAY_OPACITY, OVERLAY_PANELS, OVERLAY_SCALE, PANEL_KEY, SCOREBOARD_NUDGE, TIPS_PLACE } from '~/types/overlay'
+import { OVERLAY_OPACITY, OVERLAY_PANELS, OVERLAY_PANEL_INFO, OVERLAY_SCALE, PANEL_KEY, SCOREBOARD_NUDGE, TIPS_PLACE } from '~/types/overlay'
 import { nudgeLabel } from '~/utils/scoreboard-geometry'
 
 /**
  * The in-game overlay (#1795), set up out of game (#1819), laid out as the
  * app's other pages are — its header, then a card per concern: where each
  * panel sits, on a small copy of the screen (`OverlayLayoutEditor`) or over
- * the real one; when each comes up in game (always, a chord held or
- * toggled, #1915) and the next item's moment; what goes for every panel —
- * size, opacity, the lane gold's nudge, the hide shortcut; then the tips and
- * their voice. Each change is saved as it is made; the shell's answer is
+ * the real one; each panel's own: when it comes up in game (always, a
+ * chord held or toggled, #1915) and its size, with the next item's moment;
+ * what goes for every panel — opacity, the lane gold's nudge, the hide
+ * shortcut; then the tips and their voice. Each change is saved as it is made; the shell's answer is
  * what then shows.
  *
  * Not `/overlay/<panel>`: those are the panels' own windows (`[panel].vue`),
@@ -53,16 +53,42 @@ function resetPositions() {
 }
 
 // Sliders save once they settle, not on every step of a drag.
-const scale = ref(1)
+let timer: ReturnType<typeof setTimeout> | undefined
+let pending: Partial<OverlaySettings> = {}
+/** The panels whose size slider moved since the last save. */
+let resized = new Set<OverlayPanel>()
+
 const opacity = ref(0.95)
 const nudge = ref(0)
-watch(() => current.value?.scale, value => (scale.value = value ?? 1), { immediate: true })
+/** Each panel's size as its slider holds it, ahead of the shell's answer. */
+const sizes = ref<Partial<Record<OverlayPanel, number>>>({})
+const sizeOf = (panel: OverlayPanel) => sizes.value[panel] ?? 1
 watch(() => current.value?.opacity, value => (opacity.value = value ?? 0.95), { immediate: true })
 watch(() => current.value?.scoreboardNudge, value => (nudge.value = value ?? 0), { immediate: true })
-let timer: ReturnType<typeof setTimeout> | undefined
+// A slider still being moved keeps its value over the shell's last answer.
+watch(current, (settings) => {
+  if (settings) sizes.value = Object.fromEntries(OVERLAY_PANELS.map(panel => [panel, resized.has(panel) ? sizeOf(panel) : settings[PANEL_KEY[panel]].scale]))
+}, { immediate: true })
+
+function flush() {
+  const settings = current.value
+  const change: Partial<OverlaySettings> = { ...pending }
+  if (settings) {
+    for (const panel of resized) Object.assign(change, { [PANEL_KEY[panel]]: { ...settings[PANEL_KEY[panel]], scale: sizeOf(panel) } })
+  }
+  pending = {}
+  resized = new Set()
+  apply(change)
+}
 function settle(change: Partial<OverlaySettings>) {
+  pending = { ...pending, ...change }
   clearTimeout(timer)
-  timer = setTimeout(() => apply(change), 250)
+  timer = setTimeout(flush, 250)
+}
+function resize(panel: OverlayPanel, value: number | undefined) {
+  sizes.value = { ...sizes.value, [panel]: value ?? sizeOf(panel) }
+  resized.add(panel)
+  settle({})
 }
 onBeforeUnmount(() => clearTimeout(timer))
 
@@ -131,7 +157,7 @@ onBeforeUnmount(() => void preview(false))
         <div class="grid items-start gap-5 xl:grid-cols-2">
           <section class="surface space-y-4 rounded-xl p-5" data-overlay-when>
             <header class="flex items-start gap-3">
-              <UIcon name="i-tabler-eye" class="mt-0.5 size-5 shrink-0 text-primary" />
+              <UIcon name="i-tabler-layers-subtract" class="mt-0.5 size-5 shrink-0 text-primary" />
               <div class="min-w-0 flex-1 space-y-1">
                 <h2 class="text-sm font-semibold text-highlighted">{{ t('overlay.when.title') }}</h2>
                 <p class="text-xs text-muted">{{ t('overlay.when.description') }}</p>
@@ -144,15 +170,29 @@ onBeforeUnmount(() => void preview(false))
             </div>
 
             <div v-if="shownPanels.length" class="grid gap-3 sm:grid-cols-2">
-              <OverlayTriggerPicker
-                v-for="panel in shownPanels"
-                :key="panel"
-                class="surface rounded-lg p-3"
-                :panel="panel"
-                :trigger="current[PANEL_KEY[panel]].trigger"
-                :chord="view?.chords[panel] ?? null"
-                @change="setTrigger(panel, $event)"
-              />
+              <div v-for="panel in shownPanels" :key="panel" class="surface space-y-3 rounded-lg p-3" :data-panel-settings="panel">
+                <OverlayTriggerPicker
+                  :panel="panel"
+                  :trigger="current[PANEL_KEY[panel]].trigger"
+                  :chord="view?.chords[panel] ?? null"
+                  @change="setTrigger(panel, $event)"
+                />
+                <div class="space-y-1.5">
+                  <div class="flex items-baseline justify-between text-xs">
+                    <span class="text-muted">{{ t('overlay.settings.size') }}</span>
+                    <span class="stat-value">{{ formatPercentage(sizeOf(panel), 0) }}</span>
+                  </div>
+                  <USlider
+                    :model-value="sizeOf(panel)"
+                    :min="OVERLAY_SCALE.min"
+                    :max="OVERLAY_SCALE.max"
+                    :step="0.05"
+                    size="sm"
+                    :aria-label="t('overlay.settings.sizeOf', { panel: OVERLAY_PANEL_INFO[panel].label })"
+                    @update:model-value="resize(panel, $event)"
+                  />
+                </div>
+              </div>
             </div>
             <p v-else class="text-xs text-dimmed">{{ t('overlay.when.empty') }}</p>
           </section>
@@ -167,22 +207,7 @@ onBeforeUnmount(() => void preview(false))
             </header>
 
             <div class="grid gap-5 sm:grid-cols-2">
-              <div class="space-y-2">
-                <div class="flex items-baseline justify-between">
-                  <h3 class="stat-label">{{ t('overlay.settings.size') }}</h3>
-                  <span class="stat-value text-sm">{{ formatPercentage(scale, 0) }}</span>
-                </div>
-                <USlider
-                  :model-value="scale"
-                  :min="OVERLAY_SCALE.min"
-                  :max="OVERLAY_SCALE.max"
-                  :step="0.05"
-                  size="sm"
-                  :aria-label="t('overlay.settings.size')"
-                  @update:model-value="(value) => { scale = value ?? scale; settle({ scale }) }"
-                />
-              </div>
-              <div class="space-y-2">
+              <div class="space-y-2 sm:col-span-2">
                 <div class="flex items-baseline justify-between">
                   <h3 class="stat-label">{{ t('overlay.settings.opacity') }}</h3>
                   <span class="stat-value text-sm">{{ formatPercentage(opacity, 0) }}</span>

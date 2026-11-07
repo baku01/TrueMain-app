@@ -40,22 +40,23 @@ const ratio = computed(() => canvasWidth.value / screen.width)
 const shown = computed(() => OVERLAY_PANELS.filter(panel => props.settings[PANEL_KEY[panel]].enabled))
 const hidden = computed(() => OVERLAY_PANELS.filter(panel => !props.settings[PANEL_KEY[panel]].enabled))
 
-/** Each panel's size as drawn with its sample, before the overlay's scale: what it takes in game. */
+/** Each panel's size as drawn with its sample, before its own scale: what it takes in game. */
 const measured = reactive<Partial<Record<OverlayPanel, Size>>>({})
 function measure(panel: OverlayPanel, size: Size) {
   if (size.width > 0 && size.height > 0) measured[panel] = size
 }
-const sizeOf = (panel: OverlayPanel) => panelSize(panel, props.settings.scale, measured[panel])
+const scaleOf = (panel: OverlayPanel) => props.settings[PANEL_KEY[panel]].scale
+const sizeOf = (panel: OverlayPanel) => panelSize(panel, scaleOf(panel), measured[panel])
 const hud = computed(() => props.hud ?? DEFAULT_HUD)
 
 /** A panel's box on the screen: the scoreboard's rows for the lane gold, its place for the others. */
 function boxOf(panel: OverlayPanel): Box {
-  if (onScoreboard(panel)) return platesBox(screen, hud.value, props.settings.scoreboardNudge, PANEL_WIDTHS[panel] * props.settings.scale)
+  if (onScoreboard(panel)) return platesBox(screen, hud.value, props.settings.scoreboardNudge, PANEL_WIDTHS[panel] * scaleOf(panel))
   return panelBox(props.settings[PANEL_KEY[panel]], sizeOf(panel), screen)
 }
 
-/** How much a panel is shrunk to be drawn on the canvas: the screen's ratio and the overlay's scale. */
-const zoom = computed(() => ratio.value * props.settings.scale)
+/** How much a panel is shrunk to be drawn on the canvas: the screen's ratio and the panel's own scale. */
+const zoom = (panel: OverlayPanel) => ratio.value * scaleOf(panel)
 
 /** A panel's box on the canvas: its box on the screen, at the canvas's scale — nothing enlarged, so its edges are its edges. */
 function drawnSize(panel: OverlayPanel) {
@@ -202,9 +203,9 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
         >
           <OverlayPanelMock
             :panel="panel"
-            :zoom="zoom"
+            :zoom="zoom(panel)"
             :chord="chords?.[panel]?.label"
-            :height="onScoreboard(panel) ? boxOf(panel).height / settings.scale : undefined"
+            :height="onScoreboard(panel) ? boxOf(panel).height / scaleOf(panel) : undefined"
             :lanes="panel === 'item-value' ? !settings.laneGold.enabled : undefined"
             removable
             @remove="emit('hide', panel)"
@@ -233,8 +234,8 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
       <div v-if="ghost" class="pointer-events-none fixed z-50 rounded-sm shadow-lg ring-1 ring-primary" :class="ghost.dropping && 'opacity-60'" :style="ghost.style">
         <OverlayPanelMock
           :panel="ghost.panel"
-          :zoom="zoom"
-          :height="onScoreboard(ghost.panel) ? boxOf(ghost.panel).height / settings.scale : undefined"
+          :zoom="zoom(ghost.panel)"
+          :height="onScoreboard(ghost.panel) ? boxOf(ghost.panel).height / scaleOf(ghost.panel) : undefined"
           @measure="measure(ghost.panel, $event)"
         />
       </div>

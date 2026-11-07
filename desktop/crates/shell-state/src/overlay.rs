@@ -32,8 +32,9 @@ use crate::scoreboard::MAX_NUDGE;
 /// behaviour, which is every panel's default trigger. Version 4 adds the
 /// lane-gold plates: a version 3 file turns them on only if the item value,
 /// the scoreboard's other panel, was on — a player who switched the scoreboard
-/// numbers off does not get new ones over it.
-pub const SETTINGS_VERSION: u32 = 4;
+/// numbers off does not get new ones over it. Version 5 gives each panel its
+/// own size: an older file's one size becomes every panel's.
+pub const SETTINGS_VERSION: u32 = 5;
 
 pub const MIN_SCALE: f64 = 0.8;
 pub const MAX_SCALE: f64 = 1.4;
@@ -265,6 +266,8 @@ pub struct PanelSettings {
     /// player picks an anchor again.
     pub custom: Option<OverlayPoint>,
     pub trigger: PanelTrigger,
+    /// The panel's size against its natural one (`MIN_SCALE`–`MAX_SCALE`).
+    pub scale: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -275,8 +278,6 @@ pub struct OverlaySettings {
     pub enabled: bool,
     /// When the next item shows; the other panels have their own moment.
     pub show: OverlayShow,
-    /// Every panel's size against its natural one.
-    pub scale: f64,
     pub opacity: f64,
     pub next_item: PanelSettings,
     pub win_probability: PanelSettings,
@@ -301,11 +302,11 @@ impl Default for OverlaySettings {
             anchor,
             custom: None,
             trigger: PanelTrigger::default_for(panel),
+            scale: 1.0,
         };
         Self {
             enabled: true,
             show: OverlayShow::Always,
-            scale: 1.0,
             opacity: 0.95,
             next_item: at(OverlayPanel::NextItem, OverlayAnchor::TopRight),
             win_probability: at(OverlayPanel::WinProbability, OverlayAnchor::TopLeft),
@@ -555,9 +556,15 @@ impl OverlaySettings {
     fn from_fields(fields: &serde_json::Map<String, Value>, current: bool) -> Self {
         let defaults = Self::default();
         let in_range = |min: f64, max: f64| move |value: &f64| (min..=max).contains(value);
+        // Before version 5 one size went for every panel: it is each one's until it has its own.
+        let shared_scale = parse(fields.get("scale")).filter(in_range(MIN_SCALE, MAX_SCALE));
         let panel = |key: &str, fallback: PanelSettings| {
             let field = fields.get(key);
             PanelSettings {
+                scale: parse(field.and_then(|f| f.get("scale")))
+                    .filter(in_range(MIN_SCALE, MAX_SCALE))
+                    .or(shared_scale)
+                    .unwrap_or(fallback.scale),
                 trigger: parse(field.and_then(|f| f.get("trigger"))).unwrap_or(fallback.trigger),
                 enabled: parse(field.and_then(|f| f.get("enabled"))).unwrap_or(fallback.enabled),
                 anchor: parse(field.and_then(|f| f.get("anchor"))).unwrap_or(fallback.anchor),
@@ -574,9 +581,6 @@ impl OverlaySettings {
         Self {
             enabled: parse(fields.get("enabled")).unwrap_or(defaults.enabled),
             show: parse(fields.get("show")).unwrap_or(defaults.show),
-            scale: parse(fields.get("scale"))
-                .filter(in_range(MIN_SCALE, MAX_SCALE))
-                .unwrap_or(defaults.scale),
             opacity: parse(fields.get("opacity"))
                 .filter(in_range(MIN_OPACITY, MAX_OPACITY))
                 .unwrap_or(defaults.opacity),
@@ -1214,7 +1218,7 @@ mod tests {
         );
         assert!(!settings.enabled);
         assert_eq!(settings.show, OverlayShow::WhileDead);
-        assert_eq!(settings.scale, 1.0);
+        assert_eq!(settings.next_item.scale, 1.0);
         assert_eq!(settings.opacity, 0.7);
         assert_eq!(settings.next_item, OverlaySettings::default().next_item);
         assert!(!settings.item_value.enabled);
@@ -1234,10 +1238,10 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("overlay-settings-{}", std::process::id()));
         let path = dir.join("overlay-settings.json");
         let mut settings = OverlaySettings {
-            scale: 1.2,
             scoreboard_nudge: -8.0,
             ..OverlaySettings::default()
         };
+        settings.stats.scale = 1.2;
         settings.lane_gold.enabled = false;
         settings.item_value.custom = Some(OverlayPoint { x: 0.25, y: 0.75 });
         settings.stats.trigger = PanelTrigger::Toggle {
@@ -1335,5 +1339,21 @@ mod tests {
         assert!(!settings.tips.enabled);
         let anchored = r#"{"version":4,"tips":{"anchor":"center-left","custom":null}}"#;
         assert_eq!(OverlaySettings::from_json(anchored).tips.custom, None);
+    }
+
+    #[test]
+    fn each_panel_has_its_own_size_and_an_older_file_gives_its_one_to_all() {
+        let old = r#"{"version":4,"scale":1.4,"stats":{"enabled":true}}"#;
+        let settings = OverlaySettings::from_json(old);
+        assert!(OverlayPanel::ALL
+            .into_iter()
+            .all(|panel| settings.panel(panel).scale == 1.4));
+
+        let own = r#"{"version":5,"stats":{"scale":0.8},"tips":{"scale":3}}"#;
+        let settings = OverlaySettings::from_json(own);
+        assert_eq!(settings.stats.scale, 0.8);
+        // Out of range: the panel's default.
+        assert_eq!(settings.tips.scale, 1.0);
+        assert_eq!(settings.next_item.scale, 1.0);
     }
 }

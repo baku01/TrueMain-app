@@ -593,21 +593,23 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   screen, or click it to bring it back where it was. The page is laid out as the app's others (`PageHeader`, then a
   `surface` card per concern): the overlay's on/off switch (default on) in the header; a **Layout** card with the
   editor, "Place on screen" (the panels themselves, dragged over
-  the real screen — each with the sample when no game runs, its "drag" marker drawn over it so it keeps its in-game size) and "Reset positions" (every panel back to its spot, the tips to `TIPS_PLACE`); a **When they show** card with the next item's
-  moment and each shown panel's trigger (Always / While held / Toggle, a field that records the chord by
+  the real screen — each with the sample when no game runs, its "drag" marker drawn over it so it keeps its in-game size) and "Reset positions" (every panel back to its spot, the tips to `TIPS_PLACE`); an **Each panel** card with the next item's
+  moment and, per shown panel, its size (80–140 %, each panel its own since settings file v5 — an older file's one
+  size becomes every panel's) and its trigger (Always / While held / Toggle, a field that records the chord by
   key position — `KeyboardEvent.code`, so AZERTY works — with the refusal under it: modifiers or TAB alone, Esc/Enter,
   ⌥⇧O, ⌘/Win, Alt+Tab/F4, another panel's chord; a warning naming what the key does in game, from the player's League
   keybindings via the client or Riot's defaults; Alt+Shift+digit suggested; the chord marked on each panel's mock and
   on its "drag" marker; `OverlayTriggerPicker.vue`, `utils/overlay-keys.ts`, settings file v3); a **Look** card with
-  size 80–140 %, opacity 50–100 %, the lane gold's nudge and the hide shortcut (`OverlayLayoutEditor.vue`,
+  opacity 50–100 %, the lane gold's nudge and the hide shortcut (`OverlayLayoutEditor.vue`,
   `OverlayPanelMock.vue`); then the tips' and their voice's cards. Rules and settings in `shell-state::overlay` (tested on CI),
   windows in `src-tauri/src/overlay/` (`panels.rs` drives them, `macos.rs` / `windows.rs` are the window layers). On
   Windows the game is known by its window class (`RiotWindowClass`) or its process name; CI drives the whole overlay
   over a stand-in game on a Windows desktop (`desktop/tools/overlay-smoke-windows.ps1`, #1806).
-- **In-game tips** (`utils/tips/`, `useTipFeed.ts`, `OverlayTips.vue`, `OverlayTip.vue`) — short coaching lines, read
-  and spoken in the app's window (`useAppTipFeed`, mounted by `app.vue`, ticked by every game reading as well as its
-  timer), so the voice goes on with the overlay or its tips panel off; the tip on screen goes to the overlay's
-  windows as the `tips://shown` event, drawn by the **Tips** panel (`OverlayPanel::Tips`) until its time is up — a
+- **In-game tips** (`utils/tips/`, `useTipFeed.ts`, `OverlayTips.vue`, `OverlayTip.vue`) — short coaching lines in the
+  **Tips** panel (`OverlayPanel::Tips`), which reads the game in its own window as every panel does: its feed
+  (ticked by every game reading as well as its timer) shows the tips and says them. While the overlay has no tips
+  panel (overlay or panel off, or no overlay on the platform) the app's window runs a voice-only feed instead
+  (`useAppTipFeed`, mounted by `app.vue`), so the voice never needs the overlay and a tip is said once. The panel is a
   see-through window like the lane gold's, the tip its own card and nothing between two, placed like the other panels
   in the layout editor; until dragged it sits on its own place (`TIPS_PLACE`, centred under the objectives strip,
   where League prints its announcements — the five anchors are the other panels'). In a browser-only dev run the overlay page runs its own feed. One at a time for 6 s

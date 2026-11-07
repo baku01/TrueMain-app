@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { OverlayPanel } from '~/types/overlay'
-import { OVERLAY_PANELS, onScoreboard, seeThrough } from '~/types/overlay'
+import { OVERLAY_PANELS, PANEL_KEY, onScoreboard, seeThrough } from '~/types/overlay'
 import { PANEL_WIDTHS } from '~/utils/overlay-layout'
 import { sampleGame } from '~/utils/overlay-sample'
 
@@ -57,7 +57,8 @@ const chord = computed(() => view.value?.chords[panel.value]?.label ?? null)
 
 const settings = computed(() => view.value?.settings ?? null)
 const preview = computed(() => (view.value?.preview ?? false) || devPreview.value)
-const scale = computed(() => settings.value?.scale ?? 1)
+// Each panel at its own size.
+const scale = computed(() => settings.value?.[PANEL_KEY[panel.value]].scale ?? 1)
 const plates = computed(() => onScoreboard(panel.value))
 // The next item and the pace are ours; the other panels read a spectated game too.
 const OURS: OverlayPanel[] = ['next-item', 'stats']

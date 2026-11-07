@@ -61,6 +61,8 @@ export interface OverlayPanelSettings {
   /** Where the panel was dragged, as a fraction of the room the screen leaves around it (0 against the left/top edge, 1 against the right/bottom); wins over `anchor`. */
   custom: { x: number, y: number } | null
   trigger: PanelTrigger
+  /** The panel's size, 0.8 – 1.4 (`OVERLAY_SCALE`). */
+  scale: number
 }
 
 /** Mirrors `OverlaySettings`. */
@@ -69,8 +71,6 @@ export interface OverlaySettings {
   enabled: boolean
   /** When the next item shows. */
   show: OverlayShow
-  /** 0.8 – 1.4, every panel. */
-  scale: number
   /** 0.5 – 1, every panel. */
   opacity: number
   nextItem: OverlayPanelSettings
@@ -152,15 +152,14 @@ export const DEV_OVERLAY_VIEW: OverlayView = {
   settings: {
     enabled: true,
     show: 'always',
-    scale: 1,
     opacity: 0.95,
-    nextItem: { enabled: true, anchor: 'top-right', custom: null, trigger: { kind: 'always' } },
-    winProbability: { enabled: true, anchor: 'top-left', custom: null, trigger: { kind: 'always' } },
-    itemValue: { enabled: true, anchor: 'center-right', custom: null, trigger: TAB_HELD },
-    stats: { enabled: true, anchor: 'center-left', custom: null, trigger: { kind: 'always' } },
-    objectives: { enabled: true, anchor: 'top-center', custom: null, trigger: { kind: 'always' } },
-    laneGold: { enabled: true, anchor: 'top-center', custom: null, trigger: TAB_HELD },
-    tips: { enabled: true, anchor: 'top-center', custom: { ...TIPS_PLACE }, trigger: { kind: 'always' } },
+    nextItem: { enabled: true, anchor: 'top-right', custom: null, trigger: { kind: 'always' }, scale: 1 },
+    winProbability: { enabled: true, anchor: 'top-left', custom: null, trigger: { kind: 'always' }, scale: 1 },
+    itemValue: { enabled: true, anchor: 'center-right', custom: null, trigger: TAB_HELD, scale: 1 },
+    stats: { enabled: true, anchor: 'center-left', custom: null, trigger: { kind: 'always' }, scale: 1 },
+    objectives: { enabled: true, anchor: 'top-center', custom: null, trigger: { kind: 'always' }, scale: 1 },
+    laneGold: { enabled: true, anchor: 'top-center', custom: null, trigger: TAB_HELD, scale: 1 },
+    tips: { enabled: true, anchor: 'top-center', custom: { ...TIPS_PLACE }, trigger: { kind: 'always' }, scale: 1 },
     scoreboardNudge: 0,
   },
   supported: true,
