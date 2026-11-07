@@ -149,9 +149,11 @@ describe('the tips\' settings', () => {
     expect(speaks(settings({ pack: null }))).toBe(false)
     expect(speaks(settings({ pack: 'p1', voice: false }))).toBe(false)
     expect(speaks(settings({ pack: 'p1' }))).toBe(true)
-    // Voice only: the tips panel off, the feed still runs for the voice.
-    expect(tipsRunning(settings({ pack: 'p1' }), false)).toBe(true)
-    expect(tipsRunning(settings({ pack: null }), false)).toBe(false)
-    expect(tipsRunning(settings({ voice: false }), true)).toBe(true)
+    // The tips panel's window shows them, whatever the voice.
+    expect(tipsRunning(settings({ voice: false }), { show: true, speak: true })).toBe(true)
+    // The app's window only says them: with a pack and the voice on, and only while the panel is not there.
+    expect(tipsRunning(settings({ pack: 'p1' }), { show: false, speak: true })).toBe(true)
+    expect(tipsRunning(settings({ pack: null }), { show: false, speak: true })).toBe(false)
+    expect(tipsRunning(settings({ pack: 'p1' }), { show: false, speak: false })).toBe(false)
   })
 })
