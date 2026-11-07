@@ -1,11 +1,17 @@
 import { tr } from '#common/utils/i18n'
 
 /** Mirrors `OverlayPanel` in `crates/shell-state/src/overlay.rs`: one window each. */
-export type OverlayPanel = 'next-item' | 'win-probability' | 'item-value' | 'stats' | 'objectives' | 'lane-gold'
-export const OVERLAY_PANELS: OverlayPanel[] = ['next-item', 'win-probability', 'stats', 'objectives', 'item-value', 'lane-gold']
+export type OverlayPanel = 'next-item' | 'win-probability' | 'item-value' | 'stats' | 'objectives' | 'lane-gold' | 'tips'
+export const OVERLAY_PANELS: OverlayPanel[] = ['next-item', 'win-probability', 'stats', 'objectives', 'tips', 'item-value', 'lane-gold']
 
 /** Mirrors `OverlayPanel::on_scoreboard`: placed on the game's scoreboard, never dragged. */
 export const onScoreboard = (panel: OverlayPanel) => panel === 'lane-gold'
+
+/** Mirrors `OverlayPanel::see_through`: a window with no background, the page drawing only what covers the game. */
+export const seeThrough = (panel: OverlayPanel) => panel === 'lane-gold' || panel === 'tips'
+
+/** Mirrors `TIPS_PLACE`: the tips' own place until dragged, under the objectives' strip. */
+export const TIPS_PLACE = { x: 0.5, y: 0.14 } as const
 
 /** The dictionary keys of what each panel is called and shows (`i18n/overlay.ts`). */
 const PANEL_TEXT: Record<OverlayPanel, { label: string, description: string }> = {
@@ -15,6 +21,7 @@ const PANEL_TEXT: Record<OverlayPanel, { label: string, description: string }> =
   'item-value': { label: 'overlay.panel.itemValue.label', description: 'overlay.panel.itemValue.description' },
   'objectives': { label: 'overlay.panel.objectives.label', description: 'overlay.panel.objectives.description' },
   'lane-gold': { label: 'overlay.panel.laneGold.label', description: 'overlay.panel.laneGold.description' },
+  'tips': { label: 'overlay.panel.tips.label', description: 'overlay.panel.tips.description' },
 }
 
 /** What each panel is called and shows, for the player choosing them, in the active language. */
@@ -73,6 +80,8 @@ export interface OverlaySettings {
   objectives: OverlayPanelSettings
   /** Placed by the scoreboard: its anchor and custom place are never read. */
   laneGold: OverlayPanelSettings
+  /** On its own place (`TIPS_PLACE`) until dragged. */
+  tips: OverlayPanelSettings
   /** The lane-gold plates moved up (negative) or down, in pixels of a 1080p screen, ±`SCOREBOARD_NUDGE`. */
   scoreboardNudge: number
 }
@@ -95,6 +104,7 @@ export const PANEL_KEY = {
   'stats': 'stats',
   'objectives': 'objectives',
   'lane-gold': 'laneGold',
+  'tips': 'tips',
 } as const satisfies Record<OverlayPanel, keyof OverlaySettings>
 
 /** Mirrors `OverlayView` in `src-tauri/src/overlay/mod.rs`. */
@@ -150,6 +160,7 @@ export const DEV_OVERLAY_VIEW: OverlayView = {
     stats: { enabled: true, anchor: 'center-left', custom: null, trigger: { kind: 'always' } },
     objectives: { enabled: true, anchor: 'top-center', custom: null, trigger: { kind: 'always' } },
     laneGold: { enabled: true, anchor: 'top-center', custom: null, trigger: TAB_HELD },
+    tips: { enabled: true, anchor: 'top-center', custom: { ...TIPS_PLACE }, trigger: { kind: 'always' } },
     scoreboardNudge: 0,
   },
   supported: true,

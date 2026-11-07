@@ -11,6 +11,7 @@ const ICONS: Record<OverlayPanel, string> = {
   'item-value': 'i-lucide-coins',
   'objectives': 'i-lucide-timer',
   'lane-gold': 'i-lucide-rows-3',
+  'tips': 'i-lucide-message-square-text',
 }
 </script>
 

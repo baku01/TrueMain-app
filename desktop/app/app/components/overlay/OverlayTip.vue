@@ -5,7 +5,8 @@ import { CATEGORY_TONES, tipImage, tipText } from '~/utils/tips/display'
 import { SHOW_SECONDS } from '~/utils/tips/queue'
 
 /**
- * One tip as the overlay shows it, under the objectives strip: the game's
+ * One tip as the overlay shows it, a card of the panels' material on its own
+ * over the game (the tips' window is see-through): the game's
  * minimap icon of the objective it counts down to, or its category's icon in
  * the category's colour, then its line — a sentence read at a glance — and a
  * hairline along its foot running out over the seconds it stays
@@ -29,7 +30,7 @@ const tone = computed(() => TONES[CATEGORY_TONES[props.tip.category]])
 
 <template>
   <div
-    class="relative flex items-center gap-2 overflow-hidden rounded-md bg-elevated/70 px-2 py-1.5 ring-1 ring-inset ring-default"
+    class="overlay-pane relative flex items-center gap-2 overflow-hidden rounded-lg px-2.5 py-2"
     data-tip
     :data-key="tip.key"
     role="status"

@@ -14,7 +14,8 @@ const TICK_MS = 500
 export const TIP_SHOWN_EVENT = 'tips://shown'
 
 /**
- * The tips of the running game: the engine (`utils/tips`) read twice a second
+ * The tips of the running game, shown while `onScreen` says the overlay
+ * draws them: the engine (`utils/tips`) read twice a second
  * against the game clock run on from the last reading — and on every reading,
  * which comes every couple of seconds even when a hidden window's timers are
  * held back —, its tips queued unless the player switched their category
@@ -22,7 +23,7 @@ export const TIP_SHOWN_EVENT = 'tips://shown'
  * voice is on and the pack has it. It runs while the tips are shown or spoken
  * (`tipsRunning`); one feed per game, so a tip is said once.
  */
-export function useTipFeed(game: () => GameState | null, sync: () => ClockSync) {
+export function useTipFeed(game: () => GameState | null, sync: () => ClockSync, onScreen: () => boolean = () => true) {
   const { settings } = useTipSettings()
   const { items } = useStaticData()
   const voice = useTipVoice()
@@ -32,7 +33,7 @@ export function useTipFeed(game: () => GameState | null, sync: () => ClockSync) 
 
   function tick() {
     const now = Date.now()
-    const running = tipsRunning(settings.value)
+    const running = tipsRunning(settings.value, onScreen())
     const current = game()
     if (current && running) {
       const read = evaluate(memory, current, clockAt(sync(), now), items.value)
@@ -48,7 +49,7 @@ export function useTipFeed(game: () => GameState | null, sync: () => ClockSync) 
   }
 
   // Switched off mid-game: what waits goes, and nothing is said.
-  watch(() => tipsRunning(settings.value), (on) => {
+  watch(() => tipsRunning(settings.value, onScreen()), (on) => {
     if (on) return
     queue.clear()
     voice.stop()
@@ -78,14 +79,15 @@ export function useTipFeed(game: () => GameState | null, sync: () => ClockSync) 
 
 /**
  * The tips' feed in the app's window, for the whole of its life: it is
- * there whatever the overlay shows — off, its objectives panel off or up
- * only on a chord —, so the voice is never the overlay's to silence. The tip
- * on screen goes to the overlay's windows (`TIP_SHOWN_EVENT`), which only
- * draw it.
+ * there whatever the overlay shows — off, its tips panel off or up only on a
+ * chord —, so the voice is never the overlay's to silence. The tip on screen
+ * goes to the overlay's windows (`TIP_SHOWN_EVENT`), which only draw it.
  */
 export function useAppTipFeed() {
   const { game, sync } = useLiveGame()
-  const { shown } = useTipFeed(() => game.value, () => sync.value)
+  const { view } = useGameOverlay()
+  const onScreen = () => !!view.value?.settings.enabled && !!view.value.settings.tips.enabled
+  const { shown } = useTipFeed(() => game.value, () => sync.value, onScreen)
   if (!import.meta.client || !insideTauri()) return
   watch(shown, async (tip) => {
     const { emit } = await import('@tauri-apps/api/event')

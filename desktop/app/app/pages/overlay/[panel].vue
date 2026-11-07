@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { OverlayPanel } from '~/types/overlay'
-import { OVERLAY_PANELS, onScoreboard } from '~/types/overlay'
+import { OVERLAY_PANELS, onScoreboard, seeThrough } from '~/types/overlay'
 import { PANEL_WIDTHS } from '~/utils/overlay-layout'
 import { sampleGame } from '~/utils/overlay-sample'
 
@@ -9,13 +9,14 @@ definePageMeta({ colorMode: 'dark' })
 
 /**
  * One panel of the in-game overlay (#1795) — `next-item`, `win-probability`,
- * `stats`, `objectives` (#2078) with the in-game tips under it, `item-value` or `lane-gold` (#2186) — loaded by that panel's own window (`src-tauri/src/overlay`),
+ * `stats`, `objectives` (#2078), `item-value`, `lane-gold` (#2186) or `tips` — loaded by that panel's own window (`src-tauri/src/overlay`),
  * never by the app's window, and drawn outside the app's shell (`app.vue`).
  *
  * The lane gold is the exception to the rest: its window is see-through and
  * the shell sizes it to the scoreboard's rows, so the page fills it with its
  * plates and reports only its width; it is never dragged, its place being the
- * scoreboard's.
+ * scoreboard's. The tips' window is see-through too: the tip on screen is its
+ * own card, and between two tips nothing covers the game.
  *
  * The panels are click-through and never take the keyboard, so nothing here
  * is interactive: they are read at a glance over the game. Each measures
@@ -41,6 +42,7 @@ const PLACEHOLDERS: Record<OverlayPanel, string | null> = {
   'stats': 'overlay.placeholder.stats',
   'objectives': 'overlay.placeholder.objectives',
   'lane-gold': null,
+  'tips': null,
 }
 const { t } = useT()
 const placeholder = computed(() => {
@@ -49,7 +51,6 @@ const placeholder = computed(() => {
 })
 
 const { game, sync } = useLiveGame()
-const { settings: tips } = useTipSettings()
 const { view, fit } = useGameOverlay()
 /** The chord that brings this panel up in game, marked in the preview (#1915). */
 const chord = computed(() => view.value?.chords[panel.value]?.label ?? null)
@@ -94,12 +95,13 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 watch(scale, measure)
 
-// The plates' window shows the game through everything but the plates: the
-// page fill the theme pins on `html` goes, inline so it wins.
-const fill = computed(() => (plates.value ? 'overflow-hidden bg-transparent' : 'overflow-hidden bg-default'))
+// A see-through window (the plates', the tips') shows the game through all
+// but what the page draws: the page fill the theme pins on `html` goes, inline so it wins.
+const clear = computed(() => seeThrough(panel.value))
+const fill = computed(() => (clear.value ? 'overflow-hidden bg-transparent' : 'overflow-hidden bg-default'))
 useHead({
   title: t('overlay.windowTitle'),
-  htmlAttrs: { class: fill, style: computed(() => (plates.value ? 'background-color: transparent' : undefined)) },
+  htmlAttrs: { class: fill, style: computed(() => (clear.value ? 'background-color: transparent' : undefined)) },
   bodyAttrs: { class: fill },
 })
 </script>
@@ -116,24 +118,21 @@ useHead({
     </div>
   </div>
   <div v-else class="origin-top-left" :style="{ transform: `scale(${scale})` }">
-    <div ref="content" class="relative isolate px-3 py-2.5 text-default" :style="{ width: `${PANEL_WIDTHS[panel]}px` }">
-      <!-- The pane's material, under the content and exactly the window's size: the content box is the window. -->
-      <span class="overlay-pane pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
+    <div ref="content" class="relative isolate text-default" :class="!clear && 'px-3 py-2.5'" :style="{ width: `${PANEL_WIDTHS[panel]}px` }">
+      <!-- The pane's material, under the content and exactly the window's size: the content box is the window. A tip is its own card. -->
+      <span v-if="!clear" class="overlay-pane pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
       <!-- Keyed on what is shown, so a panel that starts reading a game arrives rather than snapping in. -->
       <div :key="playing ? 'live' : preview ? 'sample' : 'idle'" class="animate-overlay-in">
         <template v-if="playing">
           <OverlayNextItem v-if="panel === 'next-item'" :game="playing" />
           <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="playing" :sync="sync" />
           <OverlayStats v-else-if="panel === 'stats'" :game="playing" :reference="paceReference" />
-          <template v-else-if="panel === 'objectives'">
-            <OverlayObjectives :game="playing" :sync="sync" />
-            <!-- The tips (`OverlayTips`): under the strip, top centre, where League prints its own announcements. -->
-            <OverlayTips v-if="tips.text" :game="playing" :sync="sync" />
-          </template>
+          <OverlayObjectives v-else-if="panel === 'objectives'" :game="playing" :sync="sync" />
+          <OverlayTips v-else-if="panel === 'tips'" :game="playing" :sync="sync" />
           <OverlayItemValue v-else :game="playing" :lanes="!settings?.laneGold.enabled" />
         </template>
         <OverlayPanelSample v-else-if="preview" :panel="panel" />
-        <div v-else class="flex items-center gap-2.5">
+        <div v-else-if="placeholder" class="flex items-center gap-2.5">
           <AppMark class="size-4 shrink-0 motion-safe:animate-tm-pulse" />
           <p class="text-[11px] leading-snug text-muted">{{ placeholder }}</p>
         </div>

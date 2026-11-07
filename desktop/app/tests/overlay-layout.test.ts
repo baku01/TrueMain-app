@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { customAt, panelBox } from '~/utils/overlay-layout'
+import { DEV_OVERLAY_VIEW } from '~/types/overlay'
+import { customAt, panelBox, panelSize } from '~/utils/overlay-layout'
 
 const screen = { width: 2560, height: 1440 }
 const at = (custom: { x: number, y: number }) => ({ enabled: true, anchor: 'top-left' as const, custom })
@@ -23,5 +24,13 @@ describe('overlay layout', () => {
   it('never puts a panel off the screen', () => {
     const custom = customAt({ x: 9999, y: -50 }, { width: 160, height: 48 }, screen)
     expect(custom).toEqual({ x: 1, y: 0 })
+  })
+
+  it('puts the tips under the objectives\' strip, centred, until they are dragged', () => {
+    const { objectives, tips } = DEV_OVERLAY_VIEW.settings
+    const strip = panelBox(objectives, panelSize('objectives', 1), screen)
+    const tip = panelBox(tips, panelSize('tips', 1), screen)
+    expect(tip.x).toBe(strip.x)
+    expect(tip.y).toBeGreaterThan(strip.y + strip.height)
   })
 })

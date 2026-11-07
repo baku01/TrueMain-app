@@ -134,14 +134,14 @@ describe('the tips\' settings', () => {
   it('read leniently, a field at a time', () => {
     expect(readTipSettings(null)).toEqual(DEFAULT_TIP_SETTINGS)
     expect(readTipSettings('not json')).toEqual(DEFAULT_TIP_SETTINGS)
-    const read = readTipSettings(JSON.stringify({ text: false, voice: 'yes', categories: { map: false, kill: 'no' }, pack: 'p1', volume: 3 }))
-    expect(read).toMatchObject({ text: false, voice: true, pack: 'p1', volume: DEFAULT_TIP_SETTINGS.volume })
+    const read = readTipSettings(JSON.stringify({ voice: 'yes', categories: { map: false, kill: 'no' }, pack: 'p1', volume: 3 }))
+    expect(read).toMatchObject({ voice: true, pack: 'p1', volume: DEFAULT_TIP_SETTINGS.volume })
     expect(read.categories).toMatchObject({ map: false, kill: true, objective: true })
   })
 
-  it('reads the one switch kept before text and voice were apart as both', () => {
-    expect(readTipSettings(JSON.stringify({ enabled: false }))).toMatchObject({ text: false, voice: false })
-    expect(readTipSettings(JSON.stringify({ enabled: false, voice: true }))).toMatchObject({ text: false, voice: true })
+  it('reads the one switch kept before the voice had its own as the voice\'s', () => {
+    expect(readTipSettings(JSON.stringify({ enabled: false }))).toMatchObject({ voice: false })
+    expect(readTipSettings(JSON.stringify({ enabled: false, voice: true }))).toMatchObject({ voice: true })
   })
 
   it('speaks with the voice on and a pack chosen, and runs while shown or spoken', () => {
@@ -149,9 +149,9 @@ describe('the tips\' settings', () => {
     expect(speaks(settings({ pack: null }))).toBe(false)
     expect(speaks(settings({ pack: 'p1', voice: false }))).toBe(false)
     expect(speaks(settings({ pack: 'p1' }))).toBe(true)
-    // Voice only: no text, the feed still runs for the voice.
-    expect(tipsRunning(settings({ text: false, pack: 'p1' }))).toBe(true)
-    expect(tipsRunning(settings({ text: false, pack: null }))).toBe(false)
-    expect(tipsRunning(settings({ text: true, voice: false }))).toBe(true)
+    // Voice only: the tips panel off, the feed still runs for the voice.
+    expect(tipsRunning(settings({ pack: 'p1' }), false)).toBe(true)
+    expect(tipsRunning(settings({ pack: null }), false)).toBe(false)
+    expect(tipsRunning(settings({ voice: false }), true)).toBe(true)
   })
 })

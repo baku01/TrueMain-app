@@ -227,7 +227,6 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
         @grab="(panel, event) => begin(panel, 'tray', event)"
         @show="panel => emit('show', panel)"
       />
-      <slot />
     </aside>
 
     <Teleport to="body">

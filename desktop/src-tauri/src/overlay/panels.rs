@@ -139,8 +139,9 @@ fn build(app: &AppHandle, panel: OverlayPanel, opacity: f64) {
     let label = label(panel);
     let started = std::time::Instant::now();
     // The plates' window spans the scoreboard's rows: only the plates may
-    // cover it, the rest of the window shows the game through.
-    let see_through = panel.on_scoreboard();
+    // cover it, the rest of the window shows the game through. The tips'
+    // window covers nothing between two tips.
+    let see_through = panel.see_through();
     if let Err(error) = platform::build(
         app,
         &label,
