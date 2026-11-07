@@ -610,8 +610,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (ticked by every game reading as well as its timer) shows the tips and says them. While the overlay has no tips
   panel (overlay or panel off, or no overlay on the platform) the app's window runs a voice-only feed instead
   (`useAppTipFeed`, mounted by `app.vue`), so the voice never needs the overlay and a tip is said once. The panel is a
-  see-through window like the lane gold's, the tip its own card and nothing between two, placed like the other panels
-  in the layout editor; until dragged it sits on its own place (`TIPS_PLACE`, centred under the objectives strip,
+  window like the stats panel's — the same pane, always there while a game is read, saying "No tip right now" between
+  two tips —, placed like the other panels in the layout editor; until dragged it sits on its own place (`TIPS_PLACE`, centred under the objectives strip,
   where League prints its announcements — the five anchors are the other panels'). In a browser-only dev run the overlay page runs its own feed. One at a time for 6 s
   with a hairline running out, an icon per category (an objective's own minimap icon). A pure engine
   (`engine.ts`, `rules-clock.ts`, `rules-players.ts`) reads each game reading against the clock; a queue (`queue.ts`)

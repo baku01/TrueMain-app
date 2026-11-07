@@ -975,11 +975,13 @@ missing from a language, a drifted `{param}` or a literal key nobody defined. Sh
 byte-identical, so the site is unaffected. The native menu and tray are the Rust shell's, told the language by the
 webview (`set_menu_language`) (2026-10-30) — no issue yet
 
-**In-game tips are a strip under the objectives, not a seventh panel.** A panel is a shell-side window with its own
-settings field, anchor and webview: the five anchors are all taken by default, each webview runs the whole bundle
-(#1916), and the change would be Rust. Under the objectives strip the tips sit top centre, where League prints its own
-announcements, by the timers most of them announce; the cost is that they follow that panel's switch and trigger, which
-the settings say. The tips' settings live in `localStorage` and the voice packs in IndexedDB — the shell keeps only the
+**In-game tips are a panel of their own, built like the stats panel.** They started as a strip in the objectives
+panel's window; they follow that panel's switch and trigger no longer. The Tips panel (`OverlayPanel::Tips`) has its own
+settings field, window and place — top centre under the objectives strip (`TIPS_PLACE`), where League prints its own
+announcements, by the timers most of them announce — and is an opaque window with the same pane as the others, always
+there while a game is read, an idle line between two tips. A first version made it see-through, empty between two tips,
+like the lane-gold plates, and the player could not tell a window with nothing in it from one that did not work.
+The tips' settings live in `localStorage` and the voice packs in IndexedDB — the shell keeps only the
 overlay fields it knows, and a pack never touches the disk as a file of ours. Rules and thresholds come from ABSOL's
 coach only where the Live Client data the shell sends supports them — no health, no ward score, no enemy gold, no killer names — and every phrase is TrueMain's own
 (2026-11-07) — no issue yet

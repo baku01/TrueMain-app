@@ -13,8 +13,7 @@ import { PANEL_WIDTHS } from '~/utils/overlay-layout'
  * panel is hovered or focused, and the chord that brings it up (#1915) is
  * marked in its corner, unshrunk. The lane gold (#2186) is given its `height`,
  * the scoreboard's rows', and drawn with no card under it: in game only its
- * plates cover the scoreboard. The tips are their own card, drawn with none
- * under it either. The item value is drawn without its lanes
+ * plates cover the scoreboard. The item value is drawn without its lanes
  * while the plates are on (`lanes`).
  */
 const props = defineProps<{ panel: OverlayPanel, zoom: number, removable?: boolean, chord?: string | null, height?: number, lanes?: boolean }>()

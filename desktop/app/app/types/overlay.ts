@@ -8,7 +8,7 @@ export const OVERLAY_PANELS: OverlayPanel[] = ['next-item', 'win-probability', '
 export const onScoreboard = (panel: OverlayPanel) => panel === 'lane-gold'
 
 /** Mirrors `OverlayPanel::see_through`: a window with no background, the page drawing only what covers the game. */
-export const seeThrough = (panel: OverlayPanel) => panel === 'lane-gold' || panel === 'tips'
+export const seeThrough = (panel: OverlayPanel) => panel === 'lane-gold'
 
 /** Mirrors `TIPS_PLACE`: the tips' own place until dragged, under the objectives' strip. */
 export const TIPS_PLACE = { x: 0.5, y: 0.14 } as const
