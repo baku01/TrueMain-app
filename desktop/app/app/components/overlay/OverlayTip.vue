@@ -5,12 +5,11 @@ import { CATEGORY_TONES, tipImage, tipText } from '~/utils/tips/display'
 import { SHOW_SECONDS } from '~/utils/tips/queue'
 
 /**
- * One tip as the overlay shows it, a card of the panels' material on its own
- * over the game (the tips' window is see-through): the game's
- * minimap icon of the objective it counts down to, or its category's icon in
- * the category's colour, then its line — a sentence read at a glance — and a
- * hairline along its foot running out over the seconds it stays
- * (`SHOW_SECONDS`), still in the preview.
+ * One tip as the Tips panel shows it, on the panel's pane like every other
+ * panel's content: the game's minimap icon of the objective it counts down
+ * to, or its category's icon in the category's colour, then its line — a
+ * sentence read at a glance — and a hairline along the pane's foot running
+ * out over the seconds it stays (`SHOW_SECONDS`), still in the preview.
  */
 const props = defineProps<{ tip: Tip, still?: boolean }>()
 
@@ -30,7 +29,7 @@ const tone = computed(() => TONES[CATEGORY_TONES[props.tip.category]])
 
 <template>
   <div
-    class="overlay-pane relative flex items-center gap-2 overflow-hidden rounded-lg px-2.5 py-2"
+    class="relative flex items-center gap-2"
     data-tip
     :data-key="tip.key"
     role="status"
@@ -41,7 +40,7 @@ const tone = computed(() => TONES[CATEGORY_TONES[props.tip.category]])
     </span>
     <p class="min-w-0 flex-1 text-xs leading-snug font-medium text-highlighted">{{ text }}</p>
     <span
-      class="pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left bg-primary/70"
+      class="pointer-events-none absolute -inset-x-3 -bottom-2.5 h-px origin-left bg-primary/70"
       :class="!still && 'animate-tip-time'"
       :style="{ animationDuration: `${SHOW_SECONDS}s` }"
       aria-hidden="true"

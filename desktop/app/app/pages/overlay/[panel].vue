@@ -15,8 +15,7 @@ definePageMeta({ colorMode: 'dark' })
  * The lane gold is the exception to the rest: its window is see-through and
  * the shell sizes it to the scoreboard's rows, so the page fills it with its
  * plates and reports only its width; it is never dragged, its place being the
- * scoreboard's. The tips' window is see-through too: the tip on screen is its
- * own card, and between two tips nothing covers the game.
+ * scoreboard's.
  *
  * The panels are click-through and never take the keyboard, so nothing here
  * is interactive: they are read at a glance over the game. Each measures
@@ -42,7 +41,7 @@ const PLACEHOLDERS: Record<OverlayPanel, string | null> = {
   'stats': 'overlay.placeholder.stats',
   'objectives': 'overlay.placeholder.objectives',
   'lane-gold': null,
-  'tips': null,
+  'tips': 'overlay.placeholder.tips',
 }
 const { t } = useT()
 const placeholder = computed(() => {
@@ -96,7 +95,7 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 watch(scale, measure)
 
-// A see-through window (the plates', the tips') shows the game through all
+// A see-through window (the plates') shows the game through all
 // but what the page draws: the page fill the theme pins on `html` goes, inline so it wins.
 const clear = computed(() => seeThrough(panel.value))
 const fill = computed(() => (clear.value ? 'overflow-hidden bg-transparent' : 'overflow-hidden bg-default'))
@@ -120,7 +119,7 @@ useHead({
   </div>
   <div v-else class="origin-top-left" :style="{ transform: `scale(${scale})` }">
     <div ref="content" class="relative isolate text-default" :class="!clear && 'px-3 py-2.5'" :style="{ width: `${PANEL_WIDTHS[panel]}px` }">
-      <!-- The pane's material, under the content and exactly the window's size: the content box is the window. A tip is its own card. -->
+      <!-- The pane's material, under the content and exactly the window's size: the content box is the window. -->
       <span v-if="!clear" class="overlay-pane pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
       <!-- Keyed on what is shown, so a panel that starts reading a game arrives rather than snapping in. -->
       <div :key="playing ? 'live' : preview ? 'sample' : 'idle'" class="animate-overlay-in">

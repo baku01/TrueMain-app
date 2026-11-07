@@ -7,7 +7,7 @@
 //! scoreboard (TAB) is held, the neutral objectives' timers (#2078), the
 //! lane-gold plates down the scoreboard's middle (#2186), held with TAB too and
 //! placed by the scoreboard rather than by the player, and the in-game tips,
-//! one line at a time in a see-through window of their own. Each panel shows always, while a chord is held,
+//! one line at a time on a panel of their own. Each panel shows always, while a chord is held,
 //! or toggled by one (#1915, chords in `keys`). The windows are the shell's (`src-tauri/src/overlay`), macOS-only and
 //! impossible to build on the Linux CI box; the decisions they apply live here
 //! so they are tested anywhere. The settings file is read the way the
@@ -69,7 +69,7 @@ pub enum OverlayPanel {
     /// Each lane's item-gold gap on a plate down the TAB scoreboard's middle,
     /// one per row (`scoreboard`).
     LaneGold,
-    /// The in-game tips, one line at a time while one is up, nothing between.
+    /// The in-game tips, one line at a time.
     Tips,
 }
 
@@ -151,9 +151,9 @@ impl OverlayPanel {
     }
 
     /// A window with no background of its own: the page draws only what
-    /// covers the game — the plates, or a tip while one is up.
+    /// covers the game — the plates.
     pub fn see_through(self) -> bool {
-        matches!(self, OverlayPanel::LaneGold | OverlayPanel::Tips)
+        self == OverlayPanel::LaneGold
     }
 }
 
@@ -1311,12 +1311,12 @@ mod tests {
     }
 
     #[test]
-    fn the_tips_sit_under_the_objectives_in_a_see_through_window() {
+    fn the_tips_sit_under_the_objectives_on_a_panel_like_the_others() {
         let defaults = OverlaySettings::default();
         assert_eq!(defaults.tips.custom, Some(TIPS_PLACE));
         assert!(defaults.tips.enabled);
         assert_eq!(defaults.tips.trigger, PanelTrigger::Always);
-        assert!(Tips.see_through() && LaneGold.see_through() && !Objectives.see_through());
+        assert!(LaneGold.see_through() && !Tips.see_through() && !Objectives.see_through());
         // Centred, below the objectives' strip on its top-centre spot.
         let objectives = defaults.origin(Objectives, SCREEN, (292.0, 62.0));
         let tips = defaults.origin(Tips, SCREEN, (292.0, 40.0));
