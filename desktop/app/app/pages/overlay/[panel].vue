@@ -128,7 +128,7 @@ useHead({
           <template v-else-if="panel === 'objectives'">
             <OverlayObjectives :game="playing" :sync="sync" />
             <!-- The tips (`OverlayTips`): under the strip, top centre, where League prints its own announcements. -->
-            <OverlayTips v-if="tips.enabled" :game="playing" :sync="sync" />
+            <OverlayTips v-if="tips.text" :game="playing" :sync="sync" />
           </template>
           <OverlayItemValue v-else :game="playing" :lanes="!settings?.laneGold.enabled" />
         </template>

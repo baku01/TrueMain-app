@@ -10,7 +10,7 @@ import { SAMPLE_TIP } from '~/utils/tips/catalogue'
  * (`utils/overlay-sample.ts`): the real component with made-up values, so a
  * panel is placed — in the layout editor or the on-screen preview — at the
  * size and look it will have over a game — the objectives with a tip under
- * them while the tips are on, so their room is part of the place.
+ * them while the tips' text is on, so their room is part of the place.
  */
 withDefaults(defineProps<{ panel: OverlayPanel, lanes?: boolean }>(), { lanes: true })
 
@@ -34,7 +34,7 @@ const { settings: tips } = useTipSettings()
   <OverlayStats v-else-if="panel === 'stats'" :game="game" :reference="SAMPLE_PACE_REFERENCE" />
   <div v-else-if="panel === 'objectives'">
     <OverlayObjectives :game="game" :sync="sync" />
-    <OverlayTip v-if="tips.enabled" :tip="SAMPLE_TIP" still class="mt-2" />
+    <OverlayTip v-if="tips.text" :tip="SAMPLE_TIP" still class="mt-2" />
   </div>
   <OverlayLaneGold v-else-if="panel === 'lane-gold'" :game="game" />
   <OverlayItemValue v-else :game="game" :lanes="lanes" />

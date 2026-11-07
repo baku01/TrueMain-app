@@ -21,6 +21,8 @@ const overlay = route.path.startsWith('/overlay/')
 // Followed for as long as the window lives, so a game's updates are never
 // missed while another page is open.
 useLiveGame()
+// The in-game tips are read and spoken here, the overlay only drawing them: the voice goes on with the overlay off.
+if (!overlay) useAppTipFeed()
 
 /** The `/dev/*` tools (the draft simulator) stand alone, outside the app's shell and its phase navigation. */
 const devTool = computed(() => route.path.startsWith('/dev/'))

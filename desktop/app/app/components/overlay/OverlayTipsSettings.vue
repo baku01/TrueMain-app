@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import type { OverlayPanelSettings } from '~/types/overlay'
+import type { OverlaySettings } from '~/types/overlay'
 import type { TipCategory } from '~/utils/tips/catalogue'
 import { CATEGORY_ICONS, TIP_CATEGORIES } from '~/utils/tips/catalogue'
 
 /**
- * The in-game tips on the Overlay page: on or off, each category, and the
- * voice (`OverlayVoicePacks`). The tips show in the objectives panel's
- * window, under its strip, so they follow that panel: switched off, or up
- * only on its chord, it takes them with it — said here, by the switch.
+ * The in-game tips on the Overlay page: their text on screen and their voice
+ * (`OverlayVoicePacks`), each on or off on its own, and each category. The
+ * text shows in the objectives panel's window, under its strip, so it follows
+ * the overlay and that panel: either off, or the panel up only on its chord,
+ * takes the text with it — said here, by the switch. The voice is the app's
+ * window's (`useAppTipFeed`) and follows neither.
  */
-const props = defineProps<{ objectives: OverlayPanelSettings }>()
+const props = defineProps<{ overlay: OverlaySettings }>()
 
 const { t } = useT()
 const { settings, update } = useTipSettings()
 
 const where = computed(() => {
-  if (!props.objectives.enabled) return { text: t('tips.whereOff'), warn: true }
-  if (props.objectives.trigger.kind !== 'always') return { text: t('tips.whereHeld'), warn: true }
+  if (!settings.value.text) return { text: t('tips.textOff'), warn: false }
+  if (!props.overlay.enabled) return { text: t('tips.whereOverlayOff'), warn: true }
+  if (!props.overlay.objectives.enabled) return { text: t('tips.whereOff'), warn: true }
+  if (props.overlay.objectives.trigger.kind !== 'always') return { text: t('tips.whereHeld'), warn: true }
   return { text: t('tips.where'), warn: false }
 })
 
@@ -33,7 +37,7 @@ function toggle(category: TipCategory) {
         <h2 class="text-sm font-semibold text-highlighted">{{ t('tips.title') }}</h2>
         <p class="text-xs text-muted">{{ t('tips.description') }}</p>
       </div>
-      <USwitch :model-value="settings.enabled" :label="t('tips.show')" @update:model-value="update({ enabled: $event })" />
+      <USwitch :model-value="settings.text" :label="t('tips.show')" data-tips-text @update:model-value="update({ text: $event })" />
     </header>
 
     <p class="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" :class="where.warn ? 'bg-warning/10 text-warning' : 'bg-accented/50 text-muted'">
@@ -41,7 +45,7 @@ function toggle(category: TipCategory) {
       {{ where.text }}
     </p>
 
-    <div class="space-y-2" :class="!settings.enabled && 'pointer-events-none opacity-50'">
+    <div class="space-y-2" :class="!settings.text && !settings.voice && 'pointer-events-none opacity-50'">
       <h3 class="stat-label">{{ t('tips.categories') }}</h3>
       <div class="flex flex-wrap gap-1.5">
         <UButton

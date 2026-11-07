@@ -4,8 +4,8 @@ import type { VoicePack } from '~/utils/tips/voice-store'
 import { coverage } from '~/utils/tips/voice'
 
 /**
- * The tips' voice: the pack spoken with them — none until the player imports
- * one — and its volume, then the packs imported, each with how much of the
+ * The tips' voice: on or off, whatever the overlay shows; the pack spoken
+ * with them — none until the player imports one — and its volume, then the packs imported, each with how much of the
  * scheme it records and what it lacks, to use, try or remove. A pack is a ZIP
  * picked from disk and read in the page (`useVoicePacks`); the template ZIP
  * lists every file to record.
@@ -32,9 +32,12 @@ const byline = (pack: VoicePack) => [pack.author && t('tips.voice.by', { author:
 </script>
 
 <template>
-  <div class="space-y-3 border-t border-default pt-4" :class="!settings.enabled && 'opacity-50'" data-voice-packs>
-    <h3 class="stat-label">{{ t('tips.voice.title') }}</h3>
-    <div class="grid gap-3 sm:grid-cols-2">
+  <div class="space-y-3 border-t border-default pt-4" data-voice-packs>
+    <div class="flex items-center justify-between gap-3">
+      <h3 class="stat-label">{{ t('tips.voice.title') }}</h3>
+      <USwitch :model-value="settings.voice" :label="t('tips.voice.speak')" size="sm" data-tips-voice @update:model-value="update({ voice: $event })" />
+    </div>
+    <div class="grid gap-3 sm:grid-cols-2" :class="!settings.voice && 'opacity-50'">
       <div class="space-y-1.5">
         <span class="block text-xs text-muted">{{ t('tips.voice.pack') }}</span>
         <USelect

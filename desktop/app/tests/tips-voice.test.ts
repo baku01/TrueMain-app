@@ -5,7 +5,7 @@ import { unzipSync, strFromU8 } from 'fflate'
 import { afterEach, describe, expect, it } from 'vitest'
 import { SAMPLE_PARAMS, TIP_KEYS, makeTip } from '../app/utils/tips/catalogue'
 import { tipImage, tipText } from '../app/utils/tips/display'
-import { DEFAULT_TIP_SETTINGS, readTipSettings } from '../app/utils/tips/settings'
+import { DEFAULT_TIP_SETTINGS, readTipSettings, speaks, tipsRunning } from '../app/utils/tips/settings'
 import { clipFile, coverage, segmentClip, voicePlan } from '../app/utils/tips/voice'
 import { VOICE_KEYS } from '../app/utils/tips/voice-keys'
 import { VoicePackError, readVoicePack } from '../app/utils/tips/voice-pack'
@@ -134,8 +134,24 @@ describe('the tips\' settings', () => {
   it('read leniently, a field at a time', () => {
     expect(readTipSettings(null)).toEqual(DEFAULT_TIP_SETTINGS)
     expect(readTipSettings('not json')).toEqual(DEFAULT_TIP_SETTINGS)
-    const read = readTipSettings(JSON.stringify({ enabled: false, categories: { map: false, kill: 'no' }, pack: 'p1', volume: 3 }))
-    expect(read).toMatchObject({ enabled: false, pack: 'p1', volume: DEFAULT_TIP_SETTINGS.volume })
+    const read = readTipSettings(JSON.stringify({ text: false, voice: 'yes', categories: { map: false, kill: 'no' }, pack: 'p1', volume: 3 }))
+    expect(read).toMatchObject({ text: false, voice: true, pack: 'p1', volume: DEFAULT_TIP_SETTINGS.volume })
     expect(read.categories).toMatchObject({ map: false, kill: true, objective: true })
+  })
+
+  it('reads the one switch kept before text and voice were apart as both', () => {
+    expect(readTipSettings(JSON.stringify({ enabled: false }))).toMatchObject({ text: false, voice: false })
+    expect(readTipSettings(JSON.stringify({ enabled: false, voice: true }))).toMatchObject({ text: false, voice: true })
+  })
+
+  it('speaks with the voice on and a pack chosen, and runs while shown or spoken', () => {
+    const settings = (change: Partial<typeof DEFAULT_TIP_SETTINGS>) => ({ ...DEFAULT_TIP_SETTINGS, ...change })
+    expect(speaks(settings({ pack: null }))).toBe(false)
+    expect(speaks(settings({ pack: 'p1', voice: false }))).toBe(false)
+    expect(speaks(settings({ pack: 'p1' }))).toBe(true)
+    // Voice only: no text, the feed still runs for the voice.
+    expect(tipsRunning(settings({ text: false, pack: 'p1' }))).toBe(true)
+    expect(tipsRunning(settings({ text: false, pack: null }))).toBe(false)
+    expect(tipsRunning(settings({ text: true, voice: false }))).toBe(true)
   })
 })

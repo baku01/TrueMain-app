@@ -601,8 +601,11 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   windows in `src-tauri/src/overlay/` (`panels.rs` drives them, `macos.rs` / `windows.rs` are the window layers). On
   Windows the game is known by its window class (`RiotWindowClass`) or its process name; CI drives the whole overlay
   over a stand-in game on a Windows desktop (`desktop/tools/overlay-smoke-windows.ps1`, #1806).
-- **In-game tips** (`utils/tips/`, `OverlayTips.vue`, `OverlayTip.vue`) — short coaching lines under the objectives
-  strip, in the objectives panel's window (top centre, where League prints its announcements), one at a time for 6 s
+- **In-game tips** (`utils/tips/`, `useTipFeed.ts`, `OverlayTips.vue`, `OverlayTip.vue`) — short coaching lines, read
+  and spoken in the app's window (`useAppTipFeed`, mounted by `app.vue`, ticked by every game reading as well as its
+  timer), so the voice goes on with the overlay or its objectives panel off; the tip on screen goes to the overlay's
+  windows as the `tips://shown` event, drawn under the objectives strip (top centre, where League prints its
+  announcements) until its time is up. In a browser-only dev run the overlay page runs its own feed. One at a time for 6 s
   with a hairline running out, an icon per category (an objective's own minimap icon). A pure engine
   (`engine.ts`, `rules-clock.ts`, `rules-players.ts`) reads each game reading against the clock; a queue (`queue.ts`)
   orders them: priority, first come first, a ttl, a cooldown per category. Rules after ABSOL's coach, as far as the
@@ -613,7 +616,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   jungler 5/3, no support); our or our lane opponent's first level 6; a level-2 kill, a shutdown, a death streak, the
   third death to one enemy (the one enemy whose kills rose in the reading); the gold lead from item prices. No rule
   needing health (HP recall, "survived a trade") or the ward score. Settings on the Overlay page ("In-game tips":
-  on/off, per category, voice pack, volume) in `localStorage` (`truemain-tips`), shared with the overlay's windows.
+  text on screen and voice, each on/off on its own — the old single `enabled` reads as both —, per category, voice pack, volume) in `localStorage` (`truemain-tips`), shared with the overlay's windows.
   **Voice packs**: none shipped; a player imports a ZIP (read and checked in the page with `fflate`: scheme names
   only, audio magic bytes, no traversal, 5 MB a file, 200 MB in all, optional `manifest.json`), kept in IndexedDB
   and played through object URLs (the CSP's `media-src` allows `blob:`); a line stitched from `champion/<Alias>` or `number/<n>` and a `.tail` part when

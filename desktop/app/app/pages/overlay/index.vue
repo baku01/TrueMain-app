@@ -193,6 +193,6 @@ onBeforeUnmount(() => void preview(false))
       </OverlayLayoutEditor>
     </div>
 
-    <OverlayTipsSettings v-if="current" :objectives="current.objectives" />
+    <OverlayTipsSettings v-if="current" :overlay="current" />
   </div>
 </template>
