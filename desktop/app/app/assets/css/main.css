@@ -768,10 +768,21 @@ a[href] {
   animation: tm-overlay-ready 900ms var(--tm-ease) forwards;
 }
 
+/* A tip's time on screen (`OverlayTip`): a hairline under it running out, transform only. */
+@keyframes tm-tip-time {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@utility animate-tip-time {
+  animation: tm-tip-time 6s linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-overlay-in,
   .animate-overlay-soon::after,
-  .animate-overlay-ready {
+  .animate-overlay-ready,
+  .animate-tip-time {
     animation: none !important;
   }
 }

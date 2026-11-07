@@ -975,3 +975,11 @@ missing from a language, a drifted `{param}` or a literal key nobody defined. Sh
 byte-identical, so the site is unaffected. The native menu and tray are the Rust shell's, told the language by the
 webview (`set_menu_language`) (2026-10-30) — no issue yet
 
+**In-game tips are a strip under the objectives, not a seventh panel.** A panel is a shell-side window with its own
+settings field, anchor and webview: the five anchors are all taken by default, each webview runs the whole bundle
+(#1916), and the change would be Rust. Under the objectives strip the tips sit top centre, where League prints its own
+announcements, by the timers most of them announce; the cost is that they follow that panel's switch and trigger, which
+the settings say. The tips' settings live in `localStorage` and the voice packs in IndexedDB — the shell keeps only the
+overlay fields it knows, and a pack never touches the disk as a file of ours. Rules and thresholds come from ABSOL's
+coach only where the Live Client data the shell sends supports them — no health, no ward score, no enemy gold, no killer names — and every phrase is TrueMain's own
+(2026-11-07) — no issue yet
