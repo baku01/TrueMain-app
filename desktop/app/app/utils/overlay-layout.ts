@@ -22,6 +22,7 @@ export const PANEL_WIDTHS: Record<OverlayPanel, number> = {
   'stats': 176,
   'objectives': 292,
   'lane-gold': 60,
+  'tips': 292,
 }
 
 /**
@@ -37,6 +38,7 @@ const HEIGHTS: Record<OverlayPanel, number> = {
   'objectives': 62,
   // Never read: the scoreboard's rows set it (`utils/scoreboard-geometry.ts`).
   'lane-gold': 384,
+  'tips': 34,
 }
 
 /** The screen a browser-only `npm run dev` lays the panels on. */

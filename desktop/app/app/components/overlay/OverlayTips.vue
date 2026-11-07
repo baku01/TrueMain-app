@@ -7,14 +7,15 @@ import { TIP_SHOWN_EVENT } from '~/composables/useTipFeed'
 import { SAMPLE_PARAMS, TIP_RULES, makeTip } from '~/utils/tips/catalogue'
 
 /**
- * The in-game tips, under the objectives strip in the objectives panel's
- * window: top centre, where League prints its own announcements, so a tip
- * reads like one — and the objectives' warnings, most of the tips, sit by
- * the timers they announce. The feed runs in the app's window
+ * The in-game tips, in the tips panel's see-through window: by default under
+ * the objectives' strip, top centre, where League prints its own
+ * announcements — so a tip reads like one, and the objectives' warnings, most
+ * of the tips, sit by the timers they announce —, anywhere the player drags
+ * it. The feed runs in the app's window
  * (`useAppTipFeed`), which says the tips too; this window only draws the
  * one it sends, until its time is up — on this window's own clock, should
- * the app's be slow to send the next. Between two, nothing, and the panel is
- * the strip alone.
+ * the app's be slow to send the next. Between two, nothing covers the
+ * game.
  *
  * In a browser-only `npm run dev` there is no app's window to send them: the
  * page runs a feed of its own over the dev scenario's game, and
@@ -54,6 +55,6 @@ else {
 
 <template>
   <Transition mode="out-in" enter-active-class="animate-overlay-in" leave-active-class="transition-opacity duration-200" leave-to-class="opacity-0">
-    <OverlayTip v-if="shown" :key="shown.tip.id" :tip="shown.tip" class="mt-2" />
+    <OverlayTip v-if="shown" :key="shown.tip.id" :tip="shown.tip" />
   </Transition>
 </template>

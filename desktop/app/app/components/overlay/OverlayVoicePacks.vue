@@ -4,8 +4,9 @@ import type { VoicePack } from '~/utils/tips/voice-store'
 import { coverage } from '~/utils/tips/voice'
 
 /**
- * The tips' voice: on or off, whatever the overlay shows; the pack spoken
- * with them — none until the player imports one — and its volume, then the packs imported, each with how much of the
+ * The tips' voice, a card of its own on the Overlay page: on or off,
+ * whatever the overlay shows; the pack spoken with them — none until the
+ * player imports one — and its volume, then the packs imported, each with how much of the
  * scheme it records and what it lacks, to use, try or remove. A pack is a ZIP
  * picked from disk and read in the page (`useVoicePacks`); the template ZIP
  * lists every file to record.
@@ -32,11 +33,15 @@ const byline = (pack: VoicePack) => [pack.author && t('tips.voice.by', { author:
 </script>
 
 <template>
-  <div class="space-y-3 border-t border-default pt-4" data-voice-packs>
-    <div class="flex items-center justify-between gap-3">
-      <h3 class="stat-label">{{ t('tips.voice.title') }}</h3>
-      <USwitch :model-value="settings.voice" :label="t('tips.voice.speak')" size="sm" data-tips-voice @update:model-value="update({ voice: $event })" />
-    </div>
+  <section class="surface space-y-4 rounded-xl p-5" data-voice-packs>
+    <header class="flex items-start gap-3">
+      <UIcon name="i-lucide-audio-lines" class="mt-0.5 size-5 shrink-0 text-primary" />
+      <div class="min-w-0 flex-1 space-y-1">
+        <h2 class="text-sm font-semibold text-highlighted">{{ t('tips.voice.title') }}</h2>
+        <p class="text-xs text-muted">{{ t('tips.voice.hint') }}</p>
+      </div>
+      <USwitch :model-value="settings.voice" :label="t('tips.voice.speak')" data-tips-voice @update:model-value="update({ voice: $event })" />
+    </header>
     <div class="grid gap-3 sm:grid-cols-2" :class="!settings.voice && 'opacity-50'">
       <div class="space-y-1.5">
         <span class="block text-xs text-muted">{{ t('tips.voice.pack') }}</span>
@@ -58,7 +63,6 @@ const byline = (pack: VoicePack) => [pack.author && t('tips.voice.by', { author:
         <USlider :model-value="settings.volume" :min="0" :max="1" :step="0.05" size="sm" class="pt-2" :aria-label="t('tips.voice.volume')" @update:model-value="(value) => update({ volume: value ?? settings.volume })" />
       </div>
     </div>
-    <p class="text-xs text-muted">{{ t('tips.voice.hint') }}</p>
 
     <div class="flex flex-wrap gap-2">
       <UButton :label="t('tips.voice.import')" icon="i-lucide-upload" size="xs" :loading="busy" @click="picker?.click()" />
@@ -71,8 +75,8 @@ const byline = (pack: VoicePack) => [pack.author && t('tips.voice.by', { author:
       <li
         v-for="row in rows"
         :key="row.pack.id"
-        class="rounded-lg px-3 py-2 ring-1 ring-inset"
-        :class="row.active ? 'bg-primary/10 ring-primary/50' : 'bg-accented/30 ring-transparent'"
+        class="surface rounded-lg px-3 py-2 ring-1 ring-inset"
+        :class="row.active ? 'ring-primary/50' : 'ring-transparent'"
         data-pack
       >
         <div class="flex items-center gap-3">
@@ -111,5 +115,5 @@ const byline = (pack: VoicePack) => [pack.author && t('tips.voice.by', { author:
       </li>
     </ul>
     <p v-else class="text-xs text-dimmed">{{ t('tips.voice.empty') }}</p>
-  </div>
+  </section>
 </template>

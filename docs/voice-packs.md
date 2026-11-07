@@ -1,8 +1,8 @@
 # Pacotes de voz das dicas no jogo
 
 As dicas do jogo (Overlay → Dicas no jogo) têm duas chaves independentes:
-**Mostrar na tela** (o texto, embaixo do painel de Objetivos) e **Falar as
-dicas** (a voz). Com um pacote de voz escolhido, o app fala a dica quando o
+**Mostrar na tela** (o texto, no painel Dicas, que você arrasta no layout para
+onde quiser) e **Falar as dicas** (a voz). Com um pacote de voz escolhido, o app fala a dica quando o
 pacote tem o clipe dela — mesmo com o overlay desligado, só com a voz. O app
 não traz nenhum áudio: cada pacote é um ZIP que o jogador importa na mesma tela.
 

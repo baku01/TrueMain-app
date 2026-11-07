@@ -341,7 +341,7 @@ function Report([string] $Name) {
 }
 
 $WS_EX_TRANSPARENT = 0x20; $WS_EX_TOPMOST = 0x8; $WS_EX_LAYERED = 0x80000; $WS_EX_NOACTIVATE = 0x8000000
-$InGame = "objectives,stats,win-probability"
+$InGame = "objectives,stats,tips,win-probability"
 
 # What the app menu's "Share Anonymous Usage Data" writes when turned off.
 $config = Join-Path $env:APPDATA "gg.truemain.desktop"
@@ -360,10 +360,10 @@ $env:RUST_LOG = "truemain_desktop_lib=debug,lcu=info"
 $script:shell = Start-Process $App -PassThru -RedirectStandardOutput (Join-Path $Out "app.log") -RedirectStandardError (Join-Path $Out "app.err.log")
 $standIns = @()
 try {
-    for ($i = 0; $i -lt 120 -and (Panels).Count -lt 6; $i++) { Start-Sleep -Milliseconds 500 }
+    for ($i = 0; $i -lt 120 -and (Panels).Count -lt 7; $i++) { Start-Sleep -Milliseconds 500 }
     [Desk]::Of([uint32]$script:shell.Id) | ForEach-Object { [ordered]@{ title = $_.Title; class = [Desk]::ClassOf($_.Handle); visible = $_.Visible; exStyle = ('0x{0:X8}' -f $_.ExStyle) } } |
         ConvertTo-Json | Set-Content (Join-Path $Out "0-windows.json")
-    Expect ((Panels).Count -eq 6) "a running game gets a window for each of the six panels switched on"
+    Expect ((Panels).Count -eq 7) "a running game gets a window for each of the seven panels switched on"
     # The replay has opened the game and every page has measured itself.
     Start-Sleep -Seconds 8
     Expect ((Shown) -eq "") "nothing shows while the app, not the game, is in front"
@@ -503,7 +503,7 @@ try {
     } | Set-Content $loadingTape
     $env:TRUEMAIN_LCU_REPLAY = $loadingTape
     $script:shell = Start-Process $App -PassThru -RedirectStandardOutput (Join-Path $Out "app-loading.log") -RedirectStandardError (Join-Path $Out "app-loading.err.log")
-    for ($i = 0; $i -lt 120 -and (Panels).Count -lt 6; $i++) { Start-Sleep -Milliseconds 500 }
+    for ($i = 0; $i -lt 120 -and (Panels).Count -lt 7; $i++) { Start-Sleep -Milliseconds 500 }
     Start-Sleep -Seconds 5
     $standIns += StartStandIn $gameExe "RiotWindowClass" "League of Legends (TM) Client" $GameColorRef
     Start-Sleep -Seconds 3

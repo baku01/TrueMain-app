@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { OverlayPanel } from '~/types/overlay'
 import type { Size } from '~/utils/overlay-layout'
-import { OVERLAY_PANEL_INFO, onScoreboard } from '~/types/overlay'
+import { OVERLAY_PANEL_INFO, onScoreboard, seeThrough } from '~/types/overlay'
 import { PANEL_WIDTHS } from '~/utils/overlay-layout'
 
 /**
@@ -13,7 +13,8 @@ import { PANEL_WIDTHS } from '~/utils/overlay-layout'
  * panel is hovered or focused, and the chord that brings it up (#1915) is
  * marked in its corner, unshrunk. The lane gold (#2186) is given its `height`,
  * the scoreboard's rows', and drawn with no card under it: in game only its
- * plates cover the scoreboard. The item value is drawn without its lanes
+ * plates cover the scoreboard. The tips are their own card, drawn with none
+ * under it either. The item value is drawn without its lanes
  * while the plates are on (`lanes`).
  */
 const props = defineProps<{ panel: OverlayPanel, zoom: number, removable?: boolean, chord?: string | null, height?: number, lanes?: boolean }>()
@@ -22,6 +23,7 @@ const emit = defineEmits<{ remove: [], measure: [size: Size] }>()
 const { t } = useT()
 const info = computed(() => OVERLAY_PANEL_INFO[props.panel])
 const plates = computed(() => onScoreboard(props.panel))
+const clear = computed(() => seeThrough(props.panel))
 
 const frame = ref<HTMLElement | null>(null)
 let observer: ResizeObserver | undefined
@@ -35,11 +37,11 @@ onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
-  <div class="relative size-full overflow-hidden rounded-sm" :class="plates ? 'ring-1 ring-primary/40' : 'bg-default ring-1 ring-default'" :title="info.label">
+  <div class="relative size-full overflow-hidden rounded-sm" :class="plates ? 'ring-1 ring-primary/40' : !clear && 'bg-default ring-1 ring-default'" :title="info.label">
     <div
       ref="frame"
       class="pointer-events-none origin-top-left text-default select-none"
-      :class="!plates && 'px-3 py-2.5'"
+      :class="!clear && 'px-3 py-2.5'"
       :style="{ width: `${PANEL_WIDTHS[panel]}px`, height: height ? `${height}px` : undefined, transform: `scale(${zoom})` }"
       aria-hidden="true"
     >

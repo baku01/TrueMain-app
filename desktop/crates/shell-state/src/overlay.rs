@@ -4,9 +4,10 @@
 //! The overlay is a few independent panels, each its own window placed on its
 //! own (#1671's choice over one HUD): the next item, the win probability, the
 //! player's own pace, the item value, which by default shows only while the
-//! scoreboard (TAB) is held, the neutral objectives' timers (#2078), and the
+//! scoreboard (TAB) is held, the neutral objectives' timers (#2078), the
 //! lane-gold plates down the scoreboard's middle (#2186), held with TAB too and
-//! placed by the scoreboard rather than by the player. Each panel shows always, while a chord is held,
+//! placed by the scoreboard rather than by the player, and the in-game tips,
+//! one line at a time in a see-through window of their own. Each panel shows always, while a chord is held,
 //! or toggled by one (#1915, chords in `keys`). The windows are the shell's (`src-tauri/src/overlay`), macOS-only and
 //! impossible to build on the Linux CI box; the decisions they apply live here
 //! so they are tested anywhere. The settings file is read the way the
@@ -45,6 +46,11 @@ const EDGE_MARGIN: f64 = 16.0;
 /// announcements and, top right, its own score strip.
 const TOP_MARGIN: f64 = 56.0;
 
+/// The tips' own place until the player drags them: centred, just under the
+/// objectives' strip on its top-centre spot — the five anchors are the other
+/// panels', and a tip reads best by the timers most of them announce.
+pub const TIPS_PLACE: OverlayPoint = OverlayPoint { x: 0.5, y: 0.14 };
+
 /// One panel of the overlay, each in its own window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -62,16 +68,19 @@ pub enum OverlayPanel {
     /// Each lane's item-gold gap on a plate down the TAB scoreboard's middle,
     /// one per row (`scoreboard`).
     LaneGold,
+    /// The in-game tips, one line at a time while one is up, nothing between.
+    Tips,
 }
 
 impl OverlayPanel {
-    pub const ALL: [OverlayPanel; 6] = [
+    pub const ALL: [OverlayPanel; 7] = [
         OverlayPanel::NextItem,
         OverlayPanel::WinProbability,
         OverlayPanel::ItemValue,
         OverlayPanel::Stats,
         OverlayPanel::Objectives,
         OverlayPanel::LaneGold,
+        OverlayPanel::Tips,
     ];
 
     /// The panel's name in a window label and a route.
@@ -83,6 +92,7 @@ impl OverlayPanel {
             OverlayPanel::Stats => "stats",
             OverlayPanel::Objectives => "objectives",
             OverlayPanel::LaneGold => "lane-gold",
+            OverlayPanel::Tips => "tips",
         }
     }
 
@@ -99,6 +109,7 @@ impl OverlayPanel {
             OverlayPanel::Stats => "Your pace",
             OverlayPanel::Objectives => "Objectives",
             OverlayPanel::LaneGold => "Lane gold",
+            OverlayPanel::Tips => "Tips",
         }
     }
 
@@ -111,6 +122,7 @@ impl OverlayPanel {
             OverlayPanel::Stats => "stats",
             OverlayPanel::Objectives => "objectives",
             OverlayPanel::LaneGold => "laneGold",
+            OverlayPanel::Tips => "tips",
         }
     }
 
@@ -122,6 +134,7 @@ impl OverlayPanel {
             OverlayPanel::Stats => 3,
             OverlayPanel::Objectives => 4,
             OverlayPanel::LaneGold => 5,
+            OverlayPanel::Tips => 6,
         }
     }
 
@@ -134,6 +147,12 @@ impl OverlayPanel {
     /// Placed by the scoreboard, never by the player: no anchor, no drag.
     pub fn on_scoreboard(self) -> bool {
         self == OverlayPanel::LaneGold
+    }
+
+    /// A window with no background of its own: the page draws only what
+    /// covers the game — the plates, or a tip while one is up.
+    pub fn see_through(self) -> bool {
+        matches!(self, OverlayPanel::LaneGold | OverlayPanel::Tips)
     }
 }
 
@@ -182,7 +201,7 @@ impl PanelTrigger {
 
 /// One flag per panel.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct PanelFlags([bool; 6]);
+pub struct PanelFlags([bool; 7]);
 
 impl PanelFlags {
     pub fn get(&self, panel: OverlayPanel) -> bool {
@@ -267,6 +286,8 @@ pub struct OverlaySettings {
     /// Its anchor and custom place are kept but never read: the scoreboard
     /// places it (`OverlayPanel::on_scoreboard`).
     pub lane_gold: PanelSettings,
+    /// On its own place (`TIPS_PLACE`) until dragged.
+    pub tips: PanelSettings,
     /// The lane-gold plates moved up (negative) or down from where the
     /// scoreboard's rows are measured to be, in pixels of a 1080p screen, for
     /// a setup the measure misses (`scoreboard::MAX_NUDGE` either way).
@@ -292,6 +313,10 @@ impl Default for OverlaySettings {
             stats: at(OverlayPanel::Stats, OverlayAnchor::CenterLeft),
             objectives: at(OverlayPanel::Objectives, OverlayAnchor::TopCenter),
             lane_gold: at(OverlayPanel::LaneGold, OverlayAnchor::TopCenter),
+            tips: PanelSettings {
+                custom: Some(TIPS_PLACE),
+                ..at(OverlayPanel::Tips, OverlayAnchor::TopCenter)
+            },
             scoreboard_nudge: 0.0,
         }
     }
@@ -337,6 +362,7 @@ impl OverlaySettings {
             OverlayPanel::Stats => &self.stats,
             OverlayPanel::Objectives => &self.objectives,
             OverlayPanel::LaneGold => &self.lane_gold,
+            OverlayPanel::Tips => &self.tips,
         }
     }
 
@@ -348,6 +374,7 @@ impl OverlaySettings {
             OverlayPanel::Stats => &mut self.stats,
             OverlayPanel::Objectives => &mut self.objectives,
             OverlayPanel::LaneGold => &mut self.lane_gold,
+            OverlayPanel::Tips => &mut self.tips,
         }
     }
 
@@ -534,11 +561,13 @@ impl OverlaySettings {
                 trigger: parse(field.and_then(|f| f.get("trigger"))).unwrap_or(fallback.trigger),
                 enabled: parse(field.and_then(|f| f.get("enabled"))).unwrap_or(fallback.enabled),
                 anchor: parse(field.and_then(|f| f.get("anchor"))).unwrap_or(fallback.anchor),
-                custom: parse::<OverlayPoint>(field.and_then(|f| f.get("custom"))).filter(
-                    |point| {
+                // A panel the file does not know keeps its own place (the tips').
+                custom: match field {
+                    None => fallback.custom,
+                    Some(field) => parse::<OverlayPoint>(field.get("custom")).filter(|point| {
                         current && (0.0..=1.0).contains(&point.x) && (0.0..=1.0).contains(&point.y)
-                    },
-                ),
+                    }),
+                },
             }
         };
 
@@ -557,6 +586,7 @@ impl OverlaySettings {
             stats: panel("stats", defaults.stats),
             objectives: panel("objectives", defaults.objectives),
             lane_gold: panel("laneGold", defaults.lane_gold),
+            tips: panel("tips", defaults.tips),
             scoreboard_nudge: parse(fields.get("scoreboardNudge"))
                 .filter(in_range(-MAX_NUDGE, MAX_NUDGE))
                 .unwrap_or(defaults.scoreboard_nudge),
@@ -569,14 +599,18 @@ impl OverlaySettings {
     /// default spot, unless a panel the file places already holds that spot:
     /// then on the first one no panel holds. The objectives' default is the
     /// item value's former one (#2184), which a file from before the
-    /// objectives still gives the item value.
+    /// objectives still gives the item value. A panel on a place of its own
+    /// (the tips') takes no spot.
     fn with_new_panels_placed(mut self, known: impl Fn(OverlayPanel) -> bool) -> Self {
         // The lane gold sits on the scoreboard, never on an anchor: it holds no spot.
         let anchored = |panel: OverlayPanel| panel != OverlayPanel::LaneGold;
-        for panel in OverlayPanel::ALL
+        let new: Vec<OverlayPanel> = OverlayPanel::ALL
             .into_iter()
-            .filter(|panel| anchored(*panel) && !known(*panel))
-        {
+            .filter(|panel| {
+                anchored(*panel) && !known(*panel) && self.panel(*panel).custom.is_none()
+            })
+            .collect();
+        for panel in new {
             let held = |anchor: OverlayAnchor| {
                 OverlayPanel::ALL
                     .into_iter()
@@ -1265,9 +1299,41 @@ mod tests {
         let taken: Vec<_> = OverlayPanel::ALL
             .into_iter()
             .filter(|panel| *panel != Objectives && *panel != OverlayPanel::LaneGold)
+            .filter(|panel| OverlaySettings::default().panel(*panel).custom.is_none())
             .map(|panel| OverlaySettings::default().panel(panel).anchor)
             .collect();
         assert!(!taken.contains(&settings.objectives.anchor));
         assert!(settings.shows(Objectives, &in_game()));
+    }
+
+    #[test]
+    fn the_tips_sit_under_the_objectives_in_a_see_through_window() {
+        let defaults = OverlaySettings::default();
+        assert_eq!(defaults.tips.custom, Some(TIPS_PLACE));
+        assert!(defaults.tips.enabled);
+        assert_eq!(defaults.tips.trigger, PanelTrigger::Always);
+        assert!(Tips.see_through() && LaneGold.see_through() && !Objectives.see_through());
+        // Centred, below the objectives' strip on its top-centre spot.
+        let objectives = defaults.origin(Objectives, SCREEN, (292.0, 62.0));
+        let tips = defaults.origin(Tips, SCREEN, (292.0, 40.0));
+        assert_eq!(tips.0, objectives.0);
+        assert!(tips.1 > objectives.1 + 62.0);
+    }
+
+    #[test]
+    fn a_file_from_before_the_tips_gets_them_on_their_own_place() {
+        let old = r#"{"version":4,"objectives":{"enabled":true,"anchor":"top-center"}}"#;
+        let settings = OverlaySettings::from_json(old);
+        assert_eq!(settings.tips, OverlaySettings::default().tips);
+        assert_eq!(settings.objectives.anchor, OverlayAnchor::TopCenter);
+        assert!(settings.shows(Tips, &in_game()));
+
+        // Dragged, and put back on an anchor, they stay where the file says.
+        let dragged = r#"{"version":4,"tips":{"enabled":false,"anchor":"center-left","custom":{"x":0.1,"y":0.8}}}"#;
+        let settings = OverlaySettings::from_json(dragged);
+        assert_eq!(settings.tips.custom, Some(OverlayPoint { x: 0.1, y: 0.8 }));
+        assert!(!settings.tips.enabled);
+        let anchored = r#"{"version":4,"tips":{"anchor":"center-left","custom":null}}"#;
+        assert_eq!(OverlaySettings::from_json(anchored).tips.custom, None);
     }
 }

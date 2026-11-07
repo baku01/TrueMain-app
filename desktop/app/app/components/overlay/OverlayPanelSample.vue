@@ -9,8 +9,7 @@ import { SAMPLE_TIP } from '~/utils/tips/catalogue'
  * One overlay panel's content drawn over the sample game
  * (`utils/overlay-sample.ts`): the real component with made-up values, so a
  * panel is placed — in the layout editor or the on-screen preview — at the
- * size and look it will have over a game — the objectives with a tip under
- * them while the tips' text is on, so their room is part of the place.
+ * size and look it will have over a game.
  */
 withDefaults(defineProps<{ panel: OverlayPanel, lanes?: boolean }>(), { lanes: true })
 
@@ -22,7 +21,6 @@ const { itemId, held, gold, route } = SAMPLE_NEXT_ITEM
 const path = computed(() => buildPath(itemId, route, held, gold, items.value))
 const toComplete = computed(() => goldToComplete(itemId, held, items.value))
 const missing = computed(() => Math.max(0, toComplete.value - gold))
-const { settings: tips } = useTipSettings()
 </script>
 
 <template>
@@ -32,10 +30,8 @@ const { settings: tips } = useTipSettings()
   </div>
   <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="game" :sync="sync" />
   <OverlayStats v-else-if="panel === 'stats'" :game="game" :reference="SAMPLE_PACE_REFERENCE" />
-  <div v-else-if="panel === 'objectives'">
-    <OverlayObjectives :game="game" :sync="sync" />
-    <OverlayTip v-if="tips.text" :tip="SAMPLE_TIP" still class="mt-2" />
-  </div>
+  <OverlayObjectives v-else-if="panel === 'objectives'" :game="game" :sync="sync" />
+  <OverlayTip v-else-if="panel === 'tips'" :tip="SAMPLE_TIP" still />
   <OverlayLaneGold v-else-if="panel === 'lane-gold'" :game="game" />
   <OverlayItemValue v-else :game="game" :lanes="lanes" />
 </template>
