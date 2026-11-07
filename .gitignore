@@ -42,3 +42,6 @@ CLAUDE.local.md
 
 # Output of desktop/tools/overlay-probe.swift (window-server listings of a local machine)
 overlay-probe.log
+
+# Voice packs converted from other apps, for local testing only: never committed
+/voice-packs/
