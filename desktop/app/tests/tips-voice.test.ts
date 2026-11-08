@@ -119,7 +119,7 @@ describe('a tip on screen', () => {
     expect(tipText(farm)).toBe('7.5 CS/min at 10 min — excellent farm, keep it up.')
     setActiveLocale('pt-BR')
     expect(tipText(farm)).toBe('7,5 CS/min aos 10 min — farm excelente, continua assim.')
-    expect(tipText(makeTip('recall.earlyGold', { gold: 1450 }))).toBe('1.450 de ouro na mão — empurra a wave e volta pra comprar.')
+    expect(tipText(makeTip('recall.cannon', { gold: 1450 }))).toBe('Wave de canhão na rota — empurra na torre deles e volta: 1.450 de ouro pra gastar.')
   })
 
   it('shows an objective\'s minimap icon, the drake\'s element included, and no picture for the others', () => {

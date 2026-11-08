@@ -94,29 +94,25 @@ describe('TipQueue', () => {
     expect(screen(queue, [12000])).toEqual([null])
   })
 
-  it('lets a tip give way to a more urgent one that would be stale before it leaves', () => {
+  it('lets a tip give way to a more urgent one, once it has been up a second', () => {
     const queue = new TipQueue(() => 9)
-    queue.push(makeTip('farm.ok'), 0)
-    expect(screen(queue, [0])).toEqual(['farm.ok'])
-    // The warning keeps 8 s; the farm would stay until 9 s.
-    queue.push(makeTip('objective.baron.30s'), 1000)
-    // Not before the farm has had its first 3 s…
-    expect(screen(queue, [2999])).toEqual(['farm.ok'])
-    // …then the warning takes the screen.
-    expect(screen(queue, [3000])).toEqual(['objective.baron.30s'])
+    queue.push(makeTip('map.minimap'), 0)
+    expect(screen(queue, [0])).toEqual(['map.minimap'])
+    queue.push(makeTip('jungle.spotted'), 200)
+    // Not before the minimap has had its first second…
+    expect(screen(queue, [999])).toEqual(['map.minimap'])
+    // …then the news takes the screen, and the minimap is not shown again.
+    expect(screen(queue, [1000])).toEqual(['jungle.spotted'])
+    expect(screen(queue, [10_000, 20_000])).toEqual([null, null])
   })
 
-  it('does not give way to a tip that can wait, or that is not more urgent', () => {
+  it('does not give way to a tip of the same priority or a lower one', () => {
     const queue = new TipQueue(() => 9)
     queue.push(makeTip('objective.baron.60s'), 0)
     queue.current(0)
-    // Same priority never cuts in; a higher one that still has time waits its turn.
-    queue.push(makeTip('jungle.spotted'), 0)
+    queue.push(makeTip('jungle.gankWindow'), 0)
+    queue.push(makeTip('farm.ok'), 0)
     expect(screen(queue, [5000])).toEqual(['objective.baron.60s'])
-    const calm = new TipQueue(() => 3)
-    calm.push(makeTip('farm.ok'), 0)
-    calm.current(0)
-    calm.push(makeTip('objective.baron.30s'), 0)
-    expect(screen(calm, [2999])).toEqual(['farm.ok'])
+    expect(screen(queue, [9000])).toEqual(['jungle.gankWindow'])
   })
 })

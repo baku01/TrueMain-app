@@ -44,36 +44,76 @@ const seconds = (state: GameState, from: number, to: number): [GameState, number
   Array.from({ length: to - from + 1 }, (_, index) => [state, from + index])
 
 describe('the enemy jungler', () => {
-  it('warns a laner half a minute before his first clear ends, and as his second gank window opens', () => {
+  it('tells a laner where to ward 45 s before his first clear ends, that it is about to end, and his second gank window', () => {
     const { said } = run(seconds(game(), 100, 300))
-    const jungle = said.filter(entry => entry.key.startsWith('jungle'))
-    // Viego's first clear ends at 3:05.
-    expect(jungle.map(entry => [entry.key, entry.at])).toEqual([['jungle.firstClear', 155], ['jungle.gankWindow', 255]])
-    expect(jungle[0]!.params).toEqual({ champion: 'Viego', alias: 'Viego' })
+    const jungle = said.filter(entry => entry.key.startsWith('jungle') || entry.key.startsWith('ward.gank'))
+    // Viego's first clear ends at 3:11 (patch 26.22's median); Ahri is mid.
+    expect(jungle.map(entry => [entry.key, entry.at])).toEqual([['ward.gank.mid', 146], ['jungle.firstClear', 181], ['jungle.gankWindow', 261]])
+    expect(jungle[0]!.params).toEqual({ champion: 'Viego', alias: 'Viego', time: '3:11' })
   })
 
-  it('takes the usual clear for a jungler off the table, and tells a jungler nothing of it', () => {
+  it('names the bush by lane, takes the clear off the table, and tells a jungler nothing of it', () => {
     const kayn = game(state => Object.assign(state.players[VIEGO]!, { champion: 'Kayn', championName: 'Kayn' }))
-    expect(run(seconds(kayn, 100, 200)).said.find(entry => entry.key === 'jungle.firstClear')?.at).toBe(165)
-    expect(run(seconds(game(playing(VI)), 100, 300)).keys.filter(key => key !== 'jungle.spotted' && key.startsWith('jungle'))).toEqual([])
+    expect(run(seconds(kayn, 100, 200)).said.find(entry => entry.key === 'jungle.firstClear')?.at).toBe(174)
+    expect(run(seconds(game(playing(0)), 100, 200)).keys).toContain('ward.gank.top')
+    expect(run(seconds(game(playing(4)), 100, 200)).keys).toContain('ward.gank.bot')
+    const jungler = run(seconds(game(playing(VI)), 100, 300)).keys
+    expect(jungler.filter(key => key === 'jungle.firstClear' || key === 'jungle.gankWindow' || key.startsWith('ward.gank'))).toEqual([])
   })
 
-  it('says he was seen when his level or items change while he is alive, every 30 s at most', () => {
+  it('says he was seen when his items change while he is alive — not his level, which moves in the fog — every 20 s at most', () => {
     const before = game()
     const level2 = changed(before, VIEGO, { level: 2 })
-    const level3 = changed(before, VIEGO, { level: 3 })
-    const bought = changed(level3, VIEGO, { items: [{ itemId: 1036, slot: 0, count: 1 }] })
-    const { said } = run([[before, 200], [level2, 201], [level3, 210], [bought, 240]])
-    expect(said.filter(entry => entry.key === 'jungle.spotted').map(entry => entry.at)).toEqual([201, 240])
+    const bought = changed(level2, VIEGO, { items: [{ itemId: 1036, slot: 0, count: 1 }] })
+    const again = changed(bought, VIEGO, { items: [{ itemId: 1036, slot: 0, count: 1 }, { itemId: 1037, slot: 1, count: 1 }] })
+    const third = changed(again, VIEGO, { items: [...again.players[VIEGO]!.items, { itemId: 1038, slot: 2, count: 1 }] })
+    const { said } = run([[before, 200], [level2, 201], [bought, 210], [again, 220], [third, 240]])
+    expect(said.filter(entry => entry.key === 'jungle.spotted').map(entry => entry.at)).toEqual([210, 240])
   })
 
-  it('not on his respawn, not before 1:30, not after 15:00', () => {
+  it('not on his respawn, not before 0:40, not after 15:00', () => {
     const dead = game(state => (state.players[VIEGO]!.dead = true))
     const back = changed(dead, VIEGO, { dead: false, items: [{ itemId: 1036, slot: 0, count: 1 }] })
     expect(run([[dead, 300], [back, 302]]).keys).not.toContain('jungle.spotted')
     const early = game()
-    expect(run([[early, 60], [changed(early, VIEGO, { level: 2 }), 61]]).keys).not.toContain('jungle.spotted')
-    expect(run([[early, 900], [changed(early, VIEGO, { level: 9 }), 901]]).keys).not.toContain('jungle.spotted')
+    const item = { items: [{ itemId: 1039, slot: 0, count: 1 }] }
+    expect(run([[early, 30], [changed(early, VIEGO, item), 31]]).keys).not.toContain('jungle.spotted')
+    expect(run([[early, 900], [changed(early, VIEGO, item), 901]]).keys).not.toContain('jungle.spotted')
+  })
+})
+
+describe('an enemy down', () => {
+  const died = (state: GameState, index: number, respawnAt: number) => changed(state, index, { dead: true, respawnAt, deaths: 1 })
+
+  it('tells everyone how long their jungler is down, before 15:00', () => {
+    const { said } = run([[game(), 400], [died(game(), VIEGO, 432), 401]])
+    expect(said.filter(entry => entry.key === 'jungle.dead').map(entry => entry.params)).toEqual([{ champion: 'Viego', alias: 'Viego', seconds: 31 }])
+    expect(run([[game(), 950], [died(game(), VIEGO, 1000), 951]]).keys).not.toContain('jungle.dead')
+  })
+
+  it('tells a laner his lane opponent is down in the laning phase, and no one else', () => {
+    expect(run([[game(), 500], [died(game(), ORIANNA, 525), 501]]).keys).toContain('lane.opponentDead')
+    expect(run([[game(), 850], [died(game(), ORIANNA, 900), 851]]).keys).not.toContain('lane.opponentDead')
+    expect(run([[game(), 500], [died(game(), EZREAL, 525), 501]]).keys).not.toContain('lane.opponentDead')
+    // Under 10 s left: nothing worth doing.
+    expect(run([[game(), 500], [died(game(), ORIANNA, 508), 501]]).keys).not.toContain('lane.opponentDead')
+  })
+})
+
+describe('the level 2 race', () => {
+  it('says who got there first, once, before 3:00', () => {
+    const mine = run([[game(), 90], [changed(game(), AHRI, { level: 2 }), 91]])
+    expect(mine.said.filter(entry => entry.key.startsWith('lane.levelTwo')).map(entry => entry.key)).toEqual(['lane.levelTwoFirst'])
+    const theirs = run([[game(), 90], [changed(game(), ORIANNA, { level: 2 }), 91]])
+    expect(theirs.said.find(entry => entry.key === 'lane.levelTwoBehind')?.params).toEqual({ champion: 'Orianna', alias: 'Orianna' })
+  })
+
+  it('says nothing when both get there in one reading, after 3:00, or to a jungler', () => {
+    const both = changed(changed(game(), AHRI, { level: 2 }), ORIANNA, { level: 2 })
+    expect(run([[game(), 90], [both, 91]]).keys.some(key => key.startsWith('lane.levelTwo'))).toBe(false)
+    expect(run([[game(), 180], [changed(game(), AHRI, { level: 2 }), 181]]).keys.some(key => key.startsWith('lane.levelTwo'))).toBe(false)
+    const jungle = game(playing(VI))
+    expect(run([[jungle, 90], [changed(jungle, VI, { level: 2 }), 91]]).keys.some(key => key.startsWith('lane.levelTwo'))).toBe(false)
   })
 })
 

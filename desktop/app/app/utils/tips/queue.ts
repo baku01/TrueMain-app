@@ -15,9 +15,10 @@ export function readingSeconds(text: string) {
 
 /**
  * Seconds a tip is left alone once it came on screen, before a more urgent
- * one that would be stale by the time it leaves may take its place.
+ * one takes its place: long enough not to flicker, short enough that news
+ * (the jungler seen, a countdown) is never late behind a tip that can wait.
  */
-const MIN_SHOWN = 3
+const MIN_SHOWN = 1
 
 export interface QueuedTip extends Tip {
   /** In arrival order: first come, first shown within a priority. */
@@ -39,7 +40,7 @@ export interface ShownTip {
  * first come first within one, each dropped once its `ttl` ran out, and a
  * category kept quiet for its cooldown (`CATEGORY_COOLDOWNS`) after one of its
  * tips left the screen. A tip on screen gives way, after `MIN_SHOWN` seconds,
- * to a more urgent one that would otherwise go stale waiting for it. The same
+ * to a more urgent one ready to show; the one put aside is not shown again. The same
  * key is never queued twice. Time is passed in (wall-clock milliseconds), so
  * it is tested without a clock.
  */
@@ -80,13 +81,11 @@ export class TipQueue {
     return this.shown
   }
 
-  /** Whether a waiting tip of a higher priority, ready to show, would expire before the one on screen leaves. */
+  /** Whether a waiting tip of a higher priority is ready to show, once the one on screen has had `MIN_SHOWN`. */
   private crowdedOut(now: number) {
     const { shown } = this
     if (!shown || now < shown.from + MIN_SHOWN * 1000) return false
-    return this.waiting.some(tip =>
-      tip.priority > shown.tip.priority && tip.expiresAt > now && tip.expiresAt <= shown.until && (this.readyAt[tip.category] ?? 0) <= now,
-    )
+    return this.waiting.some(tip => tip.priority > shown.tip.priority && tip.expiresAt > now && (this.readyAt[tip.category] ?? 0) <= now)
   }
 
   /** How many wait, the one on screen apart. */

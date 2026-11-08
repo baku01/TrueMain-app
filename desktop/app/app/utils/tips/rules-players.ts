@@ -1,28 +1,51 @@
 import type { Reading } from './reading'
-import { championParams, crossed, isJungler, laneOpponent, sameItems, say } from './reading'
+import type { TipKey } from './catalogue'
+import { championParams, clockText, crossed, isJungler, laneOf, laneOpponent, sameItems, say } from './reading'
 
 /**
- * The tips the other players call for: the enemy jungler, the first level 6
- * of our lane, the kills and the deaths. What the shell sends tells who died
+ * The tips the other players call for: the enemy jungler and where to ward
+ * for him, the level 2 and level 6 races of our lane, an enemy down, the
+ * kills and the deaths. What the shell sends tells who died
  * and whose score moved, not who killed whom: a killer is the one enemy whose
  * kills rose in the reading of our death, and no one when several did.
  */
 
-/** When each jungler usually ends the first clear, in seconds (ABSOL's table); the rest at `DEFAULT_FIRST_CLEAR`. */
-export const FIRST_CLEAR: Record<string, number> = { LeeSin: 150, Shaco: 150, Vi: 175, Viego: 185, Sejuani: 185, Graves: 210, Karthus: 240 }
-export const DEFAULT_FIRST_CLEAR = 195
+/**
+ * When each jungler usually ends the first clear, in seconds: the median
+ * moment ranked solo queue junglers reach level 4 (a full clear), patch 26.22
+ * (lolrecommender.com's jungle clear times) — camps spawn at 0:55 since 26.1.
+ * The rest at `DEFAULT_FIRST_CLEAR`, that table's middle.
+ */
+export const FIRST_CLEAR: Record<string, number> = {
+  Jayce: 174, Taliyah: 175, Karthus: 176, Quinn: 176, Zed: 177, Zyra: 177, Hecarim: 178, Shyvana: 178, Volibear: 178,
+  JarvanIV: 178, Ambessa: 179, Graves: 179, Sion: 179, Nunu: 180, Sejuani: 180, DrMundo: 180, Udyr: 181, Diana: 181,
+  Darius: 181, MonkeyKing: 181, Chogath: 182, Lillia: 182, Trundle: 183, Belveth: 183, Rengar: 184, Olaf: 184,
+  Qiyana: 184, Briar: 184, Gwen: 184, MasterYi: 184, Kayn: 184, Nocturne: 185, Ekko: 186, Talon: 186, Malphite: 186,
+  Vi: 188, Naafiri: 188, Amumu: 188, Maokai: 188, AurelionSol: 189, LeeSin: 190, XinZhao: 190, Khazix: 191,
+  Kindred: 191, Jax: 191, Viego: 191, Nidalee: 192, Rammus: 193, Elise: 194, Zaahen: 194, Warwick: 194,
+  Pantheon: 197, Evelynn: 197, Sylas: 198, Fiddlesticks: 200, Zac: 202, Shaco: 203, Locke: 204, RekSai: 205,
+}
+export const DEFAULT_FIRST_CLEAR = 185
+
+/** Seconds before his clear ends a laner is told where to ward: time to push the wave and walk to the bush. */
+export const GANK_WARD_BEFORE = 45
+/** Seconds before it ends a laner is told he is about done: play safe until he shows. */
+export const CLEAR_WARNING_BEFORE = 10
 
 /** The jungle's early game, before 15:00. */
 const JUNGLE_UNTIL = 900
 /** Seconds between two sightings of the enemy jungler said. */
-export const SPOTTED_EVERY = 30
+export const SPOTTED_EVERY = 20
+/** Before this, an enemy's items are the ones he started with, bought in his fountain. */
+const SPOTTED_FROM = 40
 
 /**
- * The enemy jungler before 15:00. To a laner: half a minute before his first
- * clear ends, and when his second gank window opens, 70 s after. To anyone:
- * when his items or his level change while he is alive — the game updates
- * an enemy's on the scoreboard when he is seen — at most every
- * `SPOTTED_EVERY`, and not in the first minute and a half, spent buying at base.
+ * The enemy jungler before 15:00. To a laner: where to ward for his first
+ * gank, by lane, `GANK_WARD_BEFORE` his clear ends; that it is about to, just
+ * before; and when his second gank window opens, 70 s after. To anyone: that
+ * he was seen, when his items change while he is alive — an enemy's items
+ * move on the scoreboard only when he is in sight (his level moves anyway, so
+ * it tells nothing) —, at most every `SPOTTED_EVERY`.
  */
 export function jungleTips(reading: Reading) {
   const { game, me, clock, memory } = reading
@@ -31,17 +54,60 @@ export function jungleTips(reading: Reading) {
   const jungler = game.players[index]
   if (!jungler) return
   const params = championParams(jungler)
-  if (!isJungler(me)) {
+  const lane = laneOf(me)
+  if (lane) {
     const clear = FIRST_CLEAR[jungler.champion] ?? DEFAULT_FIRST_CLEAR
-    if (crossed(reading, clear - 30)) say(reading, 'jungle.firstClear', params, 'jungle.firstClear')
+    if (crossed(reading, clear - GANK_WARD_BEFORE)) say(reading, `ward.gank.${lane}` as TipKey, { ...params, time: clockText(clear) }, 'ward.gank')
+    if (crossed(reading, clear - CLEAR_WARNING_BEFORE)) say(reading, 'jungle.firstClear', params, 'jungle.firstClear')
     if (crossed(reading, clear + 70)) say(reading, 'jungle.gankWindow', params, 'jungle.gankWindow')
   }
   const before = reading.last?.players[index]
-  if (!before || before.dead || jungler.dead || clock < 90) return
-  if (before.level === jungler.level && sameItems(before.items, jungler.items)) return
+  if (!before || before.dead || jungler.dead || clock < SPOTTED_FROM) return
+  if (sameItems(before.items, jungler.items)) return
   if (memory.spottedAt !== null && clock - memory.spottedAt < SPOTTED_EVERY) return
   memory.spottedAt = clock
   say(reading, 'jungle.spotted', params)
+}
+
+/** Plates fall at 14:00: until then a dead lane opponent is a turret to hit. */
+const PLATES_UNTIL = 840
+
+/**
+ * An enemy down, with how long for: their jungler, to everyone (a window to
+ * invade, or to take the next objective, before 15:00); our lane opponent, to
+ * a laner in the laning phase (shove, take a plate, ward deep).
+ */
+export function deathWindowTips(reading: Reading) {
+  const { game, me, last, clock } = reading
+  if (!last || me.dead) return
+  const rival = laneOpponent(game, me)
+  game.players.forEach((player, index) => {
+    const before = last.players[index]
+    if (player.team === me.team || !player.dead || !before || before.dead || player.respawnAt === null) return
+    const seconds = Math.round(player.respawnAt - clock)
+    if (seconds < 10) return
+    if (isJungler(player) && clock < JUNGLE_UNTIL) say(reading, 'jungle.dead', { ...championParams(player), seconds }, `jungle.dead@${player.deaths}`)
+    else if (player === rival && laneOf(me) && clock < PLATES_UNTIL) say(reading, 'lane.opponentDead', { ...championParams(player), seconds }, `lane.dead@${player.deaths}`)
+  })
+}
+
+/** The level 2 race of the first waves: before 3:00, once a game. */
+const LEVEL_TWO_UNTIL = 180
+
+/**
+ * Who of us and our lane opponent reached level 2 first: the first to get
+ * there has a second spell for a short while — trade now, or back off.
+ * Nothing when both get there in one reading.
+ */
+export function levelTwoTips(reading: Reading) {
+  const { game, me, memory, clock } = reading
+  if (memory.said['lane.levelTwo'] || clock >= LEVEL_TWO_UNTIL || !laneOf(me)) return
+  const rival = laneOpponent(game, me)
+  if (!rival || (me.level < 2 && rival.level < 2)) return
+  memory.said['lane.levelTwo'] = true
+  if (me.level >= 2 && rival.level >= 2) return
+  if (me.level >= 2) say(reading, 'lane.levelTwoFirst', championParams(rival))
+  else say(reading, 'lane.levelTwoBehind', championParams(rival))
 }
 
 /** Which of us and our lane opponent reached level 6 first, said once; nothing when both got there in one reading. */

@@ -70,7 +70,25 @@ Um script de conversão pode ler esse arquivo direto: são só dados.
 | `jungle.firstClear.tail.mp3` | tá fechando o primeiro clear. Joga seguro! | parte final, depois do nome ou do número |
 | `jungle.gankWindow.mp3` | Janela de gank do caçador inimigo! Olho no rio. | `champion/<Alias>.mp3` + `jungle.gankWindow.tail.mp3` |
 | `jungle.gankWindow.tail.mp3` | pode estar vindo de gank. Olho no rio! | parte final, depois do nome ou do número |
-| `recall.earlyGold.mp3` | Já dá pra comprar! Empurra a wave e volta pra base. |  |
+| `jungle.dead.mp3` | O caçador inimigo morreu: invade ou pega o próximo objetivo. | `champion/<Alias>.mp3` + `jungle.dead.tail.mp3` |
+| `jungle.dead.tail.mp3` | morreu: invade ou pega o próximo objetivo. | parte final, depois do nome ou do número |
+| `ward.startBlue.mp3` | Se der, warda o azul deles antes do minuto: mostra onde o caçador começa. |  |
+| `ward.startRed.mp3` | Se der, warda o vermelho deles antes do minuto: mostra onde o caçador começa. |  |
+| `ward.gank.top.mp3` | O caçador inimigo tá fechando o clear: empurra e warda o bush do rio da top. |  |
+| `ward.gank.mid.mp3` | O caçador inimigo tá fechando o clear: empurra e warda uma entrada do rio. |  |
+| `ward.gank.bot.mp3` | O caçador inimigo tá fechando o clear: warda o bush do rio da bot ou o tribush. |  |
+| `ward.controlBuy.mp3` | Leva uma Control Ward antes de sair da base. |  |
+| `ward.control.back.dragon.mp3` | Dragão em um minuto e meio: volta e traz uma Control Ward pro pit. |  |
+| `ward.control.place.dragon.mp3` | Dragão em um minuto e meio: leva tua Control Ward pro pit. |  |
+| `ward.control.back.baron.mp3` | Barão em um minuto e meio: volta e traz uma Control Ward pro pit. |  |
+| `ward.control.place.baron.mp3` | Barão em um minuto e meio: leva tua Control Ward pro pit. |  |
+| `lane.levelTwoFirst.mp3` | Nível dois primeiro! Troca agora, antes dele subir. |  |
+| `lane.levelTwoBehind.mp3` | Teu oponente chegou no nível dois antes. Recua até você subir. | `champion/<Alias>.mp3` + `lane.levelTwoBehind.tail.mp3` |
+| `lane.levelTwoBehind.tail.mp3` | chegou no nível dois antes. Recua até você subir. | parte final, depois do nome ou do número |
+| `lane.opponentDead.mp3` | Teu oponente morreu: empurra a wave e bate na torre. | `champion/<Alias>.mp3` + `lane.opponentDead.tail.mp3` |
+| `lane.opponentDead.tail.mp3` | morreu: empurra a wave e bate na torre. | parte final, depois do nome ou do número |
+| `lane.cannon.mp3` | Wave de canhão chegando: empurra antes de voltar ou rodar. |  |
+| `recall.cannon.mp3` | Wave de canhão chegando: empurra na torre e volta pra comprar. |  |
 | `map.minimap.mp3` | Dá uma olhada no minimapa! |  |
 | `ward.redLens.mp3` | Troca o amuleto amarelo pela lente vermelha! |  |
 | `ward.blueLens.mp3` | Nível nove! Troca pro amuleto azul. |  |

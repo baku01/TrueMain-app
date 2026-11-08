@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { StaticItemData } from '#shared/types/static-data'
 import type { GameState } from '../app/types/game'
 import type { Tip } from '../app/utils/tips/catalogue'
+import { FILLER_PRIORITY } from '../app/utils/tips/catalogue'
 import type { TipMemory } from '../app/utils/tips/engine'
 import { emptyMemory, evaluate } from '../app/utils/tips/engine'
 import { goldLead, minimapEvery } from '../app/utils/tips/rules-clock'
@@ -93,13 +94,27 @@ describe('the objectives', () => {
   })
 })
 
+/** Nothing on the clock and no enemy jungler: the fillers alone. */
+const calm = (edit: (game: GameState) => void = () => {}) => game((state) => {
+  const timers = state.objectives.timers!
+  for (const key of ['dragon', 'grubs', 'herald', 'baron'] as const) timers[key] = { at: null, until: null }
+  Object.assign(state.players[6]!, { position: 'TOP' })
+  edit(state)
+})
+
 describe('the minimap', () => {
-  it('comes up from 1:30, further apart as the game goes on', () => {
-    expect([0, 299, 300, 600, 900, 1500].map(minimapEvery)).toEqual([30, 30, 35, 40, 50, 60])
-    const times = run(seconds(game(), 0, 700)).said.filter(entry => entry.key === 'map.minimap').map(entry => entry.at)
-    // Every 30 s to 5:00, then 35 s to 10:00, then 40 s.
-    expect(times.slice(0, 7)).toEqual([120, 150, 180, 210, 240, 270, 305])
-    expect(times.slice(-3)).toEqual([585, 625, 665])
+  it('comes up from 2:00 every minute and a half, two minutes after 15:00', () => {
+    expect([0, 899, 900].map(minimapEvery)).toEqual([90, 90, 120])
+    const times = run(seconds(calm(), 0, 700)).said.filter(entry => entry.key === 'map.minimap').map(entry => entry.at)
+    expect(times).toEqual([210, 300, 390, 480, 570, 660])
+  })
+
+  it('waits for a quiet screen: never within 20 s of another tip', () => {
+    const { said } = run(seconds(game(), 0, 900))
+    const news = said.filter(entry => entry.tip.priority > FILLER_PRIORITY)
+    const minimaps = said.filter(entry => entry.key === 'map.minimap')
+    expect(minimaps.length).toBeGreaterThan(0)
+    for (const minimap of minimaps) expect(news.some(entry => entry.at <= minimap.at && minimap.at - entry.at < 20)).toBe(false)
   })
 
   it('never while we are dead', () => {
@@ -108,24 +123,25 @@ describe('the minimap', () => {
   })
 })
 
-describe('the early recall', () => {
-  const rich = (gold: number) => game(state => (state.gold = gold))
+describe('the cannon wave', () => {
+  const rich = (gold: number, edit: (game: GameState) => void = () => {}) => calm((state) => {
+    state.gold = gold
+    edit(state)
+  })
+  const cannons = (said: Said[]) => said.filter(entry => entry.key === 'recall.cannon' || entry.key === 'lane.cannon')
 
-  it('suggests a back with 1400 gold between 3:00 and 5:00, a minute apart at most', () => {
-    const { said } = run(seconds(rich(1400), 170, 320))
-    const recalls = said.filter(entry => entry.key === 'recall.earlyGold')
-    expect(recalls.map(entry => entry.at)).toEqual([180, 240])
-    expect(recalls[0]!.tip.params).toEqual({ gold: 1400 })
+  it('says to shove it and back when it reaches the lane with gold for an item: mid 19 s after it spawns, a side lane 25 s', () => {
+    const mid = cannons(run(seconds(rich(1200), 150, 300)).said)
+    expect(mid.map(entry => [entry.key, entry.at])).toEqual([['recall.cannon', 199], ['recall.cannon', 289]])
+    expect(mid[0]!.tip.params).toEqual({ gold: 1200 })
+    expect(cannons(run(seconds(rich(1200, playing(0)), 150, 300)).said).map(entry => entry.at)).toEqual([205, 295])
   })
 
-  it('stays quiet short of the gold, after 5:00, or while dead', () => {
-    expect(run(seconds(rich(1350), 180, 299)).keys).not.toContain('recall.earlyGold')
-    expect(run(seconds(rich(3000), 300, 400)).keys).not.toContain('recall.earlyGold')
-    const dead = game((state) => {
-      state.gold = 2000
-      state.players[AHRI]!.dead = true
-    })
-    expect(run(seconds(dead, 180, 299)).keys).not.toContain('recall.earlyGold')
+  it('without the gold only reminds of the wave, on a quiet screen; never to a jungler, dead, or after 14:00', () => {
+    expect(cannons(run(seconds(rich(500), 150, 210)).said).map(entry => entry.key)).toEqual(['lane.cannon'])
+    expect(cannons(run(seconds(rich(2000, playing(VI)), 150, 400)).said)).toEqual([])
+    expect(cannons(run(seconds(rich(2000, state => (state.players[AHRI]!.dead = true)), 150, 400)).said)).toEqual([])
+    expect(cannons(run(seconds(rich(2000), 840, 1000)).said)).toEqual([])
   })
 })
 

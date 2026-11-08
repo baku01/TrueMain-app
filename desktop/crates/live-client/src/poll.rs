@@ -7,12 +7,13 @@ use std::time::Duration;
 
 /// How often the game is read while it answers.
 ///
-/// What the board shows moves at most a few times a minute — a purchase, a
-/// level, a death — and the shortest of those, a respawn timer, is counted
-/// down on screen between readings. Two seconds puts a purchase on screen
-/// before the player has closed the shop; polling faster would only read the
-/// same items again.
-pub const POLL: Duration = Duration::from_secs(2);
+/// The board moves at most a few times a minute — a purchase, a level, a
+/// death — but the in-game tips say what such a moment means while it still
+/// matters: the enemy jungler just seen (his items move on the scoreboard only
+/// in sight), a level 2 reached first, a lane opponent down. Half a second
+/// keeps them under a second late, as ABSOL's coach (0.4 s) does; a reading
+/// that moved nothing sends the clock alone, and the request is a loopback one.
+pub const POLL: Duration = Duration::from_millis(500);
 
 /// The longest wait between two attempts while the game does not answer.
 ///
@@ -42,9 +43,10 @@ mod tests {
 
     #[test]
     fn backs_off_while_the_game_does_not_answer_up_to_a_ceiling() {
-        assert_eq!(next_poll(1), Duration::from_secs(2));
-        assert_eq!(next_poll(2), Duration::from_secs(4));
-        assert_eq!(next_poll(3), MAX_BACKOFF);
+        assert_eq!(next_poll(1), Duration::from_millis(500));
+        assert_eq!(next_poll(2), Duration::from_secs(1));
+        assert_eq!(next_poll(4), Duration::from_secs(4));
+        assert_eq!(next_poll(5), MAX_BACKOFF);
         assert_eq!(next_poll(u32::MAX), MAX_BACKOFF);
     }
 }

@@ -310,12 +310,13 @@ unsigned beta even though macOS may then drop the Screen Recording permission at
 ask again, never record a black video), and a GPL capture library (libobs) is allowed, which would put the desktop app
 under a GPL-compatible licence (2026-10-01) — #1744, #1754.
 
-**The running game is read through the game's own Live Client Data API, polled every 2 s only while the phase is
+**The running game is read through the game's own Live Client Data API, polled every 0.5 s only while the phase is
 `InProgress`, and the frontend receives a snapshot and then changes — never the payload on every poll.** The source is
 `allgamedata` on `127.0.0.1:2999` (documented by Riot for third parties, no credentials, no memory reading), verified
-against the same pinned Riot root as the client. Two seconds because nothing on the board moves faster than a
-purchase, a level or a death, and the respawn timer counts down on screen between readings; the wait doubles to 5 s
-while the game loads. Only what moves at the pace of the game is diffed — items, level, K/D/A, death (with the respawn
+against the same pinned Riot root as the client. Half a second (2 s until 2026-11-08): the board moves no faster than
+a purchase, a level or a death, but the in-game tips say what such a moment means while it still matters — the enemy
+jungler just seen, a level 2 reached first — and at 2 s they came up to 2 s late (ABSOL's coach reads every 0.4 s); a
+reading that moved nothing sends the clock alone; the wait doubles to 5 s while the game loads. Only what moves at the pace of the game is diffed — items, level, K/D/A, death (with the respawn
 time read once, at the death) and respawn; creep score, gold and stats change on every reading and stay out until a
 panel needs them. Updates are numbered so a missed one is answered by re-reading the state, not by drawing a board
 with a gap. The derivation, the diff and the end-of-game rule live in one place (`live_client::GameFeed`) fed alike by
