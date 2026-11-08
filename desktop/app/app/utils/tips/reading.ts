@@ -18,8 +18,10 @@ export interface TipMemory {
   said: Record<string, true>
   /** When the minimap was last brought up. */
   minimapAt: number | null
-  /** When a recall was last suggested. */
-  recallAt: number | null
+  /** When a tip other than a filler (`FILLER_PRIORITY`) was last queued: the fillers wait for a quiet screen. */
+  spokeAt: number | null
+  /** When a Control Ward was last suggested at the shop. */
+  controlAt: number | null
   /** When the enemy jungler was last reported seen. */
   spottedAt: number | null
   /** When the gold lead was last reported, and which way it then stood. */
@@ -36,7 +38,8 @@ export const emptyMemory = (): TipMemory => ({
   clock: null,
   said: {},
   minimapAt: null,
-  recallAt: null,
+  spokeAt: null,
+  controlAt: null,
   spottedAt: null,
   goldAt: null,
   goldStanding: 'even',
@@ -79,6 +82,32 @@ export function crossed(reading: Reading, mark: number, grace = 5) {
 }
 
 export const isJungler = (player: GamePlayer) => player.position === 'JUNGLE' || player.spells.some(spell => spell.key === 'SummonerSmite')
+
+/** The lanes a tip can be about: a support plays the bottom lane's. */
+export type Lane = 'top' | 'mid' | 'bot'
+
+/** Our lane, or null for a jungler and in queues without lanes. */
+export function laneOf(player: GamePlayer): Lane | null {
+  if (isJungler(player)) return null
+  switch (player.position) {
+    case 'TOP': return 'top'
+    case 'MIDDLE': return 'mid'
+    case 'BOTTOM':
+    case 'UTILITY': return 'bot'
+    default: return null
+  }
+}
+
+/** The Control Ward: 75 gold, one in hand at most two. */
+export const CONTROL_WARD = 2055
+
+export const holdsControlWard = (player: GamePlayer) => player.items.some(item => item.itemId === CONTROL_WARD && item.slot < 6)
+
+/** Whether an item can still be bought: a free slot among the six (the trinket's is the seventh). */
+export const hasFreeSlot = (player: GamePlayer) => player.items.filter(item => item.slot < 6).length < 6
+
+/** `seconds` of game time as the clock writes it: `3:05`. */
+export const clockText = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
 
 /** The enemy on our lane, when there are lanes. */
 export function laneOpponent(game: GameState, me: GamePlayer): GamePlayer | null {

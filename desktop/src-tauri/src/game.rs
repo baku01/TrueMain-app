@@ -17,7 +17,7 @@ use tokio::task::JoinHandle;
 pub const SNAPSHOT_EVENT: &str = "game://snapshot";
 /// The changes one reading brought (`live_client::GameUpdate`).
 pub const UPDATE_EVENT: &str = "game://update";
-/// The game time of a reading that changed nothing else, every couple of seconds.
+/// The game time of a reading that changed nothing else, every reading (`live_client::POLL`).
 pub const CLOCK_EVENT: &str = "game://clock";
 
 pub type SharedGame = Arc<Mutex<GameFeed>>;
@@ -112,7 +112,7 @@ async fn poll(readings: mpsc::Sender<serde_json::Value>) {
                 }
             }
             // The usual answer until the game has loaded: not worth more
-            // than a debug line, every couple of seconds.
+            // than a debug line, every few seconds.
             Err(error) => {
                 failures = failures.saturating_add(1);
                 tracing::debug!(%error, failures, "the game does not answer yet");

@@ -3,12 +3,12 @@ import type { GameState, GameTeam } from '~/types/game'
 import { itemGold } from '~/utils/item-value'
 import type { TipKey, TipParams } from './catalogue'
 import type { Reading } from './reading'
-import { crossed, isJungler, say } from './reading'
+import { crossed, isJungler, laneOf, say } from './reading'
 
 /**
  * The tips the clock and our own state call for: the objectives' countdowns,
- * the minimap, an early recall, the trinket, the farm, the gold lead.
- * Thresholds after ABSOL's coach.
+ * the minimap, the cannon wave to back on, the trinket, the farm, the gold
+ * lead. Thresholds after ABSOL's coach, timings after patch 26.1's.
  */
 
 /** Seconds before a spawn each warning is said at; the last only to a jungler, and not for the grubs. */
@@ -32,37 +32,63 @@ export function objectiveTips(reading: Reading) {
   }
 }
 
-/** Seconds between two looks at the minimap, longer as the game goes on. */
+/** Seconds between two looks at the minimap: a minute and a half through the laning phase, two minutes after. */
 export function minimapEvery(clock: number) {
-  if (clock < 300) return 30
-  if (clock < 600) return 35
-  if (clock < 900) return 40
-  if (clock < 1500) return 50
-  return 60
+  return clock < 900 ? 90 : 120
 }
 
-/** From 1:30, once the lanes are on: bring the minimap up at `minimapEvery`, never while dead. */
+/** Seconds without another tip before a filler (the minimap, a cannon wave with nothing to buy) may take the screen. */
+export const QUIET = 20
+
+/** Whether the screen has had nothing but fillers for `QUIET` seconds. */
+export const quiet = (reading: Reading) => reading.memory.spokeAt === null || reading.clock - reading.memory.spokeAt >= QUIET
+
+/**
+ * From 2:00: a nudge to glance at the minimap every `minimapEvery`, never
+ * while dead, and only on a quiet screen — it is the one line that is never
+ * news, so it never stands in another's way.
+ */
 export function minimapTips(reading: Reading) {
   const memory = reading.memory
-  if (reading.clock < 90 || reading.me.dead) return
+  if (reading.clock < 120 || reading.me.dead) return
   if (memory.minimapAt === null) {
     memory.minimapAt = reading.clock
     return
   }
-  if (reading.clock - memory.minimapAt < minimapEvery(reading.clock)) return
+  if (reading.clock - memory.minimapAt < minimapEvery(reading.clock) || !quiet(reading)) return
   memory.minimapAt = reading.clock
   say(reading, 'map.minimap')
 }
 
-/** The first back: from 3:00 to 5:00, enough gold for a real item is worth a recall (once a minute at most). */
-export const EARLY_RECALL = { from: 180, until: 300, gold: 1400, every: 60 } as const
+/**
+ * The waves that carry a cannon (patch 26.1): the third, at 1:30, then every
+ * third one — every 90 s — until 14:00, after which the waves come every
+ * 25 s and the cannons' pattern changes. Not the first: 1:30 is no time to back.
+ */
+export const CANNON_WAVES = Array.from({ length: 8 }, (_, index) => 180 + index * 90)
 
-export function recallTips(reading: Reading) {
-  const { clock, memory } = reading
-  if (reading.me.dead || clock < EARLY_RECALL.from || clock >= EARLY_RECALL.until || reading.game.gold < EARLY_RECALL.gold) return
-  if (memory.recallAt !== null && clock - memory.recallAt < EARLY_RECALL.every) return
-  memory.recallAt = clock
-  say(reading, 'recall.earlyGold', { gold: reading.game.gold })
+/** Seconds a wave walks to where it meets the other: mid's is shorter (waves after the first, before 14:00). */
+export const WAVE_WALK = { mid: 19, side: 25 } as const
+
+/** Gold that makes a back worth it: a real component, not a potion. */
+export const RECALL_GOLD = 1100
+
+/**
+ * A laner's cannon wave reaching the lane: the moment to shove it into
+ * their tower and back, so the crash costs no minions and the cannon's gold
+ * is not lost. With gold for an item, said outright; without, only on a
+ * quiet screen, as a reminder of the wave.
+ */
+export function cannonTips(reading: Reading) {
+  const lane = laneOf(reading.me)
+  if (!lane || reading.me.dead) return
+  const walk = lane === 'mid' ? WAVE_WALK.mid : WAVE_WALK.side
+  for (const spawn of CANNON_WAVES) {
+    if (!crossed(reading, spawn + walk)) continue
+    const gold = reading.game.gold
+    if (gold >= RECALL_GOLD) say(reading, 'recall.cannon', { gold }, `cannon@${spawn}`)
+    else if (quiet(reading)) say(reading, 'lane.cannon', {}, `cannon@${spawn}`)
+  }
 }
 
 const STEALTH_WARD = 3340

@@ -10,10 +10,10 @@ import type { VOICE_KEYS } from './voice-keys'
  * shell sends goes (`types/game.ts`); the phrases are TrueMain's own.
  */
 
-export type TipCategory = 'objective' | 'jungle' | 'kill' | 'mental' | 'level' | 'recall' | 'farm' | 'ward' | 'gold' | 'map'
+export type TipCategory = 'objective' | 'jungle' | 'ward' | 'lane' | 'kill' | 'mental' | 'level' | 'recall' | 'farm' | 'gold' | 'map'
 
 /** In the order the settings list them. */
-export const TIP_CATEGORIES: readonly TipCategory[] = ['objective', 'jungle', 'kill', 'mental', 'level', 'recall', 'farm', 'ward', 'gold', 'map']
+export const TIP_CATEGORIES: readonly TipCategory[] = ['objective', 'jungle', 'ward', 'lane', 'kill', 'mental', 'level', 'recall', 'farm', 'gold', 'map']
 
 /**
  * Seconds a category stays quiet after one of its tips left the screen, so
@@ -24,6 +24,7 @@ export const TIP_CATEGORIES: readonly TipCategory[] = ['objective', 'jungle', 'k
 export const CATEGORY_COOLDOWNS: Record<TipCategory, number> = {
   objective: 1,
   jungle: 8,
+  lane: 3,
   kill: 1,
   mental: 5,
   level: 3,
@@ -38,6 +39,7 @@ export const CATEGORY_COOLDOWNS: Record<TipCategory, number> = {
 export const CATEGORY_ICONS: Record<TipCategory, string> = {
   objective: 'i-lucide-timer',
   jungle: 'i-lucide-trees',
+  lane: 'i-lucide-route',
   kill: 'i-lucide-swords',
   mental: 'i-lucide-brain',
   level: 'i-lucide-chevrons-up',
@@ -62,6 +64,9 @@ interface TipRule {
 /** From this priority a tip is a countdown about to run out (half a minute, Smite): the pane marks it. */
 export const URGENT_PRIORITY = 5
 
+/** A tip that is never news (the minimap, a cannon wave with nothing to buy): it waits for a quiet screen, and any other takes its place. */
+export const FILLER_PRIORITY = 1
+
 const rule = (category: TipCategory, priority: number, ttl: number): TipRule => ({ category, priority, ttl })
 // A countdown goes stale with the clock: a minute's warning shown 20 s late says the wrong thing.
 const minute = rule('objective', 4, 8)
@@ -84,15 +89,32 @@ export const TIP_RULES: Record<TipKey, TipRule> = {
   'objective.baron.30s': halfMinute,
   'objective.baron.smite': smite,
   'jungle.spotted': rule('jungle', 4, 8),
-  'jungle.firstClear': rule('jungle', 4, 15),
+  'jungle.firstClear': rule('jungle', 4, 10),
   'jungle.gankWindow': rule('jungle', 4, 15),
+  'jungle.dead': rule('jungle', 4, 6),
+  'ward.startBlue': rule('ward', 4, 12),
+  'ward.startRed': rule('ward', 4, 12),
+  'ward.gank.top': rule('ward', 4, 12),
+  'ward.gank.mid': rule('ward', 4, 12),
+  'ward.gank.bot': rule('ward', 4, 12),
+  // At the shop: said at once, or the player has walked out.
+  'ward.controlBuy': rule('ward', 4, 8),
+  'ward.control.back.dragon': rule('ward', 3, 15),
+  'ward.control.place.dragon': rule('ward', 3, 15),
+  'ward.control.back.baron': rule('ward', 3, 15),
+  'ward.control.place.baron': rule('ward', 3, 15),
+  // The level 2 race lasts seconds.
+  'lane.levelTwoFirst': rule('lane', 4, 5),
+  'lane.levelTwoBehind': rule('lane', 4, 5),
+  'lane.opponentDead': rule('lane', 3, 6),
+  'lane.cannon': rule('lane', FILLER_PRIORITY, 6),
   'kill.levelTwo': rule('kill', 3, 10),
   'kill.shutdown': rule('kill', 3, 10),
   'death.streak': rule('mental', 3, 30),
   'death.nemesis': rule('mental', 3, 30),
   'level.sixFirst': rule('level', 3, 15),
   'level.enemySixFirst': rule('level', 3, 15),
-  'recall.earlyGold': rule('recall', 3, 20),
+  'recall.cannon': rule('recall', 3, 10),
   'farm.great': rule('farm', 2, 30),
   'farm.ok': rule('farm', 2, 30),
   'farm.low': rule('farm', 2, 30),
@@ -100,7 +122,7 @@ export const TIP_RULES: Record<TipKey, TipRule> = {
   'ward.blueLens': rule('ward', 2, 30),
   'gold.ahead': rule('gold', 2, 30),
   'gold.behind': rule('gold', 2, 30),
-  'map.minimap': rule('map', 1, 10),
+  'map.minimap': rule('map', FILLER_PRIORITY, 10),
 }
 
 export const TIP_KEYS = Object.keys(TIP_RULES) as TipKey[]
@@ -116,7 +138,7 @@ export interface Tip extends TipRule {
 export const makeTip = (key: TipKey, params: TipParams = {}): Tip => ({ key, ...TIP_RULES[key], params })
 
 /** Made-up names and numbers for a tip shown without a game: the preview, the settings' test, a dev query. */
-export const SAMPLE_PARAMS: TipParams = { champion: 'Lee Sin', alias: 'LeeSin', deaths: 3, csPerMin: 7.4, minute: 10, gold: 1450 }
+export const SAMPLE_PARAMS: TipParams = { champion: 'Lee Sin', alias: 'LeeSin', deaths: 3, csPerMin: 7.4, minute: 10, gold: 1450, time: '3:10', seconds: 32 }
 
 /** The tip the preview shows under the objectives strip: the sample game's next drake (`overlay-sample.ts`). */
 export const SAMPLE_TIP: Tip = makeTip('objective.dragon.30s', { ...SAMPLE_PARAMS, drake: 'ocean' })

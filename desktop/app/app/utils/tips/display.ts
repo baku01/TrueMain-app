@@ -30,6 +30,7 @@ export function tipImage(tip: Pick<Tip, 'key' | 'category' | 'params'>): string 
 export const CATEGORY_TONES: Record<TipCategory, 'primary' | 'enemy' | 'success' | 'warning' | 'gold' | 'muted'> = {
   objective: 'primary',
   jungle: 'enemy',
+  lane: 'primary',
   kill: 'success',
   mental: 'warning',
   level: 'primary',

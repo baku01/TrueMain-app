@@ -3,8 +3,8 @@
 //! A **snapshot** when a game is first read (or when its roster cannot be
 //! described as changes), then only **updates** — the changes one reading
 //! brought, and nothing at all for a reading that changed nothing the app
-//! shows. The game is polled every couple of seconds for half an hour; the
-//! frontend hears about the few dozen moments something moved.
+//! shows. The game is polled twice a second for half an hour; the frontend
+//! hears about the few dozen moments something moved, and the clock.
 //!
 //! Each update carries the revision it brings the state to. The frontend
 //! applies one only on top of the revision before it, so an update it missed

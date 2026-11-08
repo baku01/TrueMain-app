@@ -470,7 +470,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   same relay as the client would — refused when that action is not open (#1909).
   Outside a live champion select the product's `/draft` page only waits for the next one.
 - **Game** (`/game`, #1748) — while the phase is `InProgress` the shell polls the game's Live Client Data API
-  (`127.0.0.1:2999/liveclientdata/allgamedata`, every 2 s, backing off to 5 s while the game loads; `crates/live-client`)
+  (`127.0.0.1:2999/liveclientdata/allgamedata`, every 0.5 s, backing off to 5 s while the game loads; `crates/live-client`)
   and sends the webview a snapshot, then only changes (items, level, K/D/A, death with respawn time, respawn), numbered
   so a missed one triggers a re-read. The page: the ten players lane by lane, ours left (our own line tinted) and
   theirs mirrored right — portrait with level, summoner spells, a dead player greyed under a respawn countdown, and
@@ -615,13 +615,25 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   where League prints its announcements — the five anchors are the other panels'). In a browser-only dev run the overlay page runs its own feed. One at a time, for as long
   as its words take to read (`readingSeconds`: 2 s to find it and 0.45 s a word, 4 to 9 s) with a hairline running
   out, a bar and the category's name in its colour, an icon per category (an objective's own minimap icon); a
-  countdown within half a minute or Smite's has the pane's edge breathe, and gets the screen from a calmer tip that
-  has been up 3 s when it would go stale waiting; between two tips the pane keeps the last one dim, with how long ago it left. A pure engine
-  (`engine.ts`, `rules-clock.ts`, `rules-players.ts`) reads each game reading against the clock; a queue (`queue.ts`)
-  orders them: priority, first come first, a ttl, a cooldown per category. Rules after ABSOL's coach, as far as the
+  countdown within half a minute or Smite's has the pane's edge breathe; any more urgent tip takes the screen from
+  a calmer one that has been up 1 s (the calmer one is dropped); between two tips the pane keeps the last one dim, with how long ago it left. A pure engine
+  (`engine.ts`, `rules-clock.ts`, `rules-players.ts`, `rules-vision.ts`) reads each game reading (every 0.5 s) against the clock; a queue (`queue.ts`)
+  orders them: priority, first come first, a ttl, a cooldown per category. **Fillers** (`FILLER_PRIORITY`: the
+  minimap, a cannon wave with nothing to buy) come only on a quiet screen — 20 s without another tip — and give way to
+  anything. Rules after ABSOL's coach and patch 26.1's timings (minions 0:30, camps 0:55), as far as the
   data goes: objective warnings at 60 s and 30 s (Elder once a side holds the soul) and a jungler's Smite line at
-  10 s; the enemy jungler's first clear (−30 s, per-champion table) and second gank window (+70 s), "seen" on an item
-  or level change before 15:00; an early recall (1400 gold, 3:00–5:00); the minimap at growing intervals; the red lens
+  10 s; the enemy jungler's first clear (a per-champion table of median level-4 times, patch 26.22,
+  lolrecommender.com): to a laner, where to ward for his first gank by lane 45 s before it ends (top/bot: the river
+  bush, a Faelight; bot also the tri-brush; mid: a river entrance), that it is ending 10 s before, and his second gank
+  window (+70 s); "seen" when his items change (an enemy's items move only in sight; his level moves in the fog, so it
+  is not read) from 0:40 to 15:00, 20 s apart at most; their jungler dead (with the seconds, to everyone, before
+  15:00) and our lane opponent dead (to a laner, before the plates fall at 14:00); the level 2 race of the lane,
+  before 3:00; the support's ward on the enemy buff by the bottom lane at 0:35 (their blue one from blue side, their
+  red one from red side), to see the jungler's start; a Control Ward at the shop (a purchase with none in hand, a free
+  slot, 75 gold, from 2:30, once a trip) and 90 s before the dragon (bot, mid, jungle) and Baron (top, mid, jungle):
+  back for one, or take the one held to the pit; the cannon wave reaching our lane (3:00 to 13:30, every 90 s; mid
+  19 s after it spawns, side lanes 25 s): shove it and back with 1100 gold, else a filler; the minimap every 90 s
+  (120 s from 15:00), a filler; the red lens
   for a jungler from 3:00, the blue one for mid/ADC from level 9; CS/min at 10:00 and every 5 min to 35:00 (laner 7/5,
   jungler 5/3, no support); our or our lane opponent's first level 6; a level-2 kill, a shutdown, a death streak, the
   third death to one enemy (the one enemy whose kills rose in the reading); the gold lead from item prices. No rule
