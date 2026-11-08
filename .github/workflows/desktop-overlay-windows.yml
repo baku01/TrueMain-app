@@ -1,0 +1,66 @@
+name: Desktop overlay on Windows
+
+# The in-game overlay driven on a real Windows desktop (#1806): the app
+# replays a recorded game and a stand-in window takes the game's place
+# (`desktop/tools/overlay-smoke-windows.ps1`) — every panel's window shown over
+# it, topmost, layered, click-through and never activated, drawn rather than
+# merely shown, the chords and the preview's drag. Removed with the original
+# repository's CI on 2026-10-30; back since the overlay keeps changing. What it
+# cannot stand in for: the game's own renderer and its anti-cheat.
+
+on:
+  push:
+    branches-ignore: [develop, master]
+    paths:
+      - "desktop/src-tauri/src/overlay/**"
+      - "desktop/src-tauri/src/game.rs"
+      - "desktop/crates/shell-state/src/overlay.rs"
+      - "desktop/crates/shell-state/src/keys.rs"
+      - "desktop/crates/shell-state/src/scoreboard.rs"
+      - "desktop/crates/live-client/**"
+      - "desktop/app/app/pages/overlay/**"
+      - "desktop/app/app/components/overlay/**"
+      - "desktop/app/app/composables/useGameOverlay.ts"
+      - "desktop/tools/overlay-smoke-windows.ps1"
+      - ".github/workflows/desktop-overlay-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-overlay-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  overlay-windows:
+    name: Windows overlay
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/app/package-lock.json
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          workspaces: desktop
+      - run: npm ci
+        working-directory: desktop/app
+      - run: npm run tauri -- build --no-bundle
+        working-directory: desktop/app
+      - run: pwsh desktop/tools/overlay-smoke-windows.ps1 -App desktop/target/release/truemain-desktop.exe -Out "$env:RUNNER_TEMP/overlay-smoke"
+      - if: always()
+        run: pwsh desktop/tools/overlay-smoke-windows.ps1 -RedactOnly -Out "$env:RUNNER_TEMP/overlay-smoke"
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: truemain-overlay-smoke-windows
+          path: ${{ runner.temp }}/overlay-smoke
+          retention-days: 7
+          if-no-files-found: ignore
