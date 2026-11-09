@@ -20,6 +20,8 @@ export interface Tally { games: number, wins: number, win_rate: number, pick_rat
 
 export interface BlitzBuildDoc {
   games: number
+  /** The lane the document reads (`SUPPORT`, `BOT`…). */
+  individual_position?: string
   win_rate: number
   pick_rate: number
   patch: string
@@ -170,7 +172,7 @@ export function buildsFromBlitz(championId: number, position: string, doc: Blitz
   const page = runePage(doc)
   // A support's quest reward, which Blitz counts among the items outside the cores: picked, not bought (`utils/support-quest`).
   const reward = questRewardsOf((doc.situationalItems ?? []).filter(entry => entry.games > 0)
-    .map(entry => ({ itemIds: [entry.itemId], games: entry.games, pickRate: 0, winRate: entry.wins / entry.games })))[0]
+    .map(entry => ({ itemIds: [entry.itemId], games: entry.games, pickRate: 0, winRate: entry.wins / entry.games })), position === 'UTILITY')[0]
   const shared = { starterItems: starter(doc), summonerSpells: spells(doc), skillOrder: skillOrder(doc), runePage: page, questReward: reward ?? null }
   const bootsOfLane = laneBoots(doc)
   const builds: ChampionBuild[] = mergeByPath(doc.coreItems)

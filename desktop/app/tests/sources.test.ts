@@ -123,6 +123,7 @@ describe('lolalytics', () => {
     const { lolalyticsOptionsOf } = await import('~/utils/sources/lolalytics')
     const lulu = await lolalyticsOptionsOf({
       ...build,
+      header: { ...build.header, lane: 'support' },
       supportItem: [[3870, 51.9, 82.8, 828], [3869, 48.1, 7.9, 79], [0, 38.4, 1.4, 14]],
       item1: [[3870, 51.9, 82.8, 828], [3869, 48.1, 7.9, 79]],
       item2: [[3504, 52.3, 64.1, 641], [6617, 50.1, 16, 160]],
@@ -143,6 +144,8 @@ describe('lolalytics', () => {
     const [first] = buildsFromOptions(117, 'UTILITY', lulu).builds
     expect(first!.core.itemPath!.itemIds).toEqual([3504])
     expect(first!.core.questReward!.itemIds).toEqual([3870])
+    // The same picks off the support lane name no reward.
+    expect((await lolalyticsOptionsOf({ ...build, supportItem: [[3870, 51.9, 0.01, 5]] })).questRewards).toEqual([])
   })
 
   it('offers no boots to a champion whose games mostly go without (lolalytics\' 9999), and never 9999 as a pair', async () => {

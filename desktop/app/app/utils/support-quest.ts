@@ -17,8 +17,14 @@ export const isQuestReward = (id: number) => QUEST_REWARDS.has(id)
 /** The quest's line before its reward: World Atlas, Runic Compass, Bounty of Worlds. */
 export const QUEST_LINE: ReadonlySet<number> = new Set([3865, 3866, 3867])
 
-/** The rewards among a source's items, each one's share of the rewards picked, most picked first. */
-export function questRewardsOf(options: ItemOption[]): ItemOption[] {
+/**
+ * The rewards among a source's items, each one's share of the rewards picked,
+ * most picked first — none off the support lane (`support` false): the quest
+ * is the support item's, and a marksman's handful of picks (Ashe, 7 of her
+ * 71,593 games on lolalytics) is no build of hers.
+ */
+export function questRewardsOf(options: ItemOption[], support: boolean): ItemOption[] {
+  if (!support) return []
   const rewards = options.filter(option => isQuestReward(option.itemIds[0]!))
   const total = rewards.reduce((sum, option) => sum + option.games, 0)
   return rewards.map(option => ({ ...option, pickRate: total ? option.games / total : 0 })).sort((a, b) => b.games - a.games)
