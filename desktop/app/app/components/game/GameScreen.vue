@@ -90,7 +90,8 @@ const sideLabel = (team: GameTeam, ours: boolean) => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-3 overflow-y-auto px-4 pb-4 pt-3">
+  <!-- Every block keeps its own height and the page scrolls: a flex column would squeeze the players' list (it clips its overflow) to nothing. -->
+  <div class="flex h-full flex-col gap-3 overflow-y-auto px-4 pb-4 pt-3 [&>*]:shrink-0">
     <header class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
       <div class="flex items-center gap-2.5">
         <span class="relative flex size-2.5 items-center justify-center">
