@@ -207,6 +207,10 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
         record_reading(recorder, wrap, lobby);
     }
     publish(app, shared, state.clone());
+    // Attached while a match waits for its answer: it is as found now.
+    if state.phase == GameflowPhase::ReadyCheck {
+        tokio::spawn(crate::ready_check::follow(app.clone(), client.clone()));
+    }
 
     let (sender, mut receiver) = mpsc::channel(64);
     let credentials = client.credentials().clone();
@@ -235,6 +239,10 @@ async fn attach(app: &AppHandle, shared: &SharedState, lent: &SharedClient) -> l
         let mut changed = state.apply(&event);
         if builds_expired(before, state.phase) {
             tokio::spawn(crate::itemsets::clear_after_game(client.clone()));
+        }
+        // A match found: accepted for the player if they asked for it (`ready_check`).
+        if before != GameflowPhase::ReadyCheck && state.phase == GameflowPhase::ReadyCheck {
+            tokio::spawn(crate::ready_check::follow(app.clone(), client.clone()));
         }
 
         // Recorded before the `changed` test: an event the state ignores today

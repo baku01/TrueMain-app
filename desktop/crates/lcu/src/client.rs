@@ -12,6 +12,7 @@ use crate::item_sets::{
 use crate::lobby::Lobby;
 use crate::model::{
     ChampSelectSession, ChampionMastery, CurrentSummoner, GameflowPhase, GameflowSession,
+    ReadyCheck,
 };
 use crate::record::{HistoryGame, MatchHistory, RankedStats, SummonerProfile};
 use crate::runes::{plan_import, RuneImportPlan, RunePage, RunePageDraft};
@@ -99,6 +100,29 @@ impl LcuClient {
             Err(Error::UnexpectedStatus { status: 404, .. }) => Ok(None),
             Err(other) => Err(other),
         }
+    }
+
+    /// The match found, while the players answer it. `None` outside a
+    /// ready check, which the client answers with a 404.
+    pub async fn ready_check(&self) -> Result<Option<ReadyCheck>> {
+        match self.get_json("/lol-matchmaking/v1/ready-check").await {
+            Ok(check) => Ok(Some(check)),
+            Err(Error::UnexpectedStatus { status: 404, .. }) => Ok(None),
+            Err(other) => Err(other),
+        }
+    }
+
+    /// Accept the match found, as the client's own button does. Only on the
+    /// player's standing choice (`auto accept` in the settings), only while
+    /// `ReadyCheck::awaits_answer`.
+    pub async fn accept_ready_check(&self) -> Result<()> {
+        self.send::<()>(
+            reqwest::Method::POST,
+            "/lol-matchmaking/v1/ready-check/accept",
+            None,
+        )
+        .await?;
+        Ok(())
     }
 
     /// The current draft.
