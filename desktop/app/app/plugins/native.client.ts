@@ -11,6 +11,9 @@ import { captionColor } from '~/utils/app-theme'
  * - on macOS the title bar is drawn over by the top bar (`tauri.macos.conf.json`):
  *   `in-tauri` and `fullscreen` say when the traffic lights sit in it;
  * - the routes the shell asks for (`app://navigate`: ⌘, opens Settings);
+ * - a file or a link dropped from outside is refused: with HTML drag and drop
+ *   on (`dragDropEnabled: false`, for the draft's lanes and the overlay's
+ *   layout), the webview would open it in place of the app;
  * - in a release build, no browser reflexes: no right-click menu offering
  *   Reload or Inspect (inputs and selected text keep theirs, for copy and
  *   paste), no F5 / ⌘R reload, no print or find-in-page.
@@ -50,6 +53,16 @@ export default defineNuxtPlugin(() => {
       void invoke('set_window_theme', { dark: value !== 'light', caption: captionColor(choice.value) }).catch(() => {}), { immediate: true })
   })
   void import('@tauri-apps/api/event').then(({ listen }) => listen<string>('app://navigate', event => void router.push(event.payload)))
+
+  const external = (event: DragEvent) => !!event.dataTransfer && ['Files', 'text/uri-list'].some(type => event.dataTransfer!.types.includes(type))
+  window.addEventListener('dragover', (event) => {
+    if (!external(event)) return
+    event.preventDefault()
+    event.dataTransfer!.dropEffect = 'none'
+  })
+  window.addEventListener('drop', (event) => {
+    if (external(event)) event.preventDefault()
+  })
 
   if (import.meta.dev) return
   window.addEventListener('contextmenu', (event) => {

@@ -440,3 +440,13 @@ describe('itemSetOf', () => {
     expect(itemSetOf(ranked, build)).toEqual({ starter: [1055, 2003], boots: [3047], core: [6692, 6610, 3071], situational: [6333, 3161, 3156], bootsAt: 1 })
   })
 })
+
+describe('crowd control by Riot\'s Tenacity tag', () => {
+  it('reads an item tagged Tenacity as an answer to crowd control, whatever Jev read of its holder: Mikael\'s Blessing cleanses an ally', () => {
+    const lockdown = needs({ cc: 0.6 })
+    const mikael = (id: number) => (id === 3222 ? ['Health', 'ManaRegen', 'Active', 'Tenacity'] : [])
+    expect(fitOf([3222], lockdown, new Map([[3222, item()]]), mikael).answers).toEqual([{ need: 'cc', value: 0.6 }])
+    expect(fitOf([3222], lockdown, new Map([[3222, item()]]), () => []).answers).toEqual([])
+    expect(fitOf([3222], lockdown, new Map([[3222, item({ tenacity: 0.5 })]]), () => []).answers).toEqual([{ need: 'cc', value: 0.3 }])
+  })
+})

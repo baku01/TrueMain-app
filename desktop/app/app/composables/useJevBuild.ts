@@ -8,14 +8,14 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
-import { CORE_ITEMS, INVENTORY, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
+import { CORE_ITEMS, INVENTORY, WORLD_ATLAS, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
 import { draftOptionals } from '~/utils/jev-optionals'
 import { isBoots } from '~/utils/blitz/builds'
 import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, draftNeeds, fitOf, rankSlot } from '~/utils/jev-recommend'
-import { bootsUrgency, dueAt, healCutFits, withDraftBoots } from '~/utils/jev-rules'
+import { bootsUrgency, dueAt, healCutFits, isEnchanter, supportResists, withDraftBoots } from '~/utils/jev-rules'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
@@ -141,19 +141,22 @@ export function useJevBuild(
         style: id => tree?.perkStyles[id]?.name ?? `Tree ${id}`,
         spell: id => summoners.value[id]?.name ?? `Spell ${id}`,
       }
-      const tags = (id: number) => items.value[id]?.tags ?? []
+      const ours = textOf(championId)
+      if (!ours) throw new Error('our champion is not known yet')
+      const riotTags = (id: number) => items.value[id]?.tags ?? []
+      // An enchanter's resistances are a support's items (`supportResists`).
+      const tags = isEnchanter(ours, position) ? supportResists(riotTags) : riotTags
       const completed = (id: number) => {
         const item = items.value[id]
         return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
       }
       const pool = statsPool(laneStats, situationalPool(options, completed), completed)
-      const first = withItemStats(firstSlots(options, names, id => tags(id).includes('Consumable')), laneStats, versusStats)
+      // A support's World Atlas, which Blitz records as nothing (`startingSets`).
+      const first = withItemStats(firstSlots(options, names, id => tags(id).includes('Consumable'), position === 'UTILITY' ? WORLD_ATLAS : undefined), laneStats, versusStats)
       const slotOf = (name: string) => first.find(slot => slot.name === name)
 
       // 2. What Jev reads: the enemy kits, the candidate items, the lane choices — only what is new.
-      const ours = textOf(championId)
       const opponent = opponentId ? textOf(opponentId) : null
-      if (!ours) throw new Error('our champion is not known yet')
       const version = patch.value || 'live'
       const unreadEnemies = reader.unread(enemyIds)
       const candidates = candidateItems(options, pool).filter(id => items.value[id])

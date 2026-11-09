@@ -26,7 +26,12 @@ const props = withDefaults(defineProps<{
   fade?: 'x' | 'y' | 'vignette' | 'none'
   /** CSS object-position. Splashes keep their subject right of centre. */
   position?: string
-}>(), { championId: null, alias: null, skinId: null, kind: 'splash', fade: 'x', position: '70% 20%' })
+  /**
+   * The pulsing skeleton under the art. Off for art far behind a blur, where
+   * it cannot be seen and every frame of its pulse would be blurred again.
+   */
+  skeleton?: boolean
+}>(), { championId: null, alias: null, skinId: null, kind: 'splash', fade: 'x', position: '70% 20%', skeleton: true })
 
 const { splashOf, loadingOf, aliasOf } = useChampionStatics()
 
@@ -55,7 +60,8 @@ const scrim = computed(() => ({
       :key="source"
       :src="source"
       alt=""
-      class="img-skeleton size-full object-cover"
+      class="size-full object-cover"
+      :class="{ 'img-skeleton': skeleton }"
       :style="{ objectPosition: position }"
       decoding="async"
     >

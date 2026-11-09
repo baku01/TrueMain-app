@@ -95,6 +95,9 @@ const pathOf = (core: ItemOption) => core.itemIds.filter(chosen)
 export const INVENTORY = 6
 export const roomFor = (starter: number[]) => INVENTORY - (starter.some(id => STARTER_LINE.has(id)) ? 1 : 0)
 
+/** The support item: World Atlas, which every support starts with (`STARTER_LINE`). */
+export const WORLD_ATLAS = 3865
+
 /**
  * The starting sets as choices: sets that differ only by potions or wards are
  * one start (Doran's Blade, with or without a Health Potion), their games
@@ -103,11 +106,16 @@ export const roomFor = (starter: number[]) => INVENTORY - (starter.some(id => ST
  * as nothing), not a start, while another set holds an item; and where the
  * most played start holds the item that grows (a support's World Atlas, a
  * jungle pet), a set without one is the same omission (Blitz's Ruby Crystal on
- * a support Tahm Kench), not a start either.
+ * a support Tahm Kench), not a start either. On a support's lane (`omitted`,
+ * its World Atlas) the set of consumables alone is that item left out, and
+ * reads as it: Blitz's Seraphine support (Heal & Shield, 16.22) starts with a
+ * Health Potion alone in 28,800 games, Tear of the Goddess in 206 — the Tear
+ * was shown as the start.
  */
-export function startingSets(starters: ItemOption[], consumable: (id: number) => boolean): ItemOption[] {
+export function startingSets(starters: ItemOption[], consumable: (id: number) => boolean, omitted?: number): ItemOption[] {
   const sets = new Map<string, { shown: ItemOption, games: number, wins: number }>()
-  for (const starter of starters) {
+  for (const recorded of starters) {
+    const starter = omitted !== undefined && recorded.itemIds.every(consumable) ? { ...recorded, itemIds: [omitted, ...recorded.itemIds] } : recorded
     const key = starter.itemIds.filter(id => !consumable(id)).sort((a, b) => a - b).join(',')
     const known = sets.get(key)
     if (!known) {
@@ -128,9 +136,11 @@ export function startingSets(starters: ItemOption[], consumable: (id: number) =>
 
 /**
  * The slots set before the items: runes, spells, starter, skills, boots and
- * their timing — no boots for a champion that plays without (`buysBoots`).
+ * their timing — no boots for a champion that plays without (`buysBoots`);
+ * `omitted`, the starting item a source leaves out of a set of consumables
+ * alone (`startingSets`).
  */
-export function firstSlots(options: BuildOptions, names: Names, consumable: (id: number) => boolean): JevSlot[] {
+export function firstSlots(options: BuildOptions, names: Names, consumable: (id: number) => boolean, omitted?: number): JevSlot[] {
   const boots = buysBoots(options)
   const slots: JevSlot[] = [
     {
@@ -154,7 +164,7 @@ export function firstSlots(options: BuildOptions, names: Names, consumable: (id:
       name: 'starter',
       kind: 'starter',
       lane: true,
-      options: keyed(reliable(startingSets(options.starters, consumable)), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
+      options: keyed(reliable(startingSets(options.starters, consumable, omitted)), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
     },
     {
       name: 'skills',

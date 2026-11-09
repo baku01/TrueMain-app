@@ -6,9 +6,20 @@
 //! Which pages is the shell's rule: the tag page, or a game-updates page of
 //! that same origin, never an address the webview makes up.
 
+use std::sync::LazyLock;
 use std::time::Duration;
 
 const ORIGIN: &str = "https://www.leagueoflegends.com";
+
+/// One client for the session, as `jev.rs`'s: the list and the note it opens
+/// reuse its connection rather than each paying a new TLS handshake.
+static CLIENT: LazyLock<Result<reqwest::Client, String>> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent(concat!("TrueMain-Desktop/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|error| error.to_string())
+});
 const DATA_OPEN: &str = r#"<script id="__NEXT_DATA__" type="application/json">"#;
 const DATA_CLOSE: &str = "</script>";
 
@@ -53,11 +64,8 @@ pub async fn riot_patch_notes_page(
         Some(path) => note_url(&path).ok_or_else(|| format!("{path} is not a patch note"))?,
         None => format!("{ORIGIN}/{}/news/tags/patch-notes/", locale(&language)),
     };
-    let html = reqwest::Client::builder()
-        .timeout(Duration::from_secs(10))
-        .user_agent(concat!("TrueMain-Desktop/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .map_err(|error| error.to_string())?
+    let html = CLIENT
+        .clone()?
         .get(url)
         .send()
         .await

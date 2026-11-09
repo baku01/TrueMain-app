@@ -1,8 +1,14 @@
 //! "Check for Updates…" where each platform puts it: in the application menu
-//! on macOS, right under "About TrueMain"; in the menu of a tray icon on
-//! Windows, where the window has no menu bar to carry it. Choosing it brings
-//! the window forward and asks the webview to check (`useAppUpdate`), which
-//! owns the updater and says how the check went.
+//! on macOS, right under "About TrueMain"; in the menu of the tray icon on
+//! both, where the app lives while its window is closed (`lib.rs`: closing it
+//! hides it, as Blitz's does). Choosing it brings the window forward and asks
+//! the webview to check (`useAppUpdate`), which owns the updater and says how
+//! the check went.
+//!
+//! The tray's icon is TrueMain's mark alone, with no tile (`icons/tray.svg`):
+//! in the brand's colours in the Windows tray, as Blitz's bolt is there; a
+//! template image on macOS, which the menu bar tints for its light or dark
+//! look, as every icon there is.
 //!
 //! On macOS the application menu also opens Settings on ⌘, (`app://navigate`).
 //!
@@ -14,7 +20,7 @@ use std::sync::Mutex;
 
 use tauri::menu::{Menu, MenuEvent, MenuItem, MenuItemKind, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{App, AppHandle, Emitter, Manager, Runtime};
+use tauri::{include_image, App, AppHandle, Emitter, Manager, Runtime};
 
 const CHECK_FOR_UPDATES: &str = "check-for-updates";
 const SHOW: &str = "show";
@@ -89,9 +95,8 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     // checked, on whichever platform builds.
     if cfg!(target_os = "macos") {
         app_menu(app)?;
-    } else if cfg!(windows) {
-        tray(app)?;
     }
+    tray(app)?;
     app.on_menu_event(on_menu_event);
     Ok(())
 }
@@ -114,8 +119,9 @@ fn app_menu<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     Ok(())
 }
 
-/// A tray icon whose menu opens the window, checks for updates, or quits;
-/// a left click opens the window.
+/// A tray icon whose menu opens the window, checks for updates, or quits. On
+/// Windows a left click opens the window, the menu on a right click; on macOS
+/// a click opens the menu, as the menu bar's icons do.
 fn tray<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     let open_item = MenuItem::with_id(app, SHOW, ENGLISH.open, true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, QUIT, ENGLISH.quit, true, None::<&str>)?;
@@ -130,24 +136,32 @@ fn tray<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
             &quit_item,
         ],
     )?;
-    let mut tray = TrayIconBuilder::with_id("main")
+    let macos = cfg!(target_os = "macos");
+    let icon = if macos {
+        include_image!("icons/tray-template.png")
+    } else {
+        include_image!("icons/tray.png")
+    };
+    let tray = TrayIconBuilder::with_id("main")
+        .icon(icon)
+        .icon_as_template(macos)
         .tooltip(ENGLISH.tooltip)
         .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_tray_icon_event(|tray, event| {
+        .show_menu_on_left_click(macos)
+        .on_tray_icon_event(move |tray, event| {
+            // On macOS the click opens the menu, whose first item opens the window.
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
                 ..
             } = event
             {
-                show_window(tray.app_handle());
+                if !macos {
+                    show_window(tray.app_handle());
+                }
             }
-        });
-    if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
-    }
-    let tray = tray.build(app)?;
+        })
+        .build(app)?;
     if let Some(texts) = app.try_state::<MenuTexts>() {
         texts.register(move |labels| {
             let _ = tray.set_tooltip(Some(labels.tooltip));
@@ -198,6 +212,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
 
 pub fn show_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
+        crate::chrome::set_in_sight(&window, true);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();

@@ -12,12 +12,15 @@ const { t } = useT()
  * away instead of a scroll.
  *
  * One instance for the whole board: the board says which slot it is filling
- * (`title`, `championId`) and receives the pick.
+ * (`title`, `championId`) and which champions the draft already holds
+ * (`taken`, left out), and receives the pick.
  */
 const props = defineProps<{
   champions: ChampionStaticListItem[]
   /** The slot's current champion, offered as a "Clear" row. */
   championId: number | null
+  /** Champions already in another slot of the draft: not offered. */
+  taken?: number[]
   /** Modal heading. */
   title: string
 }>()
@@ -34,6 +37,7 @@ type SlotItem = CommandPaletteItem & { iconUrl?: string | null }
 // localeCompare each time would be needless work.
 const championItems = computed<SlotItem[]>(() =>
   [...props.champions]
+    .filter(entry => !props.taken?.includes(entry.championId))
     .sort((a, b) => a.name.localeCompare(b.name, 'en'))
     .map(entry => ({
       label: entry.name,

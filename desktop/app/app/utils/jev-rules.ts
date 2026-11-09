@@ -2,7 +2,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { Resist } from '~/utils/jev-needs'
 import type { JevSlot } from '~/utils/jev-build'
 import type { ItemOption } from '~/utils/sources/model'
-import { MIN_GAMES } from '~/utils/jev-build'
+import { MIN_GAMES, damageKind } from '~/utils/jev-build'
 
 /**
  * LoLTheory's draft rules (blog.loltheory.gg), those the needs model can
@@ -31,6 +31,7 @@ export function duesOf(enemies: { physical: number, magic: number }[]): Resist[]
 }
 
 const RESIST_TAG: Record<Resist, string> = { physical: 'Armor', magic: 'SpellBlock' }
+const RESIST_TAGS = new Set(Object.values(RESIST_TAG))
 
 /**
  * The resistances due at item slot `slot` (1 the first completed item), the
@@ -57,15 +58,43 @@ export const healCutFits = (id: number, held: readonly number[], reads: Map<numb
   !cutsHealing(id, reads) || !held.some(other => cutsHealing(other, reads))
 
 /**
- * When boots are finished, for an enchanter support: "Upgrade boots after your
- * second item, not first" (/how-to-play-support-lol) — the boots' timing at
- * its lowest urgency, after the second item. An enchanter is a support whose
- * Riot classes are Support then Mage, as are the article's four (Lulu,
- * Soraka, Janna, Nami); elsewhere Jev's reading of the lane stands.
+ * An enchanter: a support whose Riot classes are Support then Mage, as are
+ * the four of LoLTheory's support guide (Lulu, Soraka, Janna, Nami;
+ * /how-to-play-support-lol) — on 16.22 also Bard, Ivern, Milio, Morgana,
+ * Renata, Seraphine, Sona, Yuumi and Zilean; not Karma (Mage then Support).
+ */
+export const isEnchanter = (champion: { classes: string[] }, position: string): boolean =>
+  position === 'UTILITY' && champion.classes[0] === 'Support' && champion.classes[1] === 'Mage'
+
+/**
+ * When boots are finished, for an enchanter (`isEnchanter`): "Upgrade boots
+ * after your second item, not first" (/how-to-play-support-lol) — the boots'
+ * timing at its lowest urgency, after the second item; elsewhere Jev's
+ * reading of the lane stands.
  */
 export function bootsUrgency(urgency: number | null, champion: { classes: string[] }, position: string): number | null {
-  const enchanter = position === 'UTILITY' && champion.classes[0] === 'Support' && champion.classes[1] === 'Mage'
-  return enchanter ? 0 : urgency
+  return isEnchanter(champion, position) ? 0 : urgency
+}
+
+/**
+ * Riot's tags as an enchanter's build reads them (`isEnchanter`): a
+ * resistance only on a support's item — one with no damage of its own
+ * (`damageKind` null: Locket of the Iron Solari, Knight's Vow, Zeke's
+ * Convergence, Bandlepipes, Kaenic Rookern). "Locket of the Iron Solari is a
+ * support and engage-tank item, not an AP mage item"
+ * (/what-is-magic-resist-league-of-legends); Zhonya's Hourglass is a mage's
+ * "when an AD assassin has a reliable kill window on you"
+ * (/what-is-armor-league-of-legends). A mage's resistance (Zhonya's,
+ * Banshee's Veil) guards the enchanter alone, not the carry it plays for:
+ * into two physical damage dealers the rule's armor on Seraphine took
+ * Zhonya's, the most played of its answers (868 games) — Blitz measures it at
+ * −2.8 points of win probability there, Locket at +4.3 (765 games; 16.22,
+ * Emerald+). What Jev read of a mage's item, its stasis against burst, still
+ * counts; the rule (`dueAt`) and the draft's answers read the tags so.
+ */
+export const supportResists = (tags: (id: number) => string[]) => (id: number): string[] => {
+  const own = tags(id)
+  return damageKind(own) ? own.filter(tag => !RESIST_TAGS.has(tag)) : own
 }
 
 /**

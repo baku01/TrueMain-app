@@ -110,6 +110,15 @@ const targetChampionId = computed(() => {
   return (current.kind === 'ally' ? props.allySlots : props.enemySlots)[current.position]
 })
 
+/**
+ * The champions on the board but in the slot being filled: a draft holds
+ * each champion once, on either side, so the search leaves them out — picked
+ * twice, the enemy team counted one champion's damage and kit twice.
+ */
+const taken = computed(() => teams.value
+  .flatMap(team => team.cards.map(card => card.championId))
+  .filter((id): id is number => id !== null && id !== targetChampionId.value))
+
 function search(next: Target) {
   target.value = next
   searchOpen.value = true
@@ -201,6 +210,7 @@ function select(championId: number | null) {
       v-model:open="searchOpen"
       :champions="champions"
       :champion-id="targetChampionId"
+      :taken="taken"
       :title="searchTitle"
       @select="select"
     />
