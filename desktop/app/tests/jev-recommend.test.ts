@@ -450,3 +450,13 @@ describe('crowd control by Riot\'s Tenacity tag', () => {
     expect(fitOf([3222], lockdown, new Map([[3222, item({ tenacity: 0.5 })]]), () => []).answers).toEqual([{ need: 'cc', value: 0.3 }])
   })
 })
+
+describe('a support\'s protection of its allies', () => {
+  it('reads a shield or a heal given to allies as an answer to burst, a cleanse on an ally as one to crowd control', () => {
+    const team = needs({ burst: 0.7, cc: 0.6 })
+    const redemption = fitOf([3107], team, new Map([[3107, item({ allyBurst: 0.95 })]]), () => [])
+    expect(redemption.answers).toEqual([{ need: 'burst', value: 0.95 * 0.7 }])
+    const mikael = fitOf([3222], team, new Map([[3222, item({ allyCc: 0.9 })]]), () => [])
+    expect(mikael.answers).toEqual([{ need: 'cc', value: 0.9 * 0.6 }])
+  })
+})

@@ -318,7 +318,10 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   champion select's source build the situational box shows them once Jev answered. For an enchanter (a support whose
   Riot classes are Support then Mage, `isEnchanter`) a resistance reads only on a support's item, one with no damage
   of its own (`supportResists`: Locket of the Iron Solari, Knight's Vow, Bandlepipes — not Zhonya's Hourglass or
-  Banshee's Veil, a mage's); Riot's Tenacity tag answers crowd control (Mikael's Blessing cleanses an ally); and on the
+  Banshee's Veil, a mage's); Riot's Tenacity tag answers crowd control (Mikael's Blessing cleanses an ally); on the
+  support lane Jev is also asked what each item does for allies (`ALLY_FACTS`: a shield, heal or less damage given to
+  allies against burst — Redemption, Moonstone Renewer, Locket —, crowd control removed from an ally — Mikael's), read
+  as answers to those needs beside the holder's own; and on the
   support lane a source's set of consumables alone reads as World Atlas, which Blitz records as nothing
   (`startingSets`). The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
