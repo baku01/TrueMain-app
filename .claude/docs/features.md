@@ -318,7 +318,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   Maw of Malmortius's place into an all-magic team. Beside the build, "Opcionais pelo draft" (`utils/jev-optionals`,
   `JevDraftOptionals`, a row of Jev's build card on the board and in champion select): each need that stands out,
   how much the draft calls for it, the item slot a rule makes it due by, the enemies behind it (`causesOf`), and up to
-  four of the champion's items (boots included) that answer it; written into the imported item set as a block per
+  four of the champion's items (boots included) that answer it — each bought at some place of the build in 1 % of
+  that place's games (`PLACE_SHARE`), a pair of boots in 1 % of the boots bought; written into the imported item set as a block per
   need after the final build ("Contra dano mágico — Ekko, Anivia +2", fitted to the shop's 40 characters), and in
   champion select's source build the situational box shows them once Jev answered. For an enchanter (a support whose
   Riot classes are Support then Mage, `isEnchanter`) a resistance reads only on a support's item, one with no damage

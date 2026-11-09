@@ -151,6 +151,9 @@ export function useJevBuild(
         return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
       }
       const pool = statsPool(laneStats, situationalPool(options, completed), completed)
+      // Where the champion's players buy each item: its share of every place's games (`placeShare`), none where no place was measured.
+      const shares = Array.from({ length: INVENTORY }, (_, at) => placeShare(options.places?.[at], slotStats[at]))
+      const placed = (id: number) => shares.every(share => !share) || shares.some(share => !!share && share(id) >= PLACE_SHARE)
       // A support's World Atlas, which Blitz records as nothing (`startingSets`).
       const first = withItemStats(firstSlots(options, names, id => tags(id).includes('Consumable'), position === 'UTILITY' ? WORLD_ATLAS : undefined), laneStats, versusStats)
       const slotOf = (name: string) => first.find(slot => slot.name === name)
@@ -235,7 +238,7 @@ export function useJevBuild(
       // What a slot may add of the champion's items: those that answer the draft, for the needs given, the resistances due there counted.
       // At the place the next item takes: only what its players buy there (`placeShare`, `PLACE_SHARE`).
       const poolHere = () => {
-        const share = placeShare(options.places?.[bought().length], slotStats[bought().length])
+        const share = shares[bought().length]
         return share ? pool.filter(option => share(option.itemIds[0]!) >= PLACE_SHARE) : pool
       }
       const answering = (due: Resist[], needs: (keyof Needs)[]): Situational => ({
@@ -282,9 +285,13 @@ export function useJevBuild(
         if (slot) standardLater.push(...slot.options[0]!.itemIds)
       }
 
-      // Beside the build: the champion's items, boots included, that answer each need of the draft.
+      // Beside the build: the champion's items, boots included, that answer each need of the draft — an item bought at
+      // some place of the build in `PLACE_SHARE` of its games (Chempunk Chainsword, 49 of Ashe's 130,000, is not), a pair
+      // of boots in that share of the boots bought.
+      const bootsGames = options.boots.reduce((sum, option) => sum + option.games, 0)
       const boots = [...options.boots, ...(options.situational ?? []).filter(option => isBoots(option.itemIds[0]!) && option.itemIds[0] !== 1001)]
-      const draft = draftOptionals({ candidates: [...pool, ...boots], team, due: assessment.dues, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
+        .filter(option => option.games >= bootsGames * PLACE_SHARE)
+      const draft = draftOptionals({ candidates: [...pool.filter(option => placed(option.itemIds[0]!)), ...boots], team, due: assessment.dues, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
 
       ranked.value = result
       optionals.value = draft
