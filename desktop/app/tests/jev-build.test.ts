@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
-import { closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import { closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool } from '~/utils/jev-build'
 import { withItemStats } from '~/utils/jev-item-stats'
 
 const m = (games: number, itemIds: number[]): ItemOption => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
@@ -66,15 +66,29 @@ describe('the core item by item', () => {
   const options = optionsOf([m(600, [6692, 3142, 6694]), m(300, [6692, 6676, 3142]), m(200, [3142, 6692, 3814])])
 
   it('makes each place of the core a slot of the items measured there, games added up, and nothing else: the draft\'s answers come after it', () => {
-    const slots = coreSlots(options, names)
-    expect(slots.map(slot => [slot.name, slot.lane])).toEqual([['item1', true], ['item2', false], ['item3', false]])
-    expect(slots[0]!.options.map(option => [option.itemIds[0], option.games])).toEqual([[6692, 900], [3142, 200]])
-    expect(slots[1]!.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3142, false], [6676, false], [6692, false]])
+    const first = coreSlot(options, 0, [], names)!
+    expect([first.name, first.lane, first.place]).toEqual(['item1', true, 1])
+    expect(first.options.map(option => [option.itemIds[0], option.games])).toEqual([[6692, 900], [3142, 200]])
+    const second = coreSlot(options, 1, [], names)!
+    expect([second.name, second.lane, second.place]).toEqual(['item2', false, 2])
+    expect(second.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3142, false], [6676, false], [6692, false]])
+  })
+
+  it('reads each place after the items chosen before it: in their order, else in any order, else every core where those are a rumour (Hexgate, LoLDraftAI)', () => {
+    // After 6692: what 6692's players build second, its shares among them.
+    expect(coreSlot(options, 1, [6692], names)!.options.map(option => [option.itemIds[0], option.games, option.pickRate])).toEqual([[3142, 600, 600 / 900], [6676, 300, 300 / 900]])
+    expect(coreSlot(options, 1, [3142], names)!.options.map(option => option.itemIds[0])).toEqual([6692])
+    expect(coreSlot(options, 2, [6692, 3142], names)!.options.map(option => option.itemIds[0])).toEqual([6694])
+    // No core starts with 6676 then 6692: the one holding both first, in another order.
+    expect(coreSlot(options, 2, [6676, 6692], names)!.options.map(option => option.itemIds[0])).toEqual([3142])
+    // Under 30 games behind the items chosen: every core speaks.
+    const thin = optionsOf([m(600, [6692, 3142, 6694]), m(20, [3071, 6676, 3142])])
+    expect(coreSlot(thin, 1, [3071], names)!.options.map(option => option.itemIds[0])).toEqual([3142, 6676])
   })
 
   it('opens no place of the core a source did not measure: cores carrying the boots run two items, whatever answers the draft', () => {
     const withBoots = optionsOf([m(600, [6692, 3047, 6610]), m(300, [3047, 6692, 3161])])
-    expect(coreSlots(withBoots, names).map(slot => slot.name)).toEqual(['item1', 'item2'])
+    expect([0, 1, 2].map(index => coreSlot(withBoots, index, [], names)?.name ?? null)).toEqual(['item1', 'item2', null])
   })
 
   it('follows the measured core closest to the one chosen, and knows the most played', () => {

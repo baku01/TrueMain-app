@@ -6,7 +6,7 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
-import { INVENTORY, candidateItems, closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool } from '~/utils/jev-build'
+import { CORE_ITEMS, INVENTORY, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool } from '~/utils/jev-build'
 import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
@@ -213,10 +213,12 @@ export function useJevBuild(
         slot: slotStats[bought().length],
         path: bought().length ? await readItemStats(championId, position, null, { path: bought() }).catch(() => new Map()) : undefined,
       })
-      for (const slot of coreSlots(options, names)) {
+      // Each place of the core read after what the build chose before it (`coreSlot`).
+      for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
-        const open = slot.options.filter(option => option.itemIds.every(fitsBuild))
-        if (!open.length) continue
+        const slot = coreSlot(options, index, jevCore, names)
+        const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
+        if (!slot || !open.length) continue
         const [measured] = withItemStats([{ ...slot, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
         const entry = rankSlot(measured!, { ...context, due: dueNow() })
