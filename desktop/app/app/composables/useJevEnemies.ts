@@ -1,12 +1,12 @@
 import type { JevAnswer } from '~/utils/jev'
-import type { ChampionRead, ChampionText } from '~/utils/jev-read'
+import type { ChampionText } from '~/utils/jev-read'
 import type { EnemyLine, Needs, Resist } from '~/utils/jev-needs'
 import { championReadKey, keepChampionRead, knownChampionRead, readChampion } from '~/utils/jev-read'
 import { laneNeeds, needsOf } from '~/utils/jev-needs'
 import { duesOf } from '~/utils/jev-rules'
 
-/** An enemy as the pages show Jev's reading of it. */
-export interface EnemyReading { id: number, name: string, opponent: boolean, read: ChampionRead }
+/** An enemy as the pages show Jev's reading of it, with what the needs read of it (its damage split and weight, `EnemyLine`). */
+export interface EnemyReading extends EnemyLine { name: string, opponent: boolean }
 
 /** What the enemy team throws at us, on the whole and on our lane, and each enemy's reading. */
 export interface EnemyAssessment {
@@ -62,7 +62,7 @@ export function useJevEnemies() {
     return {
       team,
       lane: laneNeeds(team, opponent ? needsOf([opponent]) : null),
-      readings: lines.map(line => ({ id: line.id, name: champions.value.get(line.id)?.name ?? String(line.id), opponent: line.id === opponentId, read: line.read })),
+      readings: lines.map(line => ({ ...line, name: champions.value.get(line.id)?.name ?? String(line.id), opponent: line.id === opponentId })),
       dues: duesOf(enemies.map(enemy => splitOf(enemy.championId, enemy.position))),
     }
   }

@@ -4,6 +4,7 @@ import type { EnemyReading } from '~/composables/useJevBuild'
 import type { LaidBuild } from '~/utils/jev-build'
 import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase } from '~/utils/jev-bases'
+import type { DraftOptional } from '~/utils/jev-optionals'
 import { getActiveLocale } from '#common/utils/i18n'
 import { jevImportName, jevImportTitles } from '~/utils/jev-bases'
 import { reasonMessage } from '~/utils/jev-recommend'
@@ -14,8 +15,9 @@ import { reasonMessage } from '~/utils/jev-recommend'
  * (`JevEnemyRead`) — then the recommended and the most played build, each a
  * path of steps (`JevBuildPath`), and every option of the step opened
  * (`JevChoices`), under its heading why Jev's pick parts there from the most
- * played, where it does. Shared by the Jev matchup page and champion select's
- * panel.
+ * played, where it does; under Jev's build, the items that answer each need
+ * of the draft (`optionals`). Shared by the Jev matchup page and champion
+ * select's panel.
  * Both builds are named after the base Jev ranked within (`utils/jev-bases`):
  * "Jev · Lethality" beside that playstyle's most played, and so are their
  * imports (`TrueMain Aatrox vs Akali · Jev Lethality`).
@@ -31,6 +33,8 @@ const props = defineProps<{
   standardBuild: LaidBuild | null
   /** The base the answer was ranked within; the lane when absent. */
   base?: JevBase | null
+  /** The draft's needs that stand out and the champion's items that answer them. */
+  optionals?: DraftOptional[]
 }>()
 const { t } = useT()
 const { nameOf } = useChampionStatics()
@@ -66,8 +70,8 @@ const why = computed(() => {
     <JevEnemyRead v-if="needs" :needs="needs" :enemies="enemies" />
 
     <!-- The two builds stacked, step over step, then every option of the step opened. -->
-    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="titles.jev" :title="headings.jev" :build="jevBuild" side="jev" />
-    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="titles.standard" :title="headings.standard" :build="standardBuild" side="standard" />
+    <JevBuildPath v-if="jevBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="titles.jev" :title="headings.jev" :build="jevBuild" :optionals="optionals" side="jev" />
+    <JevBuildPath v-if="standardBuild" v-model:opened="chosen" :ranked="ranked" :champion-id="championId" :position="position" :import-name="titles.standard" :title="headings.standard" :build="standardBuild" :optionals="optionals" side="standard" />
     <section v-if="opened" class="surface min-w-0 rounded-2xl p-4">
       <header class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
         <h3 class="text-sm font-semibold text-highlighted">{{ t('jev.path.details', { slot: opened.label }) }}</h3>

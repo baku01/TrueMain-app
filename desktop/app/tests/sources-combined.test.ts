@@ -30,6 +30,15 @@ describe('combineOptions', () => {
     expect(after.map(option => [option.itemIds[0], option.games])).toEqual([[3089, 300], [3135, 80]])
   })
 
+  it('pools the items each source measured bought on the lane, whatever their place', () => {
+    const lolalytics = { ...options(1000, [], []), situational: [{ ...m(40, 0.5), itemIds: [3156] }] }
+    const blitz = { ...options(500, [], []), situational: [{ ...m(60, 0.55), itemIds: [3156] }, { ...m(10, 0.4), itemIds: [3139] }] }
+    const pooled = combineOptions(lolalytics, blitz)!.situational!
+    expect(pooled.map(option => [option.itemIds[0], option.games])).toEqual([[3156, 100], [3139, 10]])
+    expect(pooled[0]!.winRate).toBeCloseTo(0.53)
+    expect(combineOptions(options(1, [], []), options(1, [], []))!.situational).toBeUndefined()
+  })
+
   it('keeps either alone when the other measured nothing', () => {
     const only = options(10, [], [])
     expect(combineOptions(only, null)).toBe(only)

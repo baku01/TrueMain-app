@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
-import { closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import type { Answer, Needs } from '~/utils/jev-needs'
+import { closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
 import { withItemStats } from '~/utils/jev-item-stats'
 
 const m = (games: number, itemIds: number[]): ItemOption => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
@@ -91,6 +92,25 @@ describe('the core item by item', () => {
     expect([0, 1, 2].map(index => coreSlot(withBoots, index, [], names)?.name ?? null)).toEqual(['item1', 'item2', null])
   })
 
+  it('adds to a core place the champion\'s best answer to a resistance a rule makes due there, and only that (Zed\'s third item into five magic damage dealers)', () => {
+    const zed = optionsOf([m(900, [6699, 2520, 3036]), m(300, [6699, 2520, 6696])])
+    const due = (pool: ItemOption[], answers: Record<number, Answer[]> = {}) => ({
+      pool,
+      // Banshee's Veil is an ability power item: not on Zed.
+      suits: (id: number) => id !== 3102,
+      answersDraft: () => true,
+      answers: (id: number) => answers[id] ?? ([3156, 3139, 3102].includes(id) ? [{ need: 'magic' as const, value: 1 }] : []),
+      needs: ['magic' as const],
+    })
+    const pool = [m(3371, [3156]), m(187, [3139]), m(900, [3102])]
+    // One answer: the most played of the equals that suit the build.
+    const slot = coreSlot(zed, 2, [6699, 2520], names, due(pool))!
+    expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3036, false], [6696, false], [3156, true]])
+    // Nothing when a measured option already holds it, or nothing is due.
+    expect(coreSlot(zed, 2, [6699, 2520], names, due(pool, { 3036: [{ need: 'magic', value: 1 }] }))!.options.map(option => option.itemIds[0])).toEqual([3036, 6696])
+    expect(coreSlot(zed, 2, [6699, 2520], names)!.options.map(option => option.itemIds[0])).toEqual([3036, 6696])
+  })
+
   it('follows the measured core closest to the one chosen, and knows the most played', () => {
     expect(closestCore(options.cores, [6692, 6676, 3071])?.games).toBe(300)
     expect(standardCore(options.cores)).toEqual([6692, 3142, 6694])
@@ -98,10 +118,15 @@ describe('the core item by item', () => {
 })
 
 describe('situational answers', () => {
+  // What each item answers, need by need, as `fitOf` gives it.
+  const answering = (table: Record<number, Partial<Record<keyof Needs, number>>>) => (id: number): Answer[] =>
+    Object.entries(table[id] ?? {}).map(([need, value]) => ({ need: need as keyof Needs, value: value! }))
+
   it('adds to a later slot the champion\'s measured items that answer the draft, none already held', () => {
     const core = m(900, [3142, 6691])
     const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [6694]), m(200, [3814])] }, { slot: 5, options: [m(150, [3071])] }])
-    const slot = laterSlot(options, core, 4, [3142, 6691], names, { pool: measuredPool(options), answersDraft: id => id === 3071 || id === 3142 })!
+    const answers = answering({ 3071: { tanks: 0.6 }, 3142: { tanks: 0.4 } })
+    const slot = laterSlot(options, core, 4, [3142, 6691], names, { pool: measuredPool(options), answersDraft: id => id === 3071 || id === 3142, answers, needs: ['tanks'] })!
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[6694, false], [3814, false], [3071, true]])
   })
 
@@ -110,7 +135,8 @@ describe('situational answers', () => {
     const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [3031])] }])
     const tags: Record<number, string[]> = { 3157: ['Armor', 'SpellDamage'], 3026: ['Armor', 'Damage'], 3091: ['SpellBlock', 'AttackSpeed'] }
     const suits = (id: number) => damageKind(tags[id] ?? []) !== 'ap'
-    const slot = laterSlot(options, core, 4, [3153, 6672], names, { pool: [m(900, [3157]), m(800, [3026]), m(700, [3091])], answersDraft: id => id !== 3031, suits })!
+    const answers = answering({ 3157: { physical: 1 }, 3026: { physical: 1 }, 3091: { magic: 1 } })
+    const slot = laterSlot(options, core, 4, [3153, 6672], names, { pool: [m(900, [3157]), m(800, [3026]), m(700, [3091])], answersDraft: id => id !== 3031, suits, answers, needs: ['physical', 'magic'] })!
     expect(slot.options.map(option => option.itemIds[0])).toEqual([3031, 3026, 3091])
     expect([damageKind(['Damage', 'AttackSpeed', 'SpellDamage']), damageKind(['Health', 'Armor']), damageKind(['SpellDamage'])]).toEqual([null, null, 'ap'])
   })
@@ -118,8 +144,27 @@ describe('situational answers', () => {
   it('offers nothing the inventory cannot hold beside the build: a second Lifeline or Last Whisper item', () => {
     const core = m(900, [3142, 3053])
     const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [3156]), m(250, [3031]), m(200, [3036])] }])
-    const slot = laterSlot(options, core, 4, [3142, 3053, 6694], names, { pool: [m(500, [3071])], answersDraft: () => true })!
+    const slot = laterSlot(options, core, 4, [3142, 3053, 6694], names, { pool: [m(500, [3071])], answersDraft: () => true, answers: answering({ 3071: { tanks: 1 } }), needs: ['tanks'] })!
     expect(slot.options.map(option => option.itemIds[0])).toEqual([3031])
+  })
+
+  // Zed into five magic damage dealers: Edge of Night measured at the slot, its spell shield read as an answer to burst.
+  const zed = answering({ 3814: { burst: 0.44 }, 6692: { burst: 0.29 }, 3156: { magic: 1, burst: 0.44 }, 3139: { magic: 1, cc: 0.49 } })
+  const zedPool = [m(15656, [6692]), m(3371, [3156]), m(187, [3139])]
+  const core = m(900, [6699, 2520, 3036])
+
+  it('adds an answer to each need no measured option answers, the most answering first — a shield does not close the slot to magic resist (Zed: Maw of Malmortius, not Eclipse)', () => {
+    const options = optionsOf([core], () => [{ slot: 4, options: [m(7779, [3814])] }])
+    const slot = laterSlot(options, core, 4, [6699, 2520, 3036], names, { pool: zedPool, answersDraft: () => true, answers: zed, needs: ['magic', 'burst', 'cc'] })!
+    // Magic's best answers, a tie read by games, then crowd control's; burst is Edge of Night's already.
+    expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3814, false], [3156, true], [3139, true]])
+  })
+
+  it('adds one item, the one answering the draft most, where the slot answers every need already', () => {
+    const options = optionsOf([core], () => [{ slot: 4, options: [m(7779, [3814]), m(900, [3065])] }])
+    const answers = answering({ 3814: { burst: 0.44 }, 3065: { magic: 1 }, 6692: { burst: 0.29 }, 3156: { magic: 1, burst: 0.44 } })
+    const slot = laterSlot(options, core, 4, [6699, 2520, 3036], names, { pool: zedPool.slice(0, 2), answersDraft: () => true, answers, needs: ['magic', 'burst'] })!
+    expect(slot.options.map(option => option.itemIds[0])).toEqual([3814, 3065, 3156])
   })
 })
 
@@ -140,6 +185,13 @@ describe('win probability added', () => {
     const slot = { name: 'item2', kind: 'item' as const, lane: false, options: [{ key: 'o0', itemIds: [3031], label: 'Infinity Edge', games: 400, pickRate: 0.3, winRate: 0.5 }] }
     const [annotated] = withItemStats([slot], new Map([[3031, stat(0.014, 36000)]]), new Map(), { slot: new Map([[3031, stat(0.002, 31897)]]), path: new Map([[3031, stat(0.001, 18758)]]) })
     expect(annotated!.options[0]).toMatchObject({ wpa: 0.014, wpaGames: 36000, slotWpa: 0.002, slotGames: 31897, pathWpa: 0.001, pathGames: 18758 })
+  })
+
+  it('looks for the draft\'s answers among every item bought on the lane, completed ones only, boots apart; else among what the cores and the slots after them measured', () => {
+    const completed = (id: number) => id !== 1036
+    const options = { ...optionsOf([m(900, [3142, 6691])]), situational: [m(74, [3156]), m(500, [3158]), m(900, [1036])] }
+    expect(situationalPool(options, completed).map(option => option.itemIds[0])).toEqual([3156])
+    expect(situationalPool(optionsOf([m(900, [3142, 6691])]), completed).map(option => option.itemIds[0])).toEqual([3142, 6691])
   })
 
   it('joins the item stats to the measured pool, completed items only', () => {

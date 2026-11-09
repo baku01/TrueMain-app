@@ -17,7 +17,7 @@ const { loadChampion } = useStaticData()
 const subject = computed(() => ({ championId: props.championId, request: props.request }))
 const bases = useJevBases(subject, ref(true))
 const { offered, selected, pending } = bases
-const { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, ask } = useJevBuild(subject, bases.chosen)
+const { status, error, ranked, needs, enemies, jevBuild, standardBuild, optionals, elapsedMs, answered, ask } = useJevBuild(subject, bases.chosen)
 
 watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { immediate: true })
 
@@ -46,7 +46,7 @@ watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { imm
     </div>
 
     <template v-else-if="status === 'ready'">
-      <JevBuildBody :champion-id="championId" :position="request.position" :ranked="ranked" :needs="needs" :enemies="enemies" :jev-build="jevBuild" :standard-build="standardBuild" :base="answered" />
+      <JevBuildBody :champion-id="championId" :position="request.position" :ranked="ranked" :needs="needs" :enemies="enemies" :jev-build="jevBuild" :standard-build="standardBuild" :base="answered" :optionals="optionals" />
     </template>
   </section>
 </template>

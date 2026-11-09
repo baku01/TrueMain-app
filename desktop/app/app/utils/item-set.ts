@@ -1,12 +1,25 @@
 import type { ChampionItemContextItem } from '#shared/types/item-context'
 import type { Kit } from '#shared/types/kit'
 import type { BuildCoreView, BuildTreeNode } from '~/types/build'
+import type { Needs } from '~/utils/jev-needs'
 import { tr } from '#common/utils/i18n'
 import { kitPaths } from '~/utils/kit-tree'
 
 /**
- * What the item set import sends the shell (`lcu::item_sets::BuildItems`):
- * the build's items by block, in the order the shop shows them. A block left
+ * One need of the enemy team as a block of the set (`utils/jev-optionals`
+ * `draftBlocks`): the champion's items that answer it, the enemies behind it
+ * named. Its title is written at import time, in the app's language
+ * (`utils/recommended-item-set` `blockTitles`).
+ */
+export interface DraftItemBlock {
+  need: keyof Needs
+  names: string[]
+  items: number[]
+}
+
+/**
+ * What the item set import lays out (`utils/recommended-item-set`): the
+ * build's items by block, in the order the shop shows them. A block left
  * empty is not written — nothing here pads one.
  */
 export interface ItemSetBuild {
@@ -16,6 +29,8 @@ export interface ItemSetBuild {
   situational: number[]
   /** How many core items come before the boots, as the build buys them; second by default. */
   bootsAt?: number
+  /** "Optional by the draft": a block per need of the enemy team (Jev's builds). */
+  draft?: DraftItemBlock[]
 }
 
 /**
@@ -70,7 +85,7 @@ export function itemSetBuild(core: BuildCoreView, situational: number[], known: 
 
 /** Whether the set would have anything in it. */
 export function hasItems(build: ItemSetBuild): boolean {
-  return build.starter.length + build.boots.length + build.core.length + build.situational.length > 0
+  return build.starter.length + build.boots.length + build.core.length + build.situational.length + (build.draft ?? []).reduce((sum, block) => sum + block.items.length, 0) > 0
 }
 
 /** One titled block of a kit's set (`lcu::item_sets::NamedBlock`). */

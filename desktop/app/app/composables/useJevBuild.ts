@@ -1,16 +1,20 @@
 import type { CompositionBuildRequest } from '~/types/build'
 import type { JevAnswer } from '~/utils/jev'
-import type { LaidBuild, Names } from '~/utils/jev-build'
+import type { LaidBuild, Names, Situational } from '~/utils/jev-build'
+import type { DraftOptional } from '~/utils/jev-optionals'
+import type { Resist } from '~/utils/jev-needs'
 import type { FitRead, ItemRead, Request } from '~/utils/jev-read'
 import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
-import { CORE_ITEMS, INVENTORY, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool } from '~/utils/jev-build'
+import { CORE_ITEMS, INVENTORY, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
+import { draftOptionals } from '~/utils/jev-optionals'
+import { isBoots } from '~/utils/blitz/builds'
 import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
-import { answersDraft, rankSlot } from '~/utils/jev-recommend'
+import { answersDraft, draftNeeds, fitOf, rankSlot } from '~/utils/jev-recommend'
 import { bootsUrgency, dueAt, healCutFits, withDraftBoots } from '~/utils/jev-rules'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
@@ -37,7 +41,9 @@ export type { EnemyReading } from '~/composables/useJevEnemies'
  *    the core item by item, then the items after the measured core closest to
  *    it, an item already in the build left out — and LoLTheory's rules
  *    (`utils/jev-rules`): a resistance due by its item slot, one Grievous
- *    Wounds item, an enchanter's boots after its second item.
+ *    Wounds item, an enchanter's boots after its second item;
+ * 4. beside the build, the champion's items that answer each need of the
+ *    enemy team that stands out (`optionals`, `utils/jev-optionals`).
  *
  * Beside it, the most played option of every slot of the same base, for
  * comparison; `answered` says which base the answer is for — another chosen
@@ -65,6 +71,8 @@ export function useJevBuild(
   const enemies = ref<EnemyReading[]>([])
   const jevBuild = ref<LaidBuild | null>(null)
   const standardBuild = ref<LaidBuild | null>(null)
+  /** The draft's needs that stand out, with the champion's items that answer them (`draftOptionals`). */
+  const optionals = ref<DraftOptional[]>([])
   const elapsedMs = ref<number | null>(null)
   const answered = ref<JevBase | null>(null)
   /** The draft has moved on since the answer was asked for: it stays until the player asks again. */
@@ -81,6 +89,7 @@ export function useJevBuild(
     enemies.value = []
     jevBuild.value = null
     standardBuild.value = null
+    optionals.value = []
     answered.value = null
     askedFor = null
     stale.value = false
@@ -137,7 +146,7 @@ export function useJevBuild(
         const item = items.value[id]
         return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
       }
-      const pool = statsPool(laneStats, measuredPool(options), completed)
+      const pool = statsPool(laneStats, situationalPool(options, completed), completed)
       const first = withItemStats(firstSlots(options, names, id => tags(id).includes('Consumable')), laneStats, versusStats)
       const slotOf = (name: string) => first.find(slot => slot.name === name)
 
@@ -213,26 +222,39 @@ export function useJevBuild(
         slot: slotStats[bought().length],
         path: bought().length ? await readItemStats(championId, position, null, { path: bought() }).catch(() => new Map()) : undefined,
       })
-      // Each place of the core read after what the build chose before it (`coreSlot`).
+      // The draft's answers the build can use: none of the other kind of damage than the core's (Udyr on Liandry's Torment takes no Black Cleaver).
+      const coreKind = () => jevCore.map(id => damageKind(tags(id))).find(kind => kind !== null) ?? null
+      const suits = (id: number) => {
+        const kind = damageKind(tags(id))
+        const core = coreKind()
+        return !kind || !core || kind === core
+      }
+      // What a slot may add of the champion's items: those that answer the draft, for the needs given, the resistances due there counted.
+      const answering = (due: Resist[], needs: (keyof Needs)[]): Situational => ({
+        pool,
+        suits,
+        answersDraft: id => healCutFits(id, jevHeld(), itemReads) && answersDraft(id, team, itemReads, tags, due),
+        answers: id => fitOf([id], team, itemReads, tags, { due }).answers,
+        needs,
+      })
+      // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due there.
       for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
-        const slot = coreSlot(options, index, jevCore, names)
+        const due = dueNow()
+        const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined)
         const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!slot || !open.length) continue
         const [measured] = withItemStats([{ ...slot, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
-        const entry = rankSlot(measured!, { ...context, due: dueNow() })
+        const entry = rankSlot(measured!, { ...context, due })
         jevCore.push(...entry.pick.itemIds)
         result.push(entry)
       }
       const follows = closestCore(options.cores, jevCore)
-      // After the core, the draft's answers the build can use: none of the other kind of damage than the core's (Udyr on Liandry's Torment takes no Black Cleaver).
-      const coreKind = jevCore.map(id => damageKind(tags(id))).find(kind => kind !== null) ?? null
-      const suits = (id: number) => { const kind = damageKind(tags(id)); return !kind || !coreKind || kind === coreKind }
       for (const number of laterSlotNumbers(options, follows)) {
         if (jevCore.length + jevLater.length >= roomOf('pick')) break
         const due = dueNow()
-        const next = laterSlot(options, follows, number, jevHeld(), names, { pool, suits, answersDraft: id => healCutFits(id, jevHeld(), itemReads) && answersDraft(id, team, itemReads, tags, due) })
+        const next = laterSlot(options, follows, number, jevHeld(), names, answering(due, draftNeeds(team, due).map(entry => entry.need)))
         const open = next?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!next || !open.length) continue
         const [measured] = withItemStats([{ ...next, options: open }], laneStats, versusStats, await placeStats())
@@ -250,7 +272,12 @@ export function useJevBuild(
         if (slot) standardLater.push(...slot.options[0]!.itemIds)
       }
 
+      // Beside the build: the champion's items, boots included, that answer each need of the draft.
+      const boots = [...options.boots, ...(options.situational ?? []).filter(option => isBoots(option.itemIds[0]!) && option.itemIds[0] !== 1001)]
+      const draft = draftOptionals({ candidates: [...pool, ...boots], team, due: assessment.dues, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
+
       ranked.value = result
+      optionals.value = draft
       needs.value = { team, lane: laneOf }
       enemies.value = assessment.readings
       jevBuild.value = laidBuild(pickOf('pick'), jevCore, jevLater)
@@ -266,5 +293,5 @@ export function useJevBuild(
     }
   }
 
-  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, stale, ask }
+  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, optionals, elapsedMs, answered, stale, ask }
 }

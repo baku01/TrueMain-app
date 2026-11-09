@@ -68,6 +68,14 @@ export interface BuildOptions {
   skills: SkillOption[]
   /** The max orders over every game, when the source measures them apart from whole sequences (lolalytics). */
   priorities?: SkillPriority[]
+  /**
+   * Every item bought on the lane, whatever its place in the build, each with
+   * its games, win rate and share of the lane's games — when the source
+   * measures them so (lolalytics' item list, Blitz's items outside the cores):
+   * what the champion's players buy when the game asks for it, where the
+   * draft's answers are looked for (`utils/jev-build` `situationalPool`).
+   */
+  situational?: ItemOption[]
 }
 
 /** A max order (`Q › W › E`) over the games it was played in, however the points were spent on the way. */
