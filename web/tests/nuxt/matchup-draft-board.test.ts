@@ -1,6 +1,6 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
-import { BuilderDraftBoard, BuilderLaneDuel } from '#components'
+import { BuilderChampionSearch, BuilderDraftBoard, BuilderLaneDuel } from '#components'
 import type { CompositionLane } from '~~/shared/types/composition'
 import type { ChampionStaticListItem } from '~~/shared/types/static-data'
 import type { ChampionPosition } from '#common/utils/positions'
@@ -68,6 +68,15 @@ describe('BuilderDraftBoard', () => {
     expect(wrapper.emitted('update:opponentChampionId')).toEqual([[266]])
   })
 
+  it('leaves out of the search the champions already on the board, the slot\'s own kept: a draft holds each champion once', async () => {
+    const wrapper = await mountSuspended(BuilderDraftBoard, { props: boardProps({ enemySlots: slots({ MIDDLE: 64 }), allySlots: slots() }) })
+    const search = wrapper.findComponent({ name: 'BuilderChampionSearch' })
+    await wrapper.get('[aria-label="Enemy bottom — pick a champion"]').trigger('click')
+    expect(search.props('taken')).toEqual([266, 777, 64])
+    await wrapper.get('[aria-label="Enemy middle — Lee Sin"]').trigger('click')
+    expect(search.props('taken')).toEqual([266, 777])
+  })
+
   it('takes a card\'s lane as the role while none is picked', async () => {
     const wrapper = await mountSuspended(BuilderDraftBoard, {
       props: boardProps({ playedPosition: null, playedChampionId: null, opponentChampionId: null, allySlots: slots(), hasPicks: false }),
@@ -80,6 +89,19 @@ describe('BuilderDraftBoard', () => {
     expect(search.props('title')).toBe('Choose the role opponent')
     search.vm.$emit('select', 777)
     expect(wrapper.emitted('update:opponentChampionId')).toEqual([[777]])
+  })
+})
+
+describe('BuilderChampionSearch', () => {
+  it('offers every champion but those the draft already holds', async () => {
+    // The modal and the lazy palette stubbed in place: what the palette is given to list.
+    const wrapper = await mountSuspended(BuilderChampionSearch, {
+      props: { champions, championId: null, taken: [777], title: 'Choose', open: true },
+      global: { stubs: { UModal: { template: '<div><slot name="content" /></div>' }, UCommandPalette: { name: 'Palette', props: ['groups'], template: '<div />' } } },
+    })
+    const palette = wrapper.findComponent({ name: 'Palette' })
+    const offered = (palette.props('groups') as { id: string, items: { label: string }[] }[]).find(group => group.id === 'champions')!.items.map(item => item.label)
+    expect(offered).toEqual(['Aatrox', 'Lee Sin'])
   })
 })
 
