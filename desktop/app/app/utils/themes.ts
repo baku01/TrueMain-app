@@ -3,6 +3,9 @@ import { PALETTES, mix } from '~/utils/catppuccin'
 // The player's own pictures of Cinnamoroll for its themes' icons, inlined: the icon is drawn from an SVG that can reach nothing outside itself.
 import cinnamorollVampire from '~/assets/theme-icons/cinnamoroll-vampire.png?inline'
 import cinnamorollWitch from '~/assets/theme-icons/cinnamoroll-witch.png?inline'
+// The player's pictures for two more: K/DA's FIRESTARTER cover and a Christmas Kayn, 256 px JPEGs (12 KB each).
+import kdaFirestarter from '~/assets/theme-icons/kda-firestarter.jpg?inline'
+import christmasKayn from '~/assets/theme-icons/christmas-kayn.jpg?inline'
 
 /**
  * Every theme painted from a palette (`utils/app-theme`), each written in
@@ -166,6 +169,17 @@ export const THEMES = {
   'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { image: cinnamorollVampire }, tokens: CINNAMOROLL_LIGHT, css: CINNAMOROLL_CSS, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
   'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { image: cinnamorollWitch }, tokens: CINNAMOROLL_NIGHT, css: CINNAMOROLL_NIGHT_CSS, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
   'cinnamoroll-sakura': { light: true, accent: 'pink', icon: { image: cinnamorollVampire }, tokens: SAKURA_LIGHT, css: SAKURA_CSS, palette: palette({ base: '#ffffff', mantle: '#fff0f4', crust: '#ffd9e4', text: '#3d4a66', red: '#d6435e', peach: '#e07a4f', yellow: '#c08a1e', green: '#3f9a6f', teal: '#2a9d9a', sky: '#3b9ad6', blue: '#2f7fc2', mauve: '#9a6fd0', pink: '#cf3f74', rosewater: '#f4a3bd', flamingo: '#ec8fae', lavender: '#7f8ce0' }) },
+  // K/DA FIRESTARTER: the cover's wine black for the page, its title's pale pink for type, its neon magenta for the
+  // accent — lifted from the cover's #d41263 (3.7:1 on the page) to #ff4f93 (6.2:1) so small text can carry it —, its
+  // crimson and rose beside it. The light twin: the title's pink for the page, the cover's wine for type, the magenta
+  // deepened to #c2105a (5.6:1).
+  'kda-firestarter': { light: false, accent: 'pink', pair: 'kda-firestarter-light', icon: { image: kdaFirestarter }, palette: palette({ base: '#1f070e', mantle: '#18050b', crust: '#110308', text: '#fad7e0', red: '#ff5a6e', maroon: '#a3194d', peach: '#ff8a6b', yellow: '#ffc56b', green: '#5fd6a0', teal: '#4fd0cc', sky: '#7cc4f2', blue: '#6f9cff', mauve: '#c77dff', pink: '#ff4f93', flamingo: '#d26a8e', rosewater: '#e29eb3', lavender: '#e3a6ff' }) },
+  'kda-firestarter-light': { light: true, accent: 'pink', pair: 'kda-firestarter', icon: { image: kdaFirestarter }, palette: palette({ base: '#fff5f8', mantle: '#fde8ef', crust: '#fad7e0', text: '#3a0a18', red: '#c8183e', maroon: '#8f0c31', peach: '#b4461f', yellow: '#8f6200', green: '#1a7a4f', teal: '#137f7c', sky: '#1c6ea6', blue: '#3a5fd0', mauve: '#8a3fc4', pink: '#c2105a', flamingo: '#b8476b', rosewater: '#d26a8e', lavender: '#7a5ad0' }) },
+  // Christmas: the night's navy behind Kayn for the page, Santa's hat for the accent (its #d55b50 lit to #ef6a5f, 5.5:1
+  // on the page), the fur's white for type, a Christmas green and the ornaments' gold beside them. The light twin
+  // (Snow): snow for the page, the navy for type, the hat's red deepened to #c0392b (5.2:1).
+  'christmas': { light: false, accent: 'red', pair: 'christmas-light', icon: { image: christmasKayn }, palette: palette({ base: '#141c37', mantle: '#101321', crust: '#0b0e1a', text: '#ecebee', red: '#ef6a5f', maroon: '#a62f2f', peach: '#f0935f', yellow: '#f2c14e', green: '#5cc785', teal: '#4fb8a8', sky: '#8fbde6', blue: '#5b8fd6', mauve: '#a98bd6', pink: '#ec8fa6', rosewater: '#f3e9e4', flamingo: '#e8a49a', lavender: '#b9c3f0' }) },
+  'christmas-light': { light: true, accent: 'red', pair: 'christmas', icon: { image: christmasKayn }, palette: palette({ base: '#f7f9fc', mantle: '#eef2f8', crust: '#e2e8f2', text: '#141c37', red: '#c0392b', maroon: '#8e2a26', peach: '#b04d18', yellow: '#8f6200', green: '#1e7d45', teal: '#167a70', sky: '#2a6fae', blue: '#2b4c9a', mauve: '#6f4fb0', pink: '#b8406a', rosewater: '#c58a7f', flamingo: '#c06a5f', lavender: '#5a6ac8' }) },
 } satisfies Record<string, ThemeDef>
 
 export type PaletteTheme = keyof typeof THEMES
