@@ -224,7 +224,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
       </aside>
 
       <!-- The card the draft is for, as Blitz tabs it: suggestions while our pick or ban is open, the build once there is one. -->
-      <section class="flex min-h-0 flex-col rounded-xl bg-default/60 ring-1 ring-white/[0.06]">
+      <section class="flex min-h-0 flex-col rounded-xl bg-default/60 ring-1 ring-white/[0.06] backdrop-blur-md">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-4">
           <div class="flex gap-5 self-stretch" role="tablist">
             <button

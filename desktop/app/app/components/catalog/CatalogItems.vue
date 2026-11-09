@@ -68,7 +68,7 @@ function select(itemId: number) {
         </div>
         <template v-else>
           <section v-for="section in sections" :key="section.group">
-            <h2 class="sticky top-0 z-10 -mx-3 mb-1.5 flex items-center gap-2 bg-muted px-5 py-1.5"><span class="stat-label">{{ section.label }}</span><span class="rounded-full bg-accented px-1.5 text-[10px] text-muted">{{ section.entries.length }}</span></h2>
+            <h2 class="sticky top-0 z-10 -mx-3 mb-1.5 flex items-center gap-2 bg-muted/90 px-5 py-1.5 backdrop-blur"><span class="stat-label">{{ section.label }}</span><span class="rounded-full bg-accented px-1.5 text-[10px] text-muted">{{ section.entries.length }}</span></h2>
             <ul class="space-y-1">
               <li v-for="entry in section.entries" :key="entry.item.id">
                 <button
