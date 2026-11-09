@@ -237,15 +237,23 @@ const SITUATIONAL = 2
 export const PLACE_SHARE = 0.01
 
 /**
- * Each item's share of the games at one place of the build (`place`, 1 the
- * first completed item), the source's measures of that place (lolalytics'
- * `places`) and Blitz's (its item stats at that slot) added up; null where
- * neither measured the place, which then sets no bar.
+ * Each item's games at one place of the build (1 the first completed item):
+ * the source's measures of that place (lolalytics' `places`) and Blitz's (its
+ * item stats at that slot) added up.
  */
-export function placeShare(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): ((id: number) => number) | null {
+export function placeGames(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): Map<number, number> {
   const games = new Map<number, number>()
   for (const option of places ?? []) games.set(option.itemIds[0]!, (games.get(option.itemIds[0]!) ?? 0) + option.games)
   for (const [id, stat] of slot ?? []) games.set(id, (games.get(id) ?? 0) + stat.games)
+  return games
+}
+
+/**
+ * Each item's share of the games at one place of the build (`placeGames`);
+ * null where neither source measured the place, which then sets no bar.
+ */
+export function placeShare(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): ((id: number) => number) | null {
+  const games = placeGames(places, slot)
   const total = [...games.values()].reduce((sum, count) => sum + count, 0)
   return total > 0 ? id => (games.get(id) ?? 0) / total : null
 }

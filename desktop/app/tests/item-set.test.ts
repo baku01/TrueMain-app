@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChampionItemContextItem } from '#shared/types/item-context'
 import type { BuildCoreView, BuildTreeNode } from '~/types/build'
-import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
+import { PLACE_ALTERNATIVES, hasItems, itemSetBuild, measuredPlaces, situationalFromContext, situationalFromTree } from '~/utils/item-set'
 
 function verdict(itemId: number, pickRate: number, overrides: Partial<ChampionItemContextItem> = {}): ChampionItemContextItem {
   return { slot: 'Build', parentItemId: 0, itemId, class: 'Situational', games: 100, branchGames: 400, pickRate, winRate: 0.5, patchWindow: 1, axes: [], ...overrides }
@@ -67,5 +67,27 @@ describe('itemSetBuild', () => {
 
   it('is empty when the build has nothing known', () => {
     expect(hasItems(itemSetBuild({ ...core, starterItems: null, boots: null, itemPath: null }, [], () => true))).toBe(false)
+  })
+})
+
+describe('measuredPlaces', () => {
+  // Ashe's third item (lolalytics item3 with Blitz's slot 3): Infinity Edge most, then what else her players buy there.
+  const third = new Map([[3031, 30300], [3033, 5400], [3036, 5000], [3072, 2100], [3085, 900], [3026, 40], [6333, 25]])
+  const measures = { boots: new Map([[3006, 119000], [3009, 6700], [3111, 600]]), places: [new Map([[3032, 48000], [6672, 17000]]), new Map([[3046, 50000]]), third] }
+
+  it('offers at each place what its players buy there, most played first, within the board\'s bars', () => {
+    const places = measuredPlaces([3032, 3046, 3031], [3006], measures)
+    expect(places).toEqual([
+      { place: 0, items: [3006, 3009] },
+      { place: 1, items: [3032, 6672] },
+      { place: 3, items: [3031, 3033, 3036, 3072] },
+    ])
+    // Runaan's Hurricane in 900 of 43,765 third items is under 1 %; Guardian Angel's 40 games and Death's Dance's 25 too few.
+    expect(places.at(-1)!.items).toHaveLength(1 + PLACE_ALTERNATIVES)
+  })
+
+  it('never offers what the build bought at an earlier place, and reads the place the build takes, not the item', () => {
+    const swapped = measuredPlaces([3046, 3032, 3031], [], { boots: new Map(), places: [new Map([[3046, 900], [3032, 48000]]), new Map([[3046, 50000], [3032, 4000]])] })
+    expect(swapped).toEqual([{ place: 1, items: [3046, 3032] }])
   })
 })

@@ -157,7 +157,8 @@ const selection = computed(() => {
   if (kit) {
     const paths = kitPaths(kit.tree)
     const path = paths[0] ?? []
-    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)), draft: draftItemBlocks.value }
+    // A kit's set is its author's: no place blocks from the lane's measures (`places: []`).
+    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)), draft: draftItemBlocks.value, places: [] }
   }
   else if (shown.value) {
     chosen = choiceOf(shown.value, selected.value === 'pro' && pro.value ? `${pro.value.player} ${nameOf(props.championId)}` : titleOf(shown.value))

@@ -3,6 +3,8 @@ import type { Kit } from '#shared/types/kit'
 import type { BuildCoreView, BuildTreeNode } from '~/types/build'
 import type { Needs } from '~/utils/jev-needs'
 import { tr } from '#common/utils/i18n'
+import { isBoots } from '~/utils/blitz/builds'
+import { MIN_GAMES, PLACE_SHARE } from '~/utils/jev-build'
 import { kitPaths } from '~/utils/kit-tree'
 
 /**
@@ -15,6 +17,54 @@ export interface DraftItemBlock {
   need: keyof Needs
   names: string[]
   items: number[]
+}
+
+/**
+ * One place of the buying order as a block of the set: the item the build
+ * takes there, then up to `PLACE_ALTERNATIVES` others its players buy there
+ * instead — at the third item, Phantom Dancer and three more to choose from.
+ * Place 0 is the boots, whose options join the boots block; 1 the first
+ * completed item.
+ */
+export interface PlaceItemBlock {
+  place: number
+  items: number[]
+}
+
+/** How many items a place's block offers besides the build's own. */
+export const PLACE_ALTERNATIVES = 3
+
+/**
+ * What players buy at each place of a lane's builds, each item's games there
+ * (`placeGames`: lolalytics' item1 to item5 and Blitz's item slots pooled),
+ * and the boots they buy.
+ */
+export interface PlaceMeasures {
+  boots: Map<number, number>
+  places: Map<number, number>[]
+}
+
+/**
+ * A measured build's place blocks (`PlaceItemBlock`) from what the lane's
+ * players buy at each place (`PlaceMeasures`), with the board's bars: an
+ * alternative seen in `MIN_GAMES` games and `PLACE_SHARE` of the place's
+ * games, most played first, none the build bought at an earlier place. A
+ * place with no alternative is left out.
+ */
+export function measuredPlaces(path: number[], boots: number[], measures: PlaceMeasures): PlaceItemBlock[] {
+  const items = path.filter(id => !isBoots(id))
+  const optionsAt = (taken: number, games: Map<number, number> | undefined, held: number[]) => {
+    const total = [...(games ?? new Map<number, number>()).values()].reduce((sum, count) => sum + count, 0)
+    const others = [...(games ?? [])]
+      .filter(([id, count]) => id !== taken && !held.includes(id) && count >= MIN_GAMES && count >= total * PLACE_SHARE)
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id)
+    return [taken, ...others.slice(0, PLACE_ALTERNATIVES)]
+  }
+  return [
+    ...(boots[0] !== undefined ? [{ place: 0, items: optionsAt(boots[0], measures.boots, []) }] : []),
+    ...items.map((id, index) => ({ place: index + 1, items: optionsAt(id, measures.places[index], items.slice(0, index)) })),
+  ].filter(entry => entry.items.length > 1)
 }
 
 /**
@@ -31,6 +81,8 @@ export interface ItemSetBuild {
   bootsAt?: number
   /** "Optional by the draft": a block per need of the enemy team (Jev's builds). */
   draft?: DraftItemBlock[]
+  /** Each place of the buying order with the items to choose from there (`PlaceItemBlock`). */
+  places?: PlaceItemBlock[]
 }
 
 /**

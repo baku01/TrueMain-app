@@ -450,7 +450,33 @@ describe('itemSetOf', () => {
       { slot: later, pick: later.options[0]!, standard: later.options[0]!, scored: scored({ o0: 0.62, o1: 0.4, o2: 0.58 }) },
     ]
     const build = { runePage: null, summonerSpells: null, starterItems: { itemIds: [1055, 2003], games: 1, pickRate: 1, winRate: 0.5 }, skillOrder: null, boots: { itemIds: [3047], games: 1, pickRate: 1, winRate: 0.5 }, order: [6692, 3047, 6610, 3071] }
-    expect(itemSetOf(ranked, build)).toEqual({ starter: [1055, 2003], boots: [3047], core: [6692, 6610, 3071], situational: [6333, 3161, 3156], bootsAt: 1 })
+    expect(itemSetOf(ranked, build)).toEqual({
+      starter: [1055, 2003],
+      boots: [3047],
+      core: [6692, 6610, 3071],
+      situational: [6333, 3161, 3156],
+      bootsAt: 1,
+      places: [{ place: 1, items: [6692, 3161] }, { place: 2, items: [3071, 6333, 3156] }],
+    })
+  })
+
+  it('offers at each place the slot\'s other options as the board lists them: no misfit, none barely seen, none bought before, three at most', () => {
+    const scored = (totals: Record<string, number>, misfits: string[] = []) => Object.fromEntries(Object.entries(totals).map(([key, total]) => [key, { total, parts: {}, answers: [], misfit: misfits.includes(key) }]))
+    // Jinx: Runaan's Hurricane second, then Infinity Edge third with what else its slot offered.
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006]), option('o1', [3047]), option('o2', [3111])] }
+    const second: JevSlot = { name: 'item2', kind: 'item', lane: false, options: [option('o0', [3085]), option('o1', [3031])] }
+    const third: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3031]), option('o1', [3036]), option('o2', [3085]), option('o3', [3033]), option('o4', [3072], { games: 20 }), option('o5', [3065]), option('o6', [3026])] }
+    const ranked = [
+      { slot: boots, pick: boots.options[0]!, standard: boots.options[0]!, scored: scored({ o0: 0.6, o1: 0.5, o2: 0.55 }, ['o2']) },
+      { slot: second, pick: second.options[0]!, standard: second.options[0]!, scored: scored({ o0: 0.6, o1: 0.55 }) },
+      { slot: third, pick: third.options[0]!, standard: third.options[0]!, scored: scored({ o0: 0.6, o1: 0.4, o2: 0.7, o3: 0.5, o4: 0.9, o5: 0.45, o6: 0.3 }, ['o5']) },
+    ]
+    const build = { runePage: null, summonerSpells: null, starterItems: null, skillOrder: null, boots: { itemIds: [3006], games: 1, pickRate: 1, winRate: 0.5 }, order: [3006, 3085, 3031] }
+    expect(itemSetOf(ranked, build).places).toEqual([
+      { place: 0, items: [3006, 3047] },
+      { place: 1, items: [3085, 3031] },
+      { place: 2, items: [3031, 3033, 3036, 3026] },
+    ])
   })
 })
 
