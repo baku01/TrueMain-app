@@ -42,6 +42,11 @@ export type { EnemyReading } from '~/composables/useJevEnemies'
  * Beside it, the most played option of every slot of the same base, for
  * comparison; `answered` says which base the answer is for — another chosen
  * since waits for the next click.
+ *
+ * The answer stays on screen until the player asks again, whatever the board
+ * does meanwhile: an enemy locking in, an ally changing pick only marks it
+ * `stale` — asked before the draft moved on. Only another champion or lane of
+ * ours drops it: it was another champion's build.
  */
 export function useJevBuild(
   subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>,
@@ -62,10 +67,13 @@ export function useJevBuild(
   const standardBuild = ref<LaidBuild | null>(null)
   const elapsedMs = ref<number | null>(null)
   const answered = ref<JevBase | null>(null)
+  /** The draft has moved on since the answer was asked for: it stays until the player asks again. */
+  const stale = ref(false)
+  /** The board the last question was asked on, and whose build it was. */
+  let askedFor: { key: string, championId: number, position: string } | null = null
   let generation = 0
 
-  // A new draft drops the last answer: it was for another board. The same board recomputed (champion select's clock) keeps it.
-  watch(() => JSON.stringify(subject.value), () => {
+  function reset() {
     generation++
     status.value = 'idle'
     ranked.value = []
@@ -74,12 +82,25 @@ export function useJevBuild(
     jevBuild.value = null
     standardBuild.value = null
     answered.value = null
+    askedFor = null
+    stale.value = false
+  }
+
+  // Another champion or lane of ours: the answer was another champion's build, and goes. Any other move on the board
+  // (an enemy locking in, an ally's pick) keeps it — marked as asked before the change — until the player asks again.
+  watch(() => JSON.stringify(subject.value), (key) => {
+    if (!askedFor) return
+    const current = subject.value
+    if (!current || current.championId !== askedFor.championId || current.request.position !== askedFor.position) return reset()
+    stale.value = key !== askedFor.key
   })
 
   async function ask() {
     const current = subject.value
     if (!current) return
     const mine = ++generation
+    askedFor = { key: JSON.stringify(current), championId: current.championId, position: current.request.position }
+    stale.value = false
     if (!(await jevKeyStatus().catch(() => ({ set: false }))).set) return void (status.value = 'noKey')
     status.value = 'loading'
     error.value = null
@@ -243,5 +264,5 @@ export function useJevBuild(
     }
   }
 
-  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, ask }
+  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, stale, ask }
 }
