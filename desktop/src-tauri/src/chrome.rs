@@ -7,7 +7,7 @@
 //! its own tile-less mark (`menu.rs`).
 
 use tauri::image::Image;
-use tauri::{AppHandle, Manager, Theme, WebviewWindow};
+use tauri::{AppHandle, Manager, Runtime, Theme, WebviewWindow};
 
 /// The top bar's colour (`--ui-bg-elevated`), dark and light.
 const DARK_CAPTION: (u8, u8, u8) = (0x13, 0x1a, 0x27);
@@ -111,7 +111,50 @@ fn paint_caption(_window: &WebviewWindow, _colour: (u8, u8, u8)) {}
 /// setting on (`useAutoImport`'s `focus`), as Blitz's auto pop-up does.
 #[tauri::command]
 pub fn focus_window(window: WebviewWindow) -> Result<(), String> {
+    set_in_sight(&window, true);
     window.unminimize().map_err(|error| error.to_string())?;
     window.show().map_err(|error| error.to_string())?;
     window.set_focus().map_err(|error| error.to_string())
 }
+
+/// Whether a window's page is in sight, told to WebView2 (Windows). Hiding the
+/// window — into the tray, for a whole game — hides only the native window:
+/// WebView2, told nothing, keeps drawing the page at full rate, its animations
+/// and timers with it ("WebView2 as a child window does not get window
+/// messages when the top window is minimized… set the IsVisible property to
+/// FALSE", Microsoft's WebView2 performance guide). Out of sight it draws
+/// nothing, slows its timers and lowers its memory target; Tauri's events from
+/// Rust still arrive at once. Told in sight again before the window shows, so
+/// the page paints before it appears. Our own webview only: nothing of the
+/// game's is touched. Elsewhere nothing to do: WKWebView follows its window
+/// (`backgroundThrottling`, `tauri.macos.conf.json`).
+#[cfg(windows)]
+pub fn set_in_sight<R: Runtime>(window: &WebviewWindow<R>, in_sight: bool) {
+    let _ = window.with_webview(move |webview| {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+        };
+        use windows::core::Interface;
+        let controller = webview.controller();
+        // SAFETY: COM calls on the controller wry made for this webview, on the
+        // main thread `with_webview` runs its closure on.
+        unsafe {
+            let _ = controller.SetIsVisible(in_sight);
+            // WebView2 1.0.1823 and later: an older runtime keeps its target.
+            if let Ok(core) = controller
+                .CoreWebView2()
+                .and_then(|core| core.cast::<ICoreWebView2_19>())
+            {
+                let _ = core.SetMemoryUsageTargetLevel(if in_sight {
+                    COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL
+                } else {
+                    COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW
+                });
+            }
+        }
+    });
+}
+
+#[cfg(not(windows))]
+pub fn set_in_sight<R: Runtime>(_window: &WebviewWindow<R>, _in_sight: bool) {}

@@ -24,6 +24,7 @@
         "decorations": true,
         "dragDropEnabled": false,
         "zoomHotkeysEnabled": true,
+        "generalAutofillEnabled": false,
         "theme": "Dark",
         "backgroundColor": "#131a27"
       }

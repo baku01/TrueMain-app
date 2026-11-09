@@ -590,10 +590,16 @@ html {
 input,
 textarea,
 [contenteditable],
-.selectable {
+.selectable,
+.note-html {
   -webkit-user-select: text;
   user-select: text;
   cursor: auto;
+}
+
+/* Inner panes keep their scroll to themselves: no chaining into the page (`overscroll-behavior` is not inherited). */
+:where(.overflow-auto, .overflow-y-auto, .overflow-x-auto, .overflow-scroll, .overflow-y-scroll) {
+  overscroll-behavior: contain;
 }
 
 img,
@@ -606,6 +612,17 @@ button,
 [role="tab"],
 [role="radio"],
 [role="option"],
+[role="switch"],
+[role="checkbox"],
+[role="menuitem"],
+[role="menuitemcheckbox"],
+[role="menuitemradio"],
+[role="combobox"],
+[role="slider"],
+summary,
+label,
+select,
+.cursor-pointer,
 a[href] {
   cursor: default;
 }
@@ -786,7 +803,9 @@ a[href] {
   .animate-overlay-in,
   .animate-overlay-soon::after,
   .animate-overlay-ready,
-  .animate-tip-time {
+  .animate-tip-time,
+  .animate-tm-pulse,
+  .animate-pulse {
     animation: none !important;
   }
 }

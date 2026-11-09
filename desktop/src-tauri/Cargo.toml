@@ -40,6 +40,7 @@ objc2-core-foundation = { version = "0.3", default-features = false, features = 
 objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGGeometry", "CGWindow"] }
 
 [target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Graphics_Dwm",

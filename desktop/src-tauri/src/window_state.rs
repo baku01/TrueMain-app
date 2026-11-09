@@ -61,6 +61,9 @@ pub fn restore(app: &AppHandle, show: bool) {
     }
     if show {
         let _ = window.show();
+    } else {
+        // Started at login, in the tray: its page out of sight until opened (`chrome::set_in_sight`).
+        crate::chrome::set_in_sight(&window, false);
     }
     let followed = window.clone();
     window.on_window_event(move |event| match event {

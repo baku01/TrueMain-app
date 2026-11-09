@@ -20,8 +20,9 @@ defineShortcuts({
 </script>
 
 <template>
-  <header data-tauri-drag-region class="app-topbar @container grid grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-3 px-4">
-    <div data-tauri-drag-region class="flex min-w-0 items-center gap-2.5">
+  <!-- "deep": the whole bar drags the window, as a native title bar does; buttons, links and the search still take their clicks. -->
+  <header data-tauri-drag-region="deep" class="app-topbar @container grid grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-3 px-4">
+    <div class="flex min-w-0 items-center gap-2.5">
       <NuxtLink to="/" :aria-label="t('nav.dashboard')" class="shrink-0">
         <AppWordmark class="text-lg" />
       </NuxtLink>
@@ -51,7 +52,7 @@ defineShortcuts({
       </span>
     </button>
 
-    <div data-tauri-drag-region class="flex min-w-0 items-center justify-end gap-1">
+    <div class="flex min-w-0 items-center justify-end gap-1">
       <ThemeToggle class="app-btn shrink-0" />
       <LanguageSwitcher class="app-btn shrink-0" />
       <span class="mx-1.5 h-5 w-px shrink-0 bg-(--ui-border-accented)" aria-hidden="true" />

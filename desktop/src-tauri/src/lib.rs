@@ -431,6 +431,10 @@ pub fn run() {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     let _ = window.hide();
+                    // Out of sight on Windows too: WebView2 is not told by the hide alone (`chrome::set_in_sight`).
+                    if let Some(main) = window.app_handle().get_webview_window("main") {
+                        chrome::set_in_sight(&main, false);
+                    }
                 }
                 tauri::WindowEvent::Destroyed => window.app_handle().exit(0),
                 _ => {}

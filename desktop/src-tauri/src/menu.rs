@@ -212,6 +212,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
 
 pub fn show_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
+        crate::chrome::set_in_sight(&window, true);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();

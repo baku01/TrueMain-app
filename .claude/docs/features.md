@@ -315,7 +315,12 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   how much the draft calls for it, the item slot a rule makes it due by, the enemies behind it (`causesOf`), and up to
   four of the champion's items (boots included) that answer it; written into the imported item set as a block per
   need after the final build ("Contra dano mágico — Ekko, Anivia +2", fitted to the shop's 40 characters), and in
-  champion select's source build the situational box shows them once Jev answered. The page shows the team's
+  champion select's source build the situational box shows them once Jev answered. For an enchanter (a support whose
+  Riot classes are Support then Mage, `isEnchanter`) a resistance reads only on a support's item, one with no damage
+  of its own (`supportResists`: Locket of the Iron Solari, Knight's Vow, Bandlepipes — not Zhonya's Hourglass or
+  Banshee's Veil, a mage's); Riot's Tenacity tag answers crowd control (Mikael's Blessing cleanses an ally); and on the
+  support lane a source's set of consumables alone reads as World Atlas, which Blitz records as nothing
+  (`startingSets`). The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
   (`JevBuildPath`): a setup row (runes, spells, starter, skill order with its 18-level strip, boots timing) and the
   items in buy order, each step its option large with score, win rate, pick rate, games and WPA, the slot's other
@@ -836,7 +841,14 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   its menu opens the window, checks for updates or quits — a left click opens the window on Windows, the menu on
   macOS. "Start with the computer" in the settings (off by default) registers the app with the system through
   `tauri-plugin-autostart` (a Launch Agent on macOS, the `Run` key on Windows), launched with `--autostart`: the window
-  is placed but not shown, the app in the tray until opened.
+  is placed but not shown, the app in the tray until opened. Hidden, its page is out of sight for WebView2 too
+  (`chrome::set_in_sight`: `IsVisible` false and a low memory target — hiding the window alone leaves it drawing at full
+  rate on Windows); in sight again before the window shows. Only the app's own webview: nothing of the game is touched.
+- **Feels like an app** (`plugins/native.client.ts`, `main.css`, `tauri*.conf.json`): the top bar drags the window from
+  anywhere (`data-tauri-drag-region="deep"`), a file or link dropped from outside is refused, controls keep the arrow
+  cursor, inner panes do not chain their scroll, pulses stop under reduced motion; WebView2's autofill suggestions and
+  macOS's link previews are off, and the macOS window restates the base one (`tests/tauri-window-config.test.ts`: the
+  zoom shortcuts went missing there once).
   Unsigned by Apple and Microsoft for the beta.
 - **Footprint** (#1916): identical API reads asked at once by two webviews (the next item, from the game page and
   the overlay) go out as one request (`SharedReads`, `src-tauri/src/api.rs`). While the client is closed, the look
