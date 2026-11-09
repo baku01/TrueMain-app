@@ -16,7 +16,8 @@ import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, draftNeeds, fitOf, rankSlot } from '~/utils/jev-recommend'
-import { bootsUrgency, dueAt, healCutFits, isEnchanter, isMarksman, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { bootsUrgency, dueAt, healCutFits, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { CLASS_PROFILES, OWN_SHARE, classBuys, isGuard, itemizationOf, subclassOf } from '~/utils/jev-classes'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
@@ -145,8 +146,14 @@ export function useJevBuild(
       const ours = textOf(championId)
       if (!ours) throw new Error('our champion is not known yet')
       const riotTags = (id: number) => items.value[id]?.tags ?? []
-      // An enchanter's resistances are a support's items (`supportResists`).
-      const tags = isEnchanter(ours, position) ? supportResists(riotTags) : riotTags
+      const gold = (id: number) => items.value[id]?.totalGold ?? 0
+      // How our champion's class builds (`utils/jev-classes`): an enchanter's resistances are a support's items (`supportResists`).
+      const subclass = subclassOf(ours, position)
+      const profile = CLASS_PROFILES[subclass]
+      const tags = profile.guards === 'support' ? supportResists(riotTags) : riotTags
+      // An item the class buys (`classBuys`), or one this champion's players make their own past its class (`OWN_SHARE`):
+      // Death's Dance answers no draft for a marksman, Jak'Sho does for Vayne.
+      const onClass = (option: ItemOption) => classBuys(profile, option.itemIds[0]!, riotTags(option.itemIds[0]!), gold(option.itemIds[0]!)) || option.pickRate >= OWN_SHARE
       const completed = (id: number) => {
         const item = items.value[id]
         return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
@@ -172,6 +179,7 @@ export function useJevBuild(
       const lane = laneRequest({
         champion: ours,
         position,
+        subclass,
         opponent,
         runePages: (slotOf('runes')?.options ?? []).map(option => ({
           key: option.key,
@@ -184,7 +192,7 @@ export function useJevBuild(
       })
       const requests: Request[] = [
         ...batches(enemyRequest(unreadEnemies)),
-        ...batches(itemRequest(ours, position, unreadItems.map(id => ({ id, name: enItem(id), text: itemEffect(en.items[id] ?? items.value[id], 520) })))),
+        ...batches(itemRequest(ours, position, unreadItems.map(id => ({ id, name: enItem(id), text: itemEffect(en.items[id] ?? items.value[id], 520) })), itemizationOf(subclass))),
         ...batches(lane),
       ]
       const answers: Record<string, JevAnswer> = Object.assign({}, ...await Promise.all(requests.map(part => askJev(part.state, part.questions))))
@@ -205,7 +213,7 @@ export function useJevBuild(
         const read = scoreOf(answer)
         if (read) fits[key] = { fit: read.value, confidence: read.confidence }
       }
-      const urgency = bootsUrgency(scoreOf(answers.bootsTiming)?.value ?? null, ours, position)
+      const urgency = bootsUrgency(scoreOf(answers.bootsTiming)?.value ?? null, subclass)
 
       // 3. The ranking: the team's needs, then every slot.
       const assessment = reader.assess(request.enemies, opponentId)
@@ -224,7 +232,7 @@ export function useJevBuild(
       const fitsBuild = (id: number) => fitsWith(id, jevHeld()) && healCutFits(id, jevHeld(), itemReads)
       // The place the next item takes, boots apart: its slot of the buying order, the items before it, and the resistances due there.
       const bought = () => [...jevCore, ...jevLater]
-      const dueNow = () => dueAt(assessment.dues, bought().length + 1, bought(), tags)
+      const dueNow = () => dueAt(assessment.dues, bought().length + 1, bought(), tags, profile.guardFrom)
       const placeStats = async (): Promise<SlotStats> => ({
         slot: slotStats[bought().length],
         path: bought().length ? await readItemStats(championId, position, null, { path: bought() }).catch(() => new Map()) : undefined,
@@ -237,10 +245,13 @@ export function useJevBuild(
         return !kind || !core || kind === core
       }
       // What a slot may add of the champion's items: those that answer the draft, for the needs given, the resistances due there counted.
-      // At the place the next item takes: only what its players buy there (`placeShare`, `PLACE_SHARE`).
+      // At the place the next item takes: only what its players buy there (`placeShare`, `PLACE_SHARE`), what its class
+      // buys (`onClass`), and no guard item before the class takes one (`guardFrom`: a marksman's fourth).
       const poolHere = () => {
-        const share = shares[bought().length]
-        return share ? pool.filter(option => share(option.itemIds[0]!) >= PLACE_SHARE) : pool
+        const place = bought().length + 1
+        const share = shares[place - 1]
+        return pool.filter(option => (!share || share(option.itemIds[0]!) >= PLACE_SHARE) && onClass(option)
+          && (place >= profile.guardFrom || !isGuard(riotTags(option.itemIds[0]!), gold(option.itemIds[0]!))))
       }
       const answering = (due: Resist[], needs: (keyof Needs)[]): Situational => ({
         pool: poolHere(),
@@ -250,8 +261,7 @@ export function useJevBuild(
         needs,
       })
       // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due
-      // there — none in a marksman's core, whose resistance is its boots (`isMarksman`).
-      const marksman = isMarksman(ours, position)
+      // there — none before its class takes a guard item (`dueAt`, `guardFrom`): a marksman's resistance is its boots.
       // What a slot gave up for its pick, from the second item on, offered to the slots after it (`withOwed`) — the first
       // item's options are one or the other (Kraken Slayer or Hexoptics C44), not both.
       const owed: ItemOption[] = []
@@ -260,7 +270,7 @@ export function useJevBuild(
       }
       for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
-        const due = marksman ? [] : dueNow()
+        const due = dueNow()
         const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined, owed)
         const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!slot || !open.length) continue
@@ -295,12 +305,12 @@ export function useJevBuild(
       }
 
       // Beside the build: the champion's items, boots included, that answer each need of the draft — an item bought at
-      // some place of the build in `PLACE_SHARE` of its games (Chempunk Chainsword, 49 of Ashe's 130,000, is not), a pair
-      // of boots in that share of the boots bought.
+      // some place of the build in `PLACE_SHARE` of its games (Chempunk Chainsword, 49 of Ashe's 130,000, is not) and that
+      // its class buys (`onClass`), a pair of boots in that share of the boots bought.
       const bootsGames = options.boots.reduce((sum, option) => sum + option.games, 0)
       const boots = [...options.boots, ...(options.situational ?? []).filter(option => isBoots(option.itemIds[0]!) && option.itemIds[0] !== 1001)]
         .filter(option => option.games >= bootsGames * PLACE_SHARE)
-      const draft = draftOptionals({ candidates: [...pool.filter(option => placed(option.itemIds[0]!)), ...boots], team, due: assessment.dues, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
+      const draft = draftOptionals({ candidates: [...pool.filter(option => placed(option.itemIds[0]!) && onClass(option)), ...boots], team, due: assessment.dues, guardFrom: profile.guardFrom, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
 
       ranked.value = result
       optionals.value = draft

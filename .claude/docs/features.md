@@ -274,7 +274,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   its questions name the game's English terms (Grievous Wounds, Tenacity); Noul facts are asked as questions and a
   Score spread over its levels is pulled toward the middle as far as Jev was unsure: `utils/jev-read.ts` sends three requests at once, each a small object state — the enemy kits (five Score
   scales each: crowd control, healing, burst, basic attacks, tankiness), the candidate items (five Noul facts each:
-  Grievous Wounds, Tenacity, anti-burst, anti-autoattack, anti-tank, plus a Score of how it suits our kit) and the
+  Grievous Wounds, Tenacity, anti-burst, anti-autoattack, anti-tank, plus a Score of how it suits our kit and how our
+  champion's class itemizes, sent with it — `itemizationOf`: what the class builds, what it never builds, its defensive
+  items' first place, its answer to each need; Death's Dance on Ashe read 0.58 without it, 0.01 with it) and the
   lane choices (rune pages, spells, starters, boots timing as Scores). Reads are cached per patch for the session.
   `utils/jev-recommend.ts` does the arithmetic: the enemy team's needs (damage split from Blitz's measured profiles,
   weighed by damage dealt; the kits' facts as what stands out of a usual team of as many; the lane opponent 60% on
@@ -312,7 +314,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (`coreSlot`: the cores starting with them, else holding them in any order, else every core under 30 games), plus,
   where a resistance is due there and no measured option holds it, the champion's best answer to it (Zed's cores hold no
   magic resist: into five mages his third item was Lord Dominik's Regards) — later items after the closest measured
-  core — none in a marksman's core (`isMarksman`: its resistance is its boots, LoLTheory) —, plus up to two of the
+  core — none before the champion's class takes a guard item (`ClassProfile.guardFrom`: a marksman's fourth, its
+  resistance being its boots, LoLTheory) —, plus up to two of the
   draft's answers, each bought in half a percent of the champion's games or more (`ANSWER_SHARE`) and in 1 % of
   that place's games (`placeShare`, `PLACE_SHARE`: lolalytics' item1 to item5 and Blitz's item slot pooled — Guardian
   Angel is Ashe's fifth item, 10 games of 67,000 at her second; no marksman buys Death's Dance), from its pool
@@ -320,15 +323,23 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   lane, lolalytics' item list and Blitz's items outside the cores pooled; else what the cores and follow-ups measured):
   each need of the draft no measured option answers (`draftNeeds`, standing out past `STANDS_OUT`, a due resistance
   first) gets its best answer, by answer then games (`draftAnswers`) — sorted by games and cut to one, Eclipse took
-  Maw of Malmortius's place into an all-magic team. Beside the build, "Opcionais pelo draft" (`utils/jev-optionals`,
+  Maw of Malmortius's place into an all-magic team. Every answer and optional is one the champion's class buys
+  (`utils/jev-classes`: Riot's thirteen subclasses from the League of Legends Wiki, a profile each grounded in
+  lolalytics' item1–item5 of two to ten of its champions): a guard item — armor, magic resist, or health with no
+  damage (`isGuard`) — only from the place the class takes one (`guardFrom`: marksmen the fourth, mages, assassins and
+  divers the second, tanks, juggernauts, skirmishers and supports the first) and only among the class's guard items
+  (`guards`: a marksman's Guardian Angel, Maw, Mercurial Scimitar, Wit's End — never Death's Dance or Randuin's Omen;
+  a mage's Zhonya's and Banshee's; an enchanter's support items of 2,300 gold or less; every one for tanks, fighters
+  and catchers), unless the champion's own players make it theirs (`OWN_SHARE`, 5 % of its games: Vayne's Jak'Sho,
+  Kai'Sa's Zhonya's, Ezreal's Frozen Heart). The measured options stay whatever their class. Beside the build, "Opcionais pelo draft" (`utils/jev-optionals`,
   `JevDraftOptionals`, a row of Jev's build card on the board and in champion select): each need that stands out,
   how much the draft calls for it, the item slot a rule makes it due by, the enemies behind it (`causesOf`), and up to
   four of the champion's items (boots included) that answer it — each in half a percent of the champion's games
   (`ANSWER_SHARE`) and bought at some place of the build in 1 % of that place's games (`PLACE_SHARE`), a pair of
   boots in 1 % of the boots bought; written into the imported item set as a block per
   need after the final build ("Contra dano mágico — Ekko, Anivia +2", fitted to the shop's 40 characters), and in
-  champion select's source build the situational box shows them once Jev answered. For an enchanter (a support whose
-  Riot classes are Support then Mage, `isEnchanter`) a resistance reads only on a support's item, one with no damage
+  champion select's source build the situational box shows them once Jev answered. For an enchanter (`subclassOf`:
+  Lulu, Janna, Nami, Soraka…, and Seraphine or Karma on the support lane) a resistance reads only on a support's item, one with no damage
   of its own (`supportResists`: Locket of the Iron Solari, Knight's Vow, Bandlepipes — not Zhonya's Hourglass or
   Banshee's Veil, a mage's); Riot's Tenacity tag answers crowd control (Mikael's Blessing cleanses an ally); on the
   support lane Jev is also asked what each item does for allies (`ALLY_FACTS`: a shield, heal or less damage given to

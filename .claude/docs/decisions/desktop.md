@@ -988,3 +988,16 @@ The tips' settings live in `localStorage` and the voice packs in IndexedDB — t
 overlay fields it knows, and a pack never touches the disk as a file of ours. Rules and thresholds come from ABSOL's
 coach only where the Live Client data the shell sends supports them — no health, no ward score, no enemy gold, no killer names — and every phrase is TrueMain's own
 (2026-11-07) — no issue yet
+
+**Jev answers the enemy team the way the champion's class builds; the champion's own measures stay the pool.** A
+universal rule took items whose stats answered the draft and that no player of the class buys — Death's Dance and
+Randuin's Omen on Ashe for armor. Each champion has Riot's subclass from the League of Legends Wiki
+(`utils/jev-classes.ts`, the Module:ChampionData `role`, 16.22; Specialists by their Riot class), and each subclass a
+profile measured on lolalytics (item1–item5 of two to ten of its champions): what it builds, what it never builds, the
+first place its guard items take (`guardFrom`), which guard items it buys (`guards`), and how it answers each need. The
+draft's answers and the optionals keep to it, and a rule's due resistance waits for `guardFrom` — this replaces the
+marksman-only and enchanter-only rules (`isMarksman`, `isEnchanter`). The class does not filter what was measured
+(Vayne's Jak'Sho, Kai'Sa's Zhonya's are their own), and an item the champion's players buy in 5 % of its games passes
+whatever its class (`OWN_SHARE`). Jev reads the same profile as text with our kit (`itemizationOf`), so its kit read
+scores an off-class item low; the item reads' cache key carries the questions' version so older reads are not reused
+(2026-11-09) — no issue yet
