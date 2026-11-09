@@ -6,7 +6,7 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
-import { INVENTORY, candidateItems, closestCore, coreSlots, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool } from '~/utils/jev-build'
+import { CORE_ITEMS, INVENTORY, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, measuredPool, plainAbility, roomFor, standardCore, statsPool } from '~/utils/jev-build'
 import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
@@ -42,6 +42,11 @@ export type { EnemyReading } from '~/composables/useJevEnemies'
  * Beside it, the most played option of every slot of the same base, for
  * comparison; `answered` says which base the answer is for — another chosen
  * since waits for the next click.
+ *
+ * The answer stays on screen until the player asks again, whatever the board
+ * does meanwhile: an enemy locking in, an ally changing pick only marks it
+ * `stale` — asked before the draft moved on. Only another champion or lane of
+ * ours drops it: it was another champion's build.
  */
 export function useJevBuild(
   subject: Ref<{ championId: number, request: CompositionBuildRequest } | null>,
@@ -62,10 +67,13 @@ export function useJevBuild(
   const standardBuild = ref<LaidBuild | null>(null)
   const elapsedMs = ref<number | null>(null)
   const answered = ref<JevBase | null>(null)
+  /** The draft has moved on since the answer was asked for: it stays until the player asks again. */
+  const stale = ref(false)
+  /** The board the last question was asked on, and whose build it was. */
+  let askedFor: { key: string, championId: number, position: string } | null = null
   let generation = 0
 
-  // A new draft drops the last answer: it was for another board. The same board recomputed (champion select's clock) keeps it.
-  watch(() => JSON.stringify(subject.value), () => {
+  function reset() {
     generation++
     status.value = 'idle'
     ranked.value = []
@@ -74,12 +82,25 @@ export function useJevBuild(
     jevBuild.value = null
     standardBuild.value = null
     answered.value = null
+    askedFor = null
+    stale.value = false
+  }
+
+  // Another champion or lane of ours: the answer was another champion's build, and goes. Any other move on the board
+  // (an enemy locking in, an ally's pick) keeps it — marked as asked before the change — until the player asks again.
+  watch(() => JSON.stringify(subject.value), (key) => {
+    if (!askedFor) return
+    const current = subject.value
+    if (!current || current.championId !== askedFor.championId || current.request.position !== askedFor.position) return reset()
+    stale.value = key !== askedFor.key
   })
 
   async function ask() {
     const current = subject.value
     if (!current) return
     const mine = ++generation
+    askedFor = { key: JSON.stringify(current), championId: current.championId, position: current.request.position }
+    stale.value = false
     if (!(await jevKeyStatus().catch(() => ({ set: false }))).set) return void (status.value = 'noKey')
     status.value = 'loading'
     error.value = null
@@ -192,10 +213,12 @@ export function useJevBuild(
         slot: slotStats[bought().length],
         path: bought().length ? await readItemStats(championId, position, null, { path: bought() }).catch(() => new Map()) : undefined,
       })
-      for (const slot of coreSlots(options, names)) {
+      // Each place of the core read after what the build chose before it (`coreSlot`).
+      for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
-        const open = slot.options.filter(option => option.itemIds.every(fitsBuild))
-        if (!open.length) continue
+        const slot = coreSlot(options, index, jevCore, names)
+        const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
+        if (!slot || !open.length) continue
         const [measured] = withItemStats([{ ...slot, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
         const entry = rankSlot(measured!, { ...context, due: dueNow() })
@@ -243,5 +266,5 @@ export function useJevBuild(
     }
   }
 
-  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, ask }
+  return { status, error, ranked, needs, enemies, jevBuild, standardBuild, elapsedMs, answered, stale, ask }
 }

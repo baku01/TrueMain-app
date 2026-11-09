@@ -63,6 +63,7 @@ const player = (champion: string, team: GameTeam, position: string, items: numbe
   deaths: 0,
   assists: 0,
   creepScore: position === 'UTILITY' ? 30 : position === 'JUNGLE' ? 150 : 200,
+  wardScore: position === 'UTILITY' ? 48 : 13,
   dead: false,
   respawnAt: null,
 })
@@ -101,6 +102,7 @@ export function sampleGame(): GameState {
         baron: { at: 1200, until: null },
       },
     },
+    vitals: { health: 0.8, resource: 0.6, resourceKind: 'MANA' },
     pace: {
       samples: [
         { minute: 3, cs: 15, gold: 1311 },

@@ -42,6 +42,8 @@ export interface JevSlot {
   kind: SlotKind
   /** Bought or set while laning: the lane opponent weighs on it as much as the team. */
   lane: boolean
+  /** For an item: its place in the buying order, boots apart — 1 the first completed item. */
+  place?: number
   options: JevOption[]
 }
 
@@ -217,30 +219,48 @@ const itemOptions = (open: (ItemOption & { situational?: true })[], names: Names
   open.map((option, index): JevOption => ({ key: `o${index}`, ...measured(option), itemIds: option.itemIds.slice(0, 1), label: names.item(option.itemIds[0]!), situational: option.situational === true }))
 
 /**
- * The core, item by item: the first, second and third completed item are each
- * a slot of the items measured at that place of a core (their games added up
- * over every core that has them there), so a draft can change the second item
- * without a whole measured path that does. Only what was measured there: the
- * core is what the champion's players build first, and the draft's answers
- * from the rest of its items come after it (`laterSlot`) — offered in the
- * core, they took a marksman's second item from the critical strike it needs.
- * Only a place some core measured is a slot: the sources' cores mostly carry
- * the boots (Eclipse, Plated Steelcaps, Sundered Sky), so their third place is
- * the items after them.
+ * The measured cores that follow the items `chosen`, as Hexgate's path pool
+ * and LoLDraftAI's purchase-by-purchase build read the next item: those whose
+ * path starts with them in their order; else those that hold them first in any
+ * order; else every core — a narrower set seen in fewer than `MIN_GAMES` games
+ * is a rumour, and the broader one speaks instead.
  */
-export function coreSlots(options: BuildOptions, names: Names): JevSlot[] {
-  return Array.from({ length: CORE_ITEMS }, (_, index): JevSlot => {
-    const at = new Map<number, { games: number, wins: number }>()
-    for (const core of options.cores) {
-      const id = pathOf(core)[index]
-      if (id === undefined) continue
-      const known = at.get(id) ?? { games: 0, wins: 0 }
-      at.set(id, { games: known.games + core.games, wins: known.wins + core.winRate * core.games })
-    }
-    const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
-    const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
-    return { name: `item${index + 1}`, kind: 'item', lane: index === 0, options: itemOptions(measuredHere, names) }
-  }).filter(slot => slot.options.length > 0)
+function coresAfter(cores: ItemOption[], chosen: number[]): ItemOption[] {
+  if (!chosen.length) return cores
+  const games = (list: ItemOption[]) => list.reduce((sum, core) => sum + core.games, 0)
+  const ordered = cores.filter(core => chosen.every((id, at) => pathOf(core)[at] === id))
+  if (games(ordered) >= MIN_GAMES) return ordered
+  const anyOrder = cores.filter((core) => {
+    const head = pathOf(core).slice(0, chosen.length)
+    return chosen.every(id => head.includes(id))
+  })
+  return games(anyOrder) >= MIN_GAMES ? anyOrder : cores
+}
+
+/**
+ * One place of the core (`index`, 0 the first completed item): the items
+ * measured there in the cores that follow what the build chose before it
+ * (`coresAfter`), their games added up — the second item after Kraken Slayer
+ * is what Kraken Slayer's players build second, not every core's second. Only
+ * what was measured there: the core is what the champion's players build
+ * first, and the draft's answers from the rest of its items come after it
+ * (`laterSlot`) — offered in the core, they took a marksman's second item from
+ * the critical strike it needs. Only a place some core measured is a slot (null
+ * else): the sources' cores mostly carry the boots (Eclipse, Plated Steelcaps,
+ * Sundered Sky), so their third place is the items after them.
+ */
+export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names): JevSlot | null {
+  const at = new Map<number, { games: number, wins: number }>()
+  for (const core of coresAfter(options.cores, chosen)) {
+    const id = pathOf(core)[index]
+    if (id === undefined) continue
+    const known = at.get(id) ?? { games: 0, wins: 0 }
+    at.set(id, { games: known.games + core.games, wins: known.wins + core.winRate * core.games })
+  }
+  if (!at.size) return null
+  const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
+  const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
+  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions(measuredHere, names) }
 }
 
 /** The measured core whose path shares the most items with `chosen`, the most played on a tie: whose follow-ups come next. */
@@ -302,7 +322,7 @@ export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: 
   const measuredHere = reliable(group.options.filter(option => option.itemIds.every(id => chosen(id) && fitsWith(id, held)))).slice(0, 4)
   const open = withSituational(measuredHere, held, situational)
   if (!open.length) return null
-  return { name: `item${slot}`, kind: 'item', lane: false, options: itemOptions(open, names) }
+  return { name: `item${slot}`, kind: 'item', lane: false, place: slot, options: itemOptions(open, names) }
 }
 
 /** The later slots measured after `core`, in order. */

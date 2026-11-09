@@ -16,6 +16,18 @@ export interface GameState {
   objectives: GameObjectives
   /** Our creep score and gold earned at each whole minute so far. */
   pace: GamePace
+  /** Our health and resource; zero when spectating. Only the player's own exist in the API. */
+  vitals: GameVitals
+}
+
+/** Mirrors `Vitals`: our health and resource as shares of their maximum, floored to twentieths (`VITAL_STEP`). */
+export interface GameVitals {
+  /** 0–1; 0 while dead. */
+  health: number
+  /** 0–1; 0 for a champion with no resource bar. */
+  resource: number
+  /** `MANA`, `ENERGY`, `RAGE`, `NONE`… as the game names it. */
+  resourceKind: string
 }
 
 /** Mirrors `Pace` in `crates/live-client/src/pace.rs`; empty when spectating. */
@@ -95,6 +107,8 @@ export interface GamePlayer {
   assists: number
   /** Minions and monsters killed, floored to 10 (`CS_STEP`). */
   creepScore: number
+  /** Vision placed and cleared, in whole points. */
+  wardScore: number
   dead: boolean
   /** Game time the player comes back at, while dead. */
   respawnAt: number | null
@@ -116,12 +130,13 @@ export interface GameSpell {
 export type GameChange =
   | { kind: 'items', player: number, items: GameItem[] }
   | { kind: 'levelUp', player: number, level: number }
-  | { kind: 'score', player: number, kills: number, deaths: number, assists: number, creepScore: number }
+  | { kind: 'score', player: number, kills: number, deaths: number, assists: number, creepScore: number, wardScore: number }
   | { kind: 'died', player: number, respawnAt: number }
   | { kind: 'objectives', objectives: GameObjectives }
   | { kind: 'pace', pace: GamePace }
   | { kind: 'respawned', player: number }
   | { kind: 'gold', gold: number }
+  | { kind: 'vitals', vitals: GameVitals }
 
 /** Mirrors `GameUpdate` in `crates/live-client/src/feed.rs`. */
 export interface GameUpdate {

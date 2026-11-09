@@ -18,6 +18,7 @@ mod lobby;
 mod menu;
 mod news;
 mod overlay;
+mod ready_check;
 mod record;
 mod runes;
 #[cfg(debug_assertions)]
@@ -396,6 +397,8 @@ pub fn run() {
             menu::set_menu_language,
             graphics::graphics_settings,
             graphics::set_graphics_settings,
+            ready_check::ready_check_settings,
+            ready_check::set_ready_check_settings,
             news::riot_patch_notes_page,
             news::open_patch_note,
         ])
@@ -422,6 +425,7 @@ pub fn run() {
             let handle = app.handle().clone();
             menu::install(app)?;
             app.manage(kits::Kits::new(&handle));
+            app.manage(ready_check::ReadyCheck::load(&handle));
             overlay::setup(&handle)?;
             window_state::restore(&handle);
             tauri::async_runtime::spawn(supervisor::run(handle, shared, client));

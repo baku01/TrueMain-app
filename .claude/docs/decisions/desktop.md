@@ -318,7 +318,8 @@ a purchase, a level or a death, but the in-game tips say what such a moment mean
 jungler just seen, a level 2 reached first — and at 2 s they came up to 2 s late (ABSOL's coach reads every 0.4 s); a
 reading that moved nothing sends the clock alone; the wait doubles to 5 s while the game loads. Only what moves at the pace of the game is diffed — items, level, K/D/A, death (with the respawn
 time read once, at the death) and respawn; creep score, gold and stats change on every reading and stay out until a
-panel needs them. Updates are numbered so a missed one is answered by re-reading the state, not by drawing a board
+panel needs them, then in steps (gold by 50, creep score by 10, our health and resource by twentieths for the
+tips, the ward score by whole points). Updates are numbered so a missed one is answered by re-reading the state, not by drawing a board
 with a gap. The derivation, the diff and the end-of-game rule live in one place (`live_client::GameFeed`) fed alike by
 the live poll, a tape and the simulator, so a replay proves what the live path does. A tape keeps game readings raw,
 unlike the client readings, because the panels still to come read fields the app does not parse yet (2026-10-01) —

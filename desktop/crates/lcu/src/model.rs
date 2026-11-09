@@ -49,6 +49,28 @@ impl GameflowPhase {
 /// `GET /lol-gameflow/v1/session`, reduced to the game it is about. Read when a
 /// game starts: the phase alone does not say which game, and a recording is
 /// filed under the game id the match history will later know it by.
+/// The match found and waiting for the ten players' answers
+/// (`/lol-matchmaking/v1/ready-check`), while the phase is `ReadyCheck`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ReadyCheck {
+    /// `InProgress` while the players answer; `EveryoneReady`, `StrangerNotReady`
+    /// or `Invalid` once it is settled.
+    pub state: String,
+    /// The player's own answer: `None` until given, then `Accepted` or `Declined`.
+    pub player_response: String,
+    /// Seconds since the match was found.
+    pub timer: f64,
+}
+
+impl ReadyCheck {
+    /// Still open, and the player has not answered: the one moment an
+    /// automatic accept may answer for them.
+    pub fn awaits_answer(&self) -> bool {
+        self.state == "InProgress" && self.player_response == "None"
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct GameflowSession {
@@ -833,5 +855,24 @@ mod tests {
         .expect("a gameflow session");
         let (blue, red) = data.teams("");
         assert_eq!((blue.len(), red.len()), (1, 1));
+    }
+
+    #[test]
+    fn a_ready_check_awaits_an_answer_only_while_open_and_unanswered() {
+        let open: ReadyCheck = serde_json::from_str(
+            r#"{"state":"InProgress","playerResponse":"None","timer":2.5,"declinerIds":[]}"#,
+        )
+        .unwrap();
+        assert!(open.awaits_answer());
+        let answered = ReadyCheck {
+            player_response: "Declined".into(),
+            ..open.clone()
+        };
+        assert!(!answered.awaits_answer());
+        let settled = ReadyCheck {
+            state: "EveryoneReady".into(),
+            ..open
+        };
+        assert!(!settled.awaits_answer());
     }
 }

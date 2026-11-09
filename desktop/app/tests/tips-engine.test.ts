@@ -109,7 +109,9 @@ const calm = (edit: (game: GameState) => void = () => {}) => game((state) => {
 describe('the minimap', () => {
   it('comes up from 2:00 every minute and a half, two minutes after 15:00', () => {
     expect([0, 899, 900].map(minimapEvery)).toEqual([90, 90, 120])
-    const times = run(seconds(calm(), 0, 700)).said.filter(entry => entry.key === 'map.minimap').map(entry => entry.at)
+    // A player who keeps warding: the ward score rises, and nothing but the fillers speaks.
+    const warding = Array.from({ length: 701 }, (_, at): [GameState, number] => [calm(state => (state.players[AHRI]!.wardScore = Math.floor(at / 60))), at])
+    const times = run(warding).said.filter(entry => entry.key === 'map.minimap').map(entry => entry.at)
     expect(times).toEqual([210, 300, 390, 480, 570, 660])
   })
 

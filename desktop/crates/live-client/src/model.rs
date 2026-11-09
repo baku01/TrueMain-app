@@ -70,6 +70,21 @@ pub struct ActivePlayer {
     pub summoner_name: String,
     /// Unspent gold, fractional: the game pays income by the tick.
     pub current_gold: f64,
+    /// The player's own champion's stats: their health and resource only
+    /// exist here, for no other player.
+    pub champion_stats: ChampionStats,
+}
+
+/// The few of the active player's stats the app reads.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ChampionStats {
+    pub current_health: f64,
+    pub max_health: f64,
+    /// Mana, energy, rage…: `resourceType` says which.
+    pub resource_value: f64,
+    pub resource_max: f64,
+    pub resource_type: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

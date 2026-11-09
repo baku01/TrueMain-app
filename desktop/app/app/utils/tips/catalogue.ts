@@ -109,6 +109,24 @@ export const TIP_RULES: Record<TipKey, TipRule> = {
   'lane.levelTwoBehind': rule('lane', 4, 5),
   'lane.opponentDead': rule('lane', 3, 10),
   'lane.cannon': rule('lane', FILLER_PRIORITY, 6),
+  // Health and the map's numbers move by the second: said now or not at all.
+  'lane.lowHealth': rule('lane', 4, 6),
+  'lane.spikeMine': rule('lane', 3, 10),
+  'lane.spikeTheirs': rule('lane', 3, 10),
+  'lane.levelAhead': rule('lane', 3, 10),
+  'lane.levelBehind': rule('lane', 3, 10),
+  'recall.lowHealth': rule('recall', 4, 6),
+  'recall.richHurt': rule('recall', 3, 10),
+  'ward.idle': rule('ward', 2, 15),
+  'macro.ace': rule('objective', URGENT_PRIORITY, 8),
+  'macro.take.baron': rule('objective', URGENT_PRIORITY, 8),
+  'macro.take.dragon': rule('objective', URGENT_PRIORITY, 8),
+  'macro.take.elder': rule('objective', URGENT_PRIORITY, 8),
+  'macro.take.herald': rule('objective', URGENT_PRIORITY, 8),
+  'macro.take.grubs': rule('objective', URGENT_PRIORITY, 8),
+  'macro.outnumbered': rule('objective', 4, 8),
+  'objective.soulPoint.ours': rule('objective', 4, 15),
+  'objective.soulPoint.theirs': rule('objective', 4, 15),
   'kill.levelTwo': rule('kill', 3, 10),
   'kill.shutdown': rule('kill', 3, 10),
   'death.streak': rule('mental', 3, 30),
@@ -139,7 +157,7 @@ export interface Tip extends TipRule {
 export const makeTip = (key: TipKey, params: TipParams = {}): Tip => ({ key, ...TIP_RULES[key], params })
 
 /** Made-up names and numbers for a tip shown without a game: the preview, the settings' test, a dev query. */
-export const SAMPLE_PARAMS: TipParams = { champion: 'Lee Sin', alias: 'LeeSin', deaths: 3, csPerMin: 7.4, minute: 10, gold: 1450, time: '3:10', seconds: 32 }
+export const SAMPLE_PARAMS: TipParams = { champion: 'Lee Sin', alias: 'LeeSin', deaths: 3, csPerMin: 7.4, minute: 10, gold: 1450, time: '3:10', seconds: 32, health: 22, item: 'Rabadon\'s Deathcap', levels: 2, down: 3, minutes: 4 }
 
 /** The tip the preview shows under the objectives strip: the sample game's next drake (`overlay-sample.ts`). */
 export const SAMPLE_TIP: Tip = makeTip('objective.dragon.30s', { ...SAMPLE_PARAMS, drake: 'ocean' })

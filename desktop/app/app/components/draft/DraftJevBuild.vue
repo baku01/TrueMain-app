@@ -21,7 +21,7 @@ const emit = defineEmits<{ selection: [value: DraftSelection] }>()
 const { t } = useT()
 const { nameOf } = useChampionStatics()
 const { tag } = useJevBaseLabels()
-const { status, error, ranked, needs, enemies, jevBuild, standardBuild, answered } = props.jev
+const { status, error, ranked, needs, enemies, jevBuild, standardBuild, answered, stale, ask } = props.jev
 const { offered, selected, pending } = props.bases
 
 const selection = computed(() => {
@@ -39,6 +39,16 @@ watch(() => JSON.stringify(selection.value), () => selection.value && emit('sele
     <UAlert v-if="status === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
     <UAlert v-else-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
     <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="error ?? undefined" />
+    <UAlert
+      v-if="status === 'ready' && stale"
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-history"
+      :title="t('jev.card.stale')"
+      :description="t('jev.card.staleHint')"
+      :actions="[{ label: t('jev.card.again'), color: 'primary', variant: 'soft', onClick: () => ask() }]"
+      data-jev-stale
+    />
     <JevBuildBody
       v-if="status === 'ready' && subject"
       :champion-id="subject.championId"

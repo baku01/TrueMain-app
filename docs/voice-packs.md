@@ -89,6 +89,25 @@ Um script de conversão pode ler esse arquivo direto: são só dados.
 | `lane.opponentDead.tail.mp3` | morreu: empurra a wave e bate na torre. | parte final, depois do nome ou do número |
 | `lane.cannon.mp3` | Wave de canhão chegando: empurra antes de voltar ou rodar. |  |
 | `recall.cannon.mp3` | Wave de canhão chegando: empurra na torre e volta pra comprar. |  |
+| `recall.lowHealth.mp3` | Vida baixa e ouro pra gastar: volta agora. |  |
+| `recall.richHurt.mp3` | Meia vida e muito ouro: volta e compra. |  |
+| `lane.lowHealth.mp3` | Vida baixa: fica atrás dos minions, não troca. |  |
+| `ward.idle.mp3` | Faz tempo que você não warda: bota uma no rio. |  |
+| `lane.spikeMine.mp3` | Item fechado: é o seu pico, procura uma troca. |  |
+| `lane.spikeTheirs.mp3` | Teu oponente fechou um item: respeita a troca. | `champion/<Alias>.mp3` + `lane.spikeTheirs.tail.mp3` |
+| `lane.spikeTheirs.tail.mp3` | fechou um item: respeita a troca. | parte final, depois do nome ou do número |
+| `lane.levelAhead.mp3` | Você está níveis acima do oponente: a luta é sua. |  |
+| `lane.levelBehind.mp3` | Teu oponente está níveis acima: não luta, farma seguro. | `champion/<Alias>.mp3` + `lane.levelBehind.tail.mp3` |
+| `lane.levelBehind.tail.mp3` | está níveis acima: não luta, farma seguro. | parte final, depois do nome ou do número |
+| `macro.ace.mp3` | Ace! Empurra torre, inibidor ou faz o Barão. |  |
+| `macro.take.baron.mp3` | Inimigos mortos e o Barão de pé: faz agora! |  |
+| `macro.take.dragon.mp3` | Inimigos mortos e o Dragão de pé: faz agora! |  |
+| `macro.take.elder.mp3` | Inimigos mortos e o Ancião de pé: faz agora! |  |
+| `macro.take.herald.mp3` | Inimigos mortos e o Arauto de pé: pega agora! |  |
+| `macro.take.grubs.mp3` | Inimigos mortos e as Larvas de pé: pega agora! |  |
+| `macro.outnumbered.mp3` | Aliados mortos: não luta, segura a torre. |  |
+| `objective.soulPoint.ours.mp3` | Ponto de alma: o próximo dragão é nosso. |  |
+| `objective.soulPoint.theirs.mp3` | Eles estão no ponto de alma: o próximo dragão é obrigatório. |  |
 | `map.minimap.mp3` | Dá uma olhada no minimapa! |  |
 | `ward.redLens.mp3` | Troca o amuleto amarelo pela lente vermelha! |  |
 | `ward.blueLens.mp3` | Nível nove! Troca pro amuleto azul. |  |

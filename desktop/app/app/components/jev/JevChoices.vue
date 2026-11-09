@@ -4,11 +4,14 @@ import { formatPercentage } from '#shared/utils/ddragon'
 
 /**
  * Every choice of the build as a table, one panel per choice and one row per
- * option, best score first, the columns the same in every panel so options
- * compare at a glance: the option (its icons with their tooltips), its score,
- * what lolalytics and Blitz measured (win rate, pick rate and games, win
- * probability added on the lane and against the opponent), the parts of the
- * score and the needs it answers. The recommended row stands out in the
+ * option, the recommended first — the best score among the popular options,
+ * a rarer one only with a reason (`POPULAR`, `DEVIATE`), so not always the
+ * best score — then best score first,
+ * the columns the same in every panel so options compare at a glance: the
+ * option (its icons with their tooltips), its score, what lolalytics and
+ * Blitz measured (win rate, pick rate and games, win probability added on the
+ * lane and against the opponent), the parts of the score and the needs it
+ * answers. The recommended row stands out in the
  * accent, the most played carries its mark, and a panel where the two part
  * says so.
  */
@@ -27,10 +30,10 @@ const partsOf = (parts: Parts) => ([['stats'], ['draft', 'lane'], ['kit']] as (k
 })
 const barTone = (value: number) => (value >= 0.6 ? 'bg-primary' : value <= 0.35 ? 'bg-error/70' : 'bg-(--ui-text-dimmed)')
 const has = (value: number | null | undefined): value is number => value !== null && value !== undefined
-/** Each slot's options, best score first. */
+/** Each slot's options, the recommended first, then best score first. */
 const rows = computed(() => props.ranked.map(entry => ({
   entry,
-  options: [...entry.slot.options].sort((a, b) => (entry.scored[b.key]?.total ?? 0) - (entry.scored[a.key]?.total ?? 0)),
+  options: [...entry.slot.options].sort((a, b) => Number(b.key === entry.pick.key) - Number(a.key === entry.pick.key) || (entry.scored[b.key]?.total ?? 0) - (entry.scored[a.key]?.total ?? 0)),
 })))
 /** The columns every panel shares: marks, option, score, win rate, pick rate and games, WPA, score parts, answers. */
 const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5rem_minmax(8rem,1fr)] items-center gap-x-2'

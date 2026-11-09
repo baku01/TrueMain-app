@@ -11,6 +11,7 @@ export function applyGameChanges(game: GameState, changes: GameChange[]): GameSt
   let gold = game.gold
   let objectives = game.objectives
   let pace = game.pace
+  let vitals = game.vitals
   for (const change of changes) {
     if (change.kind === 'gold') {
       gold = change.gold
@@ -24,6 +25,10 @@ export function applyGameChanges(game: GameState, changes: GameChange[]): GameSt
       pace = change.pace
       continue
     }
+    if (change.kind === 'vitals') {
+      vitals = change.vitals
+      continue
+    }
     const player = players[change.player]
     if (!player) continue
     switch (change.kind) {
@@ -34,6 +39,7 @@ export function applyGameChanges(game: GameState, changes: GameChange[]): GameSt
         player.deaths = change.deaths
         player.assists = change.assists
         player.creepScore = change.creepScore
+        player.wardScore = change.wardScore
         break
       case 'died':
         player.dead = true
@@ -45,7 +51,7 @@ export function applyGameChanges(game: GameState, changes: GameChange[]): GameSt
         break
     }
   }
-  return { ...game, players, gold, objectives, pace }
+  return { ...game, players, gold, objectives, pace, vitals }
 }
 
 /**

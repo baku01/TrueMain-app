@@ -1,10 +1,11 @@
 import type { FitRead, ItemRead } from '~/utils/jev-read'
 import type { Answer, Needs, Resist } from '~/utils/jev-needs'
 import type { PickRead } from '~/utils/jev-read-pick'
-import type { JevOption, JevSlot, LaidBuild } from '~/utils/jev-build'
+import type { JevOption, JevSlot, LaidBuild, SlotKind } from '~/utils/jev-build'
 import type { ItemSetBuild } from '~/utils/item-set'
+import { MIN_GAMES } from '~/utils/jev-build'
 import { fitOf } from '~/utils/jev-needs'
-import { statsOf } from '~/utils/jev-stats'
+import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
 
 /**
  * The Jev matchup page's ranking, all arithmetic and all in code — TypeSafe's
@@ -28,19 +29,58 @@ import { statsOf } from '~/utils/jev-stats'
  *    its sample, and what Blitz measures it adds to the win probability over
  *    the slot's — only where every option of the slot was measured so.
  * 4. The total: statistics, the draft and how well it suits our champion's
- *    kit, weighed as `WEIGHTS` says; the slot takes the highest.
+ *    kit, weighed as `WEIGHTS` says — an item's draft the more the later it is
+ *    bought, the kit only as far as the option's games are few (`modeled`).
+ * 5. The pick, as the AI builders pick (Hexgate, LoLDraftAI, iTero: the
+ *    statistics make the pool, the draft ranks inside it): the highest total
+ *    of the slot's popular options (`POPULAR`); a rarer option only with a
+ *    reason (`DEVIATE`, `reasonOf`); none that wins credibly less.
  */
 
 export type { Answer, EnemyLine, Fit, Needs } from '~/utils/jev-needs'
 export { NEEDS, answersDraft, fitOf, laneNeeds, needsOf } from '~/utils/jev-needs'
 
-/** How the parts weigh in a total, by what the slot is. A part missing (unread, unmeasured) gives its weight to the others. */
-export const WEIGHTS: Record<'item' | 'starter' | 'choice' | 'skills', Partial<Record<keyof Parts, number>>> = {
-  item: { stats: 0.4, draft: 0.35, kit: 0.25 },
+export type Weights = Partial<Record<keyof Parts, number>>
+
+/**
+ * How the parts weigh in a total, by what the slot is. A part missing
+ * (unread, unmeasured) gives its weight to the others; an item's kit weighs
+ * its share only on thin evidence (`modeled`).
+ *
+ * An item's weights go by its place in the buying order (`itemWeights`): the
+ * draft weighs the more the later the item. The first item is the lane's and
+ * what nearly every player of the champion rushes, its measures the densest;
+ * past it the measures thin out — Hexgate falls back from the bought path to
+ * the slot's pool under 50 games — while the draft's answers fall due: armor
+ * by the second item, magic resist by the third (LoLTheory's rules,
+ * `utils/jev-rules`). LoLDraftAI weighs the draft at every purchase. The
+ * numbers are a judgment, not a measure: the second item keeps the weights
+ * every item had before.
+ */
+export const WEIGHTS: { item: readonly Weights[], boots: Weights, starter: Weights, choice: Weights, skills: Weights } = {
+  item: [
+    { stats: 0.45, draft: 0.3, kit: 0.25 },
+    { stats: 0.4, draft: 0.35, kit: 0.25 },
+    { stats: 0.3, draft: 0.45, kit: 0.25 },
+  ],
+  boots: { stats: 0.4, draft: 0.35, kit: 0.25 },
   starter: { stats: 0.5, lane: 0.5 },
   choice: { stats: 0.5, lane: 0.5 },
   skills: { stats: 1 },
 }
+
+/** An item's weights at its place in the buying order (1 the first completed item); the last row from the third item on, and where the place is not known. */
+export const itemWeights = (place?: number): Weights => WEIGHTS.item[Math.min(Math.max(place ?? WEIGHTS.item.length, 1), WEIGHTS.item.length) - 1]!
+
+/**
+ * How much of its weight Jev's read of how an item suits our champion keeps,
+ * by the option's games: all of it under `MIN_GAMES` — LoLTheory's own 30, under
+ * which it shows a "Modeled" win rate that pulls from similar builds instead of
+ * the observed one — then as `MIN_GAMES / games`, a tenth at 300 games, a
+ * hundredth at 3,000. The read is an opinion no game confirmed: where the
+ * games speak, it only breaks a tie.
+ */
+export const modeled = (games: number): number => Math.min(1, MIN_GAMES / Math.max(games, 1))
 
 /** The parts of an option's total, each 0–1; absent where the slot has none. */
 export interface Parts {
@@ -50,20 +90,41 @@ export interface Parts {
   lane?: number
 }
 
+/**
+ * Why an option may take the place of the slot's most played: an edge its
+ * games prove (`edge`, in win rate, over the most played), a need of the
+ * enemy team it answers that the most played does not (`need`; null where
+ * the most played defends only against damage the team barely deals), a
+ * lane Jev read it suits better (`fit` against the most played's), or — for a
+ * popular option alone (`POPULAR`) — Jev's read that it suits our champion's
+ * kit better.
+ */
+export type DeviationReason =
+  | { kind: 'proven', edge: number }
+  | { kind: 'draft', need: keyof Needs | null }
+  | { kind: 'lane', fit: number, standard: number }
+  | { kind: 'kit' }
+
 export interface Scored {
   total: number
   parts: Parts
+  /** The weights its total was made with. */
+  weights: Weights
   answers: Answer[]
   misfit: boolean
+  /** Its reason to take the most played's place, where it has one (`reasonOf`). */
+  reason?: DeviationReason
 }
 
 export interface RankedSlot {
   slot: JevSlot
-  /** The option with the highest total. */
+  /** The option taken: the most played, unless another has a reason to take its place (`DEVIATE`). */
   pick: JevOption
   /** The most played option. */
   standard: JevOption
   scored: Record<string, Scored>
+  /** Why the pick is not the most played; absent where it is. */
+  reason?: DeviationReason
 }
 
 export interface RankContext {
@@ -79,7 +140,7 @@ export interface RankContext {
   due?: Resist[]
 }
 
-function total(parts: Parts, weights: Partial<Record<keyof Parts, number>>): number {
+function total(parts: Parts, weights: Weights): number {
   const present = (Object.keys(weights) as (keyof Parts)[]).filter(part => parts[part] !== undefined)
   const weight = present.reduce((sum, part) => sum + weights[part]!, 0)
   return weight ? present.reduce((sum, part) => sum + weights[part]! * parts[part]!, 0) / weight : 0
@@ -88,16 +149,131 @@ function total(parts: Parts, weights: Partial<Record<keyof Parts, number>>): num
 /** A draft whose damage is physical and comes in bursts: armor answers it whatever our champion makes of armor. */
 const PHYSICAL_BURST = { physical: 0.8, burst: 0.5 }
 
+/**
+ * When the pick parts from the slot's most played option, which the sources
+ * show first (Buildzcrank leads with it; Blitz shows it). The AI builders do
+ * not keep it: Hexgate ranks the champion's measured items at the slot by the
+ * enemy team, LoLDraftAI takes each purchase's best predicted win rate given
+ * the draft, iTero's model weighs the draft's features — the statistics make
+ * the pool, the draft ranks inside it. So a popular option (`POPULAR`)
+ * competes on its total: the highest of them is taken, a total within
+ * `POPULAR.margin` of the most played's a tie the most played keeps (Hexgate
+ * pins its first pick against flicker). A rarer option is mostly the games of
+ * the players and situations that pick it (`utils/jev-stats`), and a rare
+ * item Jev's read liked used to beat what the bracket builds; it takes the
+ * place only with a reason (`reasonOf`):
+ * - `proven`: its credible edge over the most played (`utils/jev-stats`, at
+ *   its 95% lower bound) is half a point of win rate or more — 0.62 on the
+ *   stats part;
+ * - `draft` (items, boots): it answers a need of the enemy team by a quarter
+ *   of the need more than the most played answers it, and its draft part
+ *   stands a quarter of the scale above the most played's — its fit, times
+ *   what our champion makes of it, higher by half. A resistance a rule makes
+ *   due, armor into physical burst, Grievous Wounds into heavy healing,
+ *   Tenacity into heavy crowd control get there; armor boots a marksman half
+ *   uses, into a physical lane without burst, do not;
+ * - `lane` (runes, spells, starters): Jev read it suits the lane opponent by
+ *   0.3 more than the most played, with a confidence of 0.7 or more.
+ * And never one that wins credibly less, popular or not: a shortfall of a
+ * point or more (0.27 on the stats part), twice the edge a deviation must
+ * prove — a shortfall counts at its estimate, not at a bound, and what the
+ * measures average over every draft is not this draft, which a reason
+ * answers. A misfit never takes the place; a misfit most played gives it to
+ * any option that is not one, as its halved score always did. The skill
+ * order (its statistics alone already keep the most played) and the boots'
+ * timing (no most played: the lane's urgency places it) keep the highest
+ * total.
+ */
+export const DEVIATE = {
+  proven: 0.005,
+  worse: -0.01,
+  draft: 0.25,
+  answer: 0.25,
+  lane: { margin: 0.3, confidence: 0.7 },
+} as const
+
+/**
+ * The share of the slot's games from which an option competes with the most
+ * played on its total (`share`), and the total it must beat the most
+ * played's by (`margin`) — about a fifth of a point of win rate on the stats
+ * part, a tenth of an item's fit to the draft. What one player in ten of the
+ * bracket builds there is a build, not a rumour: its win rate carries little
+ * of the selection a rare option's does (`SELECTION`, `0.63·ln(1/share)`
+ * points: 1.5 at a tenth against 2.9 at a hundredth). It still needs its
+ * games (`MIN_GAMES`); an option added from the champion's pool, not measured
+ * at the slot (`situational`), never is one.
+ */
+export const POPULAR = { share: 0.1, margin: 0.02 } as const
+
+/** The slots whose pick is the most played unless an option has a reason (`DEVIATE`). */
+const BY_REASON: SlotKind[] = ['item', 'boots', 'runes', 'spells', 'starter']
+
+/** The need `answers` answers most beyond what `standard` answers of it, and by how much. */
+function gained(answers: Answer[], standard: Answer[]): Answer | null {
+  return answers
+    .map(answer => ({ need: answer.need, value: answer.value - (standard.find(other => other.need === answer.need)?.value ?? 0) }))
+    .reduce<Answer | null>((best, answer) => (answer.value > (best?.value ?? 0) ? answer : best), null)
+}
+
+/**
+ * Why a popular option's total beats the most played's: the part that gains
+ * it the most, weighed as its total weighs it — the edge its games show, the
+ * need it answers that the most played does not, the lane Jev read it suits,
+ * or Jev's read of our champion's kit. Null where no part explains it.
+ */
+function leadOf(mine: Scored, theirs: Scored, edge: number | null, fits: { mine?: FitRead, theirs?: FitRead }): DeviationReason | null {
+  const gains = (Object.keys(mine.weights) as (keyof Parts)[])
+    .filter(part => mine.parts[part] !== undefined)
+    .map(part => ({ part, gain: mine.weights[part]! * (mine.parts[part]! - (theirs.parts[part] ?? 0.5)) }))
+    .filter(entry => entry.gain > 0)
+    .sort((a, b) => b.gain - a.gain)
+  for (const { part } of gains) {
+    if (part === 'stats' && (edge ?? 0) > 0) return { kind: 'proven', edge: edge! }
+    const need = part === 'draft' ? gained(mine.answers, theirs.answers)?.need : undefined
+    if (need) return { kind: 'draft', need }
+    if (part === 'lane' && fits.mine) return { kind: 'lane', fit: fits.mine.fit, standard: fits.theirs?.fit ?? 0.5 }
+    if (part === 'kit') return { kind: 'kit' }
+  }
+  return null
+}
+
+/**
+ * Why an option (`mine`) may take the place of the slot's most played
+ * (`theirs`), as `DEVIATE` says, or null: the first that holds of a misfit
+ * most played, a proven edge, a popular option's higher total (`POPULAR`),
+ * the draft and the lane — `edge` the option's over the most played, `fits`
+ * Jev's lane reads of both.
+ */
+function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | null, fits: { mine?: FitRead, theirs?: FitRead }, popular: boolean): DeviationReason | null {
+  if (mine.misfit) return null
+  const items = kind === 'item' || kind === 'boots'
+  if (items && theirs.misfit) return { kind: 'draft', need: gained(mine.answers, theirs.answers)?.need ?? null }
+  if ((edge ?? 0) <= DEVIATE.worse) return null
+  if ((edge ?? 0) >= DEVIATE.proven) return { kind: 'proven', edge: edge! }
+  if (popular) return mine.total - theirs.total > POPULAR.margin ? leadOf(mine, theirs, edge, fits) : null
+  if (items) {
+    const answer = gained(mine.answers, theirs.answers)
+    if (answer && answer.value >= DEVIATE.answer && (mine.parts.draft ?? 0.5) - (theirs.parts.draft ?? 0.5) >= DEVIATE.draft) return { kind: 'draft', need: answer.need }
+  }
+  else if (fits.mine && fits.mine.confidence >= DEVIATE.lane.confidence) {
+    const standard = fits.theirs?.fit ?? 0.5
+    if (fits.mine.fit - standard >= DEVIATE.lane.margin) return { kind: 'lane', fit: fits.mine.fit, standard }
+  }
+  return null
+}
+
 /** Every option of a slot scored, and the one it takes. */
 export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
-  const stats = statsOf(slot.options, slot.kind === 'item' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
+  const edges = edgesOf(slot.options, slot.kind === 'item' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
   const scored: Record<string, Scored> = {}
+  const fits: Record<string, FitRead | undefined> = {}
   for (const option of slot.options) {
     const parts: Parts = {}
-    if (stats[option.key] !== null && stats[option.key] !== undefined) parts.stats = stats[option.key]!
+    const edge = edges[option.key]
+    if (edge !== null && edge !== undefined) parts.stats = statsPart(edge)
     let answers: Answer[] = []
     let misfit = false
-    let weights = WEIGHTS.choice
+    let weights: Weights = WEIGHTS.choice
     if (slot.kind === 'item' || slot.kind === 'boots') {
       const fit = fitOf(option.itemIds, slot.lane ? context.lane : context.team, context.itemReads, context.tags, { due: context.due })
       const reads = option.itemIds.map(id => context.itemReads.get(id)).filter(read => !!read)
@@ -111,16 +287,19 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       parts.draft = 0.5 + 0.5 * fit.fit * (intoBurst ? 1 : parts.kit ?? 1)
       answers = fit.answers
       misfit = fit.misfit
-      weights = WEIGHTS.item
+      const base = slot.kind === 'boots' ? WEIGHTS.boots : itemWeights(slot.place)
+      weights = { ...base, kit: base.kit! * modeled(option.games) }
     }
     else if (slot.kind === 'starter') {
       const fit = context.fits[`st_${option.key}`]
       if (fit) parts.lane = fit.fit
+      fits[option.key] = fit
       weights = WEIGHTS.starter
     }
     else if (slot.kind === 'runes' || slot.kind === 'spells') {
       const fit = context.fits[`${slot.kind === 'runes' ? 'r' : 's'}_${option.key}`]
       if (fit) parts.lane = fit.fit
+      fits[option.key] = fit
     }
     else if (slot.kind === 'skills') {
       weights = WEIGHTS.skills
@@ -130,10 +309,32 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       const after = option.after ?? 1
       parts.lane = after === 0 ? context.urgency : after === 1 ? 1 - Math.abs(context.urgency - 0.5) * 2 : 1 - context.urgency
     }
-    scored[option.key] = { total: total(parts, weights) * (misfit ? 0.5 : 1), parts, answers, misfit }
+    scored[option.key] = { total: total(parts, weights) * (misfit ? 0.5 : 1), parts, weights, answers, misfit }
   }
-  const pick = slot.options.reduce((best, option) => (scored[option.key]!.total > scored[best.key]!.total + 1e-9 ? option : best), slot.options[0]!)
-  return { slot, pick, standard: slot.options[0]!, scored }
+  const standard = slot.options[0]!
+  const best = (options: JevOption[]) => options.reduce((top, option) => (scored[option.key]!.total > scored[top.key]!.total + 1e-9 ? option : top), options[0]!)
+  if (!BY_REASON.includes(slot.kind)) return { slot, pick: best(slot.options), standard, scored }
+  const others = slot.options.slice(1)
+  const share = shareOf(slot.options)
+  const popular = (option: JevOption) => !option.situational && option.games >= MIN_GAMES && share(option) >= POPULAR.share
+  for (const option of others) {
+    const reason = reasonOf(slot.kind, scored[option.key]!, scored[standard.key]!, edges[option.key] ?? null, { mine: fits[option.key], theirs: fits[standard.key] }, popular(option))
+    if (reason) scored[option.key]!.reason = reason
+  }
+  // Among the options with a reason and the most played, the highest total; the most played on a tie.
+  const pick = best([standard, ...others.filter(option => scored[option.key]!.reason)])
+  return { slot, pick, standard, scored, ...(pick !== standard ? { reason: scored[pick.key]!.reason } : {}) }
+}
+
+/**
+ * A reason as the line the build shows under a pick that is not the most
+ * played: its message key and parameters, the proven edge in points of win
+ * rate written as `locale` writes numbers.
+ */
+export function reasonMessage(reason: DeviationReason, locale?: string): { key: string, params?: Record<string, string> } {
+  if (reason.kind === 'proven') return { key: 'jev.reason.proven', params: { points: (reason.edge * 100).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) } }
+  if (reason.kind === 'draft') return { key: `jev.reason.draft.${reason.need ?? 'misfit'}` }
+  return { key: `jev.reason.${reason.kind}` }
 }
 
 /** How a pick's parts weigh: the source's own ranking, then the lane, the team and the enemy team as Jev read them. */
