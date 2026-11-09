@@ -22,6 +22,13 @@ export interface TipMemory {
   spokeAt: number | null
   /** When a Control Ward was last suggested at the shop. */
   controlAt: number | null
+  /** When going back for our health was last suggested. */
+  healthAt: number | null
+  /** Our ward score when it last rose, and when; and when warding was last suggested. */
+  ward: { score: number, at: number } | null
+  wardSaidAt: number | null
+  /** Which way our lane's level gap was last said (−1 behind, 1 ahead, 0 even since). */
+  levelGap: -1 | 0 | 1
   /** When the enemy jungler was last reported seen. */
   spottedAt: number | null
   /** When the gold lead was last reported, and which way it then stood. */
@@ -40,6 +47,10 @@ export const emptyMemory = (): TipMemory => ({
   minimapAt: null,
   spokeAt: null,
   controlAt: null,
+  healthAt: null,
+  ward: null,
+  wardSaidAt: null,
+  levelGap: 0,
   spottedAt: null,
   goldAt: null,
   goldStanding: 'even',

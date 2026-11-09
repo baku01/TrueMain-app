@@ -1,6 +1,7 @@
 import type { Reading } from './reading'
 import type { TipKey } from './catalogue'
 import { championParams, clockText, crossed, isJungler, laneOf, laneOpponent, sameItems, say } from './reading'
+import { finishedItem } from './rules-self'
 
 /**
  * The tips the other players call for: the enemy jungler and where to ward
@@ -119,6 +120,42 @@ export function levelTips(reading: Reading) {
   if (me.level >= 6 && rival.level >= 6) memory.said['level.six'] = true
   else if (me.level >= 6) say(reading, 'level.sixFirst', {}, 'level.six')
   else say(reading, 'level.enemySixFirst', championParams(rival), 'level.six')
+}
+
+/**
+ * Our lane opponent finishing a legendary: the item shows on the scoreboard
+ * once he is seen with it, and his spike is the moment to respect a trade
+ * (ABSOL's "fechou o primeiro item! … respeita"). Laners only, once an item.
+ */
+export function enemySpikeTips(reading: Reading) {
+  const { game, me, last, items } = reading
+  if (!last || !laneOf(me)) return
+  const rival = laneOpponent(game, me)
+  if (!rival) return
+  const was = last.players[game.players.indexOf(rival)]
+  if (!was) return
+  const item = finishedItem(was.items, rival.items, items)
+  if (item) say(reading, 'lane.spikeTheirs', { ...championParams(rival), item: item.name }, `spike@${rival.champion}@${item.id}`)
+}
+
+/** Levels apart from which a lane is won or lost on stats alone (ABSOL's "níveis na frente/atrás"); laning phase only. */
+export const LEVEL_GAP = { levels: 2, until: 840 } as const
+
+/** Two levels or more between us and our lane opponent, said once each way until the gap closes. */
+export function levelGapTips(reading: Reading) {
+  const { game, me, memory, clock } = reading
+  if (clock >= LEVEL_GAP.until || !laneOf(me)) return
+  const rival = laneOpponent(game, me)
+  if (!rival) return
+  const gap = me.level - rival.level
+  const side = gap >= LEVEL_GAP.levels ? 1 : gap <= -LEVEL_GAP.levels ? -1 : 0
+  if (side === 0) {
+    memory.levelGap = 0
+    return
+  }
+  if (side === memory.levelGap) return
+  memory.levelGap = side
+  say(reading, side > 0 ? 'lane.levelAhead' : 'lane.levelBehind', { ...championParams(rival), levels: Math.abs(gap) })
 }
 
 /** A shutdown: an enemy this far ahead carries a bounty when he falls (ABSOL's bar). */

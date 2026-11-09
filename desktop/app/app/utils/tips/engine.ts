@@ -5,7 +5,9 @@ import { FILLER_PRIORITY } from './catalogue'
 import type { Reading, TipMemory } from './reading'
 import { emptyMemory, sameRoster } from './reading'
 import { cannonTips, farmTips, goldTips, minimapTips, objectiveTips, trinketTips } from './rules-clock'
-import { deathWindowTips, fightTips, jungleTips, levelTips, levelTwoTips } from './rules-players'
+import { numbersTips, soulTips } from './rules-macro'
+import { deathWindowTips, enemySpikeTips, fightTips, jungleTips, levelGapTips, levelTips, levelTwoTips } from './rules-players'
+import { healthTips, ownSpikeTips, wardTips } from './rules-self'
 import { controlObjectiveTips, controlShopTips, startWardTips } from './rules-vision'
 
 export type { TipMemory } from './reading'
@@ -21,8 +23,9 @@ export const RIFT_MAP = 11
 export const RIFT_MODES: ReadonlySet<string> = new Set(['CLASSIC', 'PRACTICETOOL'])
 
 const RULES: ((reading: Reading) => void)[] = [
-  objectiveTips, startWardTips, jungleTips, levelTwoTips, deathWindowTips, controlShopTips, controlObjectiveTips,
-  fightTips, levelTips, cannonTips, farmTips, trinketTips, goldTips,
+  objectiveTips, numbersTips, soulTips, healthTips, startWardTips, jungleTips, levelTwoTips, deathWindowTips,
+  controlShopTips, controlObjectiveTips, enemySpikeTips, ownSpikeTips, levelGapTips, fightTips, levelTips, cannonTips,
+  farmTips, trinketTips, wardTips, goldTips,
   // Last: it waits for a quiet screen, and this reading's tips break the quiet.
   minimapTips,
 ]

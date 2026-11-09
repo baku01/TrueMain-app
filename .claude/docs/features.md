@@ -640,7 +640,13 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   slot, 75 gold, from 2:30, once a trip) and 90 s before the dragon (bot, mid, jungle) and Baron (top, mid, jungle):
   back for one, or take the one held to the pit; the cannon wave reaching our lane (3:00 to 13:30, every 90 s; mid
   19 s after it spawns, side lanes 25 s): shove it and back with 1100 gold, else a filler; the minimap every 90 s
-  (120 s from 15:00), a filler; the red lens
+  (120 s from 15:00), a filler; from the player's own state, which the game gives for the player alone (`vitals`:
+  health and resource in twentieths; every player's ward score in whole points, both carried by the feed): back at a
+  quarter health with 800 gold (else behind the wave), at half health with 2500 (ABSOL's bars), 45 s apart; a ward
+  score standing still 4 min (3 for a support); the map's numbers from the death timers: two enemies down 15 s or more
+  with an objective standing (Baron first, then the pit, the Herald, the grubs) — take it —, an ace, two allies down —
+  hold —; a side reaching its soul point (3 drakes); our lane opponent's and our own finished legendaries (2200 gold or
+  more, not boots), and a two-level gap in the lane before 14:00; the red lens
   for a jungler from 3:00, the blue one for mid/ADC from level 9; CS/min at 10:00 and every 5 min to 35:00 (laner 7/5,
   jungler 5/3, no support); our or our lane opponent's first level 6; a level-2 kill, a shutdown, a death streak, the
   third death to one enemy (the one enemy whose kills rose in the reading); the gold lead from item prices. No rule

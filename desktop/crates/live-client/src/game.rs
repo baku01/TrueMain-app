@@ -7,7 +7,9 @@
 //! change, which is exactly what the frontend is not to receive. A panel that
 //! needs one of them adds it here with the pace it actually needs — our gold,
 //! for the next-item panel (#1751), moves in steps of [`GOLD_STEP`]; every
-//! player's creep score, for the win probability, in steps of [`CS_STEP`].
+//! player's creep score, for the win probability, in steps of [`CS_STEP`];
+//! our health and resource, for the in-game tips, in steps of [`VITAL_STEP`];
+//! every player's ward score in whole points.
 
 use serde::{Deserialize, Serialize};
 
@@ -42,7 +44,29 @@ pub struct GameState {
     /// the feed, since one reading holds only the present.
     #[serde(default)]
     pub pace: Pace,
+    /// Our health and resource; zero when spectating. Only the player's own
+    /// exist in the API.
+    #[serde(default)]
+    pub vitals: Vitals,
 }
+
+/// Our health and resource as shares of their maximum, floored to
+/// [`VITAL_STEP`].
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vitals {
+    /// 0–1; 0 while dead.
+    pub health: f64,
+    /// 0–1; 0 for a champion with no resource bar.
+    pub resource: f64,
+    /// `MANA`, `ENERGY`, `RAGE`, `NONE`… as the game names it.
+    pub resource_kind: String,
+}
+
+/// The pace our health and resource move at on the frontend: a twentieth of
+/// the bar, fine enough to tell a champion that should go back from one that
+/// can stay, coarse enough not to make every poll a change.
+pub const VITAL_STEP: f64 = 0.05;
 
 /// The pace our gold moves at on the frontend. Income alone crosses a step
 /// every ten seconds or so, a last hit or a kill at once — fine enough to say
@@ -104,6 +128,9 @@ pub struct GamePlayer {
     /// Minions and monsters killed, as the scoreboard counts them, floored
     /// to [`CS_STEP`].
     pub creep_score: i64,
+    /// Vision placed and cleared, in whole points.
+    #[serde(default)]
+    pub ward_score: i64,
     pub dead: bool,
     /// The game time the player comes back at, while dead.
     pub respawn_at: Option<f64>,
@@ -151,6 +178,7 @@ pub enum GameChange {
         deaths: i64,
         assists: i64,
         creep_score: i64,
+        ward_score: i64,
     },
     Died {
         player: usize,
@@ -170,6 +198,10 @@ pub enum GameChange {
     /// A new minute's sample of our pace.
     Pace {
         pace: Pace,
+    },
+    /// Our health or resource crossed a [`VITAL_STEP`].
+    Vitals {
+        vitals: Vitals,
     },
 }
 
@@ -204,6 +236,7 @@ impl GameState {
             gold: floor_to_step(data.active_player.current_gold),
             objectives: Objectives::from_payload(data),
             pace: Pace::default(),
+            vitals: Vitals::from_payload(&data.active_player.champion_stats),
         })
     }
 
@@ -245,14 +278,21 @@ impl GameState {
                 before.deaths,
                 before.assists,
                 before.creep_score,
-            ) != (after.kills, after.deaths, after.assists, after.creep_score)
-            {
+                before.ward_score,
+            ) != (
+                after.kills,
+                after.deaths,
+                after.assists,
+                after.creep_score,
+                after.ward_score,
+            ) {
                 changes.push(GameChange::Score {
                     player,
                     kills: after.kills,
                     deaths: after.deaths,
                     assists: after.assists,
                     creep_score: after.creep_score,
+                    ward_score: after.ward_score,
                 });
             }
             match (before.dead, after.dead) {
@@ -275,6 +315,11 @@ impl GameState {
         if self.pace != next.pace {
             changes.push(GameChange::Pace {
                 pace: next.pace.clone(),
+            });
+        }
+        if self.vitals != next.vitals {
+            changes.push(GameChange::Vitals {
+                vitals: next.vitals.clone(),
             });
         }
         Some(changes)
@@ -302,6 +347,10 @@ impl GameState {
                     self.pace.clone_from(pace);
                     continue;
                 }
+                GameChange::Vitals { vitals } => {
+                    self.vitals.clone_from(vitals);
+                    continue;
+                }
             };
             let Some(player) = self.players.get_mut(index) else {
                 continue;
@@ -314,12 +363,14 @@ impl GameState {
                     deaths,
                     assists,
                     creep_score,
+                    ward_score,
                     ..
                 } => {
                     player.kills = *kills;
                     player.deaths = *deaths;
                     player.assists = *assists;
                     player.creep_score = *creep_score;
+                    player.ward_score = *ward_score;
                 }
                 GameChange::Died { respawn_at, .. } => {
                     player.dead = true;
@@ -331,7 +382,8 @@ impl GameState {
                 }
                 GameChange::Gold { .. }
                 | GameChange::Objectives { .. }
-                | GameChange::Pace { .. } => {}
+                | GameChange::Pace { .. }
+                | GameChange::Vitals { .. } => {}
             }
         }
     }
@@ -400,12 +452,38 @@ impl GamePlayer {
             deaths: player.scores.deaths,
             assists: player.scores.assists,
             creep_score: player.scores.creep_score.max(0) / CS_STEP * CS_STEP,
+            ward_score: whole(player.scores.ward_score),
             dead: player.is_dead,
             respawn_at: player
                 .is_dead
                 .then_some(game_time + player.respawn_timer.max(0.0)),
         })
     }
+}
+
+impl Vitals {
+    fn from_payload(stats: &model::ChampionStats) -> Self {
+        let share = |value: f64, max: f64| {
+            if max <= 0.0 {
+                return 0.0;
+            }
+            let steps = (value.max(0.0) / max / VITAL_STEP).floor();
+            (steps * VITAL_STEP).clamp(0.0, 1.0)
+        };
+        Self {
+            health: share(stats.current_health, stats.max_health),
+            resource: share(stats.resource_value, stats.resource_max),
+            resource_kind: stats.resource_type.clone(),
+        }
+    }
+}
+
+/// A score the game keeps in fractions, in whole points.
+fn whole(score: f64) -> i64 {
+    // Truncation is the intent: a ward score moves by whole wards.
+    #[allow(clippy::cast_possible_truncation)]
+    let whole = score.max(0.0).floor() as i64;
+    whole
 }
 
 fn floor_to_step(gold: f64) -> i64 {
@@ -566,7 +644,8 @@ mod tests {
                 kills: 0,
                 deaths: 0,
                 assists: 0,
-                creep_score: 10
+                creep_score: 10,
+                ward_score: 0
             }])
         );
     }
@@ -599,7 +678,8 @@ mod tests {
                     kills: 1,
                     deaths: 0,
                     assists: 0,
-                    creep_score: 0
+                    creep_score: 0,
+                    ward_score: 0
                 },
             ]
         );
@@ -683,5 +763,56 @@ mod tests {
             serde_json::to_value(level).unwrap()["kind"],
             serde_json::json!("levelUp")
         );
+    }
+
+    #[test]
+    fn our_health_and_resource_move_in_twentieths_and_a_ward_score_in_whole_points() {
+        let payload = |health: f64, mana: f64, wards: f64| {
+            let mut players = duo();
+            players[0]["scores"]["wardScore"] = serde_json::json!(wards);
+            let mut data = serde_json::json!({
+                "activePlayer": {
+                    "riotId": "Tester#EUW",
+                    "championStats": {
+                        "currentHealth": health,
+                        "maxHealth": 1000.0,
+                        "resourceValue": mana,
+                        "resourceMax": 500.0,
+                        "resourceType": "MANA"
+                    }
+                },
+                "allPlayers": players,
+                "events": { "Events": [{ "EventID": 0, "EventName": "GameStart", "EventTime": 0.0 }] },
+                "gameData": { "gameTime": 300.0, "gameMode": "CLASSIC", "mapNumber": 11 }
+            });
+            data["activePlayer"]["riotIdGameName"] = serde_json::json!("Tester");
+            GameState::from_payload(&serde_json::from_value(data).unwrap()).unwrap()
+        };
+        let full = payload(1000.0, 500.0, 3.4);
+        assert_eq!(
+            full.vitals,
+            Vitals {
+                health: 1.0,
+                resource: 1.0,
+                resource_kind: "MANA".into()
+            }
+        );
+        assert_eq!(full.players[0].ward_score, 3);
+        // Within a twentieth and a ward point: nothing to send.
+        assert_eq!(full.diff(&payload(960.0, 490.0, 3.9)), Some(vec![]));
+        let hurt = payload(240.0, 100.0, 4.0);
+        let changes = full.diff(&hurt).unwrap();
+        assert!(changes.contains(&GameChange::Vitals {
+            vitals: Vitals {
+                health: 0.2,
+                resource: 0.2,
+                resource_kind: "MANA".into()
+            }
+        }));
+        assert!(changes.iter().any(|change| matches!(change, GameChange::Score { ward_score: 4, .. })));
+        let mut applied = full.clone();
+        applied.apply(&changes);
+        assert_eq!(applied.vitals, hurt.vitals);
+        assert_eq!(applied.players[0].ward_score, 4);
     }
 }
