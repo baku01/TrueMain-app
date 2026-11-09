@@ -62,7 +62,7 @@ describe('place blocks', () => {
   const known: Record<number, StaticItemData> = Object.fromEntries([1055, 1001, 3006, 3009, 3047, 3032, 6672, 3153, 3046, 3085, 3031, 3036, 3033, 3026, 3072, 3139].map(id => [id, item(id, 3000)]))
   const titles = { starting: 'S', order: 'O', final: 'F', situational: 'X', boots: 'B', place: (place: number) => `Item ${place} — opções` }
   const places = [
-    { place: 0, items: [3006, 3009, 3047] },
+    { place: 0, items: [3006, 3009, 3047, 1001] },
     { place: 1, items: [3032, 6672, 3153] },
     { place: 2, items: [3046] },
     { place: 3, items: [3031, 3036, 3033, 9999, 3072] },
@@ -71,6 +71,7 @@ describe('place blocks', () => {
   it('writes each place with its options after the other blocks, the boots\' options in the boots block', () => {
     const [set] = recommendedSets({ ...ashe, places }, [], 'Ashe', titles, known, null)
     expect(set!.blocks.map(block => block.type)).toEqual(['S', 'O', 'F', 'B', 'Item 1 — opções', 'Item 3 — opções'])
+    // The basic boots are a step on the way, not a choice.
     expect(set!.blocks[3]!.items.map(entry => entry.id)).toEqual(['3006', '3009', '3047'])
     // A place with nothing to choose from is left out; an id the patch does not know is dropped.
     expect(set!.blocks[5]!.items.map(entry => entry.id)).toEqual(['3031', '3036', '3033', '3072'])

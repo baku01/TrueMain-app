@@ -182,7 +182,8 @@ export function recommendedSet(build: ImportBuild, championKey: string, titles: 
   const answering = new Set((build.draft ?? []).flatMap(entry => entry.items))
   const situational = known(build.situational).filter(id => !final.includes(id) && !answering.has(id) && !isBoots(id)).slice(0, SITUATIONAL)
   const places = build.places ?? []
-  const bootsOptions = places.find(entry => entry.place === 0)?.items ?? []
+  // The boots to choose from, the basic pair apart: a step on the way, not a choice (Ashe's 1.4 % of boots bought).
+  const bootsOptions = (places.find(entry => entry.place === 0)?.items ?? []).filter(id => id !== BASIC_BOOTS)
   const choices = places
     .filter(entry => entry.place > 0)
     .map(entry => block(titles.place?.(entry.place) ?? String(entry.place), [...new Set(known(entry.items))]))
