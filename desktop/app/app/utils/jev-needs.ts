@@ -202,8 +202,8 @@ export const answerTo = (answers: Answer[], need: keyof Needs): number => answer
 /**
  * How well items answer the needs: Riot's resistance tags against the share
  * of the damage past an even split — the whole of it where a rule makes the
- * resistance due (`due`) — Jev's facts against the rest; the items weighed as
- * `weights` says.
+ * resistance due (`due`) — its Tenacity tag or Jev's read against crowd
+ * control, Jev's facts against the rest; the items weighed as `weights` says.
  */
 export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRead>, tags: (id: number) => string[], options: FitOptions = {}): Fit {
   if (!itemIds.length) return { fit: 0, answers: [], misfit: false }
@@ -214,7 +214,10 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
     const has: Record<keyof Needs, number> = {
       physical: own.includes('Armor') ? 1 : 0,
       magic: own.includes('SpellBlock') ? 1 : 0,
-      cc: read?.tenacity ?? 0,
+      // Riot's Tenacity tag marks each item that gives Tenacity or removes crowd control (16.22: Mercury's Treads, Sterak's
+      // Gage, Wit's End, Mercurial Scimitar, Mikael's Blessing), as Hexgate reads it; Jev's read asks about the holder, and
+      // Mikael's cleanses an ally.
+      cc: Math.max(read?.tenacity ?? 0, own.includes('Tenacity') ? 1 : 0),
       heal: read?.antiHeal ?? 0,
       burst: read?.antiBurst ?? 0,
       autos: read?.vsAutos ?? 0,

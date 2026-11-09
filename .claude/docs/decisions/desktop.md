@@ -579,8 +579,9 @@ flavour polls its own site's feed at launch and every fifteen minutes (preprod's
 in a toast and in the sidebar. A build found at launch, with no champion select or game running, installs and
 restarts at once — the player has nothing open to lose yet; one found later waits for the click or for the next
 launch, so the app still never restarts under a running phase (`composables/useAppUpdate.ts`). "Check for Updates…"
-sits where each platform keeps it: the application menu on macOS, under "About"; on Windows, whose window has no menu
-bar, the menu of a tray icon (Open, Check for Updates…, Quit) — the shell only relays the click, the webview runs the
+sits where each platform keeps it: the application menu on macOS, under "About"; and the menu of the tray icon (Open,
+Check for Updates…, Quit) on both — closing the window hides the app to the tray, as Blitz's does, so the tray is where
+it lives between games — the shell only relays the click, the webview runs the
 check and answers every outcome, up to date and offline included (`src-tauri/src/menu.rs`). The feed reads the
 release's manifest as JSON whatever its type: GitHub serves assets as `application/octet-stream`, which `$fetch` read
 as a Blob that the feed's cache relayed as `{}`, so installed betas were almost never offered an update

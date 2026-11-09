@@ -16,6 +16,7 @@ const { t } = useT()
       <SettingsDataWindow />
       <SettingsAutoImport />
       <SettingsAutoAccept />
+      <SettingsStartup />
       <SettingsGraphics />
       <SettingsJev />
       <!-- Riot's legal notice: here, once, rather than at every page's foot. -->

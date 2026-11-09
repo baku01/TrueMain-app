@@ -3,6 +3,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { EnemyLine, Needs } from '~/utils/jev-needs'
 import type { ItemOption } from '~/utils/sources/model'
 import { PER_NEED, draftBlocks, draftOptionals } from '~/utils/jev-optionals'
+import { supportResists } from '~/utils/jev-rules'
 
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, ccReducible: 1, heal: 0, healInFight: 1, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
@@ -57,5 +58,23 @@ describe('optional by the draft', () => {
   it('writes a block per need, the enemies behind it named', () => {
     const blocks = draftBlocks(zed().slice(0, 1), id => ({ 245: 'Ekko', 34: 'Anivia', 136: 'Aurelion Sol', 32: 'Amumu' })[id] ?? String(id))
     expect(blocks).toEqual([{ need: 'magic', names: ['Ekko', 'Anivia', 'Aurelion Sol', 'Amumu'], items: [3111, 3156, 3139] }])
+  })
+})
+
+describe('optional by the draft, for an enchanter', () => {
+  // Seraphine support into Aatrox, Neeko, Akali, Caitlyn and Lulu (Blitz, 16.22, Emerald+): both resistances due; Riot's tags, Data Dragon 16.22.1.
+  const RIOT: Record<number, string[]> = { 3157: ['Armor', 'SpellDamage', 'Active'], 3190: ['Health', 'SpellBlock', 'Armor', 'Aura', 'Active'], 3109: ['Health', 'Armor', 'Aura', 'Active'], 2524: ['Health', 'SpellBlock', 'Armor', 'AttackSpeed'], 3102: ['SpellBlock', 'SpellDamage'], 3111: ['Boots', 'SpellBlock', 'Tenacity'], 3222: ['Health', 'ManaRegen', 'Active', 'Tenacity'], 3165: ['Health', 'SpellDamage'], 3107: ['SpellDamage', 'ManaRegen'] }
+  const seraphine: Needs = { physical: 0.484, magic: 0.467, cc: 0.51, heal: 0.5, burst: 0.2, autos: 0.04, tanks: 0 }
+  // Jev reads Mikael's Purify as no Tenacity of its holder: it cleanses an ally.
+  const seraphineReads = new Map([[3157, item({ antiBurst: 0.9 })], [3102, item({ antiBurst: 0.8 })], [3222, item()], [3111, item({ tenacity: 0.95 })], [3165, item({ antiHeal: 1 })]])
+  const pool = [m(868, 3157, 0.505), m(765, 3190, 0.571), m(573, 3109, 0.553), m(170, 2524, 0.529), m(153, 3102, 0.536), m(3700, 3222, 0.539), m(2561, 3165, 0.529), m(252, 3111), m(4401, 3107, 0.596)]
+  const rows = draftOptionals({ candidates: pool, team: seraphine, due: ['physical', 'magic'], enemies: [], reads: seraphineReads, tags: supportResists(id => RIOT[id] ?? []), suits: () => true, held: [] })
+  const row = (need: keyof Needs) => rows.find(optional => optional.need === need)?.items.map(entry => entry.id)
+
+  it('lists a support\'s resistances, not a mage\'s, and Mikael\'s Blessing against crowd control by its Tenacity tag', () => {
+    expect(row('physical')).toEqual([3190, 3109, 2524])
+    expect(row('magic')).toEqual([3190, 3111, 2524])
+    expect(row('cc')).toEqual([3222, 3111])
+    expect(row('heal')).toEqual([3165])
   })
 })

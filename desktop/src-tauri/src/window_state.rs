@@ -29,8 +29,8 @@ fn path(app: &AppHandle) -> PathBuf {
         .join(FILE)
 }
 
-/// Place the window as saved, show it, and follow it. Called from `setup`.
-pub fn restore(app: &AppHandle) {
+/// Place the window as saved, show it when `show`, and follow it. Called from `setup`.
+pub fn restore(app: &AppHandle, show: bool) {
     let Some(window) = app.get_webview_window(MAIN) else {
         return;
     };
@@ -59,7 +59,12 @@ pub fn restore(app: &AppHandle) {
         // it ever moves still has a size and place to un-maximise to.
         note(&window);
     }
-    let _ = window.show();
+    if show {
+        let _ = window.show();
+    } else {
+        // Started at login, in the tray: its page out of sight until opened (`chrome::set_in_sight`).
+        crate::chrome::set_in_sight(&window, false);
+    }
     let followed = window.clone();
     window.on_window_event(move |event| match event {
         WindowEvent::Moved(_) | WindowEvent::Resized(_) => note(&followed),
