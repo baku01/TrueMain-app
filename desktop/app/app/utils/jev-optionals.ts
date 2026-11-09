@@ -50,6 +50,8 @@ export interface OptionalsInput {
   team: Needs
   /** The resistances a rule makes due against this team (`duesOf`): they read as fully needed. */
   due: Resist[]
+  /** The first completed item our champion's class takes a guard item at (`ClassProfile.guardFrom`): no resistance is due before it. */
+  guardFrom?: number
   /** The enemies as the needs read them, to name those behind each need. */
   enemies: EnemyLine[]
   reads: Map<number, ItemRead>
@@ -82,7 +84,7 @@ export function draftOptionals(input: OptionalsInput): DraftOptional[] {
   return draftNeeds(team, due).map(({ need, value }): DraftOptional => ({
     need,
     call: value,
-    dueBy: need === 'physical' || need === 'magic' ? (due.includes(need) ? RESIST_DUE[need].by : null) : null,
+    dueBy: need === 'physical' || need === 'magic' ? (due.includes(need) ? Math.max(RESIST_DUE[need].by, input.guardFrom ?? 1) : null) : null,
     enemies: causesOf(need, enemies),
     items: fits
       .map(({ id, option, fit }) => ({ id, value: answerTo(fit.answers, need), games: option.games, winRate: option.winRate, inBuild: held.includes(id) }))

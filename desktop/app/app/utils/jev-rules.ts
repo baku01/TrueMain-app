@@ -2,6 +2,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { Resist } from '~/utils/jev-needs'
 import type { JevSlot } from '~/utils/jev-build'
 import type { ItemOption } from '~/utils/sources/model'
+import type { Subclass } from '~/utils/jev-classes'
 import { MIN_GAMES, damageKind } from '~/utils/jev-build'
 
 /**
@@ -35,11 +36,16 @@ const RESIST_TAGS = new Set(Object.values(RESIST_TAG))
 
 /**
  * The resistances due at item slot `slot` (1 the first completed item), the
- * build holding `held`: triggered, the slot at the rule's or past it, and no
- * completed item of that resistance held yet — boots do not count.
+ * build holding `held`: triggered, the slot at the rule's or past it and at
+ * the first its class takes a guard item at (`guardFrom`, `ClassProfile`) —
+ * a marksman's fourth: LoLTheory names its resistance apart from the rule's
+ * item slots, "Plated Steelcaps for ADCs facing an AD assassin or heavy
+ * auto-attacks" (/what-is-armor-league-of-legends), and Guardian Angel at
+ * Ashe's second item was the rule's, not the bracket's — and no completed
+ * item of that resistance held yet — boots do not count.
  */
-export function dueAt(dues: Resist[], slot: number, held: number[], tags: (id: number) => string[]): Resist[] {
-  return dues.filter(resist => slot >= RESIST_DUE[resist].by && !held.some(id => tags(id).includes(RESIST_TAG[resist]) && !tags(id).includes('Boots')))
+export function dueAt(dues: Resist[], slot: number, held: number[], tags: (id: number) => string[], guardFrom = 1): Resist[] {
+  return dues.filter(resist => slot >= Math.max(RESIST_DUE[resist].by, guardFrom) && !held.some(id => tags(id).includes(RESIST_TAG[resist]) && !tags(id).includes('Boots')))
 }
 
 /**
@@ -58,37 +64,19 @@ export const healCutFits = (id: number, held: readonly number[], reads: Map<numb
   !cutsHealing(id, reads) || !held.some(other => cutsHealing(other, reads))
 
 /**
- * An enchanter: a support whose Riot classes are Support then Mage, as are
- * the four of LoLTheory's support guide (Lulu, Soraka, Janna, Nami;
- * /how-to-play-support-lol) — on 16.22 also Bard, Ivern, Milio, Morgana,
- * Renata, Seraphine, Sona, Yuumi and Zilean; not Karma (Mage then Support).
+ * When boots are finished, for an enchanter (`subclassOf`: Lulu, Soraka,
+ * Janna, Nami — the four of LoLTheory's support guide, /how-to-play-support-lol
+ * — and Seraphine or Karma on the support lane): "Upgrade boots after your
+ * second item, not first" — the boots' timing at its lowest urgency, after
+ * the second item; elsewhere Jev's reading of the lane stands.
  */
-export const isEnchanter = (champion: { classes: string[] }, position: string): boolean =>
-  position === 'UTILITY' && champion.classes[0] === 'Support' && champion.classes[1] === 'Mage'
-
-/**
- * A marksman on the bottom lane, by its first Riot class: LoLTheory names its
- * resistance apart from the rule's item slots — "Plated Steelcaps for ADCs
- * facing an AD assassin or heavy auto-attacks"
- * (/what-is-armor-league-of-legends) —, so the rule takes no core place of a
- * marksman: Guardian Angel at Ashe's second item was the rule's, not the
- * bracket's (8.6 % of her games, mostly later).
- */
-export const isMarksman = (champion: { classes: string[] }, position: string): boolean =>
-  position === 'BOTTOM' && champion.classes[0] === 'Marksman'
-
-/**
- * When boots are finished, for an enchanter (`isEnchanter`): "Upgrade boots
- * after your second item, not first" (/how-to-play-support-lol) — the boots'
- * timing at its lowest urgency, after the second item; elsewhere Jev's
- * reading of the lane stands.
- */
-export function bootsUrgency(urgency: number | null, champion: { classes: string[] }, position: string): number | null {
-  return isEnchanter(champion, position) ? 0 : urgency
+export function bootsUrgency(urgency: number | null, subclass: Subclass): number | null {
+  return subclass === 'Enchanter' ? 0 : urgency
 }
 
 /**
- * Riot's tags as an enchanter's build reads them (`isEnchanter`): a
+ * Riot's tags as an enchanter's build reads them (`ClassProfile.guards`
+ * 'support'): a
  * resistance only on a support's item — one with no damage of its own
  * (`damageKind` null: Locket of the Iron Solari, Knight's Vow, Zeke's
  * Convergence, Bandlepipes, Kaenic Rookern). "Locket of the Iron Solari is a

@@ -3,7 +3,8 @@ import type { Needs } from '~/utils/jev-recommend'
 import { itemReadKey, knownItemRead } from '~/utils/jev-read'
 import type { RowFit } from '~/utils/jev-row-fit'
 import { rowFits } from '~/utils/jev-row-fit'
-import { isEnchanter, supportResists } from '~/utils/jev-rules'
+import { supportResists } from '~/utils/jev-rules'
+import { CLASS_PROFILES, subclassOf } from '~/utils/jev-classes'
 
 /**
  * The build list's rows as Jev reads them against the draft (`utils/jev-row-fit`):
@@ -19,7 +20,8 @@ export function useJevRowFits(options: Ref<BuildOption[]>, championId: Ref<numbe
     const version = patch.value || 'live'
     const riotTags = (id: number) => items.value[id]?.tags ?? []
     // An enchanter's resistances are a support's items, as Jev's build reads them (`supportResists`).
-    const tags = isEnchanter({ classes: champions.value.get(championId.value)?.tags ?? [] }, position.value) ? supportResists(riotTags) : riotTags
+    const subclass = subclassOf({ id: championId.value, classes: champions.value.get(championId.value)?.tags ?? [] }, position.value)
+    const tags = CLASS_PROFILES[subclass].guards === 'support' ? supportResists(riotTags) : riotTags
     return rowFits(options.value, team, id => knownItemRead(itemReadKey(version, championId.value, position.value, id)), tags)
   })
 }

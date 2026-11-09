@@ -1,4 +1,5 @@
 import type { JevAnswer, JevQuestion } from '~/utils/jev'
+import type { itemizationOf } from '~/utils/jev-classes'
 
 /**
  * What Jev reads, and only that: the meaning of texts — a champion's kit, an
@@ -210,8 +211,17 @@ const ALLY_FACTS: Record<'allyBurst' | 'allyCc', { says: (name: string) => strin
 /** Whether the lane is a support's, whose items are also read for what they do for allies (`ALLY_FACTS`). */
 export const asksAllies = (position: string) => position === 'UTILITY'
 
-/** The candidate items as one request: five facts each — two more on the support lane — and how well each suits our champion's kit. */
-export function itemRequest(champion: ChampionText, position: string, items: { id: number, name: string, text: string }[]): Request {
+/** How our champion's class itemizes (`itemizationOf`): what the kit read judges an item against. */
+export type Itemization = ReturnType<typeof itemizationOf>
+
+/**
+ * The candidate items as one request: five facts each — two more on the
+ * support lane — and how well each suits our champion, its kit and how its
+ * class itemizes (`itemization`): an item its class never builds reads as
+ * wrong for it whatever its stats answer — Death's Dance or Randuin's Omen on
+ * a marksman, Sterak's Gage on a mage.
+ */
+export function itemRequest(champion: ChampionText, position: string, items: { id: number, name: string, text: string }[], itemization: Itemization): Request {
   const questions: Record<string, JevQuestion> = {}
   const facts = asksAllies(position) ? { ...ITEM_FACTS, ...ALLY_FACTS } : ITEM_FACTS
   for (const item of items) {
@@ -220,17 +230,17 @@ export function itemRequest(champion: ChampionText, position: string, items: { i
     }
     questions[`i${item.id}_kit`] = {
       type: 'score',
-      instructions: `How well does items["${item.name}"] suit ourChampion, given its abilities and role?`,
+      instructions: `How well does items["${item.name}"] suit ourChampion, given its abilities and how its class builds (ourChampion.itemization)? An item its class never builds is wrong for it, even when its stats answer the enemy team.`,
       criteria: [
-        'Its stats and effects do nothing for this champion\'s abilities',
-        'Usable on this champion, but not what its abilities scale with',
-        'Gives what this champion\'s abilities scale with and need',
+        'Its stats and effects do nothing for this champion\'s abilities, or its class never builds it',
+        'Usable on this champion, but not what its abilities scale with nor how its class builds',
+        'Gives what this champion\'s abilities scale with, as its class builds',
       ],
     }
   }
   return {
     state: {
-      ourChampion: { name: champion.name, role: position, ...kitOf(champion) },
+      ourChampion: { name: champion.name, role: position, ...kitOf(champion), itemization },
       items: Object.fromEntries(items.map(item => [item.name, item.text])),
     },
     questions,
@@ -241,6 +251,8 @@ export function itemRequest(champion: ChampionText, position: string, items: { i
 export function laneRequest(input: {
   champion: ChampionText
   position: string
+  /** Our champion's subclass (`subclassOf`): what its lane choices are for. */
+  subclass: string
   opponent: ChampionText | null
   runePages: { key: string, text: string }[]
   spells: { key: string, text: string }[]
@@ -268,7 +280,7 @@ export function laneRequest(input: {
   }
   return {
     state: {
-      ourChampion: { name: input.champion.name, role: input.position, ...kitOf(input.champion) },
+      ourChampion: { name: input.champion.name, role: input.position, subclass: input.subclass, ...kitOf(input.champion) },
       ...(input.opponent ? { laneOpponent: { name: input.opponent.name, ...kitOf(input.opponent) } } : {}),
       runePages: Object.fromEntries(input.runePages.map(page => [page.key, page.text])),
       spells: Object.fromEntries(input.spells.map(spells => [spells.key, spells.text])),
@@ -327,7 +339,9 @@ const championReads = new Map<string, ChampionRead>()
 const itemReads = new Map<string, ItemRead>()
 
 export const championReadKey = (patch: string, id: number) => `${patch}:${id}`
-export const itemReadKey = (patch: string, championId: number, position: string, itemId: number) => `${patch}:${championId}:${position}:${itemId}`
+/** The item questions' version: a read asked before the class itemization was sent with them (1) is not reused. */
+const ITEM_QUESTIONS = 2
+export const itemReadKey = (patch: string, championId: number, position: string, itemId: number) => `${patch}:${championId}:${position}:${itemId}:${ITEM_QUESTIONS}`
 
 export const knownChampionRead = (key: string) => championReads.get(key)
 export const knownItemRead = (key: string) => itemReads.get(key)
