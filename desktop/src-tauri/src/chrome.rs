@@ -3,7 +3,8 @@
 //! caption painted the top bar's own colour, so the native bar and the app's
 //! read as one surface. Windows 10 ignores the caption colour and keeps the
 //! dark or light bar the theme gave it. A Catppuccin theme also recolours the
-//! app icon — the Dock's, the taskbar's and the tray's (`set_app_icon`).
+//! app icon — the Dock's and the taskbar's (`set_app_icon`); the tray keeps
+//! its plain glyph (`menu.rs`), as the system's own icons there do.
 
 use tauri::image::Image;
 use tauri::{AppHandle, Manager, Theme, WebviewWindow};
@@ -35,8 +36,8 @@ fn parse_hex(text: &str) -> Option<(u8, u8, u8)> {
 }
 
 /// The app icon in the theme's colours (`useAppTheme`): `png` for the Dock on
-/// macOS, `rgba` (`size` by `size` pixels) for the window, the taskbar and the
-/// tray. Neither puts the bundle's own icon back (TrueMain's theme). The Dock's
+/// macOS, `rgba` (`size` by `size` pixels) for the window and the taskbar.
+/// Neither puts the bundle's own icon back (TrueMain's theme). The Dock's
 /// holds while the app runs: Finder keeps the bundle's.
 #[tauri::command]
 pub fn set_app_icon(
@@ -56,10 +57,7 @@ pub fn set_app_icon(
     };
     if let Some(icon) = icon {
         if let Some(window) = app.get_webview_window("main") {
-            let _ = window.set_icon(icon.clone());
-        }
-        if let Some(tray) = app.tray_by_id("main") {
-            let _ = tray.set_icon(Some(icon));
+            let _ = window.set_icon(icon);
         }
     }
     #[cfg(target_os = "macos")]

@@ -6,6 +6,7 @@
 //! belongs to which phase — in one place.
 
 mod api;
+mod autostart;
 mod champselect;
 mod chrome;
 mod game;
@@ -342,6 +343,10 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![autostart::AUTOSTART_ARG]),
+        ))
         .manage(shared.clone())
         .manage(ApiClient::new())
         .manage(SharedReads::default())
@@ -399,6 +404,8 @@ pub fn run() {
             graphics::set_graphics_settings,
             ready_check::ready_check_settings,
             ready_check::set_ready_check_settings,
+            autostart::autostart_enabled,
+            autostart::set_autostart,
             news::riot_patch_notes_page,
             news::open_patch_note,
         ])
@@ -409,10 +416,11 @@ pub fn run() {
                 return;
             }
             match event {
-                // On macOS closing the window hides it, as a Mac app's does:
-                // the app stays in the Dock, a click on it brings the window back
-                // (`RunEvent::Reopen`), and ⌘Q quits.
-                #[cfg(target_os = "macos")]
+                // Closing the window hides it, as Blitz's does: the app stays in
+                // the tray (the menu bar and the Dock on macOS), following the
+                // client for the overlay and champion select. The tray's icon or
+                // the Dock (`RunEvent::Reopen`) brings it back; the tray's Quit
+                // or ⌘Q quits.
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     let _ = window.hide();
@@ -427,7 +435,8 @@ pub fn run() {
             app.manage(kits::Kits::new(&handle));
             app.manage(ready_check::ReadyCheck::load(&handle));
             overlay::setup(&handle)?;
-            window_state::restore(&handle);
+            // Started at login (`autostart`): placed but not shown, in the tray until opened.
+            window_state::restore(&handle, !autostart::launched_at_login());
             tauri::async_runtime::spawn(supervisor::run(handle, shared, client));
             Ok(())
         })

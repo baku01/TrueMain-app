@@ -826,7 +826,15 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   waits for the phase to end, and an offer already on screen steps aside for the phase and comes back after it.
   An install that has not restarted the app 30 s in swaps its progress toast for "Restart now" (a plain relaunch, never a
   second install over the running one, #1793).
-  "Check for Updates…" runs the check on demand: in the app menu on macOS, in the tray icon's menu on Windows.
+  "Check for Updates…" runs the check on demand: in the app menu on macOS, and in the tray icon's menu on both.
+- **In the background** (`src-tauri/src/menu.rs`, `autostart.rs`, `SettingsStartup`): closing the window hides it, as
+  Blitz's does — the app stays in the tray (the menu bar and the Dock on macOS) following the client for the overlay,
+  the ready check and champion select, which still brings the window forward (`focus_window`). The tray's icon is
+  TrueMain's mark as a plain glyph (`icons/tray.svg`: white in the Windows tray, a template image the macOS menu bar
+  tints); its menu opens the window, checks for updates or quits — a left click opens the window on Windows, the menu
+  on macOS. "Start with the computer" in the settings (off by default) registers the app with the system through
+  `tauri-plugin-autostart` (a Launch Agent on macOS, the `Run` key on Windows), launched with `--autostart`: the window
+  is placed but not shown, the app in the tray until opened.
   Unsigned by Apple and Microsoft for the beta.
 - **Footprint** (#1916): identical API reads asked at once by two webviews (the next item, from the game page and
   the overlay) go out as one request (`SharedReads`, `src-tauri/src/api.rs`). Memory and CPU of the whole process

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="7 7 50 50">
+  <!-- The tray's and the menu bar's icon: TrueMain's M-check mark alone, no
+       tile, a plain glyph as the system's own icons are (Blitz's bolt). The
+       stroke is the site mark's (web/public/brand/truemain-mark-mono.svg)
+       thickened to stay legible at 16 px; the view box hugs it.
+       currentColor: rendered white for the Windows tray (tray.png) and black
+       as the macOS template image (tray-template.png), which the menu bar
+       tints itself. Regenerate both with:
+         sed 's/currentColor/#fff/' tray.svg | rsvg-convert -w 32 -h 32 -o tray.png
+         sed 's/currentColor/#000/' tray.svg | rsvg-convert -w 44 -h 44 -o tray-template.png -->
+  <path d="M13 47V21l15 17L51 15" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
