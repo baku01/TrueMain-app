@@ -3,7 +3,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { Needs } from '~/utils/jev-recommend'
 import { rankSlot } from '~/utils/jev-recommend'
-import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, withDraftBoots } from '~/utils/jev-rules'
+import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, isEnchanter, supportResists, withDraftBoots } from '~/utils/jev-rules'
 
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 const TAGS: Record<number, string[]> = { 6333: ['Damage', 'Armor', 'Health'], 3071: ['Damage', 'Health', 'ArmorPenetration'], 3047: ['Armor', 'Boots'], 3065: ['SpellBlock', 'Health'], 3036: ['Damage', 'ArmorPenetration'], 3156: ['SpellBlock', 'Damage', 'LifeSteal'] }
@@ -58,6 +58,48 @@ describe('a due resistance as a reason (LoLTheory)', () => {
     const measured = (maw: number) => rankSlot(slot({ wpa: maw, wpaGames: 30000 }, { wpa: 0.015, wpaGames: 30000 }), { ...context, due: ['magic'] })
     expect(measured(0)).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'draft', need: 'magic' } })
     expect(measured(-0.015).reason).toBeUndefined()
+  })
+})
+
+describe('an enchanter\'s resistances (LoLTheory)', () => {
+  // Riot's tags, Data Dragon 16.22.1.
+  const RIOT: Record<number, string[]> = { 3190: ['Health', 'SpellBlock', 'Armor', 'Aura', 'Active', 'MagicResist', 'AbilityHaste'], 3109: ['Health', 'HealthRegen', 'Armor', 'Aura', 'Active', 'CooldownReduction', 'AbilityHaste'], 2524: ['Health', 'SpellBlock', 'Armor', 'AttackSpeed', 'NonbootsMovement', 'AbilityHaste'], 3157: ['Armor', 'SpellDamage', 'Active'], 3102: ['SpellBlock', 'SpellDamage'], 3111: ['Boots', 'SpellBlock', 'Tenacity'], 6620: ['Health', 'SpellDamage', 'ManaRegen', 'CooldownReduction', 'AbilityHaste'], 2526: ['Health'], 3116: ['Health', 'SpellDamage'] }
+  const riot = (id: number) => RIOT[id] ?? []
+  const support = supportResists(riot)
+
+  it('tells an enchanter by its classes on the support lane', () => {
+    expect(isEnchanter({ classes: ['Support', 'Mage'] }, 'UTILITY')).toBe(true)
+    expect(isEnchanter({ classes: ['Mage', 'Support'] }, 'UTILITY')).toBe(false)
+    expect(isEnchanter({ classes: ['Tank', 'Support'] }, 'UTILITY')).toBe(false)
+    expect(isEnchanter({ classes: ['Support', 'Mage'] }, 'MIDDLE')).toBe(false)
+  })
+
+  it('reads a resistance only on a support\'s item, one with no damage of its own: Locket, not Zhonya\'s Hourglass', () => {
+    for (const id of [3190, 3109, 2524, 3111]) expect(support(id)).toEqual(riot(id))
+    expect(support(3157)).toEqual(['SpellDamage', 'Active'])
+    expect(support(3102)).toEqual(['SpellDamage'])
+  })
+
+  it('keeps a resistance due until a support\'s item holds it', () => {
+    expect(dueAt(['physical', 'magic'], 3, [6620, 3157], riot)).toEqual(['magic'])
+    expect(dueAt(['physical', 'magic'], 3, [6620, 3157], support)).toEqual(['physical', 'magic'])
+    expect(dueAt(['physical', 'magic'], 3, [6620, 3190], support)).toEqual([])
+  })
+
+  // Seraphine support (Heal & Shield, Blitz, 16.22, Emerald+) into Aatrox, Neeko, Akali, Caitlyn and Lulu: armor due at her second item.
+  it('takes Locket of the Iron Solari for an enchanter\'s due armor over her measured second item; Zhonya\'s answers it no more', () => {
+    const team: Needs = { physical: 0.484, magic: 0.467, cc: 0.51, heal: 0.5, burst: 0.43, autos: 0.04, tanks: 0 }
+    const reads = new Map([[2526, item({ kit: 0.9 })], [3116, item({ kit: 0.9 })], [3190, item({ antiBurst: 0.6, kit: 0.5 })], [3157, item({ antiBurst: 0.9, kit: 0.9 })]])
+    const option = (key: string, id: number, fields: Partial<JevOption>): JevOption => ({ key, label: key, itemIds: [id], games: 0, pickRate: 0, winRate: 0.5, ...fields })
+    const slot: JevSlot = { name: 'item2', kind: 'item', lane: false, place: 2, options: [
+      option('o0', 2526, { games: 11478, pickRate: 0.811, winRate: 0.578, wpa: 0.0052, wpaGames: 19383, slotWpa: 0.008, slotGames: 14151, vsWpa: -0.021, vsGames: 1631 }),
+      option('o1', 3116, { games: 2670, pickRate: 0.189, winRate: 0.582, wpa: -0.004, wpaGames: 29718, slotWpa: -0.004, slotGames: 9686, vsWpa: -0.024, vsGames: 2333 }),
+      option('o2', 3190, { games: 765, pickRate: 0.0099, winRate: 0.571, situational: true, wpa: 0.0434, wpaGames: 765, slotWpa: 0.025, slotGames: 302, vsWpa: 0.003, vsGames: 53 }),
+      option('o3', 3157, { games: 868, pickRate: 0.0077, winRate: 0.505, situational: true, wpa: -0.0284, wpaGames: 868, slotWpa: -0.042, slotGames: 241, vsWpa: -0.032, vsGames: 55 }),
+    ] }
+    const context = { team, lane: team, itemReads: reads, fits: {}, urgency: 0, due: ['physical' as const] }
+    expect(rankSlot(slot, { ...context, tags: support })).toMatchObject({ pick: { key: 'o2' }, reason: { kind: 'draft', need: 'physical' } })
+    expect(rankSlot(slot, { ...context, tags: support }).scored.o3!.reason).toBeUndefined()
   })
 })
 

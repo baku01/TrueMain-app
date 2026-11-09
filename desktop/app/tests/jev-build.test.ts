@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
 import type { Answer, Needs } from '~/utils/jev-needs'
-import { closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import { WORLD_ATLAS, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import { answersDraft, fitOf } from '~/utils/jev-needs'
+import { supportResists } from '~/utils/jev-rules'
 import { withItemStats } from '~/utils/jev-item-stats'
 
 const m = (games: number, itemIds: number[]): ItemOption => ({ games, winRate: 0.5, pickRate: 0.1, itemIds })
@@ -35,6 +37,16 @@ describe('texts for Jev', () => {
 describe('the starting sets and the boots', () => {
   const consumable = (id: number) => [2003, 2031, 2055].includes(id)
   const set = (itemIds: number[], games: number, winRate = 0.5) => ({ itemIds, games, winRate, pickRate: 0 })
+
+  it('reads a support\'s set of consumables alone as its World Atlas, which Blitz records as nothing (Seraphine, Heal & Shield)', () => {
+    const blitz = [set([2003], 28800, 0.58), set([2003, 3070], 206), set([1004, 2003], 194)]
+    expect(startingSets(blitz, consumable).map(entry => entry.itemIds)).toEqual([[2003, 3070], [1004, 2003]])
+    const support = startingSets(blitz, consumable, WORLD_ATLAS)
+    expect(support.map(entry => [entry.itemIds, entry.games])).toEqual([[[WORLD_ATLAS, 2003], 28800]])
+    expect(roomFor(support[0]!.itemIds)).toBe(5)
+    // lolalytics records it: the two readings are one start.
+    expect(startingSets([set([3865, 2003], 6066), set([2003], 9000)], consumable, WORLD_ATLAS).map(entry => [entry.itemIds, entry.games])).toEqual([[[3865, 2003], 15066]])
+  })
 
   it('reads sets that differ only by potions as one start, the most played shown', () => {
     const sets = startingSets([set([1055, 2003], 14835, 0.525), set([1055], 2442, 0.57), set([1054, 2003], 9414)], consumable)
@@ -109,6 +121,17 @@ describe('the core item by item', () => {
     // Nothing when a measured option already holds it, or nothing is due.
     expect(coreSlot(zed, 2, [6699, 2520], names, due(pool, { 3036: [{ need: 'magic', value: 1 }] }))!.options.map(option => option.itemIds[0])).toEqual([3036, 6696])
     expect(coreSlot(zed, 2, [6699, 2520], names)!.options.map(option => option.itemIds[0])).toEqual([3036, 6696])
+  })
+
+  it('answers an enchanter\'s due armor with a support\'s item: Locket of the Iron Solari, not the more played Zhonya\'s Hourglass (Seraphine)', () => {
+    const seraphine = optionsOf([m(7664, [6620, 3158, 2526]), m(3814, [3158, 6620, 2526]), m(2670, [6620, 3158, 3116])])
+    const RIOT: Record<number, string[]> = { 3157: ['Armor', 'SpellDamage', 'Active'], 3190: ['Health', 'SpellBlock', 'Armor', 'Aura', 'Active'], 3109: ['Health', 'Armor', 'Aura', 'Active'], 2524: ['Health', 'SpellBlock', 'Armor', 'AttackSpeed'] }
+    const team: Needs = { physical: 0.484, magic: 0.467, cc: 0.51, heal: 0.5, burst: 0.43, autos: 0.04, tanks: 0 }
+    const reads = new Map([[3157, { antiHeal: 0, tenacity: 0, antiBurst: 0.9, vsAutos: 0, vsTanks: 0, kit: 0.6 }]])
+    const due = (tags: (id: number) => string[]) => ({ pool: [m(868, [3157]), m(765, [3190]), m(573, [3109]), m(170, [2524])], answersDraft: (id: number) => answersDraft(id, team, reads, tags, ['physical']), answers: (id: number) => fitOf([id], team, reads, tags, { due: ['physical'] }).answers, needs: ['physical' as const] })
+    const riot = (id: number) => RIOT[id] ?? []
+    expect(coreSlot(seraphine, 1, [6620], names, due(riot))!.options.map(option => option.itemIds[0])).toEqual([2526, 3116, 3157])
+    expect(coreSlot(seraphine, 1, [6620], names, due(supportResists(riot)))!.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[2526, false], [3116, false], [3190, true]])
   })
 
   it('follows the measured core closest to the one chosen, and knows the most played', () => {
