@@ -142,6 +142,7 @@ function importChoice(key: string, title: string, ranked: RankedSlot[], build: L
     bootsAt: set.bootsAt,
     draft,
     places: set.places,
+    questReward: set.questReward,
   }
 }
 

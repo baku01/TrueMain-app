@@ -50,6 +50,8 @@ const SETUP: { name: string, width: string }[] = [
   { name: 'runes', width: 'min-w-[10.5rem] grow-[3]' },
   { name: 'spells', width: 'min-w-[7.25rem] grow-[2]' },
   { name: 'starter', width: 'min-w-[7.25rem] grow-[2]' },
+  // A support's quest reward, picked when the quest is done: here, never in the buying order.
+  { name: 'quest', width: 'min-w-[7.25rem] grow-[2]' },
   { name: 'skills', width: 'min-w-[19.5rem] grow-[4]' },
   { name: 'bootsAfter', width: 'min-w-[9rem] grow-[2]' },
 ]

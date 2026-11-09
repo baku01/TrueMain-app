@@ -2,6 +2,7 @@ import type { RuneTreeResponse } from '#shared/types/static-data'
 import { fetchRuneTree } from '~/utils/static-data'
 import type { BuildRunePage, BuildTreeNode, ChampionBuild, ChampionBuildResponse } from '~/types/build'
 import { isBoots, maxOrder } from '~/utils/blitz/builds'
+import { isQuestReward } from '~/utils/support-quest'
 
 /**
  * Every choice a source measured on a champion's lane, in one shape whatever
@@ -84,6 +85,12 @@ export interface BuildOptions {
    * them, and her second in 10 games of 67,000).
    */
   places?: ItemOption[][]
+  /**
+   * The support quest's rewards picked on the lane, each one's share of the
+   * picks, most first (`utils/support-quest`): picked, never bought, so apart
+   * from every list above.
+   */
+  questRewards?: ItemOption[]
 }
 
 /** A max order (`Q › W › E`) over the games it was played in, however the points were spent on the way. */
@@ -202,17 +209,19 @@ export function buildsFromOptions(championId: number, position: string, options:
   const spells = top(options.spells)
   const skill = top(options.skills)
   const starter = top(options.starters)
+  const reward = top(options.questRewards ?? [])
   const shared = {
     runePage: page ? { ...page.page, games: page.games, pickRate: page.pickRate, winRate: page.winRate } : null,
     summonerSpells: spells && spells.spellIds.length >= 2 ? { spell1Id: spells.spellIds[0]!, spell2Id: spells.spellIds[1]!, games: spells.games, pickRate: spells.pickRate, winRate: spells.winRate } : null,
     skillOrder: skill ? { sequence: skill.order, games: skill.games, pickRate: skill.pickRate, winRate: skill.winRate } : null,
     starterItems: starter ? { itemIds: starter.itemIds, games: starter.games, pickRate: starter.pickRate, winRate: starter.winRate } : null,
+    questReward: reward ? { itemIds: reward.itemIds, games: reward.games, pickRate: reward.pickRate, winRate: reward.winRate } : null,
   }
   const laneBoots = top(options.boots)
   // Cores equal once their boots are drawn apart are one build: games summed, wins weighted.
   const merged = new Map<string, ItemOption>()
   for (const core of options.cores) {
-    const key = `${core.itemIds.filter(id => !isBoots(id)).join(',')}|${core.itemIds.filter(isBoots).join(',')}`
+    const key = `${core.itemIds.filter(id => !isBoots(id) && !isQuestReward(id)).join(',')}|${core.itemIds.filter(isBoots).join(',')}`
     const known = merged.get(key)
     if (!known) merged.set(key, core)
     else {
@@ -221,7 +230,8 @@ export function buildsFromOptions(championId: number, position: string, options:
     }
   }
   const builds: ChampionBuild[] = ranked([...merged.values()], BUILDS_SHOWN).flatMap((core) => {
-    const path = core.itemIds.filter(id => !isBoots(id))
+    // A quest's reward is picked, not bought: no place of the path (`BuildCore.questReward`).
+    const path = core.itemIds.filter(id => !isBoots(id) && !isQuestReward(id))
     const boots = core.itemIds.find(isBoots)
     if (path.length === 0) return []
     const followUps: BuildTreeNode[] = (options.followUps(core)[0]?.options ?? []).slice(0, 4)

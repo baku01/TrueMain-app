@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { BuildItemSet, CompositionBuildResponse } from '~/types/build'
 import type { GameState } from '~/types/game'
 import { compositionStarter, starterBought, starterRequest } from '~/utils/next-item'
+import { QUEST_LINE, isQuestReward, rewardApart, starterApart } from '~/utils/support-quest'
 
 /**
  * The starter to buy in the running game, until one is bought: the basket the
@@ -27,11 +28,12 @@ export function useStarter(game: Ref<GameState>) {
   const bought = computed(() => starterBought(held.value, statics.value))
   const request = computed(() => starterRequest(game.value, alias => idByAlias.value.get(alias.toLowerCase()) ?? null))
 
-  const answer = ref<BuildItemSet | null>(null)
+  /** The starter to buy and, for a support, the quest's reward to pick (`utils/support-quest`). */
+  const answer = ref<{ starter: BuildItemSet | null, reward: BuildItemSet | null } | null>(null)
 
-  async function laneStarter(championId: number, position: string) {
-    const build = await readChampionBuild(championId, position)
-    return build.builds[0]?.core.starterItems ?? null
+  async function laneCore(championId: number, position: string) {
+    const core = (await readChampionBuild(championId, position)).builds[0]?.core
+    return core ? rewardApart(core) : null
   }
 
   let generation = 0
@@ -39,8 +41,11 @@ export function useStarter(game: Ref<GameState>) {
     const mine = ++generation
     try {
       const composition = await apiPost<CompositionBuildResponse>(`/champions/${current.championId}/composition-build`, current.body, {}, { background: true })
-      const starter = compositionStarter(composition) ?? await laneStarter(current.championId, current.body.position)
-      if (mine === generation) answer.value = starter?.itemIds.length ? starter : null
+      const drafted = starterApart(compositionStarter(composition))
+      // The lane's build where the draft's names no starter — or, for a support, no reward.
+      const lane = !drafted.starter || (!drafted.reward && current.body.position === 'UTILITY') ? await laneCore(current.championId, current.body.position).catch(() => null) : null
+      const basket = drafted.starter ?? lane?.starterItems ?? null
+      if (mine === generation) answer.value = { starter: basket?.itemIds.length ? basket : null, reward: drafted.reward ?? lane?.questReward ?? null }
     }
     catch {
       // A starter that does not load is a starter not shown: the next item stands on its own.
@@ -62,7 +67,14 @@ export function useStarter(game: Ref<GameState>) {
     { immediate: true },
   )
 
-  const starter = computed(() => (bought.value ? null : answer.value))
+  const starter = computed(() => (bought.value ? null : answer.value?.starter ?? null))
+  // The reward to pick, until one is held: while the quest runs, or before a starting basket that begins it is bought.
+  const questReward = computed(() => {
+    const reward = answer.value?.reward
+    if (!reward || held.value.some(isQuestReward)) return null
+    const questing = held.value.some(id => QUEST_LINE.has(id)) || (starter.value?.itemIds.some(id => QUEST_LINE.has(id)) ?? false)
+    return questing ? reward : null
+  })
 
-  return { starter }
+  return { starter, questReward }
 }

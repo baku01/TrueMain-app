@@ -2,6 +2,9 @@ import type { ChampionMatchups, ChampionSummaryResponse, ChampionTierListRespons
 import type { ChampionBuildResponse } from '~/types/build'
 import type { BuildOptions, ItemOption, Measure, RunePageOption, RuneShares, SlotGroup } from '~/utils/sources/model'
 import { assemblePage, buildsFromOptions, liveRuneTree, measure, ranked, skillOption } from '~/utils/sources/model'
+import { isBoots } from '~/utils/blitz/builds'
+import { isQuestReward, questRewardsOf, rewardPlace } from '~/utils/support-quest'
+import { STARTER_LINE } from '~/utils/item-groups'
 import { championSlug, currentPatch } from '~/utils/sources/champions'
 import { keepBounded } from '~/utils/bounded'
 import { dataWindow, previousPatch } from '~/utils/data-window'
@@ -45,6 +48,8 @@ export interface LolalyticsBuild {
   item3?: Row[]
   item4?: Row[]
   item5?: Row[]
+  /** A support's quest reward picked: `[id, win rate, pick rate, games]`, id 0 for none. */
+  supportItem?: Row[]
   builtBootSet3?: [string, number, number, number][]
   skillOrder?: [string, number, number, number][]
   skill15?: [number, number, number, number][]
@@ -202,6 +207,26 @@ const bootsRows = (rows: Row[] | undefined): ItemOption[] => {
 const setRows = (rows: [string, number, number, number][] | undefined): ItemOption[] =>
   (rows ?? []).map(row => ({ ...option(row[1], row[2], row[3]), itemIds: String(row[0]).split('_').map(Number).filter(Boolean) }))
 
+/**
+ * The cores without a support's quest reward — lolalytics counts it as the
+ * first item (Lulu's `3870_3504_3158`: Dream Maker, Ardent Censer, Ionian
+ * Boots), but it is picked, not bought — those then alike as one, games
+ * added and wins weighed.
+ */
+function boughtCores(cores: ItemOption[]): ItemOption[] {
+  const merged = new Map<string, ItemOption>()
+  for (const core of cores) {
+    const itemIds = core.itemIds.filter(id => !isQuestReward(id))
+    const key = itemIds.join('_')
+    const known = merged.get(key)
+    const games = (known?.games ?? 0) + core.games
+    merged.set(key, known
+      ? { itemIds, games, pickRate: known.pickRate + core.pickRate, winRate: games ? (known.winRate * known.games + core.winRate * core.games) / games : 0 }
+      : { ...core, itemIds })
+  }
+  return [...merged.values()]
+}
+
 export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<BuildOptions> {
   const tree = await liveRuneTree()
   const shares = sharesOf(build)
@@ -211,10 +236,20 @@ export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<Build
       const page = assemblePage(keystone.id, () => shares, tree)
       return page ? [{ games: keystone.games, pickRate: keystone.pickRate, winRate: keystone.winRate, page }] : []
     })
-  const slots: SlotGroup[] = [
-    { slot: 4, options: ranked(itemRows(build.item4), 4) },
-    { slot: 5, options: ranked(itemRows(build.item5), 4) },
-  ].filter(group => group.options.length > 0)
+  // Each place of the buying order, the first completed item first: a support's first, its quest's reward, is no place.
+  const measured = [build.item1, build.item2, build.item3, build.item4, build.item5].map(itemRows)
+  const places = (rewardPlace(measured[0] ?? []) ? measured.slice(1) : measured).map(list => list.filter(entry => !isQuestReward(entry.itemIds[0]!)))
+  const cores = ranked(boughtCores(setRows(build.builtBootSet3)), 5)
+  // What follows a core, place by place: the item after its last completed one (Ashe's third after Hexoptics C44 and
+  // Phantom Dancer, her boots among them), each slot numbered as the core's items and boots are counted.
+  const followUps = (core: ItemOption | null): SlotGroup[] => {
+    const path = core ?? cores[0]
+    if (!path) return []
+    const done = path.itemIds.filter(id => !isBoots(id)).length
+    return places.slice(done)
+      .map((list, index) => ({ slot: path.itemIds.length + 1 + index, options: ranked(list, 4) }))
+      .filter(group => group.options.length > 0)
+  }
   return {
     patch: build.header.patch,
     games: build.header.n,
@@ -223,12 +258,14 @@ export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<Build
     spells: ranked((build.spells ?? []).map(row => ({ ...option(row[1], row[2], row[3]), spellIds: row[0].split('_').map(Number) })), 3),
     starters: ranked(setRows(build.startSet), 3),
     boots: bootsRows(build.boots),
-    cores: ranked(setRows(build.builtBootSet3), 5),
-    followUps: () => slots,
+    cores,
+    followUps,
     skills: ranked((build.skill15 ?? []).map(row => skillOption(String(row[0]).split('').map(Number), option(row[1], row[2], row[3]))), 3),
     priorities: ranked((build.skillOrder ?? []).map(row => ({ ...option(row[1], row[2], row[3]), order: row[0].split('') })), 3),
-    situational: itemRows(build.item),
-    places: [build.item1, build.item2, build.item3, build.item4, build.item5].map(itemRows),
+    // Every item bought, the support quest's line and the jungle pets apart: bought at the start, never a choice later.
+    situational: itemRows(build.item).filter(entry => !STARTER_LINE.has(entry.itemIds[0]!)),
+    places,
+    questRewards: questRewardsOf(itemRows(build.supportItem)),
   }
 }
 

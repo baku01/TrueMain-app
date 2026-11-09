@@ -65,6 +65,14 @@ describe('the starting sets and the boots', () => {
     expect(startingSets([set([1055, 2003], 900), set([1028, 2003], 47)], consumable)).toHaveLength(2)
   })
 
+  it('offers a support\'s quest rewards as a slot of their own, never one of the buying order (Lulu: Dream Maker)', () => {
+    const lulu = { ...optionsOf([m(800, [3504, 3158])]), questRewards: [m(828, [3870]), m(79, [3869]), m(12, [3877])] }
+    const quest = firstSlots(lulu, names, consumable).find(slot => slot.name === 'quest')!
+    expect(quest.kind).toBe('quest')
+    expect(quest.options.map(option => option.itemIds[0])).toEqual([3870, 3869])
+    expect(firstSlots(optionsOf([m(800, [3504])]), names, consumable).map(slot => slot.name)).not.toContain('quest')
+  })
+
   it('offers no boots to a champion that plays without, nor their timing', () => {
     const yuumi = { ...optionsOf([m(800, [3504])]), boots: [m(198, [3158])], games: 8774 }
     expect(firstSlots(yuumi, names, consumable).map(slot => slot.name)).not.toContain('boots')
@@ -251,6 +259,11 @@ describe('laidBuild', () => {
     expect(build.order).toEqual([6692, 3047, 3142, 6694, 3071])
     expect(build.summonerSpells).toMatchObject({ spell1Id: 4, spell2Id: 12 })
     expect(build.runePage).toBeNull()
+    expect(build.questReward).toBeNull()
+    // A support's reward is named apart, never in the order.
+    const support = laidBuild(slot => ({ ...picks, quest: option({ itemIds: [3870] }) })[slot] ?? null, [3504], [6617])
+    expect(support.questReward!.itemIds).toEqual([3870])
+    expect(support.order).not.toContain(3870)
   })
 })
 

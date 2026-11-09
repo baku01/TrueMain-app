@@ -3,6 +3,7 @@ import type { DraftItemBlock, PlaceItemBlock, PlaceMeasures } from '~/utils/item
 import { tr } from '#common/utils/i18n'
 import { isBoots } from '~/utils/blitz/builds'
 import { measuredPlaces } from '~/utils/item-set'
+import { isQuestReward } from '~/utils/support-quest'
 
 /**
  * The automatic import's item sets, laid out block for block the way Blitz
@@ -29,6 +30,8 @@ export interface ImportBuild {
   situational: number[]
   /** How many of the path's items come before the boots, as the build buys them; second by default. */
   bootsAt?: number
+  /** A support's quest reward to pick (`utils/support-quest`): its own block after the starting items, never in the buying order. */
+  questReward?: number[]
   /** A block per need of the enemy team, after the final build (`utils/jev-optionals` `draftBlocks`). */
   draft?: DraftItemBlock[]
   /**
@@ -77,6 +80,8 @@ export interface BlockTitles {
   final: string
   situational: string
   boots: string
+  /** The support quest's reward block. */
+  quest?: string
   /** A need's block: what it answers, the enemies behind it. */
   against?: (block: DraftItemBlock) => string
   /** A place's block: the completed item's place, 1 the first. */
@@ -107,6 +112,7 @@ export const blockTitles = (): BlockTitles => ({
   final: tr('autoImport.block.final'),
   situational: tr('autoImport.block.situational'),
   boots: tr('autoImport.block.boots'),
+  quest: tr('autoImport.block.quest'),
   against: block => againstTitle(tr(`autoImport.block.against.${block.need}`), block.names),
   place: place => tr('autoImport.block.place', { n: place }),
 })
@@ -176,7 +182,9 @@ const block = (type: string, ids: number[]): RecommendedBlock => ({
 /** One build's set; a block with nothing in it is left out. */
 export function recommendedSet(build: ImportBuild, championKey: string, titles: BlockTitles, items: Record<number, StaticItemData>, orders: ItemOrders | null): RecommendedSet {
   const known = (ids: number[]) => ids.filter(id => id in items)
-  const starter = [...new Set(known(build.starter))]
+  // A quest's reward, wherever the build wrote it, is picked, not bought: its own block, out of the starting items.
+  const reward = [...new Set(known([...(build.questReward ?? []), ...build.starter.filter(isQuestReward)]))].slice(0, 1)
+  const starter = [...new Set(known(build.starter.filter(id => !isQuestReward(id))))]
   const final = known(finalBuild(build))
   const draft = (build.draft ?? []).map(entry => block(titles.against?.(entry) ?? entry.need, [...new Set(known(entry.items))]))
   const answering = new Set((build.draft ?? []).flatMap(entry => entry.items))
@@ -190,6 +198,7 @@ export function recommendedSet(build: ImportBuild, championKey: string, titles: 
     .filter(entry => entry.items.length > 1)
   const blocks = [
     block(titles.starting, starter),
+    block(titles.quest ?? 'Quest reward', reward),
     block(titles.order, known(buyingOrder(final, starter, items, orders))),
     block(titles.final, final),
     ...draft,

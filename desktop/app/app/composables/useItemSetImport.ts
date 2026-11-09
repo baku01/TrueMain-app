@@ -85,7 +85,7 @@ export function useItemSetImport() {
         const orders = position ? await readBlitzBuildDoc(championId, position).then(doc => doc?.itemOrders ?? null).catch(() => null) : null
         // A Jev build brings its places from its slots; any other, the lane's measures at each place of its path.
         const measures = !build.places && position ? await lanePlaces(championId, position).catch(() => null) : null
-        const set = recommendedSet(withMeasuredPlaces({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft, places: build.places }, measures), championKey, blockTitles(), items.value, orders)
+        const set = recommendedSet(withMeasuredPlaces({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft, places: build.places, questReward: build.questReward }, measures), championKey, blockTitles(), items.value, orders)
         const { invoke } = await import('@tauri-apps/api/core')
         await invoke('write_recommended_item_sets', { sets: [set] })
       }
@@ -111,8 +111,8 @@ export function useItemSetImport() {
   async function importItemSet(subject: ItemSetSubject | ItemSetBlocks) {
     if ('blocks' in subject) {
       const keep = (ids: number[]) => ids.filter(known)
-      const { starter, boots, core, situational: rest, bootsAt, draft, places } = subject.blocks
-      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt, draft: draft?.map(block => ({ ...block, items: keep(block.items) })), places: places?.map(entry => ({ ...entry, items: keep(entry.items) })) }))
+      const { starter, boots, core, situational: rest, bootsAt, draft, places, questReward } = subject.blocks
+      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt, draft: draft?.map(block => ({ ...block, items: keep(block.items) })), places: places?.map(entry => ({ ...entry, items: keep(entry.items) })), questReward: questReward && keep(questReward) }))
     }
     const draft = subject.draft?.map(block => ({ ...block, items: block.items.filter(known) }))
     return write(subject.championId, subject.champion, subject.position, async () => ({ ...itemSetBuild(subject.build.core, await situational(subject), known), draft }))

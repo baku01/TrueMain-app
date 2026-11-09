@@ -123,7 +123,9 @@ const headline = computed(() => {
 
 /** The sequence's letters in one tone, the ultimate's in the accent: the order reads without a rainbow. */
 const SKILL_TEXT: Record<string, string> = { Q: 'text-toned', W: 'text-toned', E: 'text-toned', R: 'text-primary' }
-const ORDINAL: Record<number, string> = { 4: 'panel.slot4', 5: 'panel.slot5', 6: 'panel.slot6' }
+// A support's core is one item and boots, its quest's reward apart: what follows it starts at the third purchase.
+const ORDINAL: Record<number, string> = { 3: 'panel.slot3', 4: 'panel.slot4', 5: 'panel.slot5', 6: 'panel.slot6' }
+const ordinal = (slot: number) => (ORDINAL[slot] ? t(ORDINAL[slot]) : t('panel.slotN', { slot }))
 const percent = (value: number) => formatPercentage(value, 1)
 const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-default')
 </script>
@@ -136,6 +138,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
       <div class="blitz-small [grid-area:small]">
         <BuildSourceChoices :title="t('panel.spells')" :options="options.spells" :summoners="summoners" layout="rows" :icon-size="28" />
         <BuildSourceChoices :title="t('panel.starters')" :options="options.starters" :items="items" layout="rows" :icon-size="28" />
+        <BuildSourceChoices v-if="options.questRewards?.length" :title="t('build.questReward.title')" :options="options.questRewards" :items="items" layout="rows" :icon-size="28" />
         <BuildSourceChoices :title="t('panel.boots')" :options="boots" :items="items" layout="rows" :icon-size="28" />
       </div>
 
@@ -146,11 +149,11 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
           <section v-if="followUps.length" class="surface min-w-0 rounded-2xl p-3">
             <!-- One column per group the source has: lolalytics measures two slots after the core, op.gg three. -->
             <div class="grid gap-x-3 gap-y-3 @2xl:[grid-template-columns:repeat(var(--groups),minmax(0,1fr))]" :style="{ '--groups': followUps.length }">
-              <BuildSourceChoices v-for="group in followUps" :key="group.slot" :title="t(ORDINAL[group.slot]!)" :options="group.options.slice(0, 3)" :items="items" bare layout="rows" :icon-size="28" />
+              <BuildSourceChoices v-for="group in followUps" :key="group.slot" :title="ordinal(group.slot)" :options="group.options.slice(0, 3)" :items="items" bare layout="rows" :icon-size="28" />
             </div>
           </section>
         </div>
-        <BuildSourceRecipe :champion-id="championId" :position="position" :core="cores[core] ?? null" :starter="options.starters[0] ?? null" :boots="boots" :follow-ups="followUps" :cores="cores" :items="items" />
+        <BuildSourceRecipe :champion-id="championId" :position="position" :core="cores[core] ?? null" :starter="options.starters[0] ?? null" :boots="boots" :follow-ups="followUps" :cores="cores" :quest-reward="options.questRewards?.[0] ?? null" :items="items" />
       </div>
 
       <section v-if="championStatic && skills.length" class="surface rounded-2xl p-4 [grid-area:skills]">

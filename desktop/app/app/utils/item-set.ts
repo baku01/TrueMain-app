@@ -83,6 +83,8 @@ export interface ItemSetBuild {
   draft?: DraftItemBlock[]
   /** Each place of the buying order with the items to choose from there (`PlaceItemBlock`). */
   places?: PlaceItemBlock[]
+  /** A support's quest reward to pick (`utils/support-quest`). */
+  questReward?: number[]
 }
 
 /**
@@ -132,6 +134,7 @@ export function itemSetBuild(core: BuildCoreView, situational: number[], known: 
     boots: keep(core.boots?.itemIds),
     core: keep(core.itemPath?.itemIds),
     situational: keep(situational),
+    ...(core.questReward ? { questReward: keep(core.questReward.itemIds) } : {}),
   }
 }
 

@@ -224,7 +224,7 @@ export const DEVIATE = {
 export const POPULAR = { share: 0.1, margin: 0.02 } as const
 
 /** The slots whose pick is the most played unless an option has a reason (`DEVIATE`). */
-const BY_REASON: SlotKind[] = ['item', 'boots', 'runes', 'spells', 'starter']
+const BY_REASON: SlotKind[] = ['item', 'boots', 'quest', 'runes', 'spells', 'starter']
 
 /** The need `answers` answers most beyond what `standard` answers of it, and by how much. */
 function gained(answers: Answer[], standard: Answer[]): Answer | null {
@@ -265,7 +265,7 @@ function leadOf(mine: Scored, theirs: Scored, edge: number | null, fits: { mine?
  */
 function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | null, fits: { mine?: FitRead, theirs?: FitRead }, popular: boolean, due: Resist[]): DeviationReason | null {
   if (mine.misfit) return null
-  const items = kind === 'item' || kind === 'boots'
+  const items = kind === 'item' || kind === 'boots' || kind === 'quest'
   if (items && theirs.misfit) return { kind: 'draft', need: gained(mine.answers, theirs.answers)?.need ?? null }
   const owed = items ? due.find(resist => answerTo(mine.answers, resist) >= STANDS_OUT && answerTo(theirs.answers, resist) < STANDS_OUT) : undefined
   if (owed && (edge ?? 0) > DEVIATE.due) return { kind: 'draft', need: owed }
@@ -285,7 +285,7 @@ function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | n
 
 /** Every option of a slot scored, and the one it takes. */
 export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
-  const edges = edgesOf(slot.options, slot.kind === 'item' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
+  const edges = edgesOf(slot.options, slot.kind === 'item' || slot.kind === 'quest' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
   const scored: Record<string, Scored> = {}
   const fits: Record<string, FitRead | undefined> = {}
   for (const option of slot.options) {
@@ -295,7 +295,8 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
     let answers: Answer[] = []
     let misfit = false
     let weights: Weights = WEIGHTS.choice
-    if (slot.kind === 'item' || slot.kind === 'boots') {
+    // A quest reward is an item too, read against the team: what it gives the support's allies in a fight.
+    if (slot.kind === 'item' || slot.kind === 'boots' || slot.kind === 'quest') {
       const fit = fitOf(option.itemIds, slot.lane ? context.lane : context.team, context.itemReads, context.tags, { due: context.due })
       const reads = option.itemIds.map(id => context.itemReads.get(id)).filter(read => !!read)
       if (reads.length) parts.kit = reads.reduce((sum, read) => sum + read.kit, 0) / reads.length
@@ -309,7 +310,7 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       parts.draft = 0.5 + 0.5 * fit.fit * (intoBurst ? 1 : parts.kit ?? 1)
       answers = fit.answers
       misfit = fit.misfit
-      const base = slot.kind === 'boots' ? WEIGHTS.boots : itemWeights(slot.place)
+      const base = slot.kind === 'boots' ? WEIGHTS.boots : itemWeights(slot.kind === 'quest' ? 1 : slot.place)
       weights = { ...base, kit: base.kit! * modeled(option.games) }
     }
     else if (slot.kind === 'starter') {
@@ -449,5 +450,5 @@ export function itemSetOf(ranked: RankedSlot[], build: LaidBuild): ItemSetBuild 
     .flatMap(entry => entry.slot.options.map(option => ({ id: option.itemIds[0]!, score: entry.scored[option.key]?.total ?? 0 })))
     .filter(option => !core.includes(option.id))
     .sort((a, b) => b.score - a.score)
-  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined, places: placesOf(ranked, build) }
+  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined, places: placesOf(ranked, build), questReward: build.questReward?.itemIds }
 }

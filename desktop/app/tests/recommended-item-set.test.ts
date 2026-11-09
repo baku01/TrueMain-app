@@ -56,6 +56,26 @@ describe('recommended item sets', () => {
   })
 })
 
+describe('quest reward block', () => {
+  // Lulu: World Atlas and two potions, Dream Maker to pick, Ardent Censer and Shurelya's; Ionian Boots.
+  const lulu = { key: 'lane', title: 'Lulu', starter: [3865, 2003, 2003], path: [3504, 2065], boots: [3158], situational: [] }
+  const known: Record<number, StaticItemData> = Object.fromEntries([3865, 2003, 3870, 3504, 2065, 3158].map(id => [id, item(id, 3000)]))
+  const titles = { starting: 'S', order: 'O', final: 'F', situational: 'X', boots: 'B', quest: 'Q' }
+
+  it('names the reward in a block of its own after the starting items, in no buying order', () => {
+    const [set] = recommendedSets({ ...lulu, questReward: [3870] }, [], 'Lulu', titles, known, null)
+    expect(set!.blocks.map(block => block.type)).toEqual(['S', 'Q', 'O', 'F', 'B'])
+    expect(set!.blocks[1]!.items.map(entry => entry.id)).toEqual(['3870'])
+    for (const block of set!.blocks.filter(block => block.type !== 'Q')) expect(block.items.map(entry => entry.id)).not.toContain('3870')
+  })
+
+  it('moves a reward a source wrote among the starting items to its block (TrueMain\'s own builds)', () => {
+    const [set] = recommendedSets({ ...lulu, starter: [3865, 3870, 2003, 2003] }, [], 'Lulu', titles, known, null)
+    expect(set!.blocks[0]!.items.map(entry => entry.id)).not.toContain('3870')
+    expect(set!.blocks[1]!.items.map(entry => entry.id)).toEqual(['3870'])
+  })
+})
+
 describe('place blocks', () => {
   // Ashe: Yun Tal Wildarrows, Phantom Dancer, Infinity Edge, Lord Dominik's Regards, Guardian Angel; Berserker's Greaves.
   const ashe = { key: 'draft', title: 'Ashe', starter: [1055], path: [3032, 3046, 3031, 3036, 3026], boots: [3006], situational: [] }

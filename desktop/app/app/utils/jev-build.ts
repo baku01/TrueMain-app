@@ -37,7 +37,7 @@ export interface JevOption extends Measure, ItemMeasure {
   situational?: boolean
 }
 
-export type SlotKind = 'runes' | 'spells' | 'starter' | 'skills' | 'boots' | 'timing' | 'item'
+export type SlotKind = 'runes' | 'spells' | 'starter' | 'skills' | 'boots' | 'timing' | 'item' | 'quest'
 
 export interface JevSlot {
   name: string
@@ -171,6 +171,13 @@ export function firstSlots(options: BuildOptions, names: Names, consumable: (id:
       kind: 'starter',
       lane: true,
       options: keyed(reliable(startingSets(options.starters, consumable, omitted)), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
+    },
+    {
+      // A support's quest reward: an item picked when the quest is done, never bought — apart from the buying order.
+      name: 'quest',
+      kind: 'quest',
+      lane: false,
+      options: keyed(reliable(options.questRewards ?? []), 4, reward => ({ ...measured(reward), itemIds: reward.itemIds, label: names.item(reward.itemIds[0]!) })),
     },
     {
       name: 'skills',
@@ -452,6 +459,7 @@ export function candidateItems(options: BuildOptions, pool: ItemOption[]): numbe
   const ids = new Set<number>()
   for (const starter of options.starters) starter.itemIds.forEach(id => ids.add(id))
   for (const boots of options.boots) boots.itemIds.slice(0, 1).forEach(id => ids.add(id))
+  for (const reward of options.questRewards ?? []) ids.add(reward.itemIds[0]!)
   for (const core of options.cores) {
     pathOf(core).forEach(id => ids.add(id))
     for (const group of options.followUps(core)) for (const option of group.options) option.itemIds.forEach(id => ids.add(id))
@@ -468,6 +476,8 @@ export interface LaidBuild {
   /** With the first three levels, when measured: they tell apart orders that max alike. */
   skillOrder: (BuildSkillOrder & { opening?: string[] }) | null
   boots: BuildItemSet | null
+  /** A support's quest reward to pick (`utils/support-quest`): no place of `order`, never bought. */
+  questReward: BuildItemSet | null
   /** Every completed item in the order it is bought, the boots where they fall. */
   order: number[]
 }
@@ -479,6 +489,7 @@ export function laidBuild(pick: (slot: string) => JevOption | null, core: number
   const starter = pick('starter')
   const skills = pick('skills')
   const boots = pick('boots')
+  const reward = pick('quest')
   const after = Math.min(pick('bootsAfter')?.after ?? 1, core.length)
   const order = [...core.slice(0, after), ...(boots?.itemIds ?? []), ...core.slice(after), ...later]
   return {
@@ -487,6 +498,7 @@ export function laidBuild(pick: (slot: string) => JevOption | null, core: number
     starterItems: starter ? { itemIds: starter.itemIds, ...measured(starter) } : null,
     skillOrder: skills?.order ? { sequence: skills.order, opening: skills.opening, ...measured(skills) } : null,
     boots: boots ? { itemIds: boots.itemIds, ...measured(boots) } : null,
+    questReward: reward ? { itemIds: reward.itemIds, ...measured(reward) } : null,
     order,
   }
 }

@@ -61,7 +61,9 @@ withDefaults(defineProps<{
   itemPath?: BuildItemPath | null
   /** The situational items, for the compact layout. */
   situational?: number[]
-}>(), { summonersPending: false, noRunesMessage: null, championName: null, championId: null, compact: false, itemPath: null, situational: () => [] })
+  /** A support's quest reward, beside the starting items: picked, never bought (`BuildQuestReward`). */
+  questReward?: BuildItemSet | null
+}>(), { summonersPending: false, noRunesMessage: null, championName: null, championId: null, compact: false, itemPath: null, situational: () => [], questReward: null })
 </script>
 
 <template>
@@ -86,9 +88,10 @@ withDefaults(defineProps<{
           <h3 class="text-sm font-semibold text-highlighted">{{ t('build.compact.spellsBuilds') }}</h3>
           <span class="ml-auto"><slot name="itemImport" /></span>
         </div>
-        <div class="grid grid-cols-2 justify-items-center gap-4">
+        <div class="grid justify-items-center gap-4" :class="questReward ? 'grid-cols-3' : 'grid-cols-2'">
           <ChampionCoreSpells :summoners="summonerSpells" :summoners-map="summonersMap" :summoners-pending="summonersPending" />
           <ChampionCoreStarterItems :starter="starterItems" :items-map="itemsMap" />
+          <BuildQuestReward v-if="questReward" :reward="questReward" :items-map="itemsMap" />
         </div>
         <ChampionCoreBuildPath :path="itemPath" :items-map="itemsMap" />
         <div class="grid grid-cols-2 gap-4">
@@ -124,9 +127,10 @@ withDefaults(defineProps<{
             <div v-if="$slots.spells" class="absolute -right-8 top-6"><slot name="spells" /></div>
           </div>
           <ChampionCoreBoots :boots="boots" :items-map="itemsMap" />
-          <div class="sm:col-span-2">
+          <div :class="questReward ? '' : 'sm:col-span-2'">
             <ChampionCoreStarterItems :starter="starterItems" :items-map="itemsMap" />
           </div>
+          <BuildQuestReward v-if="questReward" :reward="questReward" :items-map="itemsMap" />
         </div>
       </div>
 

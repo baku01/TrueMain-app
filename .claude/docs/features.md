@@ -346,7 +346,15 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   allies against burst — Redemption, Moonstone Renewer, Locket —, crowd control removed from an ally — Mikael's), read
   as answers to those needs beside the holder's own; and on the
   support lane a source's set of consumables alone reads as World Atlas, which Blitz records as nothing
-  (`startingSets`). The page shows the team's
+  (`startingSets`). A support's quest reward (Celestial Opposition, Dream Maker, Zaz'Zak's Realmspike, Solstice
+  Sleigh, Bloodsong — `utils/support-quest`) is picked, never bought: no place of any buying order. The sources
+  read it apart (`BuildOptions.questRewards`: lolalytics' `supportItem`, whose cores and first item are the reward —
+  `boughtCores`, its places from the second —, Blitz's items outside the cores), TrueMain's own builds have it
+  among the starting items (`rewardApart`); Jev ranks it as a slot of its own (`quest`, by statistics, draft and
+  kit, `LaidBuild.questReward`) in the setup row, the build views beside the starting items (`BuildQuestReward`),
+  the item set as its own block after them ("Recompensa da Missão"), and in game the next-item panel and the
+  overlay name it while the quest runs (`useStarter`). lolalytics' follow-ups start after the core's last
+  completed item (its third when the core holds boots), as Blitz's do. The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
   (`JevBuildPath`): a setup row (runes, spells, starter, skill order with its 18-level strip, boots timing) and the
   items in buy order, each step its option large with score, win rate, pick rate, games and WPA, the slot's other

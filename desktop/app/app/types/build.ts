@@ -45,6 +45,8 @@ export interface BuildCoreView {
   summonerSpells: BuildSummonerSpells | null
   skillOrder: BuildSkillOrder | null
   runePage: BuildRunePage | null
+  /** A support's quest reward to pick (`utils/support-quest`): picked, never bought, so no place of `itemPath`. */
+  questReward?: BuildItemSet | null
 }
 
 /** One node of the item-progression tree: an item, and what was built after it. */

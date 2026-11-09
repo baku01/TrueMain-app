@@ -1,4 +1,5 @@
 import type { BuildOptions, Measure, SlotGroup } from '~/utils/sources/model'
+import { questRewardsOf } from '~/utils/support-quest'
 
 /**
  * Two sources read as one (lolalytics and Blitz), for the Jev matchup page's
@@ -64,6 +65,9 @@ export function combineOptions(first: BuildOptions | null, second: BuildOptions 
       : undefined,
     situational: first.situational || second.situational
       ? poolMeasures([first.situational ?? [], second.situational ?? []], option => ids(option.itemIds), games)
+      : undefined,
+    questRewards: first.questRewards || second.questRewards
+      ? questRewardsOf(poolMeasures([first.questRewards ?? [], second.questRewards ?? []], option => ids(option.itemIds), games))
       : undefined,
     places: first.places || second.places
       ? Array.from({ length: Math.max(first.places?.length ?? 0, second.places?.length ?? 0) }, (_, at) => {

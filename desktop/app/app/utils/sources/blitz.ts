@@ -1,7 +1,7 @@
 import type { BlitzBuildDoc } from '~/utils/blitz/builds'
 import type { BuildOptions, RuneShares } from '~/utils/sources/model'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
-import { bootsOptions, coreOptions, followUpOptions, keystoneOptions, runeShares, situationalOptions, skillOptions, spellOptions, starterOptions } from '~/utils/blitz/options'
+import { bootsOptions, coreOptions, followUpOptions, keystoneOptions, questRewardOptions, runeShares, situationalOptions, skillOptions, spellOptions, starterOptions } from '~/utils/blitz/options'
 import { assemblePage, liveRuneTree } from '~/utils/sources/model'
 
 /**
@@ -31,6 +31,7 @@ export async function blitzOptionsOf(doc: BlitzBuildDoc): Promise<BuildOptions> 
     followUps: core => (core ? followUpOptions(doc, core) : []),
     skills: skillOptions(doc),
     situational: situationalOptions(doc),
+    questRewards: questRewardOptions(doc),
   }
 }
 

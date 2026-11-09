@@ -1,5 +1,7 @@
 import type { BlitzBuildDoc, Tally } from '~/utils/blitz/builds'
 import { isBoots, maxOrder } from '~/utils/blitz/builds'
+import { STARTER_LINE } from '~/utils/item-groups'
+import { questRewardsOf } from '~/utils/support-quest'
 
 /**
  * Every choice Blitz measured on a lane, ranked, for the Blitz build panel
@@ -59,9 +61,16 @@ export function bootsOptions(doc: BlitzBuildDoc, count = 3): ItemOption[] {
  * share of the lane's games and its win rate: Blitz sends `win_rate` as 0, so
  * the rate is read from the wins.
  */
-export const situationalOptions = (doc: BlitzBuildDoc): ItemOption[] =>
+const outsideCores = (doc: BlitzBuildDoc): ItemOption[] =>
   (doc.situationalItems ?? []).filter(entry => entry.games > 0)
     .map(entry => ({ itemIds: [entry.itemId], games: entry.games, pickRate: doc.games ? entry.games / doc.games : 0, winRate: entry.wins / entry.games }))
+
+/** The support quest's line and the jungle pets apart (`STARTER_LINE`): bought at the start or picked, never a choice later. */
+export const situationalOptions = (doc: BlitzBuildDoc): ItemOption[] =>
+  outsideCores(doc).filter(option => !STARTER_LINE.has(option.itemIds[0]!))
+
+/** The support quest's rewards picked (`utils/support-quest`), which Blitz counts among the items outside the cores. */
+export const questRewardOptions = (doc: BlitzBuildDoc): ItemOption[] => questRewardsOf(outsideCores(doc))
 
 /** Boots over every core path that carries a pair and every follow-up that is one: the reading when Blitz lists no items outside the cores. */
 function bootsFromCores(doc: BlitzBuildDoc, count: number): ItemOption[] {
