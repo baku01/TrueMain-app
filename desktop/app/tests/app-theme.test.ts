@@ -38,6 +38,20 @@ describe('app theme', () => {
     expect(svg).toContain('stop-color="#ffcc00"')
   })
 
+  it('fills the K/DA FIRESTARTER and Christmas icons with their pictures, in place of the mark', () => {
+    for (const [theme, accent] of [['kda-firestarter', 'pink'], ['christmas', 'red']] as const) {
+      const svg = appIconSvg({ theme, accent }, true)!
+      expect(svg).toContain('<image href="data:image/jpeg;base64,')
+      expect(svg).not.toContain('M16 48V22')
+    }
+    expect(THEMES['kda-firestarter'].palette.pink).toBe('#ff4f93')
+    expect(THEMES.christmas.palette.red).toBe('#ef6a5f')
+    // Each with its light twin, the top bar's switch between them.
+    expect([THEMES['kda-firestarter'].pair, THEMES['kda-firestarter-light'].pair]).toEqual(['kda-firestarter-light', 'kda-firestarter'])
+    expect([THEMES.christmas.pair, THEMES['christmas-light'].pair]).toEqual(['christmas-light', 'christmas'])
+    expect([THEMES['kda-firestarter-light'].light, THEMES['christmas-light'].light]).toEqual([true, true])
+  })
+
   it('fills the icon with the player\'s Cinnamoroll pictures, rounded on the Dock, in place of the mark', () => {
     for (const theme of ['cinnamoroll', 'cinnamoroll-night', 'cinnamoroll-sakura'] as const) {
       const svg = appIconSvg({ theme, accent: 'pink' }, true)!
