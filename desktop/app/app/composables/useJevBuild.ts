@@ -8,6 +8,7 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
+import type { ItemOption } from '~/utils/sources/model'
 import { CORE_ITEMS, INVENTORY, PLACE_SHARE, WORLD_ATLAS, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, placeShare, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
 import { draftOptionals } from '~/utils/jev-optionals'
 import { isBoots } from '~/utils/blitz/builds'
@@ -251,29 +252,37 @@ export function useJevBuild(
       // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due
       // there — none in a marksman's core, whose resistance is its boots (`isMarksman`).
       const marksman = isMarksman(ours, position)
+      // What a slot gave up for its pick, from the second item on, offered to the slots after it (`withOwed`) — the first
+      // item's options are one or the other (Kraken Slayer or Hexoptics C44), not both.
+      const owed: ItemOption[] = []
+      const owe = (entry: RankedSlot) => {
+        if ((entry.slot.place ?? 0) >= 2 && entry.pick !== entry.standard && !entry.standard.situational) owed.push(entry.standard)
+      }
       for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
         const due = marksman ? [] : dueNow()
-        const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined)
+        const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined, owed)
         const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!slot || !open.length) continue
         const [measured] = withItemStats([{ ...slot, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
-        const entry = rankSlot(measured!, { ...context, due })
+        const entry = rankSlot(measured!, { ...context, due, owed: owed.flatMap(option => option.itemIds) })
         jevCore.push(...entry.pick.itemIds)
+        owe(entry)
         result.push(entry)
       }
       const follows = closestCore(options.cores, jevCore)
       for (const number of laterSlotNumbers(options, follows)) {
         if (jevCore.length + jevLater.length >= roomOf('pick')) break
         const due = dueNow()
-        const next = laterSlot(options, follows, number, jevHeld(), names, answering(due, draftNeeds(team, due).map(entry => entry.need)))
+        const next = laterSlot(options, follows, number, jevHeld(), names, answering(due, draftNeeds(team, due).map(entry => entry.need)), owed)
         const open = next?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!next || !open.length) continue
         const [measured] = withItemStats([{ ...next, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
-        const entry = rankSlot(measured!, { ...context, due })
+        const entry = rankSlot(measured!, { ...context, due, owed: owed.flatMap(option => option.itemIds) })
         jevLater.push(...entry.pick.itemIds)
+        owe(entry)
         result.push(entry)
       }
       const sourceCore = standardCore(options.cores).slice(0, roomOf('standard'))

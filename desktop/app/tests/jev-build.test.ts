@@ -17,6 +17,8 @@ describe('reliable', () => {
     const measure = (games: number) => ({ games, pickRate: 0, winRate: 0.5 })
     expect(reliable([measure(12), measure(400), measure(45)]).map(entry => entry.games)).toEqual([400, 45])
     expect(reliable([measure(16), measure(14), measure(12)]).map(entry => entry.games)).toEqual([16, 14])
+    // A page in 40 of 130,000 games is no option (1 %, `PLACE_SHARE`).
+    expect(reliable([measure(120000), measure(9960), measure(40)]).map(entry => entry.games)).toEqual([120000, 9960])
   })
 })
 
@@ -151,6 +153,15 @@ describe('situational answers', () => {
     const answers = answering({ 3071: { tanks: 0.6 }, 3142: { tanks: 0.4 } })
     const slot = laterSlot(options, core, 4, [3142, 6691], names, { pool: measuredPool(options), answersDraft: id => id === 3071 || id === 3142, answers, needs: ['tanks'] })!
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[6694, false], [3814, false], [3071, true]])
+  })
+
+  it('offers again what a slot before gave up, until the build holds it: Infinity Edge after Lord Dominik\'s Regards', () => {
+    // Jinx: Hexoptics C44 and Runaan's Hurricane, then Infinity Edge most played third — Lord Dominik's Regards taken there against tanks.
+    const core = m(140000, [3115, 3085])
+    const options = optionsOf([core], () => [{ slot: 5, options: [m(9189, [3026]), m(5087, [3072])] }])
+    const infinity = m(38359, [3031])
+    expect(laterSlot(options, core, 5, [3115, 3085, 3036], names, undefined, [infinity])!.options.map(option => option.itemIds[0])).toEqual([3031, 3026, 3072])
+    expect(laterSlot(options, core, 5, [3115, 3085, 3036, 3031], names, undefined, [infinity])!.options.map(option => option.itemIds[0])).toEqual([3026, 3072])
   })
 
   it('offers no answer of the other kind of damage than the core\'s: no Zhonya\'s Hourglass on a build of attack damage', () => {

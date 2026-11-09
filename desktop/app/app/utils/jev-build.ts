@@ -56,10 +56,16 @@ const keyed = <T>(list: T[], count: number, shape: (option: T) => Omit<JevOption
 /** Under this many games an option is a rumour: a slot keeps it only to have two to compare. */
 export const MIN_GAMES = 30
 
-/** The options seen often enough to judge, most played first; the two most played whatever their games. */
+/**
+ * The options seen often enough to judge, most played first: in `MIN_GAMES`
+ * games and `PLACE_SHARE` of the slot's games or more — LoLDraftAI lists rune
+ * pages from 1 %, and 30 of Ashe's 130,000 games are no option — the two most
+ * played whatever their games.
+ */
 export function reliable<T extends Measure>(list: T[]): T[] {
   const sorted = [...list].sort((a, b) => b.games - a.games)
-  const kept = sorted.filter(option => option.games >= MIN_GAMES)
+  const floor = Math.max(MIN_GAMES, PLACE_SHARE * sorted.reduce((sum, option) => sum + option.games, 0))
+  const kept = sorted.filter(option => option.games >= floor)
   return kept.length >= 2 ? kept : sorted.slice(0, 2)
 }
 
@@ -327,7 +333,7 @@ function coresAfter(cores: ItemOption[], chosen: number[]): ItemOption[] {
  * boots (Eclipse, Plated Steelcaps, Sundered Sky), so their third place is the
  * items after them.
  */
-export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names, due?: Situational): JevSlot | null {
+export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names, due?: Situational, owed: ItemOption[] = []): JevSlot | null {
   const at = new Map<number, { games: number, wins: number }>()
   for (const core of coresAfter(options.cores, chosen)) {
     const id = pathOf(core)[index]
@@ -337,9 +343,24 @@ export function coreSlot(options: BuildOptions, index: number, chosen: number[],
   }
   if (!at.size) return null
   const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
-  const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
-  const owed = due?.needs.length ? draftAnswers(measuredHere, chosen, due, due.needs.length, true) : []
-  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions([...measuredHere, ...owed.map(option => ({ ...option, situational: true as const }))], names) }
+  const measuredHere = reliable(withOwed([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 })), owed, chosen)).slice(0, 4)
+  const answers = due?.needs.length ? draftAnswers(measuredHere, chosen, due, due.needs.length, true) : []
+  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions([...measuredHere, ...answers.map(option => ({ ...option, situational: true as const }))], names) }
+}
+
+/**
+ * A slot's measured options and the items a slot before it gave up for its
+ * pick (`owed`), each once, the larger sample kept, none the build holds or
+ * cannot hold: Lord Dominik's Regards taken third against tanks moves Infinity
+ * Edge, Jinx's most played third item, to fourth — not out of the build.
+ */
+function withOwed(measured: ItemOption[], owed: ItemOption[], held: number[]): ItemOption[] {
+  const byId = new Map<number, ItemOption>()
+  for (const option of [...owed.filter(option => option.itemIds.every(id => !held.includes(id) && fitsWith(id, held))), ...measured]) {
+    const id = option.itemIds[0]!
+    if ((byId.get(id)?.games ?? -1) < option.games) byId.set(id, option)
+  }
+  return [...byId.values()]
 }
 
 /** The measured core whose path shares the most items with `chosen`, the most played on a tie: whose follow-ups come next. */
@@ -406,10 +427,10 @@ export function statsPool(stats: Map<number, ItemStat>, measuredItems: ItemOptio
  * build (`fitsWith`: not held, no limited group full — one Lifeline item, one
  * Last Whisper item), plus the draft's answers.
  */
-export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, situational?: Situational): JevSlot | null {
+export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, situational?: Situational, owed: ItemOption[] = []): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
-  const measuredHere = reliable(group.options.filter(option => option.itemIds.every(id => chosen(id) && fitsWith(id, held)))).slice(0, 4)
+  const measuredHere = reliable(withOwed(group.options.filter(option => option.itemIds.every(id => chosen(id) && fitsWith(id, held))), owed, held)).slice(0, 4)
   const open = withSituational(measuredHere, held, situational)
   if (!open.length) return null
   return { name: `item${slot}`, kind: 'item', lane: false, place: slot, options: itemOptions(open, names) }

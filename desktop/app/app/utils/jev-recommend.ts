@@ -138,6 +138,8 @@ export interface RankContext {
   urgency: number | null
   /** The resistances a draft rule makes due at this slot (`utils/jev-rules`). */
   due?: Resist[]
+  /** The items a slot before gave up for its pick: one leading this slot is taken (`rankSlot`). */
+  owed?: number[]
 }
 
 function total(parts: Parts, weights: Weights): number {
@@ -333,6 +335,9 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
   const standard = slot.options[0]!
   const best = (options: JevOption[]) => options.reduce((top, option) => (scored[option.key]!.total > scored[top.key]!.total + 1e-9 ? option : top), options[0]!)
   if (!BY_REASON.includes(slot.kind)) return { slot, pick: best(slot.options), standard, scored }
+  // An item a slot before gave up leads this one: taken, an answer moves a measured item one place, not out of the
+  // build — Jinx's Infinity Edge fourth after Lord Dominik's Regards, not given up again for Guardian Angel and Maw.
+  if (standard.itemIds.some(id => context.owed?.includes(id))) return { slot, pick: standard, standard, scored }
   const others = slot.options.slice(1)
   const share = shareOf(slot.options)
   const popular = (option: JevOption) => !option.situational && option.games >= MIN_GAMES && share(option) >= POPULAR.share

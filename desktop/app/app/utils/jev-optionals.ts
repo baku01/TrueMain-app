@@ -2,7 +2,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { EnemyLine, Needs, Resist } from '~/utils/jev-needs'
 import type { ItemOption } from '~/utils/sources/model'
 import type { DraftItemBlock } from '~/utils/item-set'
-import { MIN_GAMES } from '~/utils/jev-build'
+import { ANSWER_SHARE, MIN_GAMES } from '~/utils/jev-build'
 import { STANDS_OUT, answerTo, causesOf, draftNeeds, fitOf } from '~/utils/jev-needs'
 import { RESIST_DUE } from '~/utils/jev-rules'
 
@@ -63,7 +63,9 @@ export interface OptionalsInput {
 /**
  * The needs of the draft that stand out, a due resistance first, each with
  * up to `PER_NEED` of the champion's items that answer it (`STANDS_OUT`): most
- * first, the more played on a near tie; seen in `MIN_GAMES` games or more,
+ * first, the more played on a near tie; seen in `MIN_GAMES` games and
+ * `ANSWER_SHARE` of the champion's games or more, as the build's answers
+ * (Randuin's Omen in 686 of Jinx's 262,000 is none),
  * never a misfit (a resistance against damage the team does not deal). A need
  * no item answers is left out.
  */
@@ -72,7 +74,7 @@ export function draftOptionals(input: OptionalsInput): DraftOptional[] {
   const byId = new Map<number, ItemOption>()
   for (const option of input.candidates) {
     const id = option.itemIds[0]
-    if (id === undefined || option.games < MIN_GAMES || !suits(id)) continue
+    if (id === undefined || option.games < MIN_GAMES || option.pickRate < ANSWER_SHARE || !suits(id)) continue
     if ((byId.get(id)?.games ?? 0) < option.games) byId.set(id, option)
   }
   const fits = [...byId].map(([id, option]) => ({ id, option, fit: fitOf([id], team, reads, tags, { due }) })).filter(entry => !entry.fit.misfit)

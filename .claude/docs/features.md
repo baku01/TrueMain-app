@@ -302,7 +302,12 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   most (`leadOf`; `kit`, "suits our champion's kit better", only there). The highest total of those and the most
   played is taken; a misfit most played gives way to any option that is not one; skills and boots timing keep the
   highest total. A rare item Jev's kit read alone liked
-  never overturns what the bracket builds. `utils/jev-build.ts` lays the slots: runes, spells,
+  never overturns what the bracket builds. An item a slot from the second on gave up for its pick is offered to the
+  slots after it and taken where it leads (`withOwed`, `RankContext.owed`): an answer moves a measured item one place,
+  not out — Jinx into tanks took Lord Dominik's Regards third and dropped Infinity Edge for Guardian Angel and Maw of
+  Malmortius; now Infinity Edge is fourth. Every slot's options need 30 games and 1 % of the slot's games
+  (`reliable`, LoLDraftAI's floor for rune pages), the two most played kept whatever their games.
+  `utils/jev-build.ts` lays the slots: runes, spells,
   starter, skills, boots and their timing, the core item by item — each place read after the items chosen before it
   (`coreSlot`: the cores starting with them, else holding them in any order, else every core under 30 games), plus,
   where a resistance is due there and no measured option holds it, the champion's best answer to it (Zed's cores hold no
@@ -318,8 +323,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   Maw of Malmortius's place into an all-magic team. Beside the build, "Opcionais pelo draft" (`utils/jev-optionals`,
   `JevDraftOptionals`, a row of Jev's build card on the board and in champion select): each need that stands out,
   how much the draft calls for it, the item slot a rule makes it due by, the enemies behind it (`causesOf`), and up to
-  four of the champion's items (boots included) that answer it — each bought at some place of the build in 1 % of
-  that place's games (`PLACE_SHARE`), a pair of boots in 1 % of the boots bought; written into the imported item set as a block per
+  four of the champion's items (boots included) that answer it — each in half a percent of the champion's games
+  (`ANSWER_SHARE`) and bought at some place of the build in 1 % of that place's games (`PLACE_SHARE`), a pair of
+  boots in 1 % of the boots bought; written into the imported item set as a block per
   need after the final build ("Contra dano mágico — Ekko, Anivia +2", fitted to the shop's 40 characters), and in
   champion select's source build the situational box shows them once Jev answered. For an enchanter (a support whose
   Riot classes are Support then Mage, `isEnchanter`) a resistance reads only on a support's item, one with no damage

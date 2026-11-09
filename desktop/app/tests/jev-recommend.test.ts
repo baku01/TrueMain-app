@@ -241,6 +241,16 @@ describe('statistics', () => {
 describe('rankSlot', () => {
   const context = (lane: Needs, itemReads = new Map<number, ItemRead>()): RankContext => ({ team: lane, lane, itemReads, tags, fits: {}, urgency: null })
 
+  it('takes an item a slot before gave up when it leads this one: Jinx\'s Infinity Edge, not Guardian Angel again', () => {
+    const slot: JevSlot = { name: 'item5', kind: 'item', lane: false, place: 4, options: [option('o0', [3031], { games: 38359, pickRate: 0.68 }), option('o1', [3026], { games: 9189, pickRate: 0.16 })] }
+    const reads = new Map([[3031, item({ kit: 0.9 })], [3026, item({ antiBurst: 0.9, kit: 0.9 })]])
+    const physical = needs({ physical: 0.9, magic: 0.1, burst: 0.8 })
+    expect(rankSlot(slot, context(physical, reads)).pick.itemIds).toEqual([3026])
+    const owed = rankSlot(slot, { ...context(physical, reads), owed: [3031] })
+    expect(owed.pick.itemIds).toEqual([3031])
+    expect(owed.reason).toBeUndefined()
+  })
+
   it('takes Plated Steelcaps over Mercury\'s Treads against Darius, the statistics even', () => {
     const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3111]), option('o1', [3047])] }
     const ranked = rankSlot(boots, context(needs({ physical: 0.9, magic: 0.1, cc: 0.2 }), new Map([[3111, item({ tenacity: 0.97, kit: 0.8 })], [3047, item({ vsAutos: 0.9, kit: 0.6 })]])))
