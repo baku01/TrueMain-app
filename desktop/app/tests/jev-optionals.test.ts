@@ -78,3 +78,13 @@ describe('optional by the draft, for an enchanter', () => {
     expect(row('heal')).toEqual([3165])
   })
 })
+
+describe('optional by the draft, a support\'s own items', () => {
+  it('lists the items that protect the support\'s allies against burst and crowd control: Redemption, Moonstone Renewer, Mikael\'s Blessing', () => {
+    const team: Needs = { physical: 0.5, magic: 0.5, cc: 0.6, heal: 0, burst: 0.7, autos: 0, tanks: 0 }
+    const reads = new Map([[3107, item({ allyBurst: 0.95 })], [6617, item({ allyBurst: 0.9 })], [3222, item({ allyCc: 0.95 })], [3116, item()]])
+    const rows = draftOptionals({ candidates: [m(4401, 3107), m(25235, 6617), m(3700, 3222), m(29718, 3116)], team, due: [], enemies: [], reads, tags: () => [], suits: () => true, held: [] })
+    expect(rows.find(row => row.need === 'burst')!.items.map(entry => entry.id)).toEqual([6617, 3107])
+    expect(rows.find(row => row.need === 'cc')!.items.map(entry => entry.id)).toEqual([3222])
+  })
+})

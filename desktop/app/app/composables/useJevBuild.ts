@@ -188,7 +188,7 @@ export function useJevBuild(
 
       reader.keep(answers, unreadEnemies)
       for (const id of unreadItems) {
-        const read = readItem(id, answers)
+        const read = readItem(id, answers, position)
         if (read) keepItemRead(itemReadKey(version, championId, position, id), read)
       }
       const itemReads = new Map(candidates.flatMap((id) => {

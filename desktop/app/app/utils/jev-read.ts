@@ -49,7 +49,11 @@ export interface ChampionRead {
   confidence: number
 }
 
-/** What Jev read of an item: four facts (probability of yes) and how well it suits our champion (0–1). */
+/**
+ * What Jev read of an item: five facts (probability of yes), how well it suits
+ * our champion (0–1), and on the support lane two more (`ALLY_FACTS`): what it
+ * does for the allies a support plays for.
+ */
 export interface ItemRead {
   antiHeal: number
   tenacity: number
@@ -57,6 +61,10 @@ export interface ItemRead {
   vsAutos: number
   vsTanks: number
   kit: number
+  /** A shield, a heal or less damage taken it gives allies: a support's answer to burst. Asked on the support lane only. */
+  allyBurst?: number
+  /** Crowd control it removes or shortens on an ally: a support's answer to it. Asked on the support lane only. */
+  allyCc?: number
 }
 
 /** How well a lane choice suits our champion against the lane opponent, 0–1, and how sure Jev was. */
@@ -150,7 +158,7 @@ export function enemyRequest(enemies: ChampionText[]): Request {
 }
 
 /** The items' facts, each a yes/no statement about one item. */
-const ITEM_FACTS: Record<keyof Omit<ItemRead, 'kit'>, { says: (name: string) => string, yes: string, no: string }> = {
+const ITEM_FACTS: Record<keyof Omit<ItemRead, 'kit' | 'allyBurst' | 'allyCc'>, { says: (name: string) => string, yes: string, no: string }> = {
   antiHeal: {
     says: name => `Does items["${name}"] apply Grievous Wounds to the enemies it damages, cutting their healing?`,
     yes: 'Its text mentions Grievous Wounds or reduced healing on enemies',
@@ -178,11 +186,36 @@ const ITEM_FACTS: Record<keyof Omit<ItemRead, 'kit'>, { says: (name: string) => 
   },
 }
 
-/** The candidate items as one request: four facts each, and how well each suits our champion's kit. */
+/**
+ * What a support's items do for its allies, asked on the support lane only:
+ * the five facts ask about the item's holder, and a support's Redemption,
+ * Moonstone Renewer or Locket of the Iron Solari answers burst on its carry,
+ * Mikael's Blessing crowd control on it — none of which the holder's facts
+ * see, so a support's draft answers were mage items (Zhonya's Hourglass on
+ * Seraphine) and its own items answered nothing.
+ */
+const ALLY_FACTS: Record<'allyBurst' | 'allyCc', { says: (name: string) => string, yes: string, no: string }> = {
+  allyBurst: {
+    says: name => `Does items["${name}"] protect allies other than its holder from burst — a shield or a heal it gives them, or less damage they take?`,
+    yes: 'Its text shields, heals or reduces the damage taken by allies',
+    no: 'It protects its holder at most',
+  },
+  allyCc: {
+    says: name => `Does items["${name}"] remove or shorten crowd control on an ally other than its holder?`,
+    yes: 'Its text cleanses an ally or gives allies Tenacity',
+    no: 'It does nothing for allies against crowd control',
+  },
+}
+
+/** Whether the lane is a support's, whose items are also read for what they do for allies (`ALLY_FACTS`). */
+export const asksAllies = (position: string) => position === 'UTILITY'
+
+/** The candidate items as one request: five facts each — two more on the support lane — and how well each suits our champion's kit. */
 export function itemRequest(champion: ChampionText, position: string, items: { id: number, name: string, text: string }[]): Request {
   const questions: Record<string, JevQuestion> = {}
+  const facts = asksAllies(position) ? { ...ITEM_FACTS, ...ALLY_FACTS } : ITEM_FACTS
   for (const item of items) {
-    for (const [fact, statement] of Object.entries(ITEM_FACTS)) {
+    for (const [fact, statement] of Object.entries(facts)) {
       questions[`i${item.id}_${fact}`] = { type: 'noul', instructions: statement.says(item.name), criteria: { true: statement.yes, false: statement.no } }
     }
     questions[`i${item.id}_kit`] = {
@@ -270,12 +303,14 @@ export function readChampion(id: number, answers: Record<string, JevAnswer>): Ch
   return { ...read, confidence: facts.reduce((sum, [, value]) => sum + value!.confidence, 0) / facts.length }
 }
 
-export function readItem(id: number, answers: Record<string, JevAnswer>): ItemRead | null {
+/** An item's read once every fact asked came back — on the support lane (`asksAllies`) the allies' too; null else. */
+export function readItem(id: number, answers: Record<string, JevAnswer>, position = ''): ItemRead | null {
   const fact = (name: string) => noulOf(answers[`i${id}_${name}`])
   const kit = scoreOf(answers[`i${id}_kit`])
   const facts = { antiHeal: fact('antiHeal'), tenacity: fact('tenacity'), antiBurst: fact('antiBurst'), vsAutos: fact('vsAutos'), vsTanks: fact('vsTanks') }
-  if (!kit || Object.values(facts).some(value => value === null)) return null
-  return { ...(facts as Omit<ItemRead, 'kit'>), kit: kit.value }
+  const allies = asksAllies(position) ? { allyBurst: fact('allyBurst'), allyCc: fact('allyCc') } : {}
+  if (!kit || [...Object.values(facts), ...Object.values(allies)].some(value => value === null)) return null
+  return { ...(facts as Omit<ItemRead, 'kit' | 'allyBurst' | 'allyCc'>), ...(allies as Pick<ItemRead, 'allyBurst' | 'allyCc'>), kit: kit.value }
 }
 
 /** Requests split so none carries more than `size` questions; each part keeps the whole state. */

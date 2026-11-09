@@ -37,6 +37,12 @@ describe('what Jev is asked', () => {
     expect(request.state).toMatchObject({ ourChampion: { name: 'Darius', role: 'TOP' }, items: { 'Black Cleaver': 'Armor penetration.' } })
   })
 
+  it('asks a support\'s items two more facts: what they do for allies against burst and crowd control', () => {
+    const request = itemRequest(darius, 'UTILITY', [{ id: 3107, name: 'Redemption', text: 'Heals allies.' }])
+    expect(Object.keys(request.questions)).toEqual(['i3107_antiHeal', 'i3107_tenacity', 'i3107_antiBurst', 'i3107_vsAutos', 'i3107_vsTanks', 'i3107_allyBurst', 'i3107_allyCc', 'i3107_kit'])
+    expect(request.questions.i3107_allyBurst).toMatchObject({ type: 'noul', instructions: expect.stringContaining('allies other than its holder') })
+  })
+
   it('asks each lane choice against the lane opponent, and the boots\' timing', () => {
     const request = laneRequest({ champion: darius, position: 'TOP', opponent: lux, runePages: [{ key: 'o0', text: 'Conqueror' }], spells: [{ key: 'o0', text: 'Flash + Ghost' }], starters: [] })
     expect(Object.keys(request.questions)).toEqual(['r_o0', 's_o0', 'bootsTiming'])
@@ -73,6 +79,14 @@ describe('reading the answers', () => {
     const answers = { i3111_antiHeal: noul(0.02), i3111_tenacity: noul(0.97), i3111_antiBurst: noul(0.1), i3111_vsAutos: noul(0.05), i3111_vsTanks: noul(0.01), i3111_kit: score(1) }
     expect(readItem(3111, answers)).toEqual({ antiHeal: 0.02, tenacity: 0.97, antiBurst: 0.1, vsAutos: 0.05, vsTanks: 0.01, kit: 0.5 })
     expect(readItem(3111, { i3111_kit: score(1) })).toBeNull()
+  })
+
+  it('reads a support\'s item only once its allies\' facts came back too', () => {
+    const answers = { i3107_antiHeal: noul(0.01), i3107_tenacity: noul(0.02), i3107_antiBurst: noul(0.1), i3107_vsAutos: noul(0.01), i3107_vsTanks: noul(0.01), i3107_kit: score(2) }
+    expect(readItem(3107, answers, 'UTILITY')).toBeNull()
+    expect(readItem(3107, { ...answers, i3107_allyBurst: noul(0.95), i3107_allyCc: noul(0.05) }, 'UTILITY')).toMatchObject({ antiBurst: 0.1, allyBurst: 0.95, allyCc: 0.05 })
+    // Elsewhere the allies are not asked about.
+    expect(readItem(3107, answers, 'MIDDLE')).not.toHaveProperty('allyBurst')
   })
 })
 
