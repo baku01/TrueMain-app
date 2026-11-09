@@ -4,6 +4,7 @@ import type { ItemOption, SlotGroup } from '~/utils/sources/model'
 import type { ItemOrders } from '~/utils/recommended-item-set'
 import { isBoots, readBlitzBuildDoc } from '~/utils/blitz/builds'
 import { buyingOrder, finalBuild } from '~/utils/recommended-item-set'
+import { isQuestReward } from '~/utils/support-quest'
 
 /**
  * The picked build as a recipe, the way Blitz lays its items out: what to
@@ -23,6 +24,8 @@ const props = defineProps<{
   followUps: SlotGroup[]
   /** The other builds offered: their items are the situational ones too. */
   cores?: ItemOption[]
+  /** A support's quest reward, picked when the quest is done: its own row, never bought (`utils/support-quest`). */
+  questReward?: ItemOption | null
   items: Record<number, StaticItemData>
 }>()
 
@@ -44,12 +47,13 @@ const recipe = computed(() => {
   const after = [
     ...props.followUps.flatMap(group => group.options.map(option => option.itemIds.at(-1)!)),
     ...(props.cores ?? []).flatMap(option => option.itemIds),
-  ].filter(id => !path.includes(id) && !isBoots(id))
+  ].filter(id => !path.includes(id) && !isBoots(id) && !isQuestReward(id))
   const starter = [...new Set(props.starter?.itemIds ?? [])]
   const final = finalBuild({ key: 'recipe', title: '', starter, path, boots: boots ? [boots] : [], situational: after })
   const known = (ids: number[]) => ids.filter(id => id in props.items)
   return {
     starter: known(starter),
+    quest: known(props.questReward?.itemIds ?? []),
     order: known(buyingOrder(final, starter, props.items, orders.value)),
     final: known(final),
     situational: known([...new Set(after)].filter(id => !final.includes(id) && !isBoots(id))).slice(0, 7),
@@ -58,6 +62,7 @@ const recipe = computed(() => {
 
 const ROWS = [
   { key: 'starter', label: 'panel.recipe.starter' },
+  { key: 'quest', label: 'panel.recipe.quest' },
   { key: 'order', label: 'panel.recipe.order' },
   { key: 'final', label: 'panel.recipe.final' },
   { key: 'situational', label: 'panel.recipe.situational' },

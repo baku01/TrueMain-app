@@ -2,8 +2,9 @@ import type { FitRead, ItemRead } from '~/utils/jev-read'
 import type { Answer, Needs, Resist } from '~/utils/jev-needs'
 import type { PickRead } from '~/utils/jev-read-pick'
 import type { JevOption, JevSlot, LaidBuild, SlotKind } from '~/utils/jev-build'
-import type { ItemSetBuild } from '~/utils/item-set'
+import type { ItemSetBuild, PlaceItemBlock } from '~/utils/item-set'
 import { MIN_GAMES } from '~/utils/jev-build'
+import { PLACE_ALTERNATIVES } from '~/utils/item-set'
 import { STANDS_OUT, answerTo, fitOf } from '~/utils/jev-needs'
 import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
 
@@ -138,6 +139,8 @@ export interface RankContext {
   urgency: number | null
   /** The resistances a draft rule makes due at this slot (`utils/jev-rules`). */
   due?: Resist[]
+  /** The items a slot before gave up for its pick: one leading this slot is taken (`rankSlot`). */
+  owed?: number[]
 }
 
 function total(parts: Parts, weights: Weights): number {
@@ -147,10 +150,12 @@ function total(parts: Parts, weights: Weights): number {
 }
 
 /**
- * A draft whose damage is of one kind and comes in bursts: that resistance
- * answers it whatever our champion makes of it — armor against assassins that
- * kill a marksman before it attacks, magic resist against mages and assassins
- * whose combo kills an assassin before his own lands.
+ * A draft whose damage is of one kind and comes in bursts: boots of that
+ * resistance answer it whatever our champion makes of them — Plated Steelcaps
+ * against assassins that kill a marksman before it attacks, Mercury's Treads
+ * against mages whose combo kills an assassin before his own lands. Boots
+ * only: on an item the kit still weighs, or a tank's Randuin's Omen took a
+ * marksman's third item.
  */
 const RESIST_BURST = { share: 0.8, burst: 0.5 }
 
@@ -219,7 +224,7 @@ export const DEVIATE = {
 export const POPULAR = { share: 0.1, margin: 0.02 } as const
 
 /** The slots whose pick is the most played unless an option has a reason (`DEVIATE`). */
-const BY_REASON: SlotKind[] = ['item', 'boots', 'runes', 'spells', 'starter']
+const BY_REASON: SlotKind[] = ['item', 'boots', 'quest', 'runes', 'spells', 'starter']
 
 /** The need `answers` answers most beyond what `standard` answers of it, and by how much. */
 function gained(answers: Answer[], standard: Answer[]): Answer | null {
@@ -260,7 +265,7 @@ function leadOf(mine: Scored, theirs: Scored, edge: number | null, fits: { mine?
  */
 function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | null, fits: { mine?: FitRead, theirs?: FitRead }, popular: boolean, due: Resist[]): DeviationReason | null {
   if (mine.misfit) return null
-  const items = kind === 'item' || kind === 'boots'
+  const items = kind === 'item' || kind === 'boots' || kind === 'quest'
   if (items && theirs.misfit) return { kind: 'draft', need: gained(mine.answers, theirs.answers)?.need ?? null }
   const owed = items ? due.find(resist => answerTo(mine.answers, resist) >= STANDS_OUT && answerTo(theirs.answers, resist) < STANDS_OUT) : undefined
   if (owed && (edge ?? 0) > DEVIATE.due) return { kind: 'draft', need: owed }
@@ -280,7 +285,7 @@ function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | n
 
 /** Every option of a slot scored, and the one it takes. */
 export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
-  const edges = edgesOf(slot.options, slot.kind === 'item' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
+  const edges = edgesOf(slot.options, slot.kind === 'item' || slot.kind === 'quest' ? 'item' : slot.kind === 'boots' ? 'boots' : 'choice')
   const scored: Record<string, Scored> = {}
   const fits: Record<string, FitRead | undefined> = {}
   for (const option of slot.options) {
@@ -290,7 +295,8 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
     let answers: Answer[] = []
     let misfit = false
     let weights: Weights = WEIGHTS.choice
-    if (slot.kind === 'item' || slot.kind === 'boots') {
+    // A quest reward is an item too, read against the team: what it gives the support's allies in a fight.
+    if (slot.kind === 'item' || slot.kind === 'boots' || slot.kind === 'quest') {
       const fit = fitOf(option.itemIds, slot.lane ? context.lane : context.team, context.itemReads, context.tags, { due: context.due })
       const reads = option.itemIds.map(id => context.itemReads.get(id)).filter(read => !!read)
       if (reads.length) parts.kit = reads.reduce((sum, read) => sum + read.kit, 0) / reads.length
@@ -300,11 +306,11 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       // (LoLTheory: Plated Steelcaps for a marksman into an AD assassin, blog.loltheory.gg/what-is-armor-league-of-legends),
       // magic burst alike (`RESIST_BURST`).
       const needs = slot.lane ? context.lane : context.team
-      const intoBurst = needs.burst >= RESIST_BURST.burst && (['physical', 'magic'] as const).some(resist => needs[resist] >= RESIST_BURST.share && fit.answers.some(answer => answer.need === resist))
+      const intoBurst = slot.kind === 'boots' && needs.burst >= RESIST_BURST.burst && (['physical', 'magic'] as const).some(resist => needs[resist] >= RESIST_BURST.share && fit.answers.some(answer => answer.need === resist))
       parts.draft = 0.5 + 0.5 * fit.fit * (intoBurst ? 1 : parts.kit ?? 1)
       answers = fit.answers
       misfit = fit.misfit
-      const base = slot.kind === 'boots' ? WEIGHTS.boots : itemWeights(slot.place)
+      const base = slot.kind === 'boots' ? WEIGHTS.boots : itemWeights(slot.kind === 'quest' ? 1 : slot.place)
       weights = { ...base, kit: base.kit! * modeled(option.games) }
     }
     else if (slot.kind === 'starter') {
@@ -331,6 +337,9 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
   const standard = slot.options[0]!
   const best = (options: JevOption[]) => options.reduce((top, option) => (scored[option.key]!.total > scored[top.key]!.total + 1e-9 ? option : top), options[0]!)
   if (!BY_REASON.includes(slot.kind)) return { slot, pick: best(slot.options), standard, scored }
+  // An item a slot before gave up leads this one: taken, an answer moves a measured item one place, not out of the
+  // build — Jinx's Infinity Edge fourth after Lord Dominik's Regards, not given up again for Guardian Angel and Maw.
+  if (standard.itemIds.some(id => context.owed?.includes(id))) return { slot, pick: standard, standard, scored }
   const others = slot.options.slice(1)
   const share = shareOf(slot.options)
   const popular = (option: JevOption) => !option.situational && option.games >= MIN_GAMES && share(option) >= POPULAR.share
@@ -384,11 +393,53 @@ export function rankPicks(candidates: { championId: number, score: number }[], r
   }).sort((a, b) => b.total - a.total)
 }
 
+/** One place of a laid build: the slot that offers its item, the option taken, and the place (0 the boots, else the completed item's, 1 the first). */
+export interface BuildStep {
+  entry: RankedSlot
+  option: JevOption
+  place: number
+}
+
+/** A laid build's boots and items in buying order, each matched to the slot that offers it: the board's steps (`JevBuildPath`). */
+export function buildSteps(ranked: RankedSlot[], build: LaidBuild): BuildStep[] {
+  const taken = new Set<string>()
+  let count = 0
+  return build.order.flatMap((id): BuildStep[] => {
+    const entry = ranked.find(candidate => (candidate.slot.kind === 'item' || candidate.slot.kind === 'boots') && !taken.has(candidate.slot.name) && candidate.slot.options.some(option => option.itemIds[0] === id))
+    if (!entry) return []
+    taken.add(entry.slot.name)
+    const option = entry.slot.options.find(candidate => candidate.itemIds[0] === id)!
+    return [{ entry, option, place: entry.slot.kind === 'boots' ? 0 : ++count }]
+  })
+}
+
+/** A step's other options as the board lists them under it, the highest total first. */
+export const stepOthers = (step: Pick<BuildStep, 'entry' | 'option'>): JevOption[] =>
+  step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => (step.entry.scored[b.key]?.total ?? 0) - (step.entry.scored[a.key]?.total ?? 0))
+
+/**
+ * Each place of a laid build with the items to choose from there
+ * (`PlaceItemBlock`): the item taken, then the slot's other options as the
+ * board lists them — none seen in under `MIN_GAMES` games, no misfit, none the
+ * build bought at an earlier place.
+ */
+function placesOf(ranked: RankedSlot[], build: LaidBuild): PlaceItemBlock[] {
+  const steps = buildSteps(ranked, build)
+  return steps.map((step, index) => {
+    const held = steps.slice(0, index).map(earlier => earlier.option.itemIds[0]!)
+    const others = stepOthers(step)
+      .filter(option => option.games >= MIN_GAMES && !step.entry.scored[option.key]?.misfit && !held.includes(option.itemIds[0]!))
+      .map(option => option.itemIds[0]!)
+    return { place: step.place, items: [...new Set([step.option.itemIds[0]!, ...others])].slice(0, 1 + PLACE_ALTERNATIVES) }
+  }).filter(entry => entry.items.length > 1)
+}
+
 /**
  * A build as the client's item set, laid out as Blitz's: its starter, its
  * boots where the build buys them, every item in buying order (the final
  * build), then as situational every other item its slots offered, best score
- * first — what also suits this draft when the game asks for it.
+ * first — what also suits this draft when the game asks for it —, and each
+ * place with the items to choose from there (`placesOf`).
  */
 export function itemSetOf(ranked: RankedSlot[], build: LaidBuild): ItemSetBuild {
   const boots = build.boots?.itemIds ?? []
@@ -399,5 +450,5 @@ export function itemSetOf(ranked: RankedSlot[], build: LaidBuild): ItemSetBuild 
     .flatMap(entry => entry.slot.options.map(option => ({ id: option.itemIds[0]!, score: entry.scored[option.key]?.total ?? 0 })))
     .filter(option => !core.includes(option.id))
     .sort((a, b) => b.score - a.score)
-  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined }
+  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined, places: placesOf(ranked, build), questReward: build.questReward?.itemIds }
 }

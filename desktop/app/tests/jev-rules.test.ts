@@ -3,7 +3,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { Needs } from '~/utils/jev-recommend'
 import { rankSlot } from '~/utils/jev-recommend'
-import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, isEnchanter, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, supportResists, withDraftBoots } from '~/utils/jev-rules'
 
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 const TAGS: Record<number, string[]> = { 6333: ['Damage', 'Armor', 'Health'], 3071: ['Damage', 'Health', 'ArmorPenetration'], 3047: ['Armor', 'Boots'], 3065: ['SpellBlock', 'Health'], 3036: ['Damage', 'ArmorPenetration'], 3156: ['SpellBlock', 'Damage', 'LifeSteal'] }
@@ -67,11 +67,11 @@ describe('an enchanter\'s resistances (LoLTheory)', () => {
   const riot = (id: number) => RIOT[id] ?? []
   const support = supportResists(riot)
 
-  it('tells an enchanter by its classes on the support lane', () => {
-    expect(isEnchanter({ classes: ['Support', 'Mage'] }, 'UTILITY')).toBe(true)
-    expect(isEnchanter({ classes: ['Mage', 'Support'] }, 'UTILITY')).toBe(false)
-    expect(isEnchanter({ classes: ['Tank', 'Support'] }, 'UTILITY')).toBe(false)
-    expect(isEnchanter({ classes: ['Support', 'Mage'] }, 'MIDDLE')).toBe(false)
+  it('makes no resistance due before the class takes a guard item: a marksman\'s fourth', () => {
+    expect(dueAt(['physical'], 2, [6620], riot, 4)).toEqual([])
+    expect(dueAt(['physical'], 3, [6620, 3116], riot, 4)).toEqual([])
+    expect(dueAt(['physical'], 4, [6620, 3116, 2526], riot, 4)).toEqual(['physical'])
+    expect(dueAt(['physical'], 2, [6620], riot)).toEqual(['physical'])
   })
 
   it('reads a resistance only on a support\'s item, one with no damage of its own: Locket, not Zhonya\'s Hourglass', () => {
@@ -115,10 +115,10 @@ describe('one Grievous Wounds item', () => {
 
 describe('an enchanter\'s boots (LoLTheory)', () => {
   it('waits for the second item on an enchanter support, Jev\'s read of the lane elsewhere', () => {
-    expect(bootsUrgency(0.9, { classes: ['Support', 'Mage'] }, 'UTILITY')).toBe(0)
-    expect(bootsUrgency(null, { classes: ['Support', 'Mage'] }, 'UTILITY')).toBe(0)
-    expect(bootsUrgency(0.9, { classes: ['Tank', 'Support'] }, 'UTILITY')).toBe(0.9)
-    expect(bootsUrgency(0.9, { classes: ['Support', 'Mage'] }, 'MIDDLE')).toBe(0.9)
+    expect(bootsUrgency(0.9, 'Enchanter')).toBe(0)
+    expect(bootsUrgency(null, 'Enchanter')).toBe(0)
+    expect(bootsUrgency(0.9, 'Catcher')).toBe(0.9)
+    expect(bootsUrgency(0.9, 'Burst')).toBe(0.9)
   })
 })
 

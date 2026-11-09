@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
 import type { Answer, Needs } from '~/utils/jev-needs'
-import { WORLD_ATLAS, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import { PLACE_SHARE, WORLD_ATLAS, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, placeShare, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
 import { answersDraft, fitOf } from '~/utils/jev-needs'
 import { supportResists } from '~/utils/jev-rules'
 import { withItemStats } from '~/utils/jev-item-stats'
@@ -17,6 +17,8 @@ describe('reliable', () => {
     const measure = (games: number) => ({ games, pickRate: 0, winRate: 0.5 })
     expect(reliable([measure(12), measure(400), measure(45)]).map(entry => entry.games)).toEqual([400, 45])
     expect(reliable([measure(16), measure(14), measure(12)]).map(entry => entry.games)).toEqual([16, 14])
+    // A page in 40 of 130,000 games is no option (1 %, `PLACE_SHARE`).
+    expect(reliable([measure(120000), measure(9960), measure(40)]).map(entry => entry.games)).toEqual([120000, 9960])
   })
 })
 
@@ -61,6 +63,14 @@ describe('the starting sets and the boots', () => {
   it('takes no start without the support item where the most played holds it (Blitz\'s Ruby Crystal on a support Tahm Kench)', () => {
     expect(startingSets([set([3865, 2003, 2003], 6066, 0.5), set([1028, 2003], 47, 0.6)], consumable).map(entry => entry.itemIds)).toEqual([[3865, 2003, 2003]])
     expect(startingSets([set([1055, 2003], 900), set([1028, 2003], 47)], consumable)).toHaveLength(2)
+  })
+
+  it('offers a support\'s quest rewards as a slot of their own, never one of the buying order (Lulu: Dream Maker)', () => {
+    const lulu = { ...optionsOf([m(800, [3504, 3158])]), questRewards: [m(828, [3870]), m(79, [3869]), m(12, [3877])] }
+    const quest = firstSlots(lulu, names, consumable).find(slot => slot.name === 'quest')!
+    expect(quest.kind).toBe('quest')
+    expect(quest.options.map(option => option.itemIds[0])).toEqual([3870, 3869])
+    expect(firstSlots(optionsOf([m(800, [3504])]), names, consumable).map(slot => slot.name)).not.toContain('quest')
   })
 
   it('offers no boots to a champion that plays without, nor their timing', () => {
@@ -153,6 +163,15 @@ describe('situational answers', () => {
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[6694, false], [3814, false], [3071, true]])
   })
 
+  it('offers again what a slot before gave up, until the build holds it: Infinity Edge after Lord Dominik\'s Regards', () => {
+    // Jinx: Hexoptics C44 and Runaan's Hurricane, then Infinity Edge most played third — Lord Dominik's Regards taken there against tanks.
+    const core = m(140000, [3115, 3085])
+    const options = optionsOf([core], () => [{ slot: 5, options: [m(9189, [3026]), m(5087, [3072])] }])
+    const infinity = m(38359, [3031])
+    expect(laterSlot(options, core, 5, [3115, 3085, 3036], names, undefined, [infinity])!.options.map(option => option.itemIds[0])).toEqual([3031, 3026, 3072])
+    expect(laterSlot(options, core, 5, [3115, 3085, 3036, 3031], names, undefined, [infinity])!.options.map(option => option.itemIds[0])).toEqual([3026, 3072])
+  })
+
   it('offers no answer of the other kind of damage than the core\'s: no Zhonya\'s Hourglass on a build of attack damage', () => {
     const core = m(900, [3153, 6672])
     const options = optionsOf([core], () => [{ slot: 4, options: [m(300, [3031])] }])
@@ -181,6 +200,15 @@ describe('situational answers', () => {
     const slot = laterSlot(options, core, 4, [6699, 2520, 3036], names, { pool: zedPool, answersDraft: () => true, answers: zed, needs: ['magic', 'burst', 'cc'] })!
     // Magic's best answers, a tie read by games, then crowd control's; burst is Edge of Night's already.
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3814, false], [3156, true], [3139, true]])
+  })
+
+  it('adds no answer bought in under one game in two hundred: Ashe\'s Death\'s Dance (84 games) and Randuin\'s Omen (418)', () => {
+    const options = optionsOf([core], () => [{ slot: 4, options: [m(7779, [3814])] }])
+    const share = (games: number, id: number, pickRate: number) => ({ ...m(games, [id]), pickRate })
+    const pool = [share(84, 6333, 0.001), share(418, 3143, 0.003), share(11600, 3026, 0.086)]
+    const answers = (id: number): Answer[] => (id === 3814 ? [] : [{ need: 'physical', value: 1 }])
+    const slot = laterSlot(options, core, 4, [6699, 2520, 3036], names, { pool, answersDraft: () => true, answers, needs: ['physical'] })!
+    expect(slot.options.map(option => option.itemIds[0])).toEqual([3814, 3026])
   })
 
   it('adds one item, the one answering the draft most, where the slot answers every need already', () => {
@@ -231,5 +259,30 @@ describe('laidBuild', () => {
     expect(build.order).toEqual([6692, 3047, 3142, 6694, 3071])
     expect(build.summonerSpells).toMatchObject({ spell1Id: 4, spell2Id: 12 })
     expect(build.runePage).toBeNull()
+    expect(build.questReward).toBeNull()
+    // A support's reward is named apart, never in the order.
+    const support = laidBuild(slot => ({ ...picks, quest: option({ itemIds: [3870] }) })[slot] ?? null, [3504], [6617])
+    expect(support.questReward!.itemIds).toEqual([3870])
+    expect(support.order).not.toContain(3870)
+  })
+})
+
+describe('placeShare', () => {
+  // Ashe's fourth item (lolalytics 67,838 games): Lord Dominik's 13.5 %, Guardian Angel 1.2 %, Death's Dance not bought.
+  const fourth = [m(9158, [3036]), m(822, [3026]), m(58086, [3031])]
+  const blitz = new Map([[3036, { games: 900, winRate: 0.52, wpa: 0 }], [3026, { games: 60, winRate: 0.5, wpa: 0 }], [6333, { games: 6, winRate: 0.4, wpa: 0 }]])
+
+  it('adds lolalytics and Blitz games at the place', () => {
+    const share = placeShare(fourth, blitz)!
+    const total = 9158 + 822 + 58086 + 900 + 60 + 6
+    expect(share(3036)).toBeCloseTo((9158 + 900) / total)
+    expect(share(3026)).toBeGreaterThanOrEqual(PLACE_SHARE)
+    expect(share(6333)).toBeLessThan(PLACE_SHARE)
+    expect(share(3143)).toBe(0)
+  })
+
+  it('sets no bar where neither source measured the place', () => {
+    expect(placeShare(undefined, undefined)).toBeNull()
+    expect(placeShare([], new Map())).toBeNull()
   })
 })

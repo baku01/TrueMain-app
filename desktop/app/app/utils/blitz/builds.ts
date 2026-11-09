@@ -2,6 +2,7 @@ import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells,
 import { SOLO_QUEUE, blitzRole, blitzRows } from '~/utils/blitz/client'
 import { keepBounded } from '~/utils/bounded'
 import { BOOTS } from '~/utils/item-groups'
+import { isQuestReward, questRewardsOf } from '~/utils/support-quest'
 
 /**
  * A champion's lane build as Blitz measures it (`champion_builds_tags`), in
@@ -167,13 +168,16 @@ function mergeByPath(cores: BlitzBuildDoc['coreItems']): BlitzBuildDoc['coreItem
 export function buildsFromBlitz(championId: number, position: string, doc: BlitzBuildDoc | undefined): ChampionBuildResponse {
   if (!doc) return { championId, patch: null, position, totalGames: 0, builds: [] }
   const page = runePage(doc)
-  const shared = { starterItems: starter(doc), summonerSpells: spells(doc), skillOrder: skillOrder(doc), runePage: page }
+  // A support's quest reward, which Blitz counts among the items outside the cores: picked, not bought (`utils/support-quest`).
+  const reward = questRewardsOf((doc.situationalItems ?? []).filter(entry => entry.games > 0)
+    .map(entry => ({ itemIds: [entry.itemId], games: entry.games, pickRate: 0, winRate: entry.wins / entry.games })))[0]
+  const shared = { starterItems: starter(doc), summonerSpells: spells(doc), skillOrder: skillOrder(doc), runePage: page, questReward: reward ?? null }
   const bootsOfLane = laneBoots(doc)
   const builds: ChampionBuild[] = mergeByPath(doc.coreItems)
     .slice(0, MAX_BUILDS)
     .flatMap((core) => {
       const ids = core.itemIds.split(',').map(Number)
-      const path = ids.filter(id => !isBoots(id))
+      const path = ids.filter(id => !isBoots(id) && !isQuestReward(id))
       const boots = ids.find(isBoots)
       if (path.length === 0) return []
       const key = [...ids].sort((a, b) => a - b).join(',')

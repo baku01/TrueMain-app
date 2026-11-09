@@ -5,6 +5,7 @@ import type { BuildOptions } from '~/utils/sources/model'
 import { fromBlitz } from '~/utils/data-source'
 import { playstyleOptions, readBlitzOtpBuilds } from '~/utils/blitz/playstyles'
 import { readPreviousBuild, storePreviousBuild } from '~/utils/previous-build'
+import { rewardApart } from '~/utils/support-quest'
 
 /**
  * Remembers the build on screen as the previous one: provided by a build view,
@@ -122,7 +123,8 @@ export function useBuildOptions(
     list.push(...(response.value?.builds ?? []).map(build => rowOf('lane', build)))
     if (mainPosition.value && mainResponse.value?.championId === championId.value) list.push(...mainResponse.value.builds.map(build => rowOf('main', build)))
     if (otp.value?.championId === championId.value) list.push(...otp.value.builds.map(build => rowOf('otp', build)))
-    return list
+    // A support's quest reward on its own, wherever a source wrote it (`rewardApart`).
+    return list.map(option => ({ ...option, core: rewardApart(option.core) }))
   })
 
   /**

@@ -46,6 +46,9 @@ describe('optional by the draft', () => {
 
   it('leaves out what is seen in too few games, and marks what the build holds', () => {
     expect(zed().flatMap(optional => optional.items.map(entry => entry.id))).not.toContain(3065)
+    // Seen in enough games, but in under half a percent of the champion's (`ANSWER_SHARE`): Randuin's Omen in 686 of Jinx's 262,000.
+    const rare = draftOptionals({ candidates: [...candidates.filter(option => option.itemIds[0] !== 3156), { ...m(11181, 3156, 0.517), pickRate: 0.003 }], team, due: ['magic'], enemies, reads, tags, suits, held: [] })
+    expect(rare.flatMap(optional => optional.items.map(entry => entry.id))).not.toContain(3156)
     expect(zed([3156]).find(optional => optional.need === 'magic')!.items.find(entry => entry.id === 3156)!.inBuild).toBe(true)
   })
 

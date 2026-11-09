@@ -4,7 +4,8 @@ import { tr } from '#common/utils/i18n'
 import type { DraftItemBlock, ItemSetBuild } from '~/utils/item-set'
 import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
-import { blockTitles, recommendedSet } from '~/utils/recommended-item-set'
+import { blockTitles, recommendedSet, withMeasuredPlaces } from '~/utils/recommended-item-set'
+import { lanePlaces } from '~/utils/jev-bases'
 
 /** What the shell answers when it could not read the client's list (`itemsets.rs`). */
 const READ_FAILED = 'read-failed'
@@ -38,7 +39,7 @@ export interface ItemSetBlocks {
  * (`recommended-item-set.ts`) — a recommended set the shop opens on in game,
  * block for block: starting items, the buying order of the first items, the
  * final build of six, the situational items that are also good, the boots
- * options. Only ever run on a click.
+ * options, each place's items to choose from. Only ever run on a click.
  *
  * The situational block needs the item context, asked for here, on the click,
  * rather than for every build the view shows.
@@ -82,7 +83,9 @@ export function useItemSetImport() {
         const championKey = champions.value.get(championId)?.alias
         if (!championKey) throw new Error(EMPTY_BUILD)
         const orders = position ? await readBlitzBuildDoc(championId, position).then(doc => doc?.itemOrders ?? null).catch(() => null) : null
-        const set = recommendedSet({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft }, championKey, blockTitles(), items.value, orders)
+        // A Jev build brings its places from its slots; any other, the lane's measures at each place of its path.
+        const measures = !build.places && position ? await lanePlaces(championId, position).catch(() => null) : null
+        const set = recommendedSet(withMeasuredPlaces({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft, places: build.places, questReward: build.questReward }, measures), championKey, blockTitles(), items.value, orders)
         const { invoke } = await import('@tauri-apps/api/core')
         await invoke('write_recommended_item_sets', { sets: [set] })
       }
@@ -108,8 +111,8 @@ export function useItemSetImport() {
   async function importItemSet(subject: ItemSetSubject | ItemSetBlocks) {
     if ('blocks' in subject) {
       const keep = (ids: number[]) => ids.filter(known)
-      const { starter, boots, core, situational: rest, bootsAt, draft } = subject.blocks
-      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt, draft: draft?.map(block => ({ ...block, items: keep(block.items) })) }))
+      const { starter, boots, core, situational: rest, bootsAt, draft, places, questReward } = subject.blocks
+      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt, draft: draft?.map(block => ({ ...block, items: keep(block.items) })), places: places?.map(entry => ({ ...entry, items: keep(entry.items) })), questReward: questReward && keep(questReward) }))
     }
     const draft = subject.draft?.map(block => ({ ...block, items: block.items.filter(known) }))
     return write(subject.championId, subject.champion, subject.position, async () => ({ ...itemSetBuild(subject.build.core, await situational(subject), known), draft }))

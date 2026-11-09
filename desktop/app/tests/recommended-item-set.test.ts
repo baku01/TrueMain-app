@@ -1,6 +1,6 @@
 import type { StaticItemData } from '#shared/types/static-data'
 import { describe, expect, it } from 'vitest'
-import { againstTitle, buyingOrder, componentsOf, finalBuild, recommendedSets } from '~/utils/recommended-item-set'
+import { againstTitle, buyingOrder, componentsOf, finalBuild, recommendedSets, withMeasuredPlaces } from '~/utils/recommended-item-set'
 
 const item = (id: number, totalGold: number, from: number[] = []): StaticItemData => ({ id, name: String(id), iconUrl: '', totalGold, from })
 const items: Record<number, StaticItemData> = Object.fromEntries([
@@ -53,5 +53,62 @@ describe('recommended item sets', () => {
     expect(sets[0]!.title).toBe('TrueMain Ezreal')
     expect(sets[0]!.blocks.map(block => block.type)).toEqual(['S', 'O', 'F', 'X', 'B'])
     expect(sets[0]!.blocks[0]!.items).toEqual([{ id: '2003', count: 1 }, { id: '1055', count: 1 }])
+  })
+})
+
+describe('quest reward block', () => {
+  // Lulu: World Atlas and two potions, Dream Maker to pick, Ardent Censer and Shurelya's; Ionian Boots.
+  const lulu = { key: 'lane', title: 'Lulu', starter: [3865, 2003, 2003], path: [3504, 2065], boots: [3158], situational: [] }
+  const known: Record<number, StaticItemData> = Object.fromEntries([3865, 2003, 3870, 3504, 2065, 3158].map(id => [id, item(id, 3000)]))
+  const titles = { starting: 'S', order: 'O', final: 'F', situational: 'X', boots: 'B', quest: 'Q' }
+
+  it('names the reward in a block of its own after the starting items, in no buying order', () => {
+    const [set] = recommendedSets({ ...lulu, questReward: [3870] }, [], 'Lulu', titles, known, null)
+    expect(set!.blocks.map(block => block.type)).toEqual(['S', 'Q', 'O', 'F', 'B'])
+    expect(set!.blocks[1]!.items.map(entry => entry.id)).toEqual(['3870'])
+    for (const block of set!.blocks.filter(block => block.type !== 'Q')) expect(block.items.map(entry => entry.id)).not.toContain('3870')
+  })
+
+  it('moves a reward a source wrote among the starting items to its block (TrueMain\'s own builds)', () => {
+    const [set] = recommendedSets({ ...lulu, starter: [3865, 3870, 2003, 2003] }, [], 'Lulu', titles, known, null)
+    expect(set!.blocks[0]!.items.map(entry => entry.id)).not.toContain('3870')
+    expect(set!.blocks[1]!.items.map(entry => entry.id)).toEqual(['3870'])
+  })
+})
+
+describe('place blocks', () => {
+  // Ashe: Yun Tal Wildarrows, Phantom Dancer, Infinity Edge, Lord Dominik's Regards, Guardian Angel; Berserker's Greaves.
+  const ashe = { key: 'draft', title: 'Ashe', starter: [1055], path: [3032, 3046, 3031, 3036, 3026], boots: [3006], situational: [] }
+  const known: Record<number, StaticItemData> = Object.fromEntries([1055, 1001, 3006, 3009, 3047, 3032, 6672, 3153, 3046, 3085, 3031, 3036, 3033, 3026, 3072, 3139].map(id => [id, item(id, 3000)]))
+  const titles = { starting: 'S', order: 'O', final: 'F', situational: 'X', boots: 'B', place: (place: number) => `Item ${place} — opções` }
+  const places = [
+    { place: 0, items: [3006, 3009, 3047, 1001] },
+    { place: 1, items: [3032, 6672, 3153] },
+    { place: 2, items: [3046] },
+    { place: 3, items: [3031, 3036, 3033, 9999, 3072] },
+  ]
+
+  it('writes each place with its options after the other blocks, the boots\' options in the boots block', () => {
+    const [set] = recommendedSets({ ...ashe, places }, [], 'Ashe', titles, known, null)
+    expect(set!.blocks.map(block => block.type)).toEqual(['S', 'O', 'F', 'B', 'Item 1 — opções', 'Item 3 — opções'])
+    // The basic boots are a step on the way, not a choice.
+    expect(set!.blocks[3]!.items.map(entry => entry.id)).toEqual(['3006', '3009', '3047'])
+    // A place with nothing to choose from is left out; an id the patch does not know is dropped.
+    expect(set!.blocks[5]!.items.map(entry => entry.id)).toEqual(['3031', '3036', '3033', '3072'])
+  })
+
+  it('keeps a set within the 16 blocks a set carries, the last places giving way', () => {
+    const many = Array.from({ length: 20 }, (_, index) => ({ place: index + 1, items: [3032, 6672] }))
+    const [set] = recommendedSets({ ...ashe, places: many }, [], 'Ashe', titles, known, null)
+    expect(set!.blocks).toHaveLength(16)
+    expect(set!.blocks.at(-1)!.type).toBe('Item 12 — opções')
+  })
+
+  it('reads the lane\'s measures for a build that brings no places, never for a kit\'s', () => {
+    const measures = { boots: new Map([[3006, 90000], [3009, 6000], [3047, 1500]]), places: [new Map([[3032, 48000], [6672, 17000], [3153, 7000]])] }
+    expect(withMeasuredPlaces(ashe, measures).places).toEqual([{ place: 0, items: [3006, 3009, 3047] }, { place: 1, items: [3032, 6672, 3153] }])
+    expect(withMeasuredPlaces({ ...ashe, places: [] }, measures).places).toEqual([])
+    expect(withMeasuredPlaces({ ...ashe, places }, measures).places).toBe(places)
+    expect(withMeasuredPlaces(ashe, null).places).toBeUndefined()
   })
 })

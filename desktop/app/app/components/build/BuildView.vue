@@ -142,6 +142,7 @@ function choiceOf(option: BuildOption, title: string): ImportChoice {
     boots: option.core.boots?.itemIds ?? [],
     situational: situationalFromTree(option.buildTree, path),
     draft: draftItemBlocks.value,
+    questReward: option.core.questReward?.itemIds,
   }
 }
 function titleOf(option: BuildOption): string {
@@ -157,7 +158,8 @@ const selection = computed(() => {
   if (kit) {
     const paths = kitPaths(kit.tree)
     const path = paths[0] ?? []
-    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)), draft: draftItemBlocks.value }
+    // A kit's set is its author's: no place blocks from the lane's measures (`places: []`).
+    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)), draft: draftItemBlocks.value, places: [] }
   }
   else if (shown.value) {
     chosen = choiceOf(shown.value, selected.value === 'pro' && pro.value ? `${pro.value.player} ${nameOf(props.championId)}` : titleOf(shown.value))
@@ -245,6 +247,7 @@ const emptyMessage = computed(() => t('build.view.none'))
       compact
       :summoner-spells="shown.core.summonerSpells"
       :starter-items="shown.core.starterItems"
+      :quest-reward="shown.core.questReward ?? null"
       :skill-order="shown.core.skillOrder"
       :boots="shown.core.boots"
       :rune-page="shown.core.runePage"
@@ -336,6 +339,7 @@ const emptyMessage = computed(() => t('build.view.none'))
         v-else
         :summoner-spells="shown.core.summonerSpells"
         :starter-items="shown.core.starterItems"
+        :quest-reward="shown.core.questReward ?? null"
         :skill-order="shown.core.skillOrder"
         :boots="shown.core.boots"
         :rune-page="shown.core.runePage"

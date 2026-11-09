@@ -8,14 +8,16 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
-import { CORE_ITEMS, INVENTORY, WORLD_ATLAS, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
+import type { ItemOption } from '~/utils/sources/model'
+import { CORE_ITEMS, INVENTORY, PLACE_SHARE, WORLD_ATLAS, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, placeShare, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
 import { draftOptionals } from '~/utils/jev-optionals'
 import { isBoots } from '~/utils/blitz/builds'
 import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, draftNeeds, fitOf, rankSlot } from '~/utils/jev-recommend'
-import { bootsUrgency, dueAt, healCutFits, isEnchanter, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { bootsUrgency, dueAt, healCutFits, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { CLASS_PROFILES, OWN_SHARE, classBuys, isGuard, itemizationOf, subclassOf } from '~/utils/jev-classes'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
@@ -144,13 +146,22 @@ export function useJevBuild(
       const ours = textOf(championId)
       if (!ours) throw new Error('our champion is not known yet')
       const riotTags = (id: number) => items.value[id]?.tags ?? []
-      // An enchanter's resistances are a support's items (`supportResists`).
-      const tags = isEnchanter(ours, position) ? supportResists(riotTags) : riotTags
+      const gold = (id: number) => items.value[id]?.totalGold ?? 0
+      // How our champion's class builds (`utils/jev-classes`): an enchanter's resistances are a support's items (`supportResists`).
+      const subclass = subclassOf(ours, position)
+      const profile = CLASS_PROFILES[subclass]
+      const tags = profile.guards === 'support' ? supportResists(riotTags) : riotTags
+      // An item the class buys (`classBuys`), or one this champion's players make their own past its class (`OWN_SHARE`):
+      // Death's Dance answers no draft for a marksman, Jak'Sho does for Vayne.
+      const onClass = (option: ItemOption) => classBuys(profile, option.itemIds[0]!, riotTags(option.itemIds[0]!), gold(option.itemIds[0]!)) || option.pickRate >= OWN_SHARE
       const completed = (id: number) => {
         const item = items.value[id]
         return !!item && (item.totalGold ?? 0) >= 2000 && !(item.tags ?? []).some(tag => tag === 'Consumable' || tag === 'Trinket')
       }
       const pool = statsPool(laneStats, situationalPool(options, completed), completed)
+      // Where the champion's players buy each item: its share of every place's games (`placeShare`), none where no place was measured.
+      const shares = Array.from({ length: INVENTORY }, (_, at) => placeShare(options.places?.[at], slotStats[at]))
+      const placed = (id: number) => shares.every(share => !share) || shares.some(share => !!share && share(id) >= PLACE_SHARE)
       // A support's World Atlas, which Blitz records as nothing (`startingSets`).
       const first = withItemStats(firstSlots(options, names, id => tags(id).includes('Consumable'), position === 'UTILITY' ? WORLD_ATLAS : undefined), laneStats, versusStats)
       const slotOf = (name: string) => first.find(slot => slot.name === name)
@@ -168,6 +179,7 @@ export function useJevBuild(
       const lane = laneRequest({
         champion: ours,
         position,
+        subclass,
         opponent,
         runePages: (slotOf('runes')?.options ?? []).map(option => ({
           key: option.key,
@@ -180,7 +192,7 @@ export function useJevBuild(
       })
       const requests: Request[] = [
         ...batches(enemyRequest(unreadEnemies)),
-        ...batches(itemRequest(ours, position, unreadItems.map(id => ({ id, name: enItem(id), text: itemEffect(en.items[id] ?? items.value[id], 520) })))),
+        ...batches(itemRequest(ours, position, unreadItems.map(id => ({ id, name: enItem(id), text: itemEffect(en.items[id] ?? items.value[id], 520) })), itemizationOf(subclass))),
         ...batches(lane),
       ]
       const answers: Record<string, JevAnswer> = Object.assign({}, ...await Promise.all(requests.map(part => askJev(part.state, part.questions))))
@@ -201,7 +213,7 @@ export function useJevBuild(
         const read = scoreOf(answer)
         if (read) fits[key] = { fit: read.value, confidence: read.confidence }
       }
-      const urgency = bootsUrgency(scoreOf(answers.bootsTiming)?.value ?? null, ours, position)
+      const urgency = bootsUrgency(scoreOf(answers.bootsTiming)?.value ?? null, subclass)
 
       // 3. The ranking: the team's needs, then every slot.
       const assessment = reader.assess(request.enemies, opponentId)
@@ -220,7 +232,7 @@ export function useJevBuild(
       const fitsBuild = (id: number) => fitsWith(id, jevHeld()) && healCutFits(id, jevHeld(), itemReads)
       // The place the next item takes, boots apart: its slot of the buying order, the items before it, and the resistances due there.
       const bought = () => [...jevCore, ...jevLater]
-      const dueNow = () => dueAt(assessment.dues, bought().length + 1, bought(), tags)
+      const dueNow = () => dueAt(assessment.dues, bought().length + 1, bought(), tags, profile.guardFrom)
       const placeStats = async (): Promise<SlotStats> => ({
         slot: slotStats[bought().length],
         path: bought().length ? await readItemStats(championId, position, null, { path: bought() }).catch(() => new Map()) : undefined,
@@ -233,37 +245,54 @@ export function useJevBuild(
         return !kind || !core || kind === core
       }
       // What a slot may add of the champion's items: those that answer the draft, for the needs given, the resistances due there counted.
+      // At the place the next item takes: only what its players buy there (`placeShare`, `PLACE_SHARE`), what its class
+      // buys (`onClass`), and no guard item before the class takes one (`guardFrom`: a marksman's fourth).
+      const poolHere = () => {
+        const place = bought().length + 1
+        const share = shares[place - 1]
+        return pool.filter(option => (!share || share(option.itemIds[0]!) >= PLACE_SHARE) && onClass(option)
+          && (place >= profile.guardFrom || !isGuard(riotTags(option.itemIds[0]!), gold(option.itemIds[0]!))))
+      }
       const answering = (due: Resist[], needs: (keyof Needs)[]): Situational => ({
-        pool,
+        pool: poolHere(),
         suits,
         answersDraft: id => healCutFits(id, jevHeld(), itemReads) && answersDraft(id, team, itemReads, tags, due),
         answers: id => fitOf([id], team, itemReads, tags, { due }).answers,
         needs,
       })
-      // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due there.
+      // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due
+      // there — none before its class takes a guard item (`dueAt`, `guardFrom`): a marksman's resistance is its boots.
+      // What a slot gave up for its pick, from the second item on, offered to the slots after it (`withOwed`) — the first
+      // item's options are one or the other (Kraken Slayer or Hexoptics C44), not both.
+      const owed: ItemOption[] = []
+      const owe = (entry: RankedSlot) => {
+        if ((entry.slot.place ?? 0) >= 2 && entry.pick !== entry.standard && !entry.standard.situational) owed.push(entry.standard)
+      }
       for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
         const due = dueNow()
-        const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined)
+        const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined, owed)
         const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!slot || !open.length) continue
         const [measured] = withItemStats([{ ...slot, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
-        const entry = rankSlot(measured!, { ...context, due })
+        const entry = rankSlot(measured!, { ...context, due, owed: owed.flatMap(option => option.itemIds) })
         jevCore.push(...entry.pick.itemIds)
+        owe(entry)
         result.push(entry)
       }
       const follows = closestCore(options.cores, jevCore)
       for (const number of laterSlotNumbers(options, follows)) {
         if (jevCore.length + jevLater.length >= roomOf('pick')) break
         const due = dueNow()
-        const next = laterSlot(options, follows, number, jevHeld(), names, answering(due, draftNeeds(team, due).map(entry => entry.need)))
+        const next = laterSlot(options, follows, number, jevHeld(), names, answering(due, draftNeeds(team, due).map(entry => entry.need)), owed)
         const open = next?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!next || !open.length) continue
         const [measured] = withItemStats([{ ...next, options: open }], laneStats, versusStats, await placeStats())
         if (mine !== generation) return
-        const entry = rankSlot(measured!, { ...context, due })
+        const entry = rankSlot(measured!, { ...context, due, owed: owed.flatMap(option => option.itemIds) })
         jevLater.push(...entry.pick.itemIds)
+        owe(entry)
         result.push(entry)
       }
       const sourceCore = standardCore(options.cores).slice(0, roomOf('standard'))
@@ -275,9 +304,13 @@ export function useJevBuild(
         if (slot) standardLater.push(...slot.options[0]!.itemIds)
       }
 
-      // Beside the build: the champion's items, boots included, that answer each need of the draft.
+      // Beside the build: the champion's items, boots included, that answer each need of the draft — an item bought at
+      // some place of the build in `PLACE_SHARE` of its games (Chempunk Chainsword, 49 of Ashe's 130,000, is not) and that
+      // its class buys (`onClass`), a pair of boots in that share of the boots bought.
+      const bootsGames = options.boots.reduce((sum, option) => sum + option.games, 0)
       const boots = [...options.boots, ...(options.situational ?? []).filter(option => isBoots(option.itemIds[0]!) && option.itemIds[0] !== 1001)]
-      const draft = draftOptionals({ candidates: [...pool, ...boots], team, due: assessment.dues, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
+        .filter(option => option.games >= bootsGames * PLACE_SHARE)
+      const draft = draftOptionals({ candidates: [...pool.filter(option => placed(option.itemIds[0]!) && onClass(option)), ...boots], team, due: assessment.dues, guardFrom: profile.guardFrom, enemies: assessment.readings, reads: itemReads, tags, suits, held: jevHeld() })
 
       ranked.value = result
       optionals.value = draft

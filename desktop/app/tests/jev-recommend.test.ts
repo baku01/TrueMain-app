@@ -241,6 +241,16 @@ describe('statistics', () => {
 describe('rankSlot', () => {
   const context = (lane: Needs, itemReads = new Map<number, ItemRead>()): RankContext => ({ team: lane, lane, itemReads, tags, fits: {}, urgency: null })
 
+  it('takes an item a slot before gave up when it leads this one: Jinx\'s Infinity Edge, not Guardian Angel again', () => {
+    const slot: JevSlot = { name: 'item5', kind: 'item', lane: false, place: 4, options: [option('o0', [3031], { games: 38359, pickRate: 0.68 }), option('o1', [3026], { games: 9189, pickRate: 0.16 })] }
+    const reads = new Map([[3031, item({ kit: 0.9 })], [3026, item({ antiBurst: 0.9, kit: 0.9 })]])
+    const physical = needs({ physical: 0.9, magic: 0.1, burst: 0.8 })
+    expect(rankSlot(slot, context(physical, reads)).pick.itemIds).toEqual([3026])
+    const owed = rankSlot(slot, { ...context(physical, reads), owed: [3031] })
+    expect(owed.pick.itemIds).toEqual([3031])
+    expect(owed.reason).toBeUndefined()
+  })
+
   it('takes Plated Steelcaps over Mercury\'s Treads against Darius, the statistics even', () => {
     const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3111]), option('o1', [3047])] }
     const ranked = rankSlot(boots, context(needs({ physical: 0.9, magic: 0.1, cc: 0.2 }), new Map([[3111, item({ tenacity: 0.97, kit: 0.8 })], [3047, item({ vsAutos: 0.9, kit: 0.6 })]])))
@@ -275,13 +285,16 @@ describe('rankSlot', () => {
     expect(ranked.reason).toEqual({ kind: 'draft', need: 'physical' })
   })
 
-  it('reads magic resist into magic burst whatever the kit makes of it, as armor into physical burst (Zed into Ekko, Anivia, Locke, Aurelion Sol, Amumu)', () => {
+  it('reads magic resist boots into magic burst whatever the kit makes of them, as armor boots into physical burst; on an item the kit still weighs (Ashe took Randuin\'s Omen)', () => {
+    const reads = new Map([[3111, item({ kit: 0.5 })], [3065, item({ kit: 0.5 })]])
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006]), option('o1', [3111])] }
+    const bootsDraft = (burst: number) => rankSlot(boots, context(needs({ physical: 0.07, magic: 0.85, burst }), reads)).scored.o1!.parts.draft!
+    const bootsFit = fitOf([3111], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
+    expect(bootsDraft(0.73)).toBeCloseTo(0.5 + 0.5 * bootsFit)
+    expect(bootsDraft(0.2)).toBeCloseTo(0.5 + 0.5 * bootsFit * 0.5)
     const slot: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3071]), option('o1', [3065])] }
-    const reads = new Map([[3065, item({ kit: 0.5 })]])
-    const draftOf = (burst: number) => rankSlot(slot, context(needs({ physical: 0.07, magic: 0.85, burst }), reads)).scored.o1!.parts.draft!
-    const fit = fitOf([3065], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
-    expect(draftOf(0.73)).toBeCloseTo(0.5 + 0.5 * fit)
-    expect(draftOf(0.2)).toBeCloseTo(0.5 + 0.5 * fit * 0.5)
+    const itemFit = fitOf([3065], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
+    expect(rankSlot(slot, context(needs({ physical: 0.07, magic: 0.85, burst: 0.73 }), reads)).scored.o1!.parts.draft).toBeCloseTo(0.5 + 0.5 * itemFit * 0.5)
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {
@@ -437,7 +450,33 @@ describe('itemSetOf', () => {
       { slot: later, pick: later.options[0]!, standard: later.options[0]!, scored: scored({ o0: 0.62, o1: 0.4, o2: 0.58 }) },
     ]
     const build = { runePage: null, summonerSpells: null, starterItems: { itemIds: [1055, 2003], games: 1, pickRate: 1, winRate: 0.5 }, skillOrder: null, boots: { itemIds: [3047], games: 1, pickRate: 1, winRate: 0.5 }, order: [6692, 3047, 6610, 3071] }
-    expect(itemSetOf(ranked, build)).toEqual({ starter: [1055, 2003], boots: [3047], core: [6692, 6610, 3071], situational: [6333, 3161, 3156], bootsAt: 1 })
+    expect(itemSetOf(ranked, build)).toEqual({
+      starter: [1055, 2003],
+      boots: [3047],
+      core: [6692, 6610, 3071],
+      situational: [6333, 3161, 3156],
+      bootsAt: 1,
+      places: [{ place: 1, items: [6692, 3161] }, { place: 2, items: [3071, 6333, 3156] }],
+    })
+  })
+
+  it('offers at each place the slot\'s other options as the board lists them: no misfit, none barely seen, none bought before, three at most', () => {
+    const scored = (totals: Record<string, number>, misfits: string[] = []) => Object.fromEntries(Object.entries(totals).map(([key, total]) => [key, { total, parts: {}, answers: [], misfit: misfits.includes(key) }]))
+    // Jinx: Runaan's Hurricane second, then Infinity Edge third with what else its slot offered.
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006]), option('o1', [3047]), option('o2', [3111])] }
+    const second: JevSlot = { name: 'item2', kind: 'item', lane: false, options: [option('o0', [3085]), option('o1', [3031])] }
+    const third: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3031]), option('o1', [3036]), option('o2', [3085]), option('o3', [3033]), option('o4', [3072], { games: 20 }), option('o5', [3065]), option('o6', [3026])] }
+    const ranked = [
+      { slot: boots, pick: boots.options[0]!, standard: boots.options[0]!, scored: scored({ o0: 0.6, o1: 0.5, o2: 0.55 }, ['o2']) },
+      { slot: second, pick: second.options[0]!, standard: second.options[0]!, scored: scored({ o0: 0.6, o1: 0.55 }) },
+      { slot: third, pick: third.options[0]!, standard: third.options[0]!, scored: scored({ o0: 0.6, o1: 0.4, o2: 0.7, o3: 0.5, o4: 0.9, o5: 0.45, o6: 0.3 }, ['o5']) },
+    ]
+    const build = { runePage: null, summonerSpells: null, starterItems: null, skillOrder: null, boots: { itemIds: [3006], games: 1, pickRate: 1, winRate: 0.5 }, order: [3006, 3085, 3031] }
+    expect(itemSetOf(ranked, build).places).toEqual([
+      { place: 0, items: [3006, 3047] },
+      { place: 1, items: [3085, 3031] },
+      { place: 2, items: [3031, 3033, 3036, 3026] },
+    ])
   })
 })
 

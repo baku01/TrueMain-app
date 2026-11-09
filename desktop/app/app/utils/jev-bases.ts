@@ -2,9 +2,12 @@ import type { BlitzBuildDoc } from '~/utils/blitz/builds'
 import type { BuildOptions } from '~/utils/sources/model'
 import type { DraftSelection, ImportChoice } from '~/composables/useDraftAutoImport'
 import type { LaidBuild } from '~/utils/jev-build'
-import type { DraftItemBlock } from '~/utils/item-set'
+import type { DraftItemBlock, PlaceMeasures } from '~/utils/item-set'
+import type { ItemStat } from '~/utils/blitz/item-stats'
 import type { RankedSlot } from '~/utils/jev-recommend'
 import { itemSetOf } from '~/utils/jev-recommend'
+import { INVENTORY, placeGames } from '~/utils/jev-build'
+import { readItemStats } from '~/utils/blitz/item-stats'
 import { most, readBlitzBuildDoc, readBlitzBuildRows } from '~/utils/blitz/builds'
 import { playstyleName, playstyleOptions } from '~/utils/blitz/playstyles'
 import { MIN_MATCHUP_GAMES, blitzOptions, blitzOptionsOf } from '~/utils/sources/blitz'
@@ -64,6 +67,23 @@ export async function laneOptions(championId: number, position: string): Promise
   return combineOptions(lolalytics, blitz)
 }
 
+/**
+ * What the lane's players buy at each place of the build, and the boots they
+ * buy (`PlaceMeasures`): the lane's options (lolalytics' item1 to item5, both
+ * sources' boots) and Blitz's item stats at each slot — a measured build's
+ * place blocks in the item set (`measuredPlaces`). Null where neither answered.
+ */
+export async function lanePlaces(championId: number, position: string): Promise<PlaceMeasures | null> {
+  const [options, slots] = await Promise.all([
+    laneOptions(championId, position).catch(() => null),
+    Promise.all(Array.from({ length: INVENTORY }, (_, index) => readItemStats(championId, position, null, { slot: index + 1 }).catch(() => new Map<number, ItemStat>()))),
+  ])
+  if (!options && slots.every(slot => slot.size === 0)) return null
+  const boots = new Map<number, number>()
+  for (const pair of options?.boots ?? []) boots.set(pair.itemIds[0]!, (boots.get(pair.itemIds[0]!) ?? 0) + pair.games)
+  return { boots, places: slots.map((slot, at) => placeGames(options?.places?.[at], slot)) }
+}
+
 /** Blitz's builds against the lane opponent; none below the games that let them stand on their own. */
 export async function matchupOptions(championId: number, position: string, opponentId: number): Promise<BuildOptions | null> {
   const doc = await readBlitzBuildDoc(championId, position, opponentId)
@@ -121,6 +141,8 @@ function importChoice(key: string, title: string, ranked: RankedSlot[], build: L
     situational: set.situational,
     bootsAt: set.bootsAt,
     draft,
+    places: set.places,
+    questReward: set.questReward,
   }
 }
 

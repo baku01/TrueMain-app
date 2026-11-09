@@ -37,7 +37,7 @@ export interface JevOption extends Measure, ItemMeasure {
   situational?: boolean
 }
 
-export type SlotKind = 'runes' | 'spells' | 'starter' | 'skills' | 'boots' | 'timing' | 'item'
+export type SlotKind = 'runes' | 'spells' | 'starter' | 'skills' | 'boots' | 'timing' | 'item' | 'quest'
 
 export interface JevSlot {
   name: string
@@ -56,10 +56,16 @@ const keyed = <T>(list: T[], count: number, shape: (option: T) => Omit<JevOption
 /** Under this many games an option is a rumour: a slot keeps it only to have two to compare. */
 export const MIN_GAMES = 30
 
-/** The options seen often enough to judge, most played first; the two most played whatever their games. */
+/**
+ * The options seen often enough to judge, most played first: in `MIN_GAMES`
+ * games and `PLACE_SHARE` of the slot's games or more — LoLDraftAI lists rune
+ * pages from 1 %, and 30 of Ashe's 130,000 games are no option — the two most
+ * played whatever their games.
+ */
 export function reliable<T extends Measure>(list: T[]): T[] {
   const sorted = [...list].sort((a, b) => b.games - a.games)
-  const kept = sorted.filter(option => option.games >= MIN_GAMES)
+  const floor = Math.max(MIN_GAMES, PLACE_SHARE * sorted.reduce((sum, option) => sum + option.games, 0))
+  const kept = sorted.filter(option => option.games >= floor)
   return kept.length >= 2 ? kept : sorted.slice(0, 2)
 }
 
@@ -167,6 +173,13 @@ export function firstSlots(options: BuildOptions, names: Names, consumable: (id:
       options: keyed(reliable(startingSets(options.starters, consumable, omitted)), 3, starter => ({ ...measured(starter), itemIds: starter.itemIds, label: starter.itemIds.map(names.item).join(' + ') })),
     },
     {
+      // A support's quest reward: an item picked when the quest is done, never bought — apart from the buying order.
+      name: 'quest',
+      kind: 'quest',
+      lane: false,
+      options: keyed(reliable(options.questRewards ?? []), 4, reward => ({ ...measured(reward), itemIds: reward.itemIds, label: names.item(reward.itemIds[0]!) })),
+    },
+    {
       name: 'skills',
       kind: 'skills',
       lane: true,
@@ -222,6 +235,47 @@ export function damageKind(tags: string[]): 'ad' | 'ap' | null {
 const SITUATIONAL = 2
 
 /**
+ * The share of a place's games an item must be bought at to be one of the
+ * draft's answers there (`placeShare`): the place of the build players buy it
+ * at, not only how often — Guardian Angel is Ashe's fifth item (3.8 % of
+ * them, 1.2 % of her fourth), her second in 10 games of 67,000, and was taken
+ * there for the armor a rule made due.
+ */
+export const PLACE_SHARE = 0.01
+
+/**
+ * Each item's games at one place of the build (1 the first completed item):
+ * the source's measures of that place (lolalytics' `places`) and Blitz's (its
+ * item stats at that slot) added up.
+ */
+export function placeGames(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): Map<number, number> {
+  const games = new Map<number, number>()
+  for (const option of places ?? []) games.set(option.itemIds[0]!, (games.get(option.itemIds[0]!) ?? 0) + option.games)
+  for (const [id, stat] of slot ?? []) games.set(id, (games.get(id) ?? 0) + stat.games)
+  return games
+}
+
+/**
+ * Each item's share of the games at one place of the build (`placeGames`);
+ * null where neither source measured the place, which then sets no bar.
+ */
+export function placeShare(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): ((id: number) => number) | null {
+  const games = placeGames(places, slot)
+  const total = [...games.values()].reduce((sum, count) => sum + count, 0)
+  return total > 0 ? id => (games.get(id) ?? 0) / total : null
+}
+
+/**
+ * The share of the champion's games an item must be bought in to be one of
+ * the draft's answers: what one game in two hundred sees is a build; below
+ * it, a handful of games — Death's Dance on Ashe (84 games, 0.1 %) and
+ * Randuin's Omen (418, 0.3 %) took her fourth and third items. Between
+ * LoLDraftAI's 1 % for rune pages and iTero's 0.25 %, and under Locket of the
+ * Iron Solari on an enchanter (0.99 %, +4.3 points of win probability).
+ */
+export const ANSWER_SHARE = 0.005
+
+/**
  * The draft's answers a slot adds to what was measured in it, none already in
  * the build: each need of `needs` that no option measured here answers
  * (`STANDS_OUT`) takes its best answer from the champion's items — the one that
@@ -236,7 +290,7 @@ const SITUATIONAL = 2
 function draftAnswers(measuredHere: ItemOption[], held: number[], situational: Situational, limit: number, unmetOnly = false): ItemOption[] {
   const idOf = (option: ItemOption) => option.itemIds[0]!
   const here = new Set(measuredHere.flatMap(option => option.itemIds))
-  const open = situational.pool.filter(option => option.games >= MIN_GAMES && !here.has(idOf(option)) && fitsWith(idOf(option), held) && (situational.suits?.(idOf(option)) ?? true) && situational.answersDraft(idOf(option)))
+  const open = situational.pool.filter(option => option.games >= MIN_GAMES && option.pickRate >= ANSWER_SHARE && !here.has(idOf(option)) && fitsWith(idOf(option), held) && (situational.suits?.(idOf(option)) ?? true) && situational.answersDraft(idOf(option)))
   const value = (option: ItemOption, need: keyof Needs) => answerTo(situational.answers(idOf(option)), need)
   const unmet = situational.needs.filter(need => !measuredHere.some(option => value(option, need) >= STANDS_OUT))
   const queued = unmet.flatMap((need, rank) => open
@@ -294,7 +348,7 @@ function coresAfter(cores: ItemOption[], chosen: number[]): ItemOption[] {
  * boots (Eclipse, Plated Steelcaps, Sundered Sky), so their third place is the
  * items after them.
  */
-export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names, due?: Situational): JevSlot | null {
+export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names, due?: Situational, owed: ItemOption[] = []): JevSlot | null {
   const at = new Map<number, { games: number, wins: number }>()
   for (const core of coresAfter(options.cores, chosen)) {
     const id = pathOf(core)[index]
@@ -304,9 +358,24 @@ export function coreSlot(options: BuildOptions, index: number, chosen: number[],
   }
   if (!at.size) return null
   const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
-  const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
-  const owed = due?.needs.length ? draftAnswers(measuredHere, chosen, due, due.needs.length, true) : []
-  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions([...measuredHere, ...owed.map(option => ({ ...option, situational: true as const }))], names) }
+  const measuredHere = reliable(withOwed([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 })), owed, chosen)).slice(0, 4)
+  const answers = due?.needs.length ? draftAnswers(measuredHere, chosen, due, due.needs.length, true) : []
+  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions([...measuredHere, ...answers.map(option => ({ ...option, situational: true as const }))], names) }
+}
+
+/**
+ * A slot's measured options and the items a slot before it gave up for its
+ * pick (`owed`), each once, the larger sample kept, none the build holds or
+ * cannot hold: Lord Dominik's Regards taken third against tanks moves Infinity
+ * Edge, Jinx's most played third item, to fourth — not out of the build.
+ */
+function withOwed(measured: ItemOption[], owed: ItemOption[], held: number[]): ItemOption[] {
+  const byId = new Map<number, ItemOption>()
+  for (const option of [...owed.filter(option => option.itemIds.every(id => !held.includes(id) && fitsWith(id, held))), ...measured]) {
+    const id = option.itemIds[0]!
+    if ((byId.get(id)?.games ?? -1) < option.games) byId.set(id, option)
+  }
+  return [...byId.values()]
 }
 
 /** The measured core whose path shares the most items with `chosen`, the most played on a tie: whose follow-ups come next. */
@@ -373,10 +442,10 @@ export function statsPool(stats: Map<number, ItemStat>, measuredItems: ItemOptio
  * build (`fitsWith`: not held, no limited group full — one Lifeline item, one
  * Last Whisper item), plus the draft's answers.
  */
-export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, situational?: Situational): JevSlot | null {
+export function laterSlot(options: BuildOptions, core: ItemOption | null, slot: number, held: number[], names: Names, situational?: Situational, owed: ItemOption[] = []): JevSlot | null {
   const group = options.followUps(core).find(entry => entry.slot === slot)
   if (!group) return null
-  const measuredHere = reliable(group.options.filter(option => option.itemIds.every(id => chosen(id) && fitsWith(id, held)))).slice(0, 4)
+  const measuredHere = reliable(withOwed(group.options.filter(option => option.itemIds.every(id => chosen(id) && fitsWith(id, held))), owed, held)).slice(0, 4)
   const open = withSituational(measuredHere, held, situational)
   if (!open.length) return null
   return { name: `item${slot}`, kind: 'item', lane: false, place: slot, options: itemOptions(open, names) }
@@ -390,6 +459,7 @@ export function candidateItems(options: BuildOptions, pool: ItemOption[]): numbe
   const ids = new Set<number>()
   for (const starter of options.starters) starter.itemIds.forEach(id => ids.add(id))
   for (const boots of options.boots) boots.itemIds.slice(0, 1).forEach(id => ids.add(id))
+  for (const reward of options.questRewards ?? []) ids.add(reward.itemIds[0]!)
   for (const core of options.cores) {
     pathOf(core).forEach(id => ids.add(id))
     for (const group of options.followUps(core)) for (const option of group.options) option.itemIds.forEach(id => ids.add(id))
@@ -406,6 +476,8 @@ export interface LaidBuild {
   /** With the first three levels, when measured: they tell apart orders that max alike. */
   skillOrder: (BuildSkillOrder & { opening?: string[] }) | null
   boots: BuildItemSet | null
+  /** A support's quest reward to pick (`utils/support-quest`): no place of `order`, never bought. */
+  questReward: BuildItemSet | null
   /** Every completed item in the order it is bought, the boots where they fall. */
   order: number[]
 }
@@ -417,6 +489,7 @@ export function laidBuild(pick: (slot: string) => JevOption | null, core: number
   const starter = pick('starter')
   const skills = pick('skills')
   const boots = pick('boots')
+  const reward = pick('quest')
   const after = Math.min(pick('bootsAfter')?.after ?? 1, core.length)
   const order = [...core.slice(0, after), ...(boots?.itemIds ?? []), ...core.slice(after), ...later]
   return {
@@ -425,6 +498,7 @@ export function laidBuild(pick: (slot: string) => JevOption | null, core: number
     starterItems: starter ? { itemIds: starter.itemIds, ...measured(starter) } : null,
     skillOrder: skills?.order ? { sequence: skills.order, opening: skills.opening, ...measured(skills) } : null,
     boots: boots ? { itemIds: boots.itemIds, ...measured(boots) } : null,
+    questReward: reward ? { itemIds: reward.itemIds, ...measured(reward) } : null,
     order,
   }
 }

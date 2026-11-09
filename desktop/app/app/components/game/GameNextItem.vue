@@ -22,7 +22,7 @@ const [beforeShort, afterShort] = aroundParam('game.next.goldShort', 'gold')
 const [beforeComplete, afterComplete] = aroundParam('game.next.goldToComplete', 'gold')
 const games = (count: number) => (count === 1 ? t('game.next.starterGames.one', { count }) : t('game.next.starterGames.other', { count }))
 const stepGames = (count: number) => (count === 1 ? t('game.next.stepGames.one', { count }) : t('game.next.stepGames.other', { count }))
-const { answer, pending, statics, build, order, top, runnersUp, boots, why, remaining, path, state, name, percent, reason, affordable, starter, starterGold, kit, fromKit, kitDone } = useNextItemPanel(toRef(props, 'game'))
+const { answer, pending, statics, build, order, top, runnersUp, boots, why, remaining, path, state, name, percent, reason, affordable, starter, starterGold, questReward, kit, fromKit, kitDone } = useNextItemPanel(toRef(props, 'game'))
 </script>
 
 <template>
@@ -43,6 +43,21 @@ const { answer, pending, statics, build, order, top, runnersUp, boots, why, rema
         <span v-if="affordable(starterGold)" class="text-xs text-stat-gold">{{ t('game.next.canBuy') }}</span>
         <span v-else class="text-xs tabular-nums text-muted">{{ beforeShort }}<span class="text-stat-gold">{{ starterGold - game.gold }}</span>{{ afterShort }}</span>
         <span v-if="!kit" class="text-xs tabular-nums text-dimmed" :title="games(starter.games)">{{ t('game.next.starterShare', { share: percent(starter.pickRate) }) }}</span>
+      </div>
+
+      <!-- A support's quest reward, to pick when the quest is done: picked, never bought, so apart from the build. -->
+      <div v-if="questReward" class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-default pb-3" :title="t('game.next.questRewardHint')">
+        <span class="stat-label">{{ t('game.next.questReward') }}</span>
+        <GameTooltipItemIcon
+          v-for="itemId in questReward.itemIds"
+          :key="itemId"
+          :item="statics[itemId] ?? null"
+          :width="30"
+          :height="30"
+          class="size-[30px] rounded ring-1 ring-primary/60"
+        />
+        <span class="text-sm font-semibold text-highlighted">{{ name(questReward.itemIds[0]!) }}</span>
+        <span v-if="questReward.games > 0" class="text-xs tabular-nums text-dimmed">{{ percent(questReward.pickRate) }}</span>
       </div>
 
       <div class="mb-2 flex items-center gap-2">

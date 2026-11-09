@@ -112,10 +112,37 @@ describe('lolalytics', () => {
     // A slot with no item (id 0, "no boots") is not an option.
     expect(options.boots.map(option => option.itemIds)).toEqual([[3020]])
     expect(options.cores[0]!.itemIds).toEqual([3118, 3020, 4645])
-    expect(options.followUps(null).map(group => group.slot)).toEqual([4, 5])
+    // After the most played core — two items and boots — the third item comes next: lolalytics' item4 is the build's fifth purchase.
+    expect(options.followUps(null).map(group => group.slot)).toEqual([5, 6])
     expect(options.skills[0]).toMatchObject({ order: ['Q', 'W', 'E'], opening: ['W', 'Q', 'E'] })
     // Every item bought on the lane, whatever its place: where the draft's answers are looked for.
     expect(options.situational?.map(option => [option.itemIds[0], option.games])).toEqual([[3156, 44], [3089, 300]])
+  })
+
+  it('reads a support\'s quest reward apart: no core, place or follow-up holds it (Lulu)', async () => {
+    const { lolalyticsOptionsOf } = await import('~/utils/sources/lolalytics')
+    const lulu = await lolalyticsOptionsOf({
+      ...build,
+      supportItem: [[3870, 51.9, 82.8, 828], [3869, 48.1, 7.9, 79], [0, 38.4, 1.4, 14]],
+      item1: [[3870, 51.9, 82.8, 828], [3869, 48.1, 7.9, 79]],
+      item2: [[3504, 52.3, 64.1, 641], [6617, 50.1, 16, 160]],
+      item3: [[6617, 51, 30, 300]],
+      item4: [[3222, 52, 20, 200]],
+      item5: [],
+      item: [[3865, 51.4, 100, 1000], [3870, 51.9, 82.8, 828], [3504, 52.3, 70, 700]],
+      builtBootSet3: [['3870_3504_3158', 53, 31.4, 314], ['3869_3504_3158', 49.4, 2.3, 23], ['3870_6617_3158', 50.8, 6.8, 68]],
+    })
+    expect(lulu.questRewards!.map(option => [option.itemIds[0], option.games])).toEqual([[3870, 828], [3869, 79]])
+    expect(lulu.questRewards![0]!.pickRate).toBeCloseTo(828 / 907)
+    // The cores with Dream Maker or Celestial Opposition first are one: Ardent Censer and Ionian Boots.
+    expect(lulu.cores.map(core => [core.itemIds, core.games])).toEqual([[[3504, 3158], 337], [[6617, 3158], 68]])
+    // lolalytics' first item of a support is its reward: its first place is lolalytics' second.
+    expect(lulu.places![0]!.map(option => option.itemIds[0])).toEqual([3504, 6617])
+    expect(lulu.followUps(lulu.cores[0]!).map(group => [group.slot, group.options[0]!.itemIds[0]])).toEqual([[3, 6617], [4, 3222]])
+    expect(lulu.situational!.map(option => option.itemIds[0])).toEqual([3504])
+    const [first] = buildsFromOptions(117, 'UTILITY', lulu).builds
+    expect(first!.core.itemPath!.itemIds).toEqual([3504])
+    expect(first!.core.questReward!.itemIds).toEqual([3870])
   })
 
   it('offers no boots to a champion whose games mostly go without (lolalytics\' 9999), and never 9999 as a pair', async () => {
