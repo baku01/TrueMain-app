@@ -285,18 +285,24 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   statistics (lolalytics + Blitz pooled through `utils/sources/combined.ts`, the one pooled view in the app; win rate
   shrunk toward its slot's by 1000 games plus Blitz's `champion_item_stats` WPA over the slot's, only where every option has it, the
   matchup's when every option has 30 games there), weighed
-  items 40% stats / 35% team / 25% kit — the kit in full only under 30 games (LoLTheory's "Modeled" threshold), as
-  `30 / games` past them (`modeled`) — lane choices 50/50. The pick is the slot's most played option unless another
-  has a reason (`DEVIATE`, `RankedSlot.reason`): `proven`, a credible edge of half a win-rate point or more;
+  items by their place in the buying order (`itemWeights`: 45% stats / 30% team / 25% kit for the first, 40/35/25 for
+  the second, 30/45/25 from the third; boots 40/35/25) — the kit in full only under 30 games (LoLTheory's "Modeled"
+  threshold), as `30 / games` past them (`modeled`) — lane choices 50/50. The pick follows the AI builders (Hexgate,
+  LoLDraftAI, iTero, decompiled in Blitz's `decompiled/*/REPORT.md`: the statistics make the pool, the draft ranks
+  inside it): an option with a tenth of the slot's games or more and 30 games (`POPULAR`) competes on its total, the
+  most played kept on a tie within 0.02; a rarer one needs a reason (`DEVIATE`, `RankedSlot.reason`): `proven`, a
+  credible edge of half a win-rate point or more;
   `draft` (items, boots), a need of the enemy team it answers by 0.25 more than the most played, its draft part 0.25
   above (a due resistance, armor into physical burst, Grievous Wounds into heavy healing, Tenacity into heavy crowd
   control); `lane` (runes, spells, starters), Jev's lane fit 0.3 above the most played's at confidence 0.7 or more —
-  and never one a point or more credibly worse. The highest total of those and the most played is taken; a misfit
-  most played gives way to any option that is not one; skills and boots timing keep the highest total. Grounded in
-  Buildzcrank (most played first, its "highest win rate" apart and only over a few hundred games) and LoLTheory
-  (score ≈ win rate + popularity, defensive items only when the draft calls for them): Jev's kit read alone
+  and never one a point or more credibly worse, popular or not. A popular pick's reason is the part that gained it
+  most (`leadOf`; `kit`, "suits our champion's kit better", only there). The highest total of those and the most
+  played is taken; a misfit most played gives way to any option that is not one; skills and boots timing keep the
+  highest total. A rare item Jev's kit read alone liked
   never overturns what the bracket builds. `utils/jev-build.ts` lays the slots: runes, spells,
-  starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus
+  starter, skills, boots and their timing, the core item by item — each place read after the items chosen before it
+  (`coreSlot`: the cores starting with them, else holding them in any order, else every core under 30 games) — later
+  items after the closest measured core, plus
   up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
   (`JevBuildPath`): a setup row (runes, spells, starter, skill order with its 18-level strip, boots timing) and the

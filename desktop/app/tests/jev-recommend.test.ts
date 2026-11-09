@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { answersDraft, fitOf, itemSetOf, laneNeeds, modeled, needsOf, rankPicks, rankSlot, reasonMessage } from '~/utils/jev-recommend'
+import { POPULAR, WEIGHTS, answersDraft, fitOf, itemSetOf, itemWeights, laneNeeds, modeled, needsOf, rankPicks, rankSlot, reasonMessage } from '~/utils/jev-recommend'
 import { SELECTION, addedWinProbability, credibleEdge, slotWpa, statsOf } from '~/utils/jev-stats'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, ccReducible: 1, heal: 0, healInFight: 1, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
@@ -235,7 +235,7 @@ describe('rankSlot', () => {
   })
 
   it('takes Berserker\'s Greaves on a marksman into a physical lane: armor answers it only as far as the champion uses it', () => {
-    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006], { games: 30000 }), option('o1', [3047], { games: 200, winRate: 0.51 })] }
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006], { games: 30000, pickRate: 0.9 }), option('o1', [3047], { games: 200, winRate: 0.51, pickRate: 0.006 })] }
     const caitlyn = needs({ physical: 0.85, magic: 0.1, autos: 0.6 })
     const ranked = rankSlot(boots, context(caitlyn, new Map([[3006, item({ kit: 1 })], [3047, item({ vsAutos: 0.9, kit: 0.5 })]])))
     expect(ranked.pick.itemIds).toEqual([3006])
@@ -250,22 +250,35 @@ describe('rankSlot', () => {
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {
-    // Under 30 games the kit weighs its whole share (`modeled`).
+    // Under 30 games the kit weighs its whole share (`modeled`); a slot without a place weighs as a later item.
     const slot: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3065], { games: 20 }), option('o1', [3071], { games: 20 })] }
     const ranked = rankSlot(slot, context(needs({ physical: 0.2, magic: 0.8 }), new Map([[3065, item({ kit: 1 })]])))
-    const { parts, total } = ranked.scored.o0!
-    expect(total).toBeCloseTo(0.4 * parts.stats! + 0.35 * parts.draft! + 0.25 * parts.kit!)
+    const { parts, total, weights } = ranked.scored.o0!
+    expect(weights).toEqual(itemWeights(3))
+    expect(total).toBeCloseTo(0.3 * parts.stats! + 0.45 * parts.draft! + 0.25 * parts.kit!)
     const other = ranked.scored.o1!
     expect(other.parts.kit).toBeUndefined()
-    expect(other.total).toBeCloseTo((0.4 * other.parts.stats! + 0.35 * other.parts.draft!) / 0.75)
+    expect(other.total).toBeCloseTo((0.3 * other.parts.stats! + 0.45 * other.parts.draft!) / 0.75)
     // Over 900 games, a thirtieth of it.
     const measured = rankSlot({ ...slot, options: [option('o0', [3065], { games: 900 })] }, context(needs({ physical: 0.2, magic: 0.8 }), new Map([[3065, item({ kit: 1 })]]))).scored.o0!
-    expect(measured.total).toBeCloseTo((0.4 * measured.parts.stats! + 0.35 * measured.parts.draft! + 0.25 / 30 * measured.parts.kit!) / (0.75 + 0.25 / 30))
+    expect(measured.total).toBeCloseTo((0.3 * measured.parts.stats! + 0.45 * measured.parts.draft! + 0.25 / 30 * measured.parts.kit!) / (0.75 + 0.25 / 30))
+  })
+
+  it('weighs the draft the more the later an item is bought', () => {
+    expect([1, 2, 3, 5].map(place => itemWeights(place).draft)).toEqual([0.3, 0.35, 0.45, 0.45])
+    expect(itemWeights(undefined)).toEqual(WEIGHTS.item.at(-1))
+    const at = (place: number) => rankSlot({ name: `item${place}`, kind: 'item', lane: false, place, options: [option('o0', [3065])] }, context(needs({}))).scored.o0!.weights.draft
+    expect(at(1)).toBe(0.3)
+    expect(at(3)).toBe(0.45)
+    // The boots keep their own.
+    const boots = rankSlot({ name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3047])] }, context(needs({}))).scored.o0!
+    expect(boots.weights.draft).toBe(WEIGHTS.boots.draft)
   })
 
   it('keeps the most played when the statistics are even and only Jev\'s read of the kit favours a rarer option', () => {
-    const slot: JevSlot = { name: 'item2', kind: 'item', lane: false, options: [option('o0', [3071], { games: 30000 }), option('o1', [3153], { games: 60 })] }
+    const slot: JevSlot = { name: 'item2', kind: 'item', lane: false, options: [option('o0', [3071], { games: 30000, pickRate: 0.6 }), option('o1', [3153], { games: 60, pickRate: 0.002, winRate: 0.536 })] }
     const ranked = rankSlot(slot, context(needs({}), new Map([[3071, item({ kit: 0.3 })], [3153, item({ kit: 1 })]])))
+    // Its 53.6% over 60 games at a share of 0.2% is the selection a rare item wins by (`SELECTION`): even.
     expect(ranked.scored.o0!.parts.stats).toBeCloseTo(0.5)
     expect(ranked.scored.o1!.parts.stats).toBeCloseTo(0.5)
     // Its total is the higher, on the read alone: no reason to part from what the bracket builds.
@@ -276,7 +289,7 @@ describe('rankSlot', () => {
   })
 
   it('takes an item that answers a need of the enemy team the most played does not: Grievous Wounds into heavy healing', () => {
-    const slot: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3071], { games: 20000 }), option('o1', [3165], { games: 800 })] }
+    const slot: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3071], { games: 20000, pickRate: 0.5 }), option('o1', [3165], { games: 800, pickRate: 0.04 })] }
     const reads = new Map([[3071, item({ kit: 0.9 })], [3165, item({ antiHeal: 0.98, kit: 0.8 })]])
     const ranked = rankSlot(slot, context(needs({ heal: 1 }), reads))
     expect(ranked.pick.key).toBe('o1')
@@ -298,8 +311,8 @@ describe('rankSlot', () => {
     expect(rankSlot(thin, context(needs({}))).pick.key).toBe('o0')
   })
 
-  it('takes a rune page Jev read suits the lane clearly better, with confidence, unless its games show it wins credibly less', () => {
-    const runes: JevSlot = { name: 'runes', kind: 'runes', lane: true, options: [option('o0', [], { games: 20000 }), option('o1', [], { games: 2000 })] }
+  it('takes a rarer rune page Jev read suits the lane clearly better, with confidence, unless its games show it wins credibly less', () => {
+    const runes: JevSlot = { name: 'runes', kind: 'runes', lane: true, options: [option('o0', [], { games: 20000, pickRate: 0.7 }), option('o1', [], { games: 2000, pickRate: 0.07 })] }
     const fit = (value: number, confidence = 0.85) => ({ fit: value, confidence })
     const ranked = (slot: JevSlot, mine: { fit: number, confidence: number }) => rankSlot(slot, { ...context(needs({})), fits: { r_o0: fit(0.45), r_o1: mine } })
     expect(ranked(runes, fit(0.85))).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'lane', fit: 0.85, standard: 0.45 } })
@@ -312,6 +325,24 @@ describe('rankSlot', () => {
     const worse = ranked({ ...runes, options: [runes.options[0]!, { ...runes.options[1]!, games: 5000, winRate: 0.47 }] }, fit(0.85))
     expect(worse.scored.o1!.total).toBeGreaterThan(worse.scored.o0!.total)
     expect(worse.pick.key).toBe('o0')
+  })
+
+  it('lets a popular option compete on its total: the best of them is taken, a near tie keeps the most played (Hexgate, LoLDraftAI, iTero rank inside the measured pool)', () => {
+    const runes: JevSlot = { name: 'runes', kind: 'runes', lane: true, options: [option('o0', [], { games: 20000, pickRate: 0.6 }), option('o1', [], { games: 5000, pickRate: POPULAR.share })] }
+    const fit = (value: number) => ({ fit: value, confidence: 0.85 })
+    const ranked = (slot: JevSlot, mine: number) => rankSlot(slot, { ...context(needs({})), fits: { r_o0: fit(0.45), r_o1: fit(mine) } })
+    // Read a little better than the most played: a rarer page needs 0.3 more, a popular one only a better total.
+    expect(ranked(runes, 0.6)).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'lane', fit: 0.6, standard: 0.45 } })
+    // Within the margin: a tie, the most played kept.
+    expect(ranked(runes, 0.47).pick.key).toBe('o0')
+    // Under a tenth of the games, the same read is no reason.
+    expect(ranked({ ...runes, options: [runes.options[0]!, { ...runes.options[1]!, pickRate: 0.05 }] }, 0.6).pick.key).toBe('o0')
+    // Credibly worse, popular or not: never.
+    expect(ranked({ ...runes, options: [runes.options[0]!, { ...runes.options[1]!, winRate: 0.47 }] }, 0.9).pick.key).toBe('o0')
+    // An item the team calls for, popular: taken on its draft part, which says why.
+    const slot: JevSlot = { name: 'item3', kind: 'item', lane: false, place: 3, options: [option('o0', [3071], { games: 20000, pickRate: 0.5 }), option('o1', [3165], { games: 4000, pickRate: 0.15 })] }
+    const healing = rankSlot(slot, context(needs({ heal: 0.4 }), new Map([[3071, item({ kit: 0.9 })], [3165, item({ antiHeal: 0.98, kit: 0.8 })]])))
+    expect(healing).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'draft', need: 'heal' } })
   })
 
   it('weighs Jev\'s read of the kit only as far as the option\'s games are few (LoLTheory\'s "Modeled" rates, under 30)', () => {
@@ -333,6 +364,7 @@ describe('rankSlot', () => {
     expect(reasonMessage({ kind: 'draft', need: 'heal' })).toEqual({ key: 'jev.reason.draft.heal' })
     expect(reasonMessage({ kind: 'draft', need: null })).toEqual({ key: 'jev.reason.draft.misfit' })
     expect(reasonMessage({ kind: 'lane', fit: 0.85, standard: 0.45 })).toEqual({ key: 'jev.reason.lane' })
+    expect(reasonMessage({ kind: 'kit' })).toEqual({ key: 'jev.reason.kit' })
   })
 
   it('times the boots by the lane\'s urgency', () => {

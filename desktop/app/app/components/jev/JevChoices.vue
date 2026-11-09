@@ -4,8 +4,9 @@ import { formatPercentage } from '#shared/utils/ddragon'
 
 /**
  * Every choice of the build as a table, one panel per choice and one row per
- * option, the recommended first — the most played unless another has a
- * reason (`DEVIATE`), so not always the best score — then best score first,
+ * option, the recommended first — the best score among the popular options,
+ * a rarer one only with a reason (`POPULAR`, `DEVIATE`), so not always the
+ * best score — then best score first,
  * the columns the same in every panel so options compare at a glance: the
  * option (its icons with their tooltips), its score, what lolalytics and
  * Blitz measured (win rate, pick rate and games, win probability added on the
