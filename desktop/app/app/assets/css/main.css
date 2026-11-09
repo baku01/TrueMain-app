@@ -380,19 +380,23 @@ main :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-xs).uppercase {
 }
 
 /*
- * Hardware acceleration off (Settings, `useGraphics`): no blur behind a surface
- * and no endless animation — what keeps a GPU busy, and what a webview drawing
- * in software pays most for. A spinner keeps turning: it says something is
- * loading, and it is cheap.
+ * Hardware acceleration off (Settings, `useGraphics`): no blur, behind a
+ * surface or on a picture (a blurred splash), and no endless animation — what
+ * keeps a GPU busy, and what a webview drawing in software pays most for. The
+ * blur utilities (`blur-2xl`, `blur-[28px]`) set `--tw-blur`, which `filter`
+ * reads: unset, the other filters still apply. A spinner keeps turning — the
+ * `animate-spin` class or a loader icon, which spins on its own (`theme.css`):
+ * it says something is loading, and it is cheap.
  */
 :root.reduce-effects *,
 :root.reduce-effects *::before,
 :root.reduce-effects *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  --tw-blur: initial !important;
 }
 
-:root.reduce-effects *:not(.animate-spin),
+:root.reduce-effects *:not(.animate-spin, [class*="i-lucide-loader"], [class*="i-lucide:loader"]),
 :root.reduce-effects *::before,
 :root.reduce-effects *::after {
   animation: none !important;

@@ -421,6 +421,13 @@ pub fn run() {
                 // client for the overlay and champion select. The tray's icon or
                 // the Dock (`RunEvent::Reopen`) brings it back; the tray's Quit
                 // or ⌘Q quits.
+                //
+                // The hidden webview still does the work champion select asks
+                // of it — bring the window forward, import the runes and the
+                // item sets. WKWebView suspends a hidden page by default (macOS
+                // 14+), which would hold that until the window was opened:
+                // `tauri.macos.conf.json` asks it to throttle instead, as
+                // Chromium does a hidden window's page on Windows.
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     let _ = window.hide();

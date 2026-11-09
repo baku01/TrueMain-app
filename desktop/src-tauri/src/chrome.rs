@@ -4,7 +4,7 @@
 //! read as one surface. Windows 10 ignores the caption colour and keeps the
 //! dark or light bar the theme gave it. A Catppuccin theme also recolours the
 //! app icon — the Dock's and the taskbar's (`set_app_icon`); the tray keeps
-//! its plain glyph (`menu.rs`), as the system's own icons there do.
+//! its own tile-less mark (`menu.rs`).
 
 use tauri::image::Image;
 use tauri::{AppHandle, Manager, Theme, WebviewWindow};

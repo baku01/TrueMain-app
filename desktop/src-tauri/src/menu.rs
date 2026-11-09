@@ -5,9 +5,10 @@
 //! the webview to check (`useAppUpdate`), which owns the updater and says how
 //! the check went.
 //!
-//! The tray's icon is TrueMain's mark as a plain glyph (`icons/tray.svg`), as
-//! the system's own icons there are: white in the Windows tray, a template
-//! image on macOS, which the menu bar tints for its light or dark look.
+//! The tray's icon is TrueMain's mark alone, with no tile (`icons/tray.svg`):
+//! in the brand's colours in the Windows tray, as Blitz's bolt is there; a
+//! template image on macOS, which the menu bar tints for its light or dark
+//! look, as every icon there is.
 //!
 //! On macOS the application menu also opens Settings on ⌘, (`app://navigate`).
 //!

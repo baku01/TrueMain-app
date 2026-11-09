@@ -168,12 +168,65 @@ async fn command_line_from_process() -> Option<String> {
         .map(str::to_string)
 }
 
+/// Whether a `LeagueClientUx.exe` process exists, from a snapshot of the
+/// process list — about a millisecond, against the hundreds a PowerShell
+/// process and its WMI query cost. The app looks for the client every few
+/// seconds for as long as it is closed, the app sitting in the tray all the
+/// while, so that query only runs once there is a client to read.
+///
+/// A snapshot that cannot be taken answers yes: the slow path decides.
+#[cfg(windows)]
+fn client_process_exists() -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+
+    const CLIENT: &str = "LeagueClientUx.exe";
+    // SAFETY: the snapshot handle is used only here and closed once; each
+    // entry is a plain struct with its size set, as the API requires.
+    unsafe {
+        let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else {
+            return true;
+        };
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut found = false;
+        let mut more = Process32FirstW(snapshot, &mut entry).is_ok();
+        while more {
+            let name = &entry.szExeFile;
+            let len = name.iter().position(|&c| c == 0).unwrap_or(name.len());
+            if String::from_utf16_lossy(&name[..len]).eq_ignore_ascii_case(CLIENT) {
+                found = true;
+                break;
+            }
+            more = Process32NextW(snapshot, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snapshot);
+        found
+    }
+}
+
+/// Elsewhere `ps` is cheap enough to be the look itself.
+#[cfg(not(windows))]
+fn client_process_exists() -> bool {
+    true
+}
+
 /// Find the running client, arguments first, lockfile second.
 ///
 /// Returns [`Error::ClientNotRunning`] rather than a generic failure when both
 /// sources come up empty — the caller needs to tell "no client" apart from
 /// "something broke", because the first is the normal state half the time.
 pub async fn discover() -> Result<Credentials> {
+    // No client process: nothing to read, and a lockfile left by a crash would
+    // only point at a dead port.
+    if !client_process_exists() {
+        return Err(Error::ClientNotRunning);
+    }
     if let Some(command_line) = command_line_from_process().await {
         if let Some(credentials) = parse_command_line(&command_line) {
             return Ok(credentials);

@@ -4,8 +4,15 @@
 //! poll. Polling champ select would mean either a visible lag behind a pick or
 //! a request every few hundred milliseconds for the whole session.
 //!
-//! The protocol is WAMP-flavoured: subscribe by sending `[5, "OnJsonApiEvent"]`,
-//! then every change arrives as `[8, "OnJsonApiEvent", {uri, eventType, data}]`.
+//! The protocol is WAMP-flavoured: `[5, "OnJsonApiEvent"]` subscribes to every
+//! change the client makes, `[5, "OnJsonApiEvent_lol-gameflow_v1_gameflow-phase"]`
+//! to one endpoint's (its path, `/` read as `_`). A change then arrives as
+//! `[8, <the event subscribed to>, {uri, eventType, data}]`.
+//!
+//! The app subscribes to the endpoints it follows only (`uri::FOLLOWED`): the
+//! whole stream carries chat, friends, presence, the store and the patcher —
+//! megabytes the client would otherwise encrypt and the app decrypt and drop,
+//! for as long as both run.
 
 use std::sync::Arc;
 
@@ -30,9 +37,12 @@ pub struct LcuEvent {
     pub data: serde_json::Value,
 }
 
-const SUBSCRIBE_ALL: &str = r#"[5,"OnJsonApiEvent"]"#;
+/// The message subscribing to one endpoint's changes.
+fn subscription(uri: &str) -> String {
+    format!(r#"[5,"OnJsonApiEvent{}"]"#, uri.replace('/', "_"))
+}
 
-/// Connect, subscribe to everything, and forward events onto a channel.
+/// Connect, subscribe to the endpoints the app follows, and forward their events onto a channel.
 ///
 /// Returns once the socket closes, which is the normal end of a client session:
 /// the caller reconnects rather than treating it as an error.
@@ -54,10 +64,12 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
             .await
             .map_err(|e| Error::Transport(e.to_string()))?;
 
-    socket
-        .send(Message::Text(SUBSCRIBE_ALL.to_string()))
-        .await
-        .map_err(|e| Error::Transport(e.to_string()))?;
+    for uri in crate::uri::FOLLOWED {
+        socket
+            .send(Message::Text(subscription(uri)))
+            .await
+            .map_err(|e| Error::Transport(e.to_string()))?;
+    }
 
     while let Some(message) = socket.next().await {
         let message = match message {
@@ -70,9 +82,8 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
         let Message::Text(payload) = message else {
             continue;
         };
-        // The socket carries everything the client does — chat, friends,
-        // presence, the patcher — and the app follows three endpoints: the
-        // rest is dropped before it is parsed.
+        // Only the followed endpoints are subscribed to; anything else the
+        // client sends is still dropped before it is parsed.
         if !followed(&payload) {
             continue;
         }
@@ -137,6 +148,25 @@ mod tests {
         assert!(!followed(
             r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-chat/v1/conversations"}]"#
         ));
+    }
+
+    #[test]
+    fn subscribes_to_each_followed_endpoint_by_its_event_name() {
+        assert_eq!(
+            subscription("/lol-gameflow/v1/gameflow-phase"),
+            r#"[5,"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase"]"#
+        );
+        assert_eq!(
+            subscription("/lol-champ-select/v1/session"),
+            r#"[5,"OnJsonApiEvent_lol-champ-select_v1_session"]"#
+        );
+    }
+
+    #[test]
+    fn reads_an_update_sent_under_an_endpoints_own_event() {
+        let frame = r#"[8,"OnJsonApiEvent_lol-lobby_v2_lobby",{"data":{},"eventType":"Update","uri":"/lol-lobby/v2/lobby"}]"#;
+        assert!(followed(frame));
+        assert_eq!(parse_event(frame).unwrap().uri, "/lol-lobby/v2/lobby");
     }
 
     #[test]

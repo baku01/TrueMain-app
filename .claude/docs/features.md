@@ -829,15 +829,22 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   "Check for Updates…" runs the check on demand: in the app menu on macOS, and in the tray icon's menu on both.
 - **In the background** (`src-tauri/src/menu.rs`, `autostart.rs`, `SettingsStartup`): closing the window hides it, as
   Blitz's does — the app stays in the tray (the menu bar and the Dock on macOS) following the client for the overlay,
-  the ready check and champion select, which still brings the window forward (`focus_window`). The tray's icon is
-  TrueMain's mark as a plain glyph (`icons/tray.svg`: white in the Windows tray, a template image the macOS menu bar
-  tints); its menu opens the window, checks for updates or quits — a left click opens the window on Windows, the menu
-  on macOS. "Start with the computer" in the settings (off by default) registers the app with the system through
+  the ready check and champion select, which still brings the window forward (`focus_window`) and imports the runes
+  and item sets from the hidden webview — on macOS 14+ WKWebView would suspend it, so the main window throttles
+  instead (`backgroundThrottling` in `tauri.macos.conf.json`). The tray's icon is TrueMain's mark with no tile, as
+  Blitz's bolt (`icons/tray.svg`: in the brand's ramp in the Windows tray, a template image the macOS menu bar tints);
+  its menu opens the window, checks for updates or quits — a left click opens the window on Windows, the menu on
+  macOS. "Start with the computer" in the settings (off by default) registers the app with the system through
   `tauri-plugin-autostart` (a Launch Agent on macOS, the `Run` key on Windows), launched with `--autostart`: the window
   is placed but not shown, the app in the tray until opened.
   Unsigned by Apple and Microsoft for the beta.
 - **Footprint** (#1916): identical API reads asked at once by two webviews (the next item, from the game page and
-  the overlay) go out as one request (`SharedReads`, `src-tauri/src/api.rs`). Memory and CPU of the whole process
+  the overlay) go out as one request (`SharedReads`, `src-tauri/src/api.rs`). While the client is closed, the look
+  for it every few seconds is a process-list snapshot on Windows, the PowerShell/WMI query that reads its arguments
+  running only once `LeagueClientUx.exe` exists (`lcu/src/credentials.rs`); once attached, the client's socket
+  carries only the four endpoints the app follows, not the whole client's traffic (`lcu/src/events.rs`). With
+  hardware acceleration off, `reduce-effects` also drops the blur on pictures (`--tw-blur`), loaders still turning.
+  Memory and CPU of the whole process
   tree are measured with `desktop/tools/measure-footprint.{sh,ps1}`, method and results in `docs/desktop-footprint.md`
   (no run recorded yet, so `/download` shows no figure).
 - **Usage counts** (#1805, `src-tauri/src/telemetry.rs`): a random install id drawn on the first launch
