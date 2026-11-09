@@ -285,15 +285,27 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   statistics (lolalytics + Blitz pooled through `utils/sources/combined.ts`, the one pooled view in the app; win rate
   shrunk toward its slot's by 1000 games plus Blitz's `champion_item_stats` WPA over the slot's, only where every option has it, the
   matchup's when every option has 30 games there), weighed
-  items 40% stats / 35% team / 25% kit, lane choices 50/50. `utils/jev-build.ts` lays the slots: runes, spells,
+  items 40% stats / 35% team / 25% kit — the kit in full only under 30 games (LoLTheory's "Modeled" threshold), as
+  `30 / games` past them (`modeled`) — lane choices 50/50. The pick is the slot's most played option unless another
+  has a reason (`DEVIATE`, `RankedSlot.reason`): `proven`, a credible edge of half a win-rate point or more;
+  `draft` (items, boots), a need of the enemy team it answers by 0.25 more than the most played, its draft part 0.25
+  above (a due resistance, armor into physical burst, Grievous Wounds into heavy healing, Tenacity into heavy crowd
+  control); `lane` (runes, spells, starters), Jev's lane fit 0.3 above the most played's at confidence 0.7 or more —
+  and never one a point or more credibly worse. The highest total of those and the most played is taken; a misfit
+  most played gives way to any option that is not one; skills and boots timing keep the highest total. Grounded in
+  Buildzcrank (most played first, its "highest win rate" apart and only over a few hundred games) and LoLTheory
+  (score ≈ win rate + popularity, defensive items only when the draft calls for them): Jev's kit read alone
+  never overturns what the bracket builds. `utils/jev-build.ts` lays the slots: runes, spells,
   starter, skills, boots and their timing, the core item by item, later items after the closest measured core, plus
   up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
   (`JevBuildPath`): a setup row (runes, spells, starter, skill order with its 18-level strip, boots timing) and the
   items in buy order, each step its option large with score, win rate, pick rate, games and WPA, the slot's other
-  options small under it with their scores; steps share the width the same way in both, so they line up. A click on
-  a step opens every option of it below as a table (`JevChoices`: option, score, win rate, pick rate and games, WPA,
-  score parts, answered needs).
+  options small under it with their scores, and under a pick that parts from the most played a line saying why
+  ("Changed: answers the enemy team's healing", "+1.2 pt of win rate, proven", "fits the matchup better (Jev)");
+  steps share the width the same way in both, so they line up. A click on
+  a step opens every option of it below as a table (`JevChoices`, the pick's row first: option, score, win rate, pick
+  rate and games, WPA, score parts, answered needs), the reason line under its heading.
   Each build's header imports it into the client on a click: its rune page (`BuildRuneImport`) and its item set
   (`BuildItemSetImport` with the build already in blocks — starter, boots, items in buy order, the slots' other
   options as situational, best score first), both labelled here. In champion select the board fills itself from the

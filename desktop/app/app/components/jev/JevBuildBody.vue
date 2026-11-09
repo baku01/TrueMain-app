@@ -4,14 +4,18 @@ import type { EnemyReading } from '~/composables/useJevBuild'
 import type { LaidBuild } from '~/utils/jev-build'
 import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase } from '~/utils/jev-bases'
+import { getActiveLocale } from '#common/utils/i18n'
 import { jevImportName, jevImportTitles } from '~/utils/jev-bases'
+import { reasonMessage } from '~/utils/jev-recommend'
 
 /**
  * Jev's answer for a build (`useJevBuild`'s), laid out: what it is built
  * against — the enemy team's needs and Jev's reading of each kit
  * (`JevEnemyRead`) — then the recommended and the most played build, each a
  * path of steps (`JevBuildPath`), and every option of the step opened
- * (`JevChoices`). Shared by the Jev matchup page and champion select's panel.
+ * (`JevChoices`), under its heading why Jev's pick parts there from the most
+ * played, where it does. Shared by the Jev matchup page and champion select's
+ * panel.
  * Both builds are named after the base Jev ranked within (`utils/jev-bases`):
  * "Jev · Lethality" beside that playstyle's most played, and so are their
  * imports (`TrueMain Aatrox vs Akali · Jev Lethality`).
@@ -48,6 +52,13 @@ const opened = computed(() => {
   const first = props.ranked.find(entry => entry.pick.key !== entry.standard.key) ?? props.ranked[0]
   return first ? { entry: first, label: first.slot.name.startsWith('item') ? t('jev.slot.item', { slot: first.slot.name.slice(4) }) : t(`jev.slot.${first.slot.name}`) } : null
 })
+/** Why the opened step's pick is not the most played (`RankedSlot.reason`), as one line; null where it is. */
+const why = computed(() => {
+  const reason = opened.value?.entry.reason
+  if (!reason) return null
+  const message = reasonMessage(reason, getActiveLocale())
+  return t(message.key, message.params)
+})
 </script>
 
 <template>
@@ -64,6 +75,7 @@ const opened = computed(() => {
         <span class="flex items-center gap-1 text-[11px] text-muted"><UIcon name="i-tabler-database" class="size-3.5" />{{ t('jev.card.standardPick') }}</span>
         <span class="ml-auto text-[11px] text-dimmed">{{ t('jev.path.hint') }}</span>
       </header>
+      <p v-if="why" class="mb-1 text-xs font-medium text-primary" :title="t('jev.reason.hint')">{{ why }}</p>
       <p class="mb-3 text-xs text-muted">{{ t('jev.card.choicesHint') }}</p>
       <JevChoices :ranked="[opened.entry]" :champion-id="championId" />
     </section>
