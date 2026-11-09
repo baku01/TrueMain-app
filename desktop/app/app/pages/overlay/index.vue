@@ -2,7 +2,7 @@
 import { formatPercentage } from '#shared/utils/ddragon'
 import type { OverlayPanel, OverlayPanelSettings, OverlaySettings, OverlayShow, PanelTrigger } from '~/types/overlay'
 import type { Point } from '~/utils/overlay-layout'
-import { OVERLAY_OPACITY, OVERLAY_PANELS, OVERLAY_PANEL_INFO, OVERLAY_SCALE, PANEL_KEY, SCOREBOARD_NUDGE, TIPS_PLACE } from '~/types/overlay'
+import { OVERLAY_OPACITY, OVERLAY_PANELS, OVERLAY_PANEL_INFO, OVERLAY_SCALE, PANEL_KEY, SCOREBOARD_NUDGE } from '~/types/overlay'
 import { nudgeLabel } from '~/utils/scoreboard-geometry'
 
 /**
@@ -41,15 +41,12 @@ const shownPanels = computed(() => OVERLAY_PANELS.filter(panel => current.value?
 // The chords' warnings read the player's own League keybindings when the client is there.
 onMounted(() => void readBinds())
 
-/** Each panel's own place: its anchor's spot, or the tips' (`TIPS_PLACE`). */
-const placeOf = (panel: OverlayPanel): Point | null => (panel === 'tips' ? { ...TIPS_PLACE } : null)
-const samePlace = (a: Point | null, b: Point | null) => a?.x === b?.x && a?.y === b?.y
 /** Every panel back on its own place. */
-const moved = computed(() => OVERLAY_PANELS.some(panel => current.value && !samePlace(current.value[PANEL_KEY[panel]].custom, placeOf(panel))))
+const moved = computed(() => OVERLAY_PANELS.some(panel => current.value?.[PANEL_KEY[panel]].custom))
 function resetPositions() {
   if (!current.value) return
   const settings = current.value
-  apply(Object.fromEntries(OVERLAY_PANELS.map(panel => [PANEL_KEY[panel], { ...settings[PANEL_KEY[panel]], custom: placeOf(panel) }])))
+  apply(Object.fromEntries(OVERLAY_PANELS.map(panel => [PANEL_KEY[panel], { ...settings[PANEL_KEY[panel]], custom: null }])))
 }
 
 // Sliders save once they settle, not on every step of a drag.

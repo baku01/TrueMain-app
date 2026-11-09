@@ -420,7 +420,7 @@ try {
     # A toggled panel flips on each press, held or not.
     Chord 0x33 900
     Start-Sleep -Milliseconds 800
-    Expect ((Shown) -eq "objectives,win-probability") "Alt+Shift+3 toggles our pace off, once however long it is held ($(Shown))"
+    Expect ((Shown) -eq "objectives,tips,win-probability") "Alt+Shift+3 toggles our pace off, once however long it is held ($(Shown))"
     Chord 0x33
     Start-Sleep -Milliseconds 800
     Expect ((Shown) -eq $InGame) "Alt+Shift+3 again brings it back ($(Shown))"
@@ -447,12 +447,14 @@ try {
     Expect ((Shown) -eq $InGame) "the game known by its window class alone gets the overlay back ($(Shown))"
 
     # The preview, from the game page's settings: every panel, taking the mouse.
+    # This build asks for its data source at first launch, over every page: answer it first.
+    Press "Continue" | Out-Null
     Expect (Press "Overlay settings") "the game page opens the overlay settings"
     Start-Sleep -Seconds 1
     Expect (Press "Place on screen") "the settings start the preview"
     Start-Sleep -Seconds 2
     $state = Report "6-preview"
-    Expect ((Shown) -eq "item-value,lane-gold,next-item,objectives,stats,win-probability") "the preview shows every panel ($(Shown))"
+    Expect ((Shown) -eq "item-value,lane-gold,next-item,objectives,stats,tips,win-probability") "the preview shows every panel ($(Shown))"
     foreach ($panel in @(Panels | Where-Object { $_.Visible -and $_.Slug -ne "lane-gold" })) {
         Expect (($panel.Styles -band $WS_EX_TRANSPARENT) -eq 0) "$($panel.Slug) takes the mouse in the preview ($($panel.ExStyle))"
     }

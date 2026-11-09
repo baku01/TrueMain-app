@@ -131,9 +131,11 @@ pub struct NeutralTimers {
 
 impl NeutralTimers {
     /// The timers, from every kill the feed holds; `None` off Summoner's
-    /// Rift's standard game, whose rules [`RIFT`] does not describe.
+    /// Rift's standard game and its Practice Tool, the modes whose rules
+    /// [`RIFT`] describes.
     pub fn from_payload(data: &AllGameData) -> Option<Self> {
-        if data.game_data.map_number != 11 || data.game_data.game_mode != "CLASSIC" {
+        let rift_rules = matches!(data.game_data.game_mode.as_str(), "CLASSIC" | "PRACTICETOOL");
+        if data.game_data.map_number != 11 || !rift_rules {
             return None;
         }
         Some(Self::from_events(data, &RIFT))
@@ -323,5 +325,15 @@ mod tests {
         let mut swiftplay = payload(serde_json::json!([]));
         swiftplay.game_data.game_mode = "SWIFTPLAY".into();
         assert_eq!(NeutralTimers::from_payload(&swiftplay), None);
+    }
+
+    #[test]
+    fn the_practice_tool_keeps_the_rift_timers() {
+        let mut practice = payload(serde_json::json!([]));
+        practice.game_data.game_mode = "PRACTICETOOL".into();
+        assert_eq!(
+            NeutralTimers::from_payload(&practice).map(|timers| timers.dragon),
+            Some(Spawn::at(300.0))
+        );
     }
 }

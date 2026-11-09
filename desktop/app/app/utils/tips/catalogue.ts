@@ -16,8 +16,8 @@ export type TipCategory = 'objective' | 'jungle' | 'ward' | 'lane' | 'kill' | 'm
 export const TIP_CATEGORIES: readonly TipCategory[] = ['objective', 'jungle', 'ward', 'lane', 'kill', 'mental', 'level', 'recall', 'farm', 'gold', 'map']
 
 /**
- * Seconds a category stays quiet after one of its tips left the screen, so
- * one kind of news never takes the screen over. Kill, ward and mental are
+ * Seconds a line of a category stays quiet after it left the screen, so the
+ * same news is never said twice in a row; another line of the kind goes on. Kill, ward and mental are
  * ABSOL's (1 s, 5 s, 5 s); the others are ours, longer where a second tip of
  * the kind would say the same thing again.
  */
@@ -91,7 +91,8 @@ export const TIP_RULES: Record<TipKey, TipRule> = {
   'jungle.spotted': rule('jungle', 4, 8),
   'jungle.firstClear': rule('jungle', 4, 10),
   'jungle.gankWindow': rule('jungle', 4, 15),
-  'jungle.dead': rule('jungle', 4, 6),
+  // A window of seconds still worth taking when said a little late.
+  'jungle.dead': rule('jungle', 4, 10),
   'ward.startBlue': rule('ward', 4, 12),
   'ward.startRed': rule('ward', 4, 12),
   'ward.gank.top': rule('ward', 4, 12),
@@ -106,7 +107,7 @@ export const TIP_RULES: Record<TipKey, TipRule> = {
   // The level 2 race lasts seconds.
   'lane.levelTwoFirst': rule('lane', 4, 5),
   'lane.levelTwoBehind': rule('lane', 4, 5),
-  'lane.opponentDead': rule('lane', 3, 6),
+  'lane.opponentDead': rule('lane', 3, 10),
   'lane.cannon': rule('lane', FILLER_PRIORITY, 6),
   'kill.levelTwo': rule('kill', 3, 10),
   'kill.shutdown': rule('kill', 3, 10),

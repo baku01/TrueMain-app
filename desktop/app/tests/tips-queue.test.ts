@@ -4,6 +4,8 @@ import { CATEGORY_COOLDOWNS, makeTip } from '../app/utils/tips/catalogue'
 import { SHOW_SECONDS, TipQueue, readingSeconds } from '../app/utils/tips/queue'
 
 const SHOW = SHOW_SECONDS * 1000
+/** A tip's time on screen while another waits. */
+const BUSY = 4000
 
 /** The keys on screen at each moment asked, in milliseconds. */
 function screen(queue: TipQueue, moments: number[]) {
@@ -11,13 +13,13 @@ function screen(queue: TipQueue, moments: number[]) {
 }
 
 describe('TipQueue', () => {
-  it('shows one tip at a time, each for SHOW_SECONDS', () => {
+  it('shows one tip at a time: for SHOW_SECONDS alone, four seconds while another waits', () => {
     const queue = new TipQueue()
     queue.push(makeTip('objective.dragon.60s'), 0)
     queue.push(makeTip('jungle.firstClear'), 0)
-    expect(screen(queue, [0, SHOW - 1])).toEqual(['objective.dragon.60s', 'objective.dragon.60s'])
-    expect(screen(queue, [SHOW])).toEqual(['jungle.firstClear'])
-    expect(screen(queue, [2 * SHOW])).toEqual([null])
+    expect(screen(queue, [0, BUSY - 1])).toEqual(['objective.dragon.60s', 'objective.dragon.60s'])
+    expect(screen(queue, [BUSY, BUSY + SHOW - 1])).toEqual(['jungle.firstClear', 'jungle.firstClear'])
+    expect(screen(queue, [BUSY + SHOW])).toEqual([null])
   })
 
   it('puts the higher priority first, and the first come first within one', () => {
@@ -27,34 +29,32 @@ describe('TipQueue', () => {
     queue.push(makeTip('level.sixFirst'), 0)
     queue.push(makeTip('objective.baron.30s'), 0)
     // Baron (5), the level (3), then the farm and the trinket (2), in the order they came.
-    expect(screen(queue, [0, SHOW, 2 * SHOW, 3 * SHOW])).toEqual(['objective.baron.30s', 'level.sixFirst', 'farm.ok', 'ward.redLens'])
+    expect(screen(queue, [0, BUSY, 2 * BUSY, 3 * BUSY])).toEqual(['objective.baron.30s', 'level.sixFirst', 'farm.ok', 'ward.redLens'])
   })
 
   it('drops a tip that waited past its ttl', () => {
     const queue = new TipQueue()
     queue.push(makeTip('objective.dragon.30s'), 0)
-    // An objective's warning keeps 8 s: still due after the first tip's 6 and the category's 1 s
-    // of quiet, gone after a second one's.
+    // An objective's warning keeps 8 s: still due after the first tip's 4, gone after a second one's.
     queue.push(makeTip('objective.dragon.60s'), 0)
     queue.push(makeTip('objective.grubs.30s'), 0)
-    expect(screen(queue, [0, SHOW + 1000, 2 * SHOW + 2000])).toEqual(['objective.dragon.30s', 'objective.grubs.30s', null])
+    expect(screen(queue, [0, BUSY, 3 * BUSY])).toEqual(['objective.dragon.30s', 'objective.grubs.30s', null])
     expect(queue.size).toBe(0)
   })
 
-  it('keeps a category quiet for its cooldown once one of its tips left the screen', () => {
+  it('keeps the same line quiet for its category\'s cooldown once it left the screen, never another line of the kind', () => {
     expect([CATEGORY_COOLDOWNS.kill, CATEGORY_COOLDOWNS.ward, CATEGORY_COOLDOWNS.mental]).toEqual([1, 5, 5])
-    const queue = new TipQueue()
-    queue.push(makeTip('ward.redLens'), 0)
-    queue.push(makeTip('ward.blueLens'), 0)
-    queue.push(makeTip('farm.great'), 0)
-    // The ward category waits 5 s after the red lens: the farm, of another one, goes first.
-    expect(screen(queue, [0, SHOW])).toEqual(['ward.redLens', 'farm.great'])
-    expect(screen(queue, [2 * SHOW])).toEqual(['ward.blueLens'])
-
     const kills = new TipQueue()
     kills.push(makeTip('kill.levelTwo'), 0)
     kills.push(makeTip('kill.shutdown'), 0)
-    expect(screen(kills, [0, SHOW, SHOW + 999, SHOW + 1000])).toEqual(['kill.levelTwo', null, null, 'kill.shutdown'])
+    // Two kills of news: one after the other, no quiet between.
+    expect(screen(kills, [0, BUSY])).toEqual(['kill.levelTwo', 'kill.shutdown'])
+    const again = new TipQueue()
+    again.push(makeTip('ward.redLens'), 0)
+    expect(screen(again, [0, SHOW])).toEqual(['ward.redLens', null])
+    again.push(makeTip('ward.redLens'), SHOW + 1000)
+    // The same line waits out the ward's 5 s.
+    expect(screen(again, [SHOW + 4999, SHOW + 5000])).toEqual([null, 'ward.redLens'])
   })
 
   it('never queues a key twice, whether it waits or shows', () => {
@@ -94,25 +94,42 @@ describe('TipQueue', () => {
     expect(screen(queue, [12000])).toEqual([null])
   })
 
-  it('lets a tip give way to a more urgent one, once it has been up a second', () => {
+  it('lets a filler give way at once to any other tip, and never shows it again', () => {
     const queue = new TipQueue(() => 9)
     queue.push(makeTip('map.minimap'), 0)
     expect(screen(queue, [0])).toEqual(['map.minimap'])
     queue.push(makeTip('jungle.spotted'), 200)
-    // Not before the minimap has had its first second…
-    expect(screen(queue, [999])).toEqual(['map.minimap'])
-    // …then the news takes the screen, and the minimap is not shown again.
-    expect(screen(queue, [1000])).toEqual(['jungle.spotted'])
+    expect(screen(queue, [200])).toEqual(['jungle.spotted'])
     expect(screen(queue, [10_000, 20_000])).toEqual([null, null])
   })
 
-  it('does not give way to a tip of the same priority or a lower one', () => {
+  it('lets a tip give way after 2 s to a more urgent one that would go stale waiting, then shows it again', () => {
+    const queue = new TipQueue(() => 9)
+    queue.push(makeTip('farm.ok'), 0)
+    expect(screen(queue, [0])).toEqual(['farm.ok'])
+    // The warning keeps 8 s; the farm would stay until 9 s.
+    queue.push(makeTip('objective.baron.30s'), 1000)
+    expect(screen(queue, [1999])).toEqual(['farm.ok'])
+    expect(screen(queue, [2000])).toEqual(['objective.baron.30s'])
+    // The farm, put aside while fresh, comes back once the warning is done.
+    expect(screen(queue, [11_000])).toEqual(['farm.ok'])
+  })
+
+  it('does not give way to a tip that can wait, or of the same priority or a lower one', () => {
     const queue = new TipQueue(() => 9)
     queue.push(makeTip('objective.baron.60s'), 0)
     queue.current(0)
     queue.push(makeTip('jungle.gankWindow'), 0)
     queue.push(makeTip('farm.ok'), 0)
-    expect(screen(queue, [5000])).toEqual(['objective.baron.60s'])
-    expect(screen(queue, [9000])).toEqual(['jungle.gankWindow'])
+    // A 9 s tip with others waiting keeps its words' 7 s, the glance to find it apart.
+    expect(screen(queue, [6999])).toEqual(['objective.baron.60s'])
+    expect(screen(queue, [7000])).toEqual(['jungle.gankWindow'])
+    // More urgent, but neither a countdown nor stale by the time the farm leaves: it waits.
+    const calm = new TipQueue(() => 3)
+    calm.push(makeTip('farm.ok'), 0)
+    calm.current(0)
+    calm.push(makeTip('jungle.spotted'), 0)
+    expect(screen(calm, [2999])).toEqual(['farm.ok'])
+    expect(screen(calm, [3000])).toEqual(['jungle.spotted'])
   })
 })

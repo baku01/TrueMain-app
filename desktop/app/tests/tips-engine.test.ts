@@ -89,7 +89,11 @@ describe('the objectives', () => {
     expect(run(seconds(gone, 230, 300)).keys.filter(key => key.startsWith('objective'))).toEqual([])
     const spectating = game(state => (state.myTeam = null))
     expect(run(seconds(spectating, 230, 300)).keys).toEqual([])
-    const aram = game(state => (state.objectives.timers = null))
+    const aram = game((state) => {
+      state.mapNumber = 12
+      state.gameMode = 'ARAM'
+      state.objectives.timers = null
+    })
     expect(run(seconds(aram, 230, 300)).keys).toEqual([])
   })
 })
@@ -226,5 +230,20 @@ describe('the gold lead', () => {
     expect(run([[behind, 700]], ITEMS).keys).toContain('gold.behind')
     expect(run([[behind, 599]], ITEMS).keys).not.toContain('gold.behind')
     expect(run([[behind, 700]], {}).keys).not.toContain('gold.behind')
+  })
+})
+
+describe('the modes', () => {
+  it('coaches in the Practice Tool as in a standard game, never in Swiftplay or on another map', () => {
+    const practice = game(state => (state.gameMode = 'PRACTICETOOL'))
+    expect(run(seconds(practice, 230, 245)).keys).toContain('objective.dragon.60s')
+    // No timers (another mode's shell): the rules that need none still speak.
+    const untimed = game((state) => {
+      state.gameMode = 'PRACTICETOOL'
+      state.objectives.timers = null
+    })
+    expect(run(seconds(untimed, 100, 300)).keys).toContain('ward.gank.mid')
+    expect(run(seconds(game(state => (state.gameMode = 'SWIFTPLAY')), 0, 400)).keys).toEqual([])
+    expect(run(seconds(game(state => (state.mapNumber = 12)), 0, 400)).keys).toEqual([])
   })
 })

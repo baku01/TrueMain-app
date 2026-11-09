@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { HudSettings, OverlayPanel, OverlaySettings, OverlayView } from '~/types/overlay'
 import type { Box, Point, Size } from '~/utils/overlay-layout'
-import { DEFAULT_HUD, OVERLAY_PANEL_INFO, OVERLAY_PANELS, PANEL_KEY, onScoreboard } from '~/types/overlay'
-import { PANEL_WIDTHS, currentScreen, customAt, panelBox, panelSize } from '~/utils/overlay-layout'
+import { DEFAULT_HUD, OVERLAY_PANEL_INFO, OVERLAY_PANELS, PANEL_KEY, onScoreboard, stackedOn } from '~/types/overlay'
+import { PANEL_WIDTHS, currentScreen, customAt, panelBox, panelSize, stackedBox } from '~/utils/overlay-layout'
 import { platesBox } from '~/utils/scoreboard-geometry'
 
 /**
@@ -52,6 +52,8 @@ const hud = computed(() => props.hud ?? DEFAULT_HUD)
 /** A panel's box on the screen: the scoreboard's rows for the lane gold, its place for the others. */
 function boxOf(panel: OverlayPanel): Box {
   if (onScoreboard(panel)) return platesBox(screen, hud.value, props.settings.scoreboardNudge, PANEL_WIDTHS[panel] * scaleOf(panel))
+  const base = stackedOn(props.settings, panel)
+  if (base) return stackedBox(boxOf(base), sizeOf(panel), screen)
   return panelBox(props.settings[PANEL_KEY[panel]], sizeOf(panel), screen)
 }
 

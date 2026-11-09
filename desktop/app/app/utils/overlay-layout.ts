@@ -10,9 +10,10 @@ export interface Size { width: number, height: number }
 export interface Point { x: number, y: number }
 export interface Box extends Point, Size {}
 
-/** Mirrors `EDGE_MARGIN` and `TOP_MARGIN`. */
+/** Mirrors `EDGE_MARGIN`, `TOP_MARGIN` and `STACK_GAP`. */
 const EDGE_MARGIN = 16
 const TOP_MARGIN = 56
+const STACK_GAP = 8
 
 /** Each panel's width, as its window (`pages/overlay/[panel].vue`) and the editor lay it out. */
 export const PANEL_WIDTHS: Record<OverlayPanel, number> = {
@@ -77,6 +78,15 @@ export function panelBox(settings: Pick<OverlayPanelSettings, 'anchor' | 'custom
   return {
     x: clampInto(x, screen.width, size.width),
     y: clampInto(y, screen.height, size.height),
+    ...size,
+  }
+}
+
+/** Mirrors `OverlaySettings::under`: a box of `size` stacked under `base` — centred on it, `STACK_GAP` below, kept on the screen. */
+export function stackedBox(base: Box, size: Size, screen: Size): Box {
+  return {
+    x: Math.round(clampInto(base.x + (base.width - size.width) / 2, screen.width, size.width)),
+    y: Math.round(clampInto(base.y + base.height + STACK_GAP, screen.height, size.height)),
     ...size,
   }
 }

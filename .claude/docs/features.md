@@ -611,13 +611,20 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   panel (overlay or panel off, or no overlay on the platform) the app's window runs a voice-only feed instead
   (`useAppTipFeed`, mounted by `app.vue`), so the voice never needs the overlay and a tip is said once. The panel is a
   window like the stats panel's — the same pane, always there while a game is read, saying "No tip right now" between
-  two tips —, placed like the other panels in the layout editor; until dragged it sits on its own place (`TIPS_PLACE`, centred under the objectives strip,
-  where League prints its announcements — the five anchors are the other panels'). In a browser-only dev run the overlay page runs its own feed. One at a time, for as long
+  two tips —, placed like the other panels in the layout editor; until dragged it stacks under the objectives panel
+  (`OverlaySettings::stacked_on`/`under`, mirrored by `stackedOn`/`stackedBox`): centred, 8 points below that
+  window at its measured size — whatever size it is set to —, where League prints its announcements; with the
+  objectives off it takes its anchor. The former fixed place (`TIPS_PLACE`, 14 % down the screen, which a larger
+  objectives panel or a small screen ran into) reads as none. In a browser-only dev run the overlay page runs its own feed. One at a time, for as long
   as its words take to read (`readingSeconds`: 2 s to find it and 0.45 s a word, 4 to 9 s) with a hairline running
   out, a bar and the category's name in its colour, an icon per category (an objective's own minimap icon); a
-  countdown within half a minute or Smite's has the pane's edge breathe; any more urgent tip takes the screen from
-  a calmer one that has been up 1 s (the calmer one is dropped); between two tips the pane keeps the last one dim, with how long ago it left. A pure engine
-  (`engine.ts`, `rules-clock.ts`, `rules-players.ts`, `rules-vision.ts`) reads each game reading (every 0.5 s) against the clock; a queue (`queue.ts`)
+  countdown within half a minute or Smite's has the pane's edge breathe; a more urgent tip takes the screen from a
+  filler at once, and from another tip after 2 s when it is a countdown about to run out or would go stale waiting —
+  the one put aside waits again while fresh; with others waiting a tip leaves once its words are read (its reading
+  time less the 2 s glance, 4 s at least); a line of a category stays quiet for the category's cooldown, another line
+  of the kind does not; the voice never cuts a line in the middle — the latest tip's line follows it; between two tips the pane keeps the last one dim, with how long ago it left. A pure engine
+  (`engine.ts`, `rules-clock.ts`, `rules-players.ts`, `rules-vision.ts`) reads each game reading (every 0.5 s) against the clock, on Summoner's Rift's standard game and Practice Tool
+  (`RIFT_MODES`; the shell sends objective timers for both), never Swiftplay or another map; a queue (`queue.ts`)
   orders them: priority, first come first, a ttl, a cooldown per category. **Fillers** (`FILLER_PRIORITY`: the
   minimap, a cannon wave with nothing to buy) come only on a quiet screen — 20 s without another tip — and give way to
   anything. Rules after ABSOL's coach and patch 26.1's timings (minions 0:30, camps 0:55), as far as the

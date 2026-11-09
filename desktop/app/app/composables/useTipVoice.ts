@@ -43,12 +43,15 @@ export async function playClips(ids: string[], volume: number, signal: AbortSign
 /**
  * The tips' voice: the selected pack's clips for a tip, when the pack has
  * them — and nothing otherwise, the text being there either way. One line
- * at a time: a new one cuts the last short.
+ * at a time, never cut in the middle: a tip that comes up while a line is
+ * said is said once it ends — only the latest, a later one taking its turn.
  */
 export function useTipVoice() {
   const { settings } = useTipSettings()
   const clips = shallowRef<ClipIndex | null>(null)
   let playing: AbortController | null = null
+  /** The line to say once the one being said ends. */
+  let next: { tip: Tip, index: ClipIndex | null } | null = null
 
   // The pack's index only; each clip is read from the store when it is said.
   watch(() => settings.value.pack, async (id) => {
@@ -63,18 +66,27 @@ export function useTipVoice() {
   }, { immediate: true })
 
   function stop() {
+    next = null
     playing?.abort()
     playing = null
   }
 
-  /** Say `tip` with `index`'s clips — the selected pack's unless another is given (the settings' test). */
+  /** Say `tip` with `index`'s clips — the selected pack's unless another is given (the settings' test) — after the line being said. */
   async function say(tip: Tip, index: ClipIndex | null = clips.value) {
-    stop()
     const plan = index ? voicePlan(tip.key, tip.params, index) : []
     if (!plan.length) return false
+    if (playing) {
+      next = { tip, index }
+      return true
+    }
     const current = new AbortController()
     playing = current
     await playClips(plan, settings.value.volume, current.signal)
+    if (playing !== current) return true
+    playing = null
+    const queued = next
+    next = null
+    if (queued) void say(queued.tip, queued.index)
     return true
   }
 
