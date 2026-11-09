@@ -2,11 +2,13 @@
 import type { ItemSetBlocks } from '~/composables/useItemSetImport'
 import type { JevOption, LaidBuild } from '~/utils/jev-build'
 import type { DeviationReason, RankedSlot } from '~/utils/jev-recommend'
+import type { DraftOptional } from '~/utils/jev-optionals'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { getActiveLocale } from '#common/utils/i18n'
 import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
 import { itemSetOf, reasonMessage } from '~/utils/jev-recommend'
+import { draftBlocks } from '~/utils/jev-optionals'
 
 /**
  * One build of the Jev page — the recommended or the most played — laid out
@@ -17,12 +19,14 @@ import { itemSetOf, reasonMessage } from '~/utils/jev-recommend'
  * where the recommended parts from the most played, a line saying why
  * (`RankedSlot.reason`). The steps share the width the same way in both
  * builds, so the two stacked line up step for step. A click
- * on a step selects it: the page opens every option of it below. The header's
- * buttons put the build's rune page and item set into the client.
+ * on a step selects it: the page opens every option of it below. Under Jev's
+ * build, the items that answer each need of the draft (`JevDraftOptionals`).
+ * The header's buttons put the build's rune page and item set into the
+ * client, the draft's answers as a block per need.
  */
 export interface OpenedStep { name: string, label: string }
 
-const props = defineProps<{ ranked: RankedSlot[], championId: number, position?: string, importName?: string, build: LaidBuild, side: 'jev' | 'standard', /** The heading, when the base names it ("Jev · Lethality"). */ title?: string }>()
+const props = defineProps<{ ranked: RankedSlot[], championId: number, position?: string, importName?: string, build: LaidBuild, side: 'jev' | 'standard', /** The heading, when the base names it ("Jev · Lethality"). */ title?: string, /** The draft's needs and the items that answer them (`useJevBuild`'s `optionals`). */ optionals?: DraftOptional[] }>()
 const opened = defineModel<OpenedStep | null>('opened', { default: null })
 const { t } = useT()
 const { nameOf } = useChampionStatics()
@@ -66,8 +70,8 @@ const path = computed(() => {
     return [{ entry, option, label: entry.slot.kind === 'boots' ? t('jev.slot.boots') : t('jev.slot.item', { slot: ++count }) }]
   })
 })
-/** The build as the client's item set (`itemSetOf`). */
-const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: props.importName ?? nameOf(props.championId), position: props.position, blocks: itemSetOf(props.ranked, props.build) }))
+/** The build as the client's item set (`itemSetOf`), the draft's answers a block per need. */
+const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: props.importName ?? nameOf(props.championId), position: props.position, blocks: { ...itemSetOf(props.ranked, props.build), draft: draftBlocks(props.optionals ?? [], nameOf) } }))
 const others = (step: Step) => step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => score(step.entry, b) - score(step.entry, a))
 
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)
@@ -150,5 +154,8 @@ const levelsOf = (option: JevOption) => {
         </template>
       </ol>
     </div>
+
+    <!-- What answers the draft, beside the build: Jev's build only. -->
+    <JevDraftOptionals v-if="recommended && optionals?.length" :optionals="optionals" />
   </section>
 </template>

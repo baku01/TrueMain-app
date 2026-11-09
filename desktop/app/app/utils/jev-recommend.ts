@@ -4,7 +4,7 @@ import type { PickRead } from '~/utils/jev-read-pick'
 import type { JevOption, JevSlot, LaidBuild, SlotKind } from '~/utils/jev-build'
 import type { ItemSetBuild } from '~/utils/item-set'
 import { MIN_GAMES } from '~/utils/jev-build'
-import { fitOf } from '~/utils/jev-needs'
+import { STANDS_OUT, answerTo, fitOf } from '~/utils/jev-needs'
 import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
 
 /**
@@ -38,7 +38,7 @@ import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
  */
 
 export type { Answer, EnemyLine, Fit, Needs } from '~/utils/jev-needs'
-export { NEEDS, answersDraft, fitOf, laneNeeds, needsOf } from '~/utils/jev-needs'
+export { NEEDS, STANDS_OUT, answerTo, answersDraft, callsOf, draftNeeds, fitOf, laneNeeds, needsOf } from '~/utils/jev-needs'
 
 export type Weights = Partial<Record<keyof Parts, number>>
 
@@ -146,8 +146,13 @@ function total(parts: Parts, weights: Weights): number {
   return weight ? present.reduce((sum, part) => sum + weights[part]! * parts[part]!, 0) / weight : 0
 }
 
-/** A draft whose damage is physical and comes in bursts: armor answers it whatever our champion makes of armor. */
-const PHYSICAL_BURST = { physical: 0.8, burst: 0.5 }
+/**
+ * A draft whose damage is of one kind and comes in bursts: that resistance
+ * answers it whatever our champion makes of it — armor against assassins that
+ * kill a marksman before it attacks, magic resist against mages and assassins
+ * whose combo kills an assassin before his own lands.
+ */
+const RESIST_BURST = { share: 0.8, burst: 0.5 }
 
 /**
  * When the pick parts from the slot's most played option, which the sources
@@ -173,7 +178,14 @@ const PHYSICAL_BURST = { physical: 0.8, burst: 0.5 }
  *   Tenacity into heavy crowd control get there; armor boots a marksman half
  *   uses, into a physical lane without burst, do not;
  * - `lane` (runes, spells, starters): Jev read it suits the lane opponent by
- *   0.3 more than the most played, with a confidence of 0.7 or more.
+ *   0.3 more than the most played, with a confidence of 0.7 or more;
+ * - `due` (items): it holds a resistance a rule makes due at this place
+ *   (`utils/jev-rules`) that the most played does not — the rule is the
+ *   reason, no margin to clear, and a shortfall is read against twice the bar
+ *   (`DEVIATE.due`): the rule is LoLTheory's, not Jev's read, and the measures
+ *   average over every draft, most of which do not call for it (Maw of
+ *   Malmortius on Zed reads 1.4 points short of Lord Dominik's Regards over
+ *   all of Zed's games, against five magic damage dealers as against none).
  * And never one that wins credibly less, popular or not: a shortfall of a
  * point or more (0.27 on the stats part), twice the edge a deviation must
  * prove — a shortfall counts at its estimate, not at a bound, and what the
@@ -187,6 +199,7 @@ const PHYSICAL_BURST = { physical: 0.8, burst: 0.5 }
 export const DEVIATE = {
   proven: 0.005,
   worse: -0.01,
+  due: -0.02,
   draft: 0.25,
   answer: 0.25,
   lane: { margin: 0.3, confidence: 0.7 },
@@ -240,14 +253,17 @@ function leadOf(mine: Scored, theirs: Scored, edge: number | null, fits: { mine?
 /**
  * Why an option (`mine`) may take the place of the slot's most played
  * (`theirs`), as `DEVIATE` says, or null: the first that holds of a misfit
- * most played, a proven edge, a popular option's higher total (`POPULAR`),
- * the draft and the lane — `edge` the option's over the most played, `fits`
- * Jev's lane reads of both.
+ * most played, a due resistance, a proven edge, a popular option's higher
+ * total (`POPULAR`), the draft and the lane — `edge` the option's over the
+ * most played, `fits` Jev's lane reads of both, `due` the resistances a rule
+ * makes due at the slot.
  */
-function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | null, fits: { mine?: FitRead, theirs?: FitRead }, popular: boolean): DeviationReason | null {
+function reasonOf(kind: SlotKind, mine: Scored, theirs: Scored, edge: number | null, fits: { mine?: FitRead, theirs?: FitRead }, popular: boolean, due: Resist[]): DeviationReason | null {
   if (mine.misfit) return null
   const items = kind === 'item' || kind === 'boots'
   if (items && theirs.misfit) return { kind: 'draft', need: gained(mine.answers, theirs.answers)?.need ?? null }
+  const owed = items ? due.find(resist => answerTo(mine.answers, resist) >= STANDS_OUT && answerTo(theirs.answers, resist) < STANDS_OUT) : undefined
+  if (owed && (edge ?? 0) > DEVIATE.due) return { kind: 'draft', need: owed }
   if ((edge ?? 0) <= DEVIATE.worse) return null
   if ((edge ?? 0) >= DEVIATE.proven) return { kind: 'proven', edge: edge! }
   if (popular) return mine.total - theirs.total > POPULAR.margin ? leadOf(mine, theirs, edge, fits) : null
@@ -280,10 +296,11 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       if (reads.length) parts.kit = reads.reduce((sum, read) => sum + read.kit, 0) / reads.length
       // Answering nothing of the draft is neutral, not a fault: a damage item answers it by killing.
       // And an answer counts as far as our champion makes use of the item: armor boots answer a physical lane, not for a marksman —
-      // unless what the armor answers is physical burst, assassins that kill the marksman before it attacks
-      // (LoLTheory: Plated Steelcaps for a marksman into an AD assassin, blog.loltheory.gg/what-is-armor-league-of-legends).
+      // unless what the resistance answers is burst of its kind, assassins that kill the marksman before it attacks
+      // (LoLTheory: Plated Steelcaps for a marksman into an AD assassin, blog.loltheory.gg/what-is-armor-league-of-legends),
+      // magic burst alike (`RESIST_BURST`).
       const needs = slot.lane ? context.lane : context.team
-      const intoBurst = needs.physical >= PHYSICAL_BURST.physical && needs.burst >= PHYSICAL_BURST.burst && fit.answers.some(answer => answer.need === 'physical')
+      const intoBurst = needs.burst >= RESIST_BURST.burst && (['physical', 'magic'] as const).some(resist => needs[resist] >= RESIST_BURST.share && fit.answers.some(answer => answer.need === resist))
       parts.draft = 0.5 + 0.5 * fit.fit * (intoBurst ? 1 : parts.kit ?? 1)
       answers = fit.answers
       misfit = fit.misfit
@@ -318,7 +335,7 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
   const share = shareOf(slot.options)
   const popular = (option: JevOption) => !option.situational && option.games >= MIN_GAMES && share(option) >= POPULAR.share
   for (const option of others) {
-    const reason = reasonOf(slot.kind, scored[option.key]!, scored[standard.key]!, edges[option.key] ?? null, { mine: fits[option.key], theirs: fits[standard.key] }, popular(option))
+    const reason = reasonOf(slot.kind, scored[option.key]!, scored[standard.key]!, edges[option.key] ?? null, { mine: fits[option.key], theirs: fits[standard.key] }, popular(option), context.due ?? [])
     if (reason) scored[option.key]!.reason = reason
   }
   // Among the options with a reason and the most played, the highest total; the most played on a tie.

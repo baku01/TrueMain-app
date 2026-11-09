@@ -294,16 +294,28 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   credible edge of half a win-rate point or more;
   `draft` (items, boots), a need of the enemy team it answers by 0.25 more than the most played, its draft part 0.25
   above (a due resistance, armor into physical burst, Grievous Wounds into heavy healing, Tenacity into heavy crowd
-  control); `lane` (runes, spells, starters), Jev's lane fit 0.3 above the most played's at confidence 0.7 or more —
-  and never one a point or more credibly worse, popular or not. A popular pick's reason is the part that gained it
+  control; magic resist into magic burst alike — `RESIST_BURST`, the kit read not scaling the answer); `lane` (runes,
+  spells, starters), Jev's lane fit 0.3 above the most played's at confidence 0.7 or more; `due` (items), a resistance a
+  rule makes due at the slot that the most played lacks — the rule is the reason, no margin, a shortfall read against
+  two points (`DEVIATE.due`) — and never one a point or more credibly worse otherwise, popular or not. A popular pick's reason is the part that gained it
   most (`leadOf`; `kit`, "suits our champion's kit better", only there). The highest total of those and the most
   played is taken; a misfit most played gives way to any option that is not one; skills and boots timing keep the
   highest total. A rare item Jev's kit read alone liked
   never overturns what the bracket builds. `utils/jev-build.ts` lays the slots: runes, spells,
   starter, skills, boots and their timing, the core item by item — each place read after the items chosen before it
-  (`coreSlot`: the cores starting with them, else holding them in any order, else every core under 30 games) — later
-  items after the closest measured core, plus
-  up to two situational items from the champion's measured pool that answer the draft. The page shows the team's
+  (`coreSlot`: the cores starting with them, else holding them in any order, else every core under 30 games), plus,
+  where a resistance is due there and no measured option holds it, the champion's best answer to it (Zed's cores hold no
+  magic resist: into five mages his third item was Lord Dominik's Regards) — later items after the closest measured
+  core, plus up to two of the draft's answers from the champion's pool (`situationalPool`: every item bought on the
+  lane, lolalytics' item list and Blitz's items outside the cores pooled; else what the cores and follow-ups measured):
+  each need of the draft no measured option answers (`draftNeeds`, standing out past `STANDS_OUT`, a due resistance
+  first) gets its best answer, by answer then games (`draftAnswers`) — sorted by games and cut to one, Eclipse took
+  Maw of Malmortius's place into an all-magic team. Beside the build, "Opcionais pelo draft" (`utils/jev-optionals`,
+  `JevDraftOptionals`, a row of Jev's build card on the board and in champion select): each need that stands out,
+  how much the draft calls for it, the item slot a rule makes it due by, the enemies behind it (`causesOf`), and up to
+  four of the champion's items (boots included) that answer it; written into the imported item set as a block per
+  need after the final build ("Contra dano mágico — Ekko, Anivia +2", fitted to the shop's 40 characters), and in
+  champion select's source build the situational box shows them once Jev answered. The page shows the team's
   needs and each enemy's reading (`JevEnemyRead`), then the recommended and the most played build stacked, each a Blitz-like path
   (`JevBuildPath`): a setup row (runes, spells, starter, skill order with its 18-level strip, boots timing) and the
   items in buy order, each step its option large with score, win rate, pick rate, games and WPA, the slot's other

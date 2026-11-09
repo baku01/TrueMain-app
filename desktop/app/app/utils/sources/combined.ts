@@ -62,5 +62,8 @@ export function combineOptions(first: BuildOptions | null, second: BuildOptions 
     priorities: first.priorities || second.priorities
       ? poolMeasures([first.priorities ?? [], second.priorities ?? []], option => option.order.join(''), games)
       : undefined,
+    situational: first.situational || second.situational
+      ? poolMeasures([first.situational ?? [], second.situational ?? []], option => ids(option.itemIds), games)
+      : undefined,
   }
 }

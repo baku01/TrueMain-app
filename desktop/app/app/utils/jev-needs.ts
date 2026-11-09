@@ -92,6 +92,30 @@ export function needsOf(enemies: EnemyLine[]): Needs {
   }
 }
 
+/**
+ * What makes an enemy one of those behind a need, and from how much: dealing
+ * mostly that kind of damage (as `utils/jev-rules` `duesOf` counts), by the
+ * damage of that kind it deals; holding more of a fact than a usual team's
+ * champion — a fifth of `USUAL`; dealing more of its damage with basic attacks
+ * than a usual team does. Crowd control and healing as far as their answers
+ * reach them, as `needsOf` reads them.
+ */
+const CAUSE: Record<keyof Needs, { of: (enemy: EnemyLine) => number, from: number }> = {
+  physical: { of: enemy => (enemy.physical > enemy.magic ? enemy.weight * enemy.physical : 0), from: Number.MIN_VALUE },
+  magic: { of: enemy => (enemy.magic > enemy.physical ? enemy.weight * enemy.magic : 0), from: Number.MIN_VALUE },
+  cc: { of: enemy => enemy.read.cc * enemy.read.ccReducible, from: USUAL.cc.usual / 5 },
+  heal: { of: enemy => enemy.read.heal * enemy.read.healInFight, from: USUAL.heal.usual / 5 },
+  burst: { of: enemy => enemy.read.burst, from: USUAL.burst.usual / 5 },
+  autos: { of: enemy => enemy.read.autos, from: USUAL_AUTOS.usual },
+  tanks: { of: enemy => enemy.read.tank, from: USUAL.tank.usual / 5 },
+}
+
+/** The enemies behind a need (`CAUSE`), most first, by id. */
+export function causesOf(need: keyof Needs, enemies: EnemyLine[]): number[] {
+  const { of, from } = CAUSE[need]
+  return enemies.map(enemy => ({ id: enemy.id, value: of(enemy) })).filter(entry => entry.value >= from).sort((a, b) => b.value - a.value).map(entry => entry.id)
+}
+
 /** While laning, the lane opponent is most of what we face: 60% its needs, 40% the team's. */
 export function laneNeeds(team: Needs, opponent: Needs | null): Needs {
   if (!opponent) return team
@@ -139,6 +163,42 @@ const HEAVY_CC = 0.6
  */
 const resistNeed = (share: number) => clamp((share - 0.45) / 0.35)
 
+/** How fast an item's answers add up to its fit: `1 − e^(−1.6·sum)`. */
+const FIT_RATE = 1.6
+
+/** The fit from which an item answers the draft well enough to be offered where it was not measured (`answersDraft`). */
+export const DRAFT_FIT = 0.35
+
+/**
+ * The answer to one need that reaches `DRAFT_FIT` alone, 0.27: a need stands
+ * out of the draft when an item answering all of it would answer the draft by
+ * that alone, and an item answers a need when its answer reaches as far — a
+ * quarter of the way from a usual team to the 97th percentile (`needsOf`), 54%
+ * of the damage (`resistNeed`), any of a resistance a rule makes due.
+ */
+export const STANDS_OUT = -Math.log(1 - DRAFT_FIT) / FIT_RATE
+
+/**
+ * How much the draft calls for each need as items answer it: a resistance by
+ * its share past an even split (`resistNeed`), all of it where a rule makes it
+ * due; the rest as read.
+ */
+export function callsOf(needs: Needs, due: Resist[] = []): Needs {
+  return { ...needs, physical: due.includes('physical') ? 1 : resistNeed(needs.physical), magic: due.includes('magic') ? 1 : resistNeed(needs.magic) }
+}
+
+/** The needs of the draft that stand out (`STANDS_OUT`), as much as it calls for each: a due resistance first, then the strongest. */
+export function draftNeeds(needs: Needs, due: Resist[] = []): Answer[] {
+  const calls = callsOf(needs, due)
+  const owed = (need: keyof Needs) => (due as (keyof Needs)[]).includes(need)
+  return NEEDS.map(need => ({ need, value: calls[need] }))
+    .filter(entry => entry.value >= STANDS_OUT)
+    .sort((a, b) => Number(owed(b.need)) - Number(owed(a.need)) || b.value - a.value)
+}
+
+/** What `answers` (a `Fit`'s) answers of `need`; 0 where nothing. */
+export const answerTo = (answers: Answer[], need: keyof Needs): number => answers.find(answer => answer.need === need)?.value ?? 0
+
 /**
  * How well items answer the needs: Riot's resistance tags against the share
  * of the damage past an even split — the whole of it where a rule makes the
@@ -177,21 +237,17 @@ export function fitOf(itemIds: number[], needs: Needs, reads: Map<number, ItemRe
   })
   const weightOf = (index: number) => options.weights?.[index] ?? 1
   const weight = per.reduce((sum, _, index) => sum + weightOf(index), 0)
-  const calls: Needs = {
-    ...needs,
-    physical: due.includes('physical') ? 1 : resistNeed(needs.physical),
-    magic: due.includes('magic') ? 1 : resistNeed(needs.magic),
-  }
+  const calls = callsOf(needs, due)
   const answers = NEEDS
     .map(need => ({ need, value: weight ? per.reduce((sum, item, index) => sum + weightOf(index) * item.has[need], 0) / weight * calls[need] : 0 }))
     .filter(answer => answer.value >= 0.12)
     .sort((a, b) => b.value - a.value)
   const raw = answers.reduce((sum, answer) => sum + answer.value, 0)
-  return { fit: 1 - Math.exp(-1.6 * raw), answers, misfit: per.some(item => item.misfit) }
+  return { fit: 1 - Math.exp(-FIT_RATE * raw), answers, misfit: per.some(item => item.misfit) }
 }
 
 /** Whether an item answers the team's needs well enough to be offered where it was not measured. */
 export function answersDraft(id: number, team: Needs, reads: Map<number, ItemRead>, tags: (id: number) => string[], due: Resist[] = []): boolean {
   const fit = fitOf([id], team, reads, tags, { due })
-  return !fit.misfit && fit.fit >= 0.35
+  return !fit.misfit && fit.fit >= DRAFT_FIT
 }

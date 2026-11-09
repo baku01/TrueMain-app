@@ -54,6 +54,15 @@ export function bootsOptions(doc: BlitzBuildDoc, count = 3): ItemOption[] {
   return bootsFromCores(doc, count)
 }
 
+/**
+ * Every item bought outside the core paths, boots included, each with its
+ * share of the lane's games and its win rate: Blitz sends `win_rate` as 0, so
+ * the rate is read from the wins.
+ */
+export const situationalOptions = (doc: BlitzBuildDoc): ItemOption[] =>
+  (doc.situationalItems ?? []).filter(entry => entry.games > 0)
+    .map(entry => ({ itemIds: [entry.itemId], games: entry.games, pickRate: doc.games ? entry.games / doc.games : 0, winRate: entry.wins / entry.games }))
+
 /** Boots over every core path that carries a pair and every follow-up that is one: the reading when Blitz lists no items outside the cores. */
 function bootsFromCores(doc: BlitzBuildDoc, count: number): ItemOption[] {
   const byItem = new Map<number, Tally>()

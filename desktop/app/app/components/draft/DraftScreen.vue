@@ -320,6 +320,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
             :kits="kits"
             :item-advice="itemAdvice"
             :jev-needs="jevBuild.status.value === 'ready' ? jevBuild.needs.value?.team ?? null : null"
+            :draft-optionals="jevBuild.status.value === 'ready' ? jevBuild.optionals.value : null"
             compact
             class="flex-1"
             @update:kit-id="pickKit"

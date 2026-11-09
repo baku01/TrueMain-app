@@ -1,4 +1,5 @@
 import type { StaticItemData } from '#shared/types/static-data'
+import type { DraftItemBlock } from '~/utils/item-set'
 import { tr } from '#common/utils/i18n'
 import { isBoots } from '~/utils/blitz/builds'
 
@@ -7,7 +8,9 @@ import { isBoots } from '~/utils/blitz/builds'
  * writes its own into the game's `Config/Global/Recommended` (read from
  * Blitz's client): starting items, the core build's buying order — each of
  * the first three items' components in the order players buy them, then the
- * item —, the final build, the situational items, the boots options. One set
+ * item —, the final build, for a Jev build the items that answer each need of
+ * the enemy team (Blitz's and ABSOL's sets carry such blocks), the situational
+ * items, the boots options. One set
  * per build the draft offers, the selected one first (`write_recommended_item_sets`).
  */
 
@@ -24,6 +27,8 @@ export interface ImportBuild {
   situational: number[]
   /** How many of the path's items come before the boots, as the build buys them; second by default. */
   bootsAt?: number
+  /** A block per need of the enemy team, after the final build (`utils/jev-optionals` `draftBlocks`). */
+  draft?: DraftItemBlock[]
 }
 
 /** How a component path is measured: Blitz's `itemOrders`, per completed item, most played first. */
@@ -48,7 +53,32 @@ export interface RecommendedSet {
   blocks: RecommendedBlock[]
 }
 
-export interface BlockTitles { starting: string, order: string, final: string, situational: string, boots: string }
+export interface BlockTitles {
+  starting: string
+  order: string
+  final: string
+  situational: string
+  boots: string
+  /** A need's block: what it answers, the enemies behind it. */
+  against?: (block: DraftItemBlock) => string
+}
+
+/** The longest block title the shop shows whole (`lcu::item_sets` `MAX_BLOCK_TITLE`). */
+const TITLE = 40
+
+/**
+ * A need's block title within `TITLE` characters: what it answers, then as
+ * many of the enemies behind it as fit, the rest counted (`Contra dano mágico
+ * — Ekko, Anivia +2`); the need alone where none fits.
+ */
+export function againstTitle(head: string, names: string[]): string {
+  for (let shown = names.length; shown > 0; shown--) {
+    const more = names.length - shown
+    const title = `${head} — ${names.slice(0, shown).join(', ')}${more ? ` +${more}` : ''}`
+    if (title.length <= TITLE) return title
+  }
+  return head
+}
 
 /** The blocks' titles in the app's language, Blitz's own words. */
 export const blockTitles = (): BlockTitles => ({
@@ -57,6 +87,7 @@ export const blockTitles = (): BlockTitles => ({
   final: tr('autoImport.block.final'),
   situational: tr('autoImport.block.situational'),
   boots: tr('autoImport.block.boots'),
+  against: block => againstTitle(tr(`autoImport.block.against.${block.need}`), block.names),
 })
 
 /** The basic boots, left out of the buying order when the starter already holds boots. */
@@ -124,11 +155,14 @@ export function recommendedSet(build: ImportBuild, championKey: string, titles: 
   const known = (ids: number[]) => ids.filter(id => id in items)
   const starter = [...new Set(known(build.starter))]
   const final = known(finalBuild(build))
-  const situational = known(build.situational).filter(id => !final.includes(id) && !isBoots(id)).slice(0, SITUATIONAL)
+  const draft = (build.draft ?? []).map(entry => block(titles.against?.(entry) ?? entry.need, [...new Set(known(entry.items))]))
+  const answering = new Set((build.draft ?? []).flatMap(entry => entry.items))
+  const situational = known(build.situational).filter(id => !final.includes(id) && !answering.has(id) && !isBoots(id)).slice(0, SITUATIONAL)
   const blocks = [
     block(titles.starting, starter),
     block(titles.order, known(buyingOrder(final, starter, items, orders))),
     block(titles.final, final),
+    ...draft,
     block(titles.situational, situational),
     block(titles.boots, [...new Set(known(build.boots))]),
   ].filter(entry => entry.items.length > 0)
