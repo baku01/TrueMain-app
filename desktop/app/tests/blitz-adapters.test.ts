@@ -180,6 +180,14 @@ describe('followUpOptions', () => {
   })
 })
 
+describe('situationalOptions', () => {
+  it('reads every item bought outside the cores with its share of the lane\'s games, the rate from the wins (Blitz sends win_rate as 0)', async () => {
+    const { situationalOptions } = await import('~/utils/blitz/options')
+    const doc = { games: 1000, situationalItems: [{ itemId: 3156, games: 74, wins: 38, pick_rate: 0.074 }, { itemId: 3139, games: 0, wins: 0, pick_rate: 0 }] } as never
+    expect(situationalOptions(doc)).toEqual([{ itemIds: [3156], games: 74, pickRate: 0.074, winRate: 38 / 74 }])
+  })
+})
+
 describe('buildsFromBlitz merging', () => {
   it('makes one build of the cores that differ only in when the boots were bought', () => {
     const tallyOf = (games: number, wins: number) => ({ games, wins, win_rate: wins / games, pick_rate: games / 100000 })

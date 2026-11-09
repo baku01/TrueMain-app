@@ -4,13 +4,15 @@ import type { DraftSelection } from '~/composables/useDraftAutoImport'
 import type { useJevBases } from '~/composables/useJevBases'
 import type { useJevBuild } from '~/composables/useJevBuild'
 import { jevImportName, jevImportTitles, jevImportSelection } from '~/utils/jev-bases'
+import { draftBlocks } from '~/utils/jev-optionals'
 
 /**
  * The Builds tab with Jev: the family Jev ranks within (`JevBaseSelect`),
  * then its answer — Jev's build beside that family's most played
  * (`JevBuildBody`) — once the player clicked; until then, what a click does.
  * The answer is told up as the draft's automatic import (`selection`): Jev's
- * build and the base's most played, named after the base.
+ * build and the base's most played, named after the base, each with the
+ * items that answer the draft's needs as a block per need.
  */
 const props = defineProps<{
   subject: { championId: number, request: CompositionBuildRequest } | null
@@ -21,14 +23,14 @@ const emit = defineEmits<{ selection: [value: DraftSelection] }>()
 const { t } = useT()
 const { nameOf } = useChampionStatics()
 const { tag } = useJevBaseLabels()
-const { status, error, ranked, needs, enemies, jevBuild, standardBuild, answered, stale, ask } = props.jev
+const { status, error, ranked, needs, enemies, jevBuild, standardBuild, optionals, answered, stale, ask } = props.jev
 const { offered, selected, pending } = props.bases
 
 const selection = computed(() => {
   const subject = props.subject
   if (status.value !== 'ready' || !subject || !answered.value) return null
   const name = jevImportName(nameOf(subject.championId), enemies.value.find(enemy => enemy.opponent)?.name ?? null)
-  return jevImportSelection(subject.championId, answered.value, ranked.value, jevBuild.value, standardBuild.value, jevImportTitles(name, tag(answered.value)))
+  return jevImportSelection(subject.championId, answered.value, ranked.value, jevBuild.value, standardBuild.value, jevImportTitles(name, tag(answered.value)), draftBlocks(optionals.value, nameOf))
 })
 watch(() => JSON.stringify(selection.value), () => selection.value && emit('selection', selection.value), { immediate: true })
 </script>
@@ -59,6 +61,7 @@ watch(() => JSON.stringify(selection.value), () => selection.value && emit('sele
       :jev-build="jevBuild"
       :standard-build="standardBuild"
       :base="answered"
+      :optionals="optionals"
     />
     <div v-else-if="status === 'loading'" class="flex flex-col gap-3">
       <USkeleton class="h-40 rounded-2xl" />

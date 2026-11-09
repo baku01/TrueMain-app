@@ -2,8 +2,10 @@ import type { BuildItemSet, BuildRunePage, BuildSkillOrder, BuildSummonerSpells 
 import type { BuildOptions, ItemOption, Measure, RunePageIds } from '~/utils/sources/model'
 import type { ItemStat } from '~/utils/blitz/item-stats'
 import type { ItemMeasure } from '~/utils/jev-item-stats'
+import type { Answer, Needs } from '~/utils/jev-needs'
 import { isBoots } from '~/utils/blitz/builds'
 import { STARTER_LINE, fitsWith } from '~/utils/item-groups'
+import { STANDS_OUT, answerTo } from '~/utils/jev-needs'
 import { buysBoots } from '~/utils/sources/model'
 
 /**
@@ -182,9 +184,18 @@ export const CORE_ITEMS = 3
 /**
  * The champion's measured items, the test of which answer this draft, and of
  * which the build can use (`damageKind`: no ability power item on a build of
- * attack damage).
+ * attack damage); what each answers of the draft need by need, and the needs
+ * whose answers a slot adds, in order.
  */
-export interface Situational { pool: ItemOption[], answersDraft: (id: number) => boolean, suits?: (id: number) => boolean }
+export interface Situational {
+  pool: ItemOption[]
+  answersDraft: (id: number) => boolean
+  suits?: (id: number) => boolean
+  /** What an item answers of the draft, need by need (`fitOf`'s answers, the slot's due resistances counted). */
+  answers: (id: number) => Answer[]
+  /** The needs whose answers are added, in order (`draftNeeds`: a due resistance first, then the strongest). */
+  needs: (keyof Needs)[]
+}
 
 /**
  * What an item's damage scales with, by Riot's tags: attack damage (critical
@@ -201,18 +212,37 @@ export function damageKind(tags: string[]): 'ad' | 'ap' | null {
 const SITUATIONAL = 2
 
 /**
- * A slot's measured options, then up to `SITUATIONAL` items of the champion's
- * measured pool that answer the draft (one when the slot already has such an
- * answer), none already in the build, marked situational.
+ * The draft's answers a slot adds to what was measured in it, none already in
+ * the build: each need of `needs` that no option measured here answers
+ * (`STANDS_OUT`) takes its best answer from the champion's items — the one that
+ * answers that need most, the most played on a tie — then its next, round by
+ * round, the needs in their order, up to `limit`. An answer to one need does
+ * not close the slot to another: a measured shield answers burst, not the
+ * magic resist a rule makes due — sorted by games and cut to one, Eclipse
+ * (15,656 games) took Maw of Malmortius's place into an all-magic team. Where
+ * the slot answers every need already, the item that answers the draft most,
+ * alone — none where `unmetOnly` (a core place: only what is due).
  */
+function draftAnswers(measuredHere: ItemOption[], held: number[], situational: Situational, limit: number, unmetOnly = false): ItemOption[] {
+  const idOf = (option: ItemOption) => option.itemIds[0]!
+  const here = new Set(measuredHere.flatMap(option => option.itemIds))
+  const open = situational.pool.filter(option => option.games >= MIN_GAMES && !here.has(idOf(option)) && fitsWith(idOf(option), held) && (situational.suits?.(idOf(option)) ?? true) && situational.answersDraft(idOf(option)))
+  const value = (option: ItemOption, need: keyof Needs) => answerTo(situational.answers(idOf(option)), need)
+  const unmet = situational.needs.filter(need => !measuredHere.some(option => value(option, need) >= STANDS_OUT))
+  const queued = unmet.flatMap((need, rank) => open
+    .filter(option => value(option, need) >= STANDS_OUT)
+    .sort((a, b) => value(b, need) - value(a, need) || b.games - a.games)
+    .map((option, nth) => ({ option, nth, rank })))
+  const added = [...new Set(queued.sort((a, b) => a.nth - b.nth || a.rank - b.rank).map(entry => entry.option))].slice(0, limit)
+  if (added.length || unmetOnly) return added
+  const fit = (option: ItemOption) => situational.answers(idOf(option)).reduce((sum, answer) => sum + answer.value, 0)
+  return [...open].sort((a, b) => fit(b) - fit(a) || b.games - a.games).slice(0, 1)
+}
+
+/** A slot's measured options, then the draft's answers it adds (`draftAnswers`, up to `SITUATIONAL`), marked situational. */
 function withSituational(measuredHere: ItemOption[], held: number[], situational?: Situational): (ItemOption & { situational?: true })[] {
   if (!situational) return measuredHere
-  const here = new Set(measuredHere.flatMap(option => option.itemIds))
-  const extra = situational.pool
-    .filter(option => option.games >= MIN_GAMES && !here.has(option.itemIds[0]!) && fitsWith(option.itemIds[0]!, held) && (situational.suits?.(option.itemIds[0]!) ?? true) && situational.answersDraft(option.itemIds[0]!))
-    .sort((a, b) => b.games - a.games)
-    .slice(0, measuredHere.some(option => situational.answersDraft(option.itemIds[0]!)) ? 1 : SITUATIONAL)
-  return [...measuredHere, ...extra.map(option => ({ ...option, situational: true as const }))]
+  return [...measuredHere, ...draftAnswers(measuredHere, held, situational, SITUATIONAL).map(option => ({ ...option, situational: true as const }))]
 }
 
 const itemOptions = (open: (ItemOption & { situational?: true })[], names: Names) =>
@@ -245,11 +275,16 @@ function coresAfter(cores: ItemOption[], chosen: number[]): ItemOption[] {
  * what was measured there: the core is what the champion's players build
  * first, and the draft's answers from the rest of its items come after it
  * (`laterSlot`) — offered in the core, they took a marksman's second item from
- * the critical strike it needs. Only a place some core measured is a slot (null
- * else): the sources' cores mostly carry the boots (Eclipse, Plated Steelcaps,
- * Sundered Sky), so their third place is the items after them.
+ * the critical strike it needs. One exception, `due`: a resistance a rule makes
+ * due at this place (`utils/jev-rules` `dueAt`) that no option measured here
+ * holds adds the champion's best answer to it (`draftAnswers`) — Zed's cores
+ * hold no magic resist, and into five magic damage dealers his third item was
+ * Lord Dominik's Regards against tanks the team did not have. Only a place some
+ * core measured is a slot (null else): the sources' cores mostly carry the
+ * boots (Eclipse, Plated Steelcaps, Sundered Sky), so their third place is the
+ * items after them.
  */
-export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names): JevSlot | null {
+export function coreSlot(options: BuildOptions, index: number, chosen: number[], names: Names, due?: Situational): JevSlot | null {
   const at = new Map<number, { games: number, wins: number }>()
   for (const core of coresAfter(options.cores, chosen)) {
     const id = pathOf(core)[index]
@@ -260,7 +295,8 @@ export function coreSlot(options: BuildOptions, index: number, chosen: number[],
   if (!at.size) return null
   const total = [...at.values()].reduce((sum, entry) => sum + entry.games, 0)
   const measuredHere = reliable([...at].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))).slice(0, 4)
-  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions(measuredHere, names) }
+  const owed = due?.needs.length ? draftAnswers(measuredHere, chosen, due, due.needs.length, true) : []
+  return { name: `item${index + 1}`, kind: 'item', lane: index === 0, place: index + 1, options: itemOptions([...measuredHere, ...owed.map(option => ({ ...option, situational: true as const }))], names) }
 }
 
 /** The measured core whose path shares the most items with `chosen`, the most played on a tie: whose follow-ups come next. */
@@ -294,6 +330,17 @@ export function measuredPool(options: BuildOptions): ItemOption[] {
   }
   const total = [...pool.values()].reduce((sum, entry) => sum + entry.games, 0)
   return [...pool].map(([id, entry]) => ({ itemIds: [id], games: entry.games, winRate: entry.games ? entry.wins / entry.games : 0, pickRate: total ? entry.games / total : 0 }))
+}
+
+/**
+ * The champion's items to look for the draft's answers in: what the source
+ * measured bought on the lane whatever the place (`BuildOptions.situational`),
+ * completed items only, boots apart (their own slot offers them) — else every
+ * item its cores and the slots after them measured (`measuredPool`).
+ */
+export function situationalPool(options: BuildOptions, completed: (id: number) => boolean): ItemOption[] {
+  const bought = (options.situational ?? []).filter(option => chosen(option.itemIds[0]!) && completed(option.itemIds[0]!))
+  return bought.length ? bought : measuredPool(options)
 }
 
 /**

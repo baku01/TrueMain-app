@@ -2,6 +2,7 @@ import type { BlitzBuildDoc } from '~/utils/blitz/builds'
 import type { BuildOptions } from '~/utils/sources/model'
 import type { DraftSelection, ImportChoice } from '~/composables/useDraftAutoImport'
 import type { LaidBuild } from '~/utils/jev-build'
+import type { DraftItemBlock } from '~/utils/item-set'
 import type { RankedSlot } from '~/utils/jev-recommend'
 import { itemSetOf } from '~/utils/jev-recommend'
 import { most, readBlitzBuildDoc, readBlitzBuildRows } from '~/utils/blitz/builds'
@@ -105,8 +106,8 @@ export function jevImportTitles(importName: string, tag: string): { jev: string,
 /** What a Jev answer's imports are named after: the champion against the lane opponent (`Aatrox vs Akali`). */
 export const jevImportName = (champion: string, opponent: string | null) => (opponent ? `${champion} vs ${opponent}` : champion)
 
-/** One laid build as an import: its rune page, spells and item set (`itemSetOf`) under its title. */
-function importChoice(key: string, title: string, ranked: RankedSlot[], build: LaidBuild): ImportChoice {
+/** One laid build as an import: its rune page, spells and item set (`itemSetOf`) under its title, with the draft's blocks. */
+function importChoice(key: string, title: string, ranked: RankedSlot[], build: LaidBuild, draft: DraftItemBlock[]): ImportChoice {
   const set = itemSetOf(ranked, build)
   const spells = build.summonerSpells
   return {
@@ -119,19 +120,21 @@ function importChoice(key: string, title: string, ranked: RankedSlot[], build: L
     boots: set.boots,
     situational: set.situational,
     bootsAt: set.bootsAt,
+    draft,
   }
 }
 
 /**
  * A Jev answer as the draft's automatic import (`useDraftAutoImport`): Jev's
  * build selected, the base's most played offered beside it, both named after
- * the base — so another base asked for is another import.
+ * the base — so another base asked for is another import — and both with the
+ * items that answer the draft's needs (`draft`, `utils/jev-optionals`).
  */
-export function jevImportSelection(championId: number, base: JevBase, ranked: RankedSlot[], jev: LaidBuild | null, standard: LaidBuild | null, titles: { jev: string, standard: string }): DraftSelection | null {
+export function jevImportSelection(championId: number, base: JevBase, ranked: RankedSlot[], jev: LaidBuild | null, standard: LaidBuild | null, titles: { jev: string, standard: string }, draft: DraftItemBlock[] = []): DraftSelection | null {
   if (!jev) return null
   return {
     championId,
-    selected: importChoice(`jev:${base.key}`, titles.jev, ranked, jev),
-    others: standard ? [importChoice(`jev-standard:${base.key}`, titles.standard, ranked, standard)] : [],
+    selected: importChoice(`jev:${base.key}`, titles.jev, ranked, jev, draft),
+    others: standard ? [importChoice(`jev-standard:${base.key}`, titles.standard, ranked, standard, draft)] : [],
   }
 }

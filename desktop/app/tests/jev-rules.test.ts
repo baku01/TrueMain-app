@@ -6,7 +6,7 @@ import { rankSlot } from '~/utils/jev-recommend'
 import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, withDraftBoots } from '~/utils/jev-rules'
 
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
-const TAGS: Record<number, string[]> = { 6333: ['Damage', 'Armor', 'Health'], 3071: ['Damage', 'Health', 'ArmorPenetration'], 3047: ['Armor', 'Boots'], 3065: ['SpellBlock', 'Health'] }
+const TAGS: Record<number, string[]> = { 6333: ['Damage', 'Armor', 'Health'], 3071: ['Damage', 'Health', 'ArmorPenetration'], 3047: ['Armor', 'Boots'], 3065: ['SpellBlock', 'Health'], 3036: ['Damage', 'ArmorPenetration'], 3156: ['SpellBlock', 'Damage', 'LifeSteal'] }
 const tags = (id: number) => TAGS[id] ?? []
 const ad = { physical: 0.9, magic: 0.1 }
 const ap = { physical: 0.1, magic: 0.9 }
@@ -35,6 +35,29 @@ describe('resistances due (LoLTheory)', () => {
     const context = { team, lane: team, itemReads: new Map([[3071, item({ vsTanks: 0.9, kit: 0.9 })], [6333, item({ kit: 0.9 })]]), tags, fits: {}, urgency: null }
     expect(rankSlot(slot, context).pick.key).toBe('o0')
     expect(rankSlot(slot, { ...context, due: ['physical'] })).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'draft', need: 'physical' } })
+  })
+})
+
+describe('a due resistance as a reason (LoLTheory)', () => {
+  // Zed's third item into five magic damage dealers: Lord Dominik's Regards, the most played, against Maw of Malmortius from his pool.
+  const option = (key: string, itemIds: number[], fields: Partial<JevOption> = {}): JevOption => ({ key, label: key, itemIds, games: 3000, pickRate: 0.5, winRate: 0.5, ...fields })
+  const slot = (maw: Partial<JevOption> = {}, ldr: Partial<JevOption> = {}): JevSlot => ({ name: 'item3', kind: 'item', lane: false, place: 3, options: [
+    option('o0', [3036], { games: 14142, pickRate: 0.65, winRate: 0.548, ...ldr }),
+    option('o1', [3156], { games: 3371, pickRate: 0.016, winRate: 0.517, situational: true, ...maw }),
+  ] })
+  // Magic damage without burst, and Jev reading Maw as half suited to Zed: its fit to the draft halves, under the draft margin.
+  const team: Needs = { physical: 0.07, magic: 0.85, cc: 0, heal: 0, burst: 0, autos: 0, tanks: 0 }
+  const context = { team, lane: team, itemReads: new Map([[3036, item({ kit: 0.9 })], [3156, item({ kit: 0.5 })]]), tags, fits: {}, urgency: null }
+
+  it('takes the resistance a rule makes due on the rule alone: no draft margin to clear', () => {
+    expect(rankSlot(slot(), context).pick.key).toBe('o0')
+    expect(rankSlot(slot(), { ...context, due: ['magic'] })).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'draft', need: 'magic' } })
+  })
+
+  it('reads a due resistance\'s shortfall against twice the bar: 1.4 points short is taken, 2.7 points not', () => {
+    const measured = (maw: number) => rankSlot(slot({ wpa: maw, wpaGames: 30000 }, { wpa: 0.015, wpaGames: 30000 }), { ...context, due: ['magic'] })
+    expect(measured(0)).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'draft', need: 'magic' } })
+    expect(measured(-0.015).reason).toBeUndefined()
   })
 })
 

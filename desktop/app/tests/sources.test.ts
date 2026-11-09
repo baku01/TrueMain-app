@@ -96,6 +96,7 @@ describe('lolalytics', () => {
     boots: [[3020, 53.8, 57.7, 577], [0, 40, 1, 10]],
     item4: [[3089, 60.7, 7.7, 77]],
     item5: [[3135, 62, 1.5, 15]],
+    item: [[3156, 51.7, 4.4, 44], [3089, 58, 30, 300], [0, 40, 1, 10]],
     builtBootSet3: [['3118_3020_4645', 53.5, 17.4, 174], ['3118_4645_3157', 54, 10, 100]],
     skill15: [[213114121242233, 59.8, 58.5, 585]],
   }
@@ -113,6 +114,8 @@ describe('lolalytics', () => {
     expect(options.cores[0]!.itemIds).toEqual([3118, 3020, 4645])
     expect(options.followUps(null).map(group => group.slot)).toEqual([4, 5])
     expect(options.skills[0]).toMatchObject({ order: ['Q', 'W', 'E'], opening: ['W', 'Q', 'E'] })
+    // Every item bought on the lane, whatever its place: where the draft's answers are looked for.
+    expect(options.situational?.map(option => [option.itemIds[0], option.games])).toEqual([[3156, 44], [3089, 300]])
   })
 
   it('offers no boots to a champion whose games mostly go without (lolalytics\' 9999), and never 9999 as a pair', async () => {

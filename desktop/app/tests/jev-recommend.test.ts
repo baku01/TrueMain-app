@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { EnemyLine, Needs, RankContext } from '~/utils/jev-recommend'
-import { POPULAR, WEIGHTS, answersDraft, fitOf, itemSetOf, itemWeights, laneNeeds, modeled, needsOf, rankPicks, rankSlot, reasonMessage } from '~/utils/jev-recommend'
+import { POPULAR, STANDS_OUT, WEIGHTS, answersDraft, draftNeeds, fitOf, itemSetOf, itemWeights, laneNeeds, modeled, needsOf, rankPicks, rankSlot, reasonMessage } from '~/utils/jev-recommend'
+import { causesOf } from '~/utils/jev-needs'
 import { SELECTION, addedWinProbability, credibleEdge, slotWpa, statsOf } from '~/utils/jev-stats'
 
 const read = (fields: Partial<EnemyLine['read']> = {}) => ({ cc: 0, ccReducible: 1, heal: 0, healInFight: 1, burst: 0, autos: 0, tank: 0, confidence: 1, ...fields })
@@ -51,6 +52,31 @@ describe('needsOf', () => {
   it('leans on the lane opponent while laning', () => {
     expect(laneNeeds(needs({ magic: 1, physical: 0 }), needs({ magic: 0, physical: 1 })).physical).toBeCloseTo(0.6)
     expect(laneNeeds(needs({}), null)).toEqual(needs({}))
+  })
+})
+
+describe('the draft\'s needs', () => {
+  it('calls a need standing out when an item answering all of it would answer the draft alone', () => {
+    expect(STANDS_OUT).toBeCloseTo(0.269, 3)
+    expect(answersDraft(1, needs({ cc: STANDS_OUT + 0.001 }), new Map([[1, item({ tenacity: 1 })]]), tags)).toBe(true)
+    expect(answersDraft(1, needs({ cc: STANDS_OUT - 0.001 }), new Map([[1, item({ tenacity: 1 })]]), tags)).toBe(false)
+  })
+
+  it('lists the needs that stand out, a due resistance first, then the strongest; an even team none', () => {
+    const zed = needs({ physical: 0.07, magic: 0.85, cc: 0.52, heal: 0.3, burst: 0.73 })
+    expect(draftNeeds(zed, ['magic']).map(entry => [entry.need, Number(entry.value.toFixed(2))])).toEqual([['magic', 1], ['burst', 0.73], ['cc', 0.52], ['heal', 0.3]])
+    expect(draftNeeds(needs({}))).toEqual([])
+    expect(draftNeeds(needs({ physical: 0.3, magic: 0.7, burst: 1 }), ['physical']).map(entry => entry.need)).toEqual(['physical', 'burst', 'magic'])
+  })
+
+  it('names the enemies behind a need, most first: those dealing mostly that damage, or holding more of a fact than a usual team\'s champion', () => {
+    const line = (id: number, physical: number, weight: number, fields: Partial<EnemyLine['read']> = {}): EnemyLine => ({ id, physical, magic: 1 - physical, weight, read: read(fields) })
+    const team = [line(245, 0.2, 1.2, { burst: 0.9 }), line(34, 0.05, 1, { cc: 0.7 }), line(32, 0.1, 0.7, { cc: 0.9, tank: 0.9 }), line(266, 0.9, 1)]
+    expect(causesOf('magic', team)).toEqual([245, 34, 32])
+    expect(causesOf('physical', team)).toEqual([266])
+    expect(causesOf('cc', team)).toEqual([32, 34])
+    expect(causesOf('burst', team)).toEqual([245])
+    expect(causesOf('heal', team)).toEqual([])
   })
 })
 
@@ -247,6 +273,15 @@ describe('rankSlot', () => {
     const ranked = rankSlot(boots, context(assassins, new Map([[3006, item({ kit: 1 })], [3047, item({ antiBurst: 0.6, vsAutos: 0.9, kit: 0.5 })]])))
     expect(ranked.pick.itemIds).toEqual([3047])
     expect(ranked.reason).toEqual({ kind: 'draft', need: 'physical' })
+  })
+
+  it('reads magic resist into magic burst whatever the kit makes of it, as armor into physical burst (Zed into Ekko, Anivia, Locke, Aurelion Sol, Amumu)', () => {
+    const slot: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3071]), option('o1', [3065])] }
+    const reads = new Map([[3065, item({ kit: 0.5 })]])
+    const draftOf = (burst: number) => rankSlot(slot, context(needs({ physical: 0.07, magic: 0.85, burst }), reads)).scored.o1!.parts.draft!
+    const fit = fitOf([3065], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
+    expect(draftOf(0.73)).toBeCloseTo(0.5 + 0.5 * fit)
+    expect(draftOf(0.2)).toBeCloseTo(0.5 + 0.5 * fit * 0.5)
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {

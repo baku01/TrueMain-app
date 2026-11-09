@@ -1,7 +1,7 @@
 import type { ChampionItemContextResponse } from '#shared/types/item-context'
 import type { BuildOption } from '~/types/build'
 import { tr } from '#common/utils/i18n'
-import type { ItemSetBuild } from '~/utils/item-set'
+import type { DraftItemBlock, ItemSetBuild } from '~/utils/item-set'
 import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
 import { blockTitles, recommendedSet } from '~/utils/recommended-item-set'
@@ -19,6 +19,8 @@ export interface ItemSetSubject {
   champion: string
   position: string
   build: BuildOption
+  /** The items that answer the draft's needs, a block per need, once Jev answered for this draft (`utils/jev-optionals`). */
+  draft?: DraftItemBlock[]
 }
 
 /** A build already laid out in the set's blocks (the Jev page's), and whose it is. */
@@ -80,7 +82,7 @@ export function useItemSetImport() {
         const championKey = champions.value.get(championId)?.alias
         if (!championKey) throw new Error(EMPTY_BUILD)
         const orders = position ? await readBlitzBuildDoc(championId, position).then(doc => doc?.itemOrders ?? null).catch(() => null) : null
-        const set = recommendedSet({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt }, championKey, blockTitles(), items.value, orders)
+        const set = recommendedSet({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft }, championKey, blockTitles(), items.value, orders)
         const { invoke } = await import('@tauri-apps/api/core')
         await invoke('write_recommended_item_sets', { sets: [set] })
       }
@@ -106,10 +108,11 @@ export function useItemSetImport() {
   async function importItemSet(subject: ItemSetSubject | ItemSetBlocks) {
     if ('blocks' in subject) {
       const keep = (ids: number[]) => ids.filter(known)
-      const { starter, boots, core, situational: rest, bootsAt } = subject.blocks
-      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt }))
+      const { starter, boots, core, situational: rest, bootsAt, draft } = subject.blocks
+      return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt, draft: draft?.map(block => ({ ...block, items: keep(block.items) })) }))
     }
-    return write(subject.championId, subject.champion, subject.position, async () => itemSetBuild(subject.build.core, await situational(subject), known))
+    const draft = subject.draft?.map(block => ({ ...block, items: block.items.filter(known) }))
+    return write(subject.championId, subject.champion, subject.position, async () => ({ ...itemSetBuild(subject.build.core, await situational(subject), known), draft }))
   }
 
   onScopeDispose(() => clearTimeout(doneTimer))

@@ -7,10 +7,12 @@ import type { ImportChoice } from '~/composables/useDraftAutoImport'
 import type { ImportBuild } from '~/utils/recommended-item-set'
 import type { ItemSetSubject } from '~/composables/useItemSetImport'
 import type { Needs } from '~/utils/jev-recommend'
+import type { DraftOptional } from '~/utils/jev-optionals'
 import { externalSource, fromBlitz } from '~/utils/data-source'
 import { situationalFromTree } from '~/utils/item-set'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { kitPaths } from '~/utils/kit-tree'
+import { draftBlocks } from '~/utils/jev-optionals'
 import { REMEMBER_BUILD, useBuildOptions, usePlaystylePreset } from '~/composables/useBuildOptions'
 import { useJevRowFits } from '~/composables/useJevRowFits'
 
@@ -45,6 +47,8 @@ const props = defineProps<{
   compact?: boolean
   /** The team's needs of Jev's answer for this champion, lane and draft: each row is marked by how its items answer them. */
   jevNeeds?: Needs | null
+  /** The draft's needs and the champion's items that answer them, from the same answer (`useJevBuild`'s `optionals`): the situational items, and a block per need in the item sets. */
+  draftOptionals?: DraftOptional[] | null
 }>()
 
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
@@ -114,8 +118,11 @@ const importName = computed(() => {
   return props.draft?.opponentId ? `${name} vs ${nameOf(props.draft.opponentId)}` : name
 })
 /** What the item set button imports: the build on screen, named for the set's title. */
+/** The items that answer the draft, a block per need, once Jev answered for it; and the same items as the situational ones, most needed first. */
+const draftItemBlocks = computed(() => draftBlocks(props.draftOptionals ?? [], nameOf))
+const draftSituational = computed(() => [...new Set(draftItemBlocks.value.flatMap(block => block.items))])
 const itemSetSubject = computed((): ItemSetSubject | null =>
-  shown.value && importName.value ? { championId: props.championId, champion: importName.value, position: props.position, build: shown.value } : null)
+  shown.value && importName.value ? { championId: props.championId, champion: importName.value, position: props.position, build: shown.value, draft: draftItemBlocks.value } : null)
 /**
  * What the draft's automatic import writes (`useDraftAutoImport`): the build
  * on screen — a row, a pro's, a kit — and every other row, each as an item
@@ -134,6 +141,7 @@ function choiceOf(option: BuildOption, title: string): ImportChoice {
     path,
     boots: option.core.boots?.itemIds ?? [],
     situational: situationalFromTree(option.buildTree, path),
+    draft: draftItemBlocks.value,
   }
 }
 function titleOf(option: BuildOption): string {
@@ -149,7 +157,7 @@ const selection = computed(() => {
   if (kit) {
     const paths = kitPaths(kit.tree)
     const path = paths[0] ?? []
-    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)) }
+    chosen = { key: `kit-${kit.id}`, title: kit.name, runePage: kit.runes, spells: kit.spells, starter: kit.starter, path, boots: kit.boots, situational: [...new Set(paths.slice(1).flat())].filter(id => !path.includes(id)), draft: draftItemBlocks.value }
   }
   else if (shown.value) {
     chosen = choiceOf(shown.value, selected.value === 'pro' && pro.value ? `${pro.value.player} ${nameOf(props.championId)}` : titleOf(shown.value))
@@ -249,7 +257,7 @@ const emptyMessage = computed(() => t('build.view.none'))
       :champion-name="importName"
       :champion-id="championId"
       :item-path="shown.core.itemPath"
-      :situational="situationalFromTree(shown.buildTree, shown.core.itemPath?.itemIds ?? [])"
+      :situational="draftSituational.length ? draftSituational : situationalFromTree(shown.buildTree, shown.core.itemPath?.itemIds ?? [])"
     >
       <template #itemImport>
         <BuildItemSetImport v-if="itemSetSubject" :subject="itemSetSubject" labeled />
