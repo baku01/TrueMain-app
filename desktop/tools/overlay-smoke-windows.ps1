@@ -454,7 +454,7 @@ try {
     Expect (Press "Place on screen") "the settings start the preview"
     Start-Sleep -Seconds 2
     $state = Report "6-preview"
-    Expect ((Shown) -eq "item-value,lane-gold,next-item,objectives,stats,win-probability") "the preview shows every panel ($(Shown))"
+    Expect ((Shown) -eq "item-value,lane-gold,next-item,objectives,stats,tips,win-probability") "the preview shows every panel ($(Shown))"
     foreach ($panel in @(Panels | Where-Object { $_.Visible -and $_.Slug -ne "lane-gold" })) {
         Expect (($panel.Styles -band $WS_EX_TRANSPARENT) -eq 0) "$($panel.Slug) takes the mouse in the preview ($($panel.ExStyle))"
     }
