@@ -102,7 +102,10 @@ const fill = computed(() => (clear.value ? 'overflow-hidden bg-transparent' : 'o
 useHead({
   title: t('overlay.windowTitle'),
   htmlAttrs: { class: fill, style: computed(() => (clear.value ? 'background-color: transparent' : undefined)) },
-  bodyAttrs: { class: fill },
+  // The whole window tall: the content is scaled by a transform, which leaves its layout box — and so a body as tall as
+  // it — at the unscaled height, and the body's overflow cut a panel grown past 100 % at its foot (the Tips panel's
+  // second line, at 125 %).
+  bodyAttrs: { class: computed(() => `${fill.value} min-h-screen`) },
 })
 </script>
 

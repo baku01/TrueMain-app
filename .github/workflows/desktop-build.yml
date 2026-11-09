@@ -118,6 +118,15 @@ jobs:
             echo "::error::Neither platform produced an installer"
             exit 1
           fi
+          # Both platforms or none: the release is replaced whole, so one built
+          # alone (a runner GitHub did not start) would take the other's
+          # download and update away — the latest release stays as it is.
+          for needed in dist/TrueMain-macOS.dmg dist/TrueMain-macOS.app.tar.gz dist/TrueMain-Windows-setup.exe; do
+            if [ ! -f "$needed" ]; then
+              echo "::error::$needed was not built: the latest release is left as it is"
+              exit 1
+            fi
+          done
           ls -la dist
           # The in-app updater's feed (`plugins.updater.endpoints`): this
           # build's version, and per platform the bundle and its signature.
