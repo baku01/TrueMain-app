@@ -1,10 +1,12 @@
 import type { KitRunePage } from '#shared/types/kit'
 import type { DraftState } from '~/types/lcu'
 import type { ImportBuild, ItemOrders } from '~/utils/recommended-item-set'
+import type { PlaceMeasures } from '~/utils/item-set'
 import { tr } from '#common/utils/i18n'
 import { spellsInOrder } from '~/composables/useAutoImport'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
-import { blockTitles, recommendedSets } from '~/utils/recommended-item-set'
+import { blockTitles, recommendedSets, withMeasuredPlaces } from '~/utils/recommended-item-set'
+import { lanePlaces } from '~/utils/jev-bases'
 
 /** The build selected in the draft, with what goes beyond its items: its rune page and spells. */
 export interface ImportChoice extends ImportBuild {
@@ -60,6 +62,18 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
     return read
   }
 
+  /** What the lane's players buy at each place, for the place blocks of the builds that bring none (`lanePlaces`). */
+  const places = new Map<string, Promise<PlaceMeasures | null>>()
+  function placesFor(championId: number, position: string) {
+    const key = `${championId}:${position}`
+    let read = places.get(key)
+    if (!read) {
+      read = lanePlaces(championId, position).catch(() => null)
+      places.set(key, read)
+    }
+    return read
+  }
+
   let busy = false
   let again = false
   watch(() => JSON.stringify([locked.value, enabled.value, settings.value, selection.value]), () => void write())
@@ -97,7 +111,8 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
 
       const championKey = champions.value.get(current.championId)?.alias
       if (settings.value.items && championKey) {
-        const sets = recommendedSets(chosen, current.others, championKey, blockTitles(), items.value, await ordersFor(current.championId, draft.value.myPosition))
+        const measures = await placesFor(current.championId, draft.value.myPosition)
+        const sets = recommendedSets(withMeasuredPlaces(chosen, measures), current.others.map(build => withMeasuredPlaces(build, measures)), championKey, blockTitles(), items.value, await ordersFor(current.championId, draft.value.myPosition))
         const key = JSON.stringify(sets)
         if (sets.length && written.items !== key) {
           written.items = key

@@ -1,7 +1,8 @@
 import type { StaticItemData } from '#shared/types/static-data'
-import type { DraftItemBlock } from '~/utils/item-set'
+import type { DraftItemBlock, PlaceItemBlock, PlaceMeasures } from '~/utils/item-set'
 import { tr } from '#common/utils/i18n'
 import { isBoots } from '~/utils/blitz/builds'
+import { measuredPlaces } from '~/utils/item-set'
 
 /**
  * The automatic import's item sets, laid out block for block the way Blitz
@@ -10,7 +11,8 @@ import { isBoots } from '~/utils/blitz/builds'
  * the first three items' components in the order players buy them, then the
  * item —, the final build, for a Jev build the items that answer each need of
  * the enemy team (Blitz's and ABSOL's sets carry such blocks), the situational
- * items, the boots options. One set
+ * items, the boots options, then each place of the buying order with the
+ * items to choose from there (the boots' join the boots options). One set
  * per build the draft offers, the selected one first (`write_recommended_item_sets`).
  */
 
@@ -29,6 +31,22 @@ export interface ImportBuild {
   bootsAt?: number
   /** A block per need of the enemy team, after the final build (`utils/jev-optionals` `draftBlocks`). */
   draft?: DraftItemBlock[]
+  /**
+   * Each place of the buying order with the items to choose from there, a
+   * block each after the others (`PlaceItemBlock`); none asked for when an
+   * empty list — a kit's set, its author's own.
+   */
+  places?: PlaceItemBlock[]
+}
+
+/**
+ * A build with its place blocks: its own (a Jev build's, from its slots; none
+ * for a kit's), else the lane's measures at each place of its path
+ * (`measuredPlaces`) — a build of the sources, a pro's.
+ */
+export function withMeasuredPlaces<T extends ImportBuild>(build: T, measures: PlaceMeasures | null): T {
+  if (build.places || !measures) return build
+  return { ...build, places: measuredPlaces(build.path, build.boots, measures) }
 }
 
 /** How a component path is measured: Blitz's `itemOrders`, per completed item, most played first. */
@@ -61,6 +79,8 @@ export interface BlockTitles {
   boots: string
   /** A need's block: what it answers, the enemies behind it. */
   against?: (block: DraftItemBlock) => string
+  /** A place's block: the completed item's place, 1 the first. */
+  place?: (place: number) => string
 }
 
 /** The longest block title the shop shows whole (`lcu::item_sets` `MAX_BLOCK_TITLE`). */
@@ -88,6 +108,7 @@ export const blockTitles = (): BlockTitles => ({
   situational: tr('autoImport.block.situational'),
   boots: tr('autoImport.block.boots'),
   against: block => againstTitle(tr(`autoImport.block.against.${block.need}`), block.names),
+  place: place => tr('autoImport.block.place', { n: place }),
 })
 
 /** The basic boots, left out of the buying order when the starter already holds boots. */
@@ -97,6 +118,8 @@ const SUPPORT_UPGRADE = 3867
 /** How many items the final build lists, boots included. */
 const FINAL = 6
 const SITUATIONAL = 7
+/** The most blocks a set carries, as a kit's (`lcu::item_sets` `MAX_BLOCKS`): the last places give way. */
+const MAX_BLOCKS = 16
 
 /** An item's components when no order is measured: its recipe, the dearer first (Blitz's own fallback). */
 export function componentsOf(itemId: number, items: Record<number, StaticItemData>): number[] {
@@ -158,14 +181,21 @@ export function recommendedSet(build: ImportBuild, championKey: string, titles: 
   const draft = (build.draft ?? []).map(entry => block(titles.against?.(entry) ?? entry.need, [...new Set(known(entry.items))]))
   const answering = new Set((build.draft ?? []).flatMap(entry => entry.items))
   const situational = known(build.situational).filter(id => !final.includes(id) && !answering.has(id) && !isBoots(id)).slice(0, SITUATIONAL)
+  const places = build.places ?? []
+  const bootsOptions = places.find(entry => entry.place === 0)?.items ?? []
+  const choices = places
+    .filter(entry => entry.place > 0)
+    .map(entry => block(titles.place?.(entry.place) ?? String(entry.place), [...new Set(known(entry.items))]))
+    .filter(entry => entry.items.length > 1)
   const blocks = [
     block(titles.starting, starter),
     block(titles.order, known(buyingOrder(final, starter, items, orders))),
     block(titles.final, final),
     ...draft,
     block(titles.situational, situational),
-    block(titles.boots, [...new Set(known(build.boots))]),
-  ].filter(entry => entry.items.length > 0)
+    block(titles.boots, [...new Set(known([...build.boots, ...bootsOptions]))]),
+    ...choices,
+  ].filter(entry => entry.items.length > 0).slice(0, MAX_BLOCKS)
   return { title: `TrueMain ${build.title}`, championKey, map: 'any', mode: 'any', type: 'custom', blocks }
 }
 

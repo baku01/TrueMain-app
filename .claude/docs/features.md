@@ -346,7 +346,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   rate and games, WPA, score parts, answered needs), the reason line under its heading.
   Each build's header imports it into the client on a click: its rune page (`BuildRuneImport`) and its item set
   (`BuildItemSetImport` with the build already in blocks — starter, boots, items in buy order, the slots' other
-  options as situational, best score first), both labelled here. In champion select the board fills itself from the
+  options as situational, best score first, then a block per place of the buy order, "Item 3 — opções": the item
+  taken and up to three of its slot's other options as the board lists them, none under 30 games, no misfit, none
+  bought at an earlier place — the boots' options join the boots block, `placesOf`), both labelled here. In champion select the board fills itself from the
   client (`useJevClientDraft`): our champion, hovered or locked, and lane, the allies on theirs, the enemies on their
   likeliest lanes (`enemyLanesFromSource`, lolalytics then Blitz); a "Follow the client" switch stops it. Jev is never
   asked on its own. The page's icon is a chess knight.
@@ -458,7 +460,12 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
 - **Item set import** (#1908) — the rune button's twin, in the build tree's top-right corner, on every build the
   build view shows. A click writes the build on screen into the client as one item set `TrueMain: <champion>`
   (Starter, Boots, Core, Situational — the item context's situational verdicts, else the tree's other branches),
-  offered on that champion on Summoner's Rift (`itemsets::import_item_set` → `LcuClient::import_item_set`). One set,
+  offered on that champion on Summoner's Rift (`itemsets::import_item_set` → `LcuClient::import_item_set`). After
+  the other blocks, item by item, a block "Item 3 — opções" (`PlaceItemBlock`): the build's item at that place and up
+  to three others the lane's players buy there (`measuredPlaces` over `lanePlaces`: lolalytics' item1 to item5 and
+  Blitz's item slots pooled, each in 30 games and 1 % of the place's games, most played first, none the build bought
+  earlier), the boots' options joining the boots block; a Jev build brings its own from its slots, a kit's set has
+  none, a set holds 16 blocks at most. The draft's automatic import writes the same blocks. One set,
   replaced in place, moved to the next champion imported. The player's own sets are written back exactly as read; a
   list that cannot be read writes nothing, and a player set missing after the write is reported. Every outcome is a
   toast. Nothing is written without the click.

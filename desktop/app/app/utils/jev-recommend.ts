@@ -2,8 +2,9 @@ import type { FitRead, ItemRead } from '~/utils/jev-read'
 import type { Answer, Needs, Resist } from '~/utils/jev-needs'
 import type { PickRead } from '~/utils/jev-read-pick'
 import type { JevOption, JevSlot, LaidBuild, SlotKind } from '~/utils/jev-build'
-import type { ItemSetBuild } from '~/utils/item-set'
+import type { ItemSetBuild, PlaceItemBlock } from '~/utils/item-set'
 import { MIN_GAMES } from '~/utils/jev-build'
+import { PLACE_ALTERNATIVES } from '~/utils/item-set'
 import { STANDS_OUT, answerTo, fitOf } from '~/utils/jev-needs'
 import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
 
@@ -391,11 +392,53 @@ export function rankPicks(candidates: { championId: number, score: number }[], r
   }).sort((a, b) => b.total - a.total)
 }
 
+/** One place of a laid build: the slot that offers its item, the option taken, and the place (0 the boots, else the completed item's, 1 the first). */
+export interface BuildStep {
+  entry: RankedSlot
+  option: JevOption
+  place: number
+}
+
+/** A laid build's boots and items in buying order, each matched to the slot that offers it: the board's steps (`JevBuildPath`). */
+export function buildSteps(ranked: RankedSlot[], build: LaidBuild): BuildStep[] {
+  const taken = new Set<string>()
+  let count = 0
+  return build.order.flatMap((id): BuildStep[] => {
+    const entry = ranked.find(candidate => (candidate.slot.kind === 'item' || candidate.slot.kind === 'boots') && !taken.has(candidate.slot.name) && candidate.slot.options.some(option => option.itemIds[0] === id))
+    if (!entry) return []
+    taken.add(entry.slot.name)
+    const option = entry.slot.options.find(candidate => candidate.itemIds[0] === id)!
+    return [{ entry, option, place: entry.slot.kind === 'boots' ? 0 : ++count }]
+  })
+}
+
+/** A step's other options as the board lists them under it, the highest total first. */
+export const stepOthers = (step: Pick<BuildStep, 'entry' | 'option'>): JevOption[] =>
+  step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => (step.entry.scored[b.key]?.total ?? 0) - (step.entry.scored[a.key]?.total ?? 0))
+
+/**
+ * Each place of a laid build with the items to choose from there
+ * (`PlaceItemBlock`): the item taken, then the slot's other options as the
+ * board lists them — none seen in under `MIN_GAMES` games, no misfit, none the
+ * build bought at an earlier place.
+ */
+function placesOf(ranked: RankedSlot[], build: LaidBuild): PlaceItemBlock[] {
+  const steps = buildSteps(ranked, build)
+  return steps.map((step, index) => {
+    const held = steps.slice(0, index).map(earlier => earlier.option.itemIds[0]!)
+    const others = stepOthers(step)
+      .filter(option => option.games >= MIN_GAMES && !step.entry.scored[option.key]?.misfit && !held.includes(option.itemIds[0]!))
+      .map(option => option.itemIds[0]!)
+    return { place: step.place, items: [...new Set([step.option.itemIds[0]!, ...others])].slice(0, 1 + PLACE_ALTERNATIVES) }
+  }).filter(entry => entry.items.length > 1)
+}
+
 /**
  * A build as the client's item set, laid out as Blitz's: its starter, its
  * boots where the build buys them, every item in buying order (the final
  * build), then as situational every other item its slots offered, best score
- * first — what also suits this draft when the game asks for it.
+ * first — what also suits this draft when the game asks for it —, and each
+ * place with the items to choose from there (`placesOf`).
  */
 export function itemSetOf(ranked: RankedSlot[], build: LaidBuild): ItemSetBuild {
   const boots = build.boots?.itemIds ?? []
@@ -406,5 +449,5 @@ export function itemSetOf(ranked: RankedSlot[], build: LaidBuild): ItemSetBuild 
     .flatMap(entry => entry.slot.options.map(option => ({ id: option.itemIds[0]!, score: entry.scored[option.key]?.total ?? 0 })))
     .filter(option => !core.includes(option.id))
     .sort((a, b) => b.score - a.score)
-  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined }
+  return { starter: build.starterItems?.itemIds ?? [], boots, core, situational: [...new Set(offered.map(option => option.id))], bootsAt: at >= 0 ? at : undefined, places: placesOf(ranked, build) }
 }

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ItemSetBlocks } from '~/composables/useItemSetImport'
 import type { JevOption, LaidBuild } from '~/utils/jev-build'
-import type { DeviationReason, RankedSlot } from '~/utils/jev-recommend'
+import type { BuildStep, DeviationReason, RankedSlot } from '~/utils/jev-recommend'
 import type { DraftOptional } from '~/utils/jev-optionals'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { getActiveLocale } from '#common/utils/i18n'
 import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
-import { itemSetOf, reasonMessage } from '~/utils/jev-recommend'
+import { buildSteps, itemSetOf, reasonMessage, stepOthers } from '~/utils/jev-recommend'
 import { draftBlocks } from '~/utils/jev-optionals'
 
 /**
@@ -43,7 +43,7 @@ const why = (reason: DeviationReason) => {
   return t(message.key, message.params)
 }
 
-interface Step { entry: RankedSlot, option: JevOption, label: string }
+interface Step extends Pick<BuildStep, 'entry' | 'option'> { label: string }
 
 /** The setup in fixed places, each its share of the width, the same in both builds. */
 const SETUP: { name: string, width: string }[] = [
@@ -58,21 +58,10 @@ const setup = computed(() => SETUP.flatMap(({ name, width }) => {
   const entry = props.ranked.find(candidate => candidate.slot.name === name)
   return entry ? [{ entry, option: chosenOf(entry), label: t(`jev.slot.${name}`), width }] : []
 }))
-/** The items in buy order, each matched to the slot that offers it, named by its place (the boots apart). */
-const path = computed(() => {
-  const taken = new Set<string>()
-  let count = 0
-  return props.build.order.flatMap((id): Step[] => {
-    const entry = props.ranked.find(candidate => (candidate.slot.kind === 'item' || candidate.slot.kind === 'boots') && !taken.has(candidate.slot.name) && candidate.slot.options.some(option => option.itemIds[0] === id))
-    if (!entry) return []
-    taken.add(entry.slot.name)
-    const option = entry.slot.options.find(candidate => candidate.itemIds[0] === id)!
-    return [{ entry, option, label: entry.slot.kind === 'boots' ? t('jev.slot.boots') : t('jev.slot.item', { slot: ++count }) }]
-  })
-})
+/** The items in buy order, each matched to the slot that offers it (`buildSteps`), named by its place (the boots apart). */
+const path = computed((): Step[] => buildSteps(props.ranked, props.build).map(step => ({ ...step, label: step.place === 0 ? t('jev.slot.boots') : t('jev.slot.item', { slot: step.place }) })))
 /** The build as the client's item set (`itemSetOf`), the draft's answers a block per need. */
 const itemSet = computed((): ItemSetBlocks => ({ championId: props.championId, champion: props.importName ?? nameOf(props.championId), position: props.position, blocks: { ...itemSetOf(props.ranked, props.build), draft: draftBlocks(props.optionals ?? [], nameOf) } }))
-const others = (step: Step) => step.entry.slot.options.filter(option => option.key !== step.option.key).sort((a, b) => score(step.entry, b) - score(step.entry, a))
 
 const LEVELS = Array.from({ length: 18 }, (_, index) => index + 1)
 const levelsOf = (option: JevOption) => {
@@ -139,8 +128,8 @@ const levelsOf = (option: JevOption) => {
               <span v-if="recommended && step.entry.reason && step.option.key === step.entry.pick.key" class="text-[10px] font-medium leading-tight text-primary" :title="t('jev.reason.hint')">{{ why(step.entry.reason) }}</span>
 
               <!-- The slot's other options, small, each with its score. -->
-              <span v-if="others(step).length" class="mt-auto flex w-full flex-wrap justify-center gap-1.5 border-t border-default/60 pt-1.5">
-                <span v-for="option in others(step)" :key="option.key" class="flex flex-col items-center gap-0.5" :class="step.entry.scored[option.key]?.misfit ? 'opacity-50' : ''">
+              <span v-if="stepOthers(step).length" class="mt-auto flex w-full flex-wrap justify-center gap-1.5 border-t border-default/60 pt-1.5">
+                <span v-for="option in stepOthers(step)" :key="option.key" class="flex flex-col items-center gap-0.5" :class="step.entry.scored[option.key]?.misfit ? 'opacity-50' : ''">
                   <JevOptionVisual :option="option" :champion-id="championId" size="sm" class="justify-center" />
                   <span class="flex items-center gap-0.5 text-[10px] tabular-nums text-muted">
                     <UIcon v-if="option.key === step.entry.pick.key" name="i-tabler-chess-knight" class="size-3 text-primary" :aria-label="t('jev.card.jevPick')" />
