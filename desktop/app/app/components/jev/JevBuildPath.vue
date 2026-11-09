@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import type { ItemSetBlocks } from '~/composables/useItemSetImport'
 import type { JevOption, LaidBuild } from '~/utils/jev-build'
-import type { RankedSlot } from '~/utils/jev-recommend'
+import type { DeviationReason, RankedSlot } from '~/utils/jev-recommend'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
+import { getActiveLocale } from '#common/utils/i18n'
 import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
-import { itemSetOf } from '~/utils/jev-recommend'
+import { itemSetOf, reasonMessage } from '~/utils/jev-recommend'
 
 /**
  * One build of the Jev page — the recommended or the most played — laid out
  * as Blitz lays a build: the setup (runes, spells, starter, skill order, when
  * the boots come) then the items in the order they are bought, each step its
  * option large with its score, win rate, pick rate, games and win probability
- * added, the slot's other options small under it with their scores. The steps
- * share the width the same way in both builds, so the two stacked line up step
- * for step. A click
+ * added, the slot's other options small under it with their scores — and,
+ * where the recommended parts from the most played, a line saying why
+ * (`RankedSlot.reason`). The steps share the width the same way in both
+ * builds, so the two stacked line up step for step. A click
  * on a step selects it: the page opens every option of it below. The header's
  * buttons put the build's rune page and item set into the client.
  */
@@ -31,6 +33,11 @@ const wpaTone = (value: number) => (value >= 0.01 ? 'text-primary' : value <= -0
 const has = (value: number | null | undefined): value is number => value !== null && value !== undefined
 const score = (entry: RankedSlot, option: JevOption) => Math.round((entry.scored[option.key]?.total ?? 0) * 100)
 const recommended = computed(() => props.side === 'jev')
+/** Why a pick parts from the most played, as one line (`reasonMessage`). */
+const why = (reason: DeviationReason) => {
+  const message = reasonMessage(reason, getActiveLocale())
+  return t(message.key, message.params)
+}
 
 interface Step { entry: RankedSlot, option: JevOption, label: string }
 
@@ -124,6 +131,8 @@ const levelsOf = (option: JevOption) => {
               </span>
               <UBadge v-if="step.option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" />
               <UBadge v-if="step.entry.scored[step.option.key]?.misfit" :label="t('jev.card.misfit')" color="error" variant="subtle" size="xs" :title="t('jev.card.misfitHint')" />
+              <!-- Why Jev parts here from the most played. -->
+              <span v-if="recommended && step.entry.reason && step.option.key === step.entry.pick.key" class="text-[10px] font-medium leading-tight text-primary" :title="t('jev.reason.hint')">{{ why(step.entry.reason) }}</span>
 
               <!-- The slot's other options, small, each with its score. -->
               <span v-if="others(step).length" class="mt-auto flex w-full flex-wrap justify-center gap-1.5 border-t border-default/60 pt-1.5">

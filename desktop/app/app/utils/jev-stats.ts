@@ -200,16 +200,20 @@ export function credibleEdge(option: JevOption, reference: JevOption, model: Sel
   return surely(option.winRate - reference.winRate - selection, model.sigma ** 2 + se2, model.tau, prior)
 }
 
+/** An edge over the reference, in win rate, as the stats part reads it on 0–1: none 0.5, a point about 0.73. */
+export const statsPart = (edge: number): number => 1 / (1 + Math.exp(-edge / SPREAD))
+
 /**
- * Each option's measured signal on 0–1, the slot's most played option at
- * 0.5: its WPA over the reference's where Blitz measured every option
- * (`slotWpa`), else its credible edge (`credibleEdge`) pulled toward what its
- * WPA says where it and the reference have one; a point reads about 0.73. A
- * situational option's win rate was measured wherever the item was bought,
- * not at this place of the build, so only its WPA counts. Null for an option
- * nothing measured.
+ * Each option's measured edge over the slot's most played option, in win
+ * rate, the most played at 0: its WPA over the reference's where Blitz
+ * measured every option (`slotWpa`), else its credible edge (`credibleEdge`)
+ * pulled toward what its WPA says where it and the reference have one — an
+ * edge at its 95% lower bound, a shortfall at its estimate. A situational
+ * option's win rate was measured wherever the item was bought, not at this
+ * place of the build, so only its WPA counts. Null for an option nothing
+ * measured.
  */
-export function statsOf(options: JevOption[], kind: 'item' | 'boots' | 'choice' = 'choice'): Record<string, number | null> {
+export function edgesOf(options: JevOption[], kind: 'item' | 'boots' | 'choice' = 'choice'): Record<string, number | null> {
   if (!options.some(option => option.games > 0)) return Object.fromEntries(options.map(option => [option.key, null]))
   const compared = options.filter(option => option.games > 0 && !option.situational)
   const total = compared.reduce((sum, option) => sum + option.games, 0)
@@ -234,6 +238,15 @@ export function statsOf(options: JevOption[], kind: 'item' | 'boots' | 'choice' 
     const signal = wpa
       ? wpaEdge(option)
       : !reference ? 0 : credibleEdge(option.situational ? { ...option, games: 0 } : option, reference, model, shareOf, priorOf(option))
-    return [option.key, 1 / (1 + Math.exp(-signal / SPREAD))]
+    return [option.key, signal]
   }))
+}
+
+/**
+ * Each option's measured signal on 0–1 (`statsPart` of its edge, `edgesOf`),
+ * the slot's most played option at 0.5; a point reads about 0.73. Null for an
+ * option nothing measured.
+ */
+export function statsOf(options: JevOption[], kind: 'item' | 'boots' | 'choice' = 'choice'): Record<string, number | null> {
+  return Object.fromEntries(Object.entries(edgesOf(options, kind)).map(([key, edge]) => [key, edge === null ? null : statsPart(edge)]))
 }

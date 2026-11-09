@@ -34,7 +34,7 @@ describe('resistances due (LoLTheory)', () => {
     const team: Needs = { physical: 0.45, magic: 0.55, cc: 0, heal: 0, burst: 0, autos: 0, tanks: 0 }
     const context = { team, lane: team, itemReads: new Map([[3071, item({ vsTanks: 0.9, kit: 0.9 })], [6333, item({ kit: 0.9 })]]), tags, fits: {}, urgency: null }
     expect(rankSlot(slot, context).pick.key).toBe('o0')
-    expect(rankSlot(slot, { ...context, due: ['physical'] }).pick.key).toBe('o1')
+    expect(rankSlot(slot, { ...context, due: ['physical'] })).toMatchObject({ pick: { key: 'o1' }, reason: { kind: 'draft', need: 'physical' } })
   })
 })
 
