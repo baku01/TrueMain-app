@@ -8,7 +8,7 @@ import type { Needs, RankedSlot } from '~/utils/jev-recommend'
 import type { JevBase, LoadedBase } from '~/utils/jev-bases'
 import { askJev, jevKeyStatus } from '~/utils/jev'
 import type { SlotStats } from '~/utils/jev-item-stats'
-import { CORE_ITEMS, INVENTORY, WORLD_ATLAS, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
+import { CORE_ITEMS, INVENTORY, PLACE_SHARE, WORLD_ATLAS, candidateItems, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, laterSlotNumbers, placeShare, plainAbility, roomFor, situationalPool, standardCore, statsPool } from '~/utils/jev-build'
 import { draftOptionals } from '~/utils/jev-optionals'
 import { isBoots } from '~/utils/blitz/builds'
 import { withItemStats } from '~/utils/jev-item-stats'
@@ -233,8 +233,13 @@ export function useJevBuild(
         return !kind || !core || kind === core
       }
       // What a slot may add of the champion's items: those that answer the draft, for the needs given, the resistances due there counted.
+      // At the place the next item takes: only what its players buy there (`placeShare`, `PLACE_SHARE`).
+      const poolHere = () => {
+        const share = placeShare(options.places?.[bought().length], slotStats[bought().length])
+        return share ? pool.filter(option => share(option.itemIds[0]!) >= PLACE_SHARE) : pool
+      }
       const answering = (due: Resist[], needs: (keyof Needs)[]): Situational => ({
-        pool,
+        pool: poolHere(),
         suits,
         answersDraft: id => healCutFits(id, jevHeld(), itemReads) && answersDraft(id, team, itemReads, tags, due),
         answers: id => fitOf([id], team, itemReads, tags, { due }).answers,

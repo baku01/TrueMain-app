@@ -65,5 +65,11 @@ export function combineOptions(first: BuildOptions | null, second: BuildOptions 
     situational: first.situational || second.situational
       ? poolMeasures([first.situational ?? [], second.situational ?? []], option => ids(option.itemIds), games)
       : undefined,
+    places: first.places || second.places
+      ? Array.from({ length: Math.max(first.places?.length ?? 0, second.places?.length ?? 0) }, (_, at) => {
+          const lists = [first.places?.[at] ?? [], second.places?.[at] ?? []]
+          return poolMeasures(lists, option => ids(option.itemIds), lists.flat().reduce((sum, option) => sum + option.games, 0))
+        })
+      : undefined,
   }
 }

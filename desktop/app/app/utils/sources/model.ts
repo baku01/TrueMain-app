@@ -76,6 +76,14 @@ export interface BuildOptions {
    * draft's answers are looked for (`utils/jev-build` `situationalPool`).
    */
   situational?: ItemOption[]
+  /**
+   * The items bought at each place of the build, the first completed item
+   * first — each with its games and its share of that place's games — when the
+   * source measures them so (lolalytics' item1 to item5): where an item is
+   * bought, not only how often (Guardian Angel is Ashe's fifth item, 3.8 % of
+   * them, and her second in 10 games of 67,000).
+   */
+  places?: ItemOption[][]
 }
 
 /** A max order (`Q › W › E`) over the games it was played in, however the points were spent on the way. */

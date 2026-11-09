@@ -228,6 +228,7 @@ export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<Build
     skills: ranked((build.skill15 ?? []).map(row => skillOption(String(row[0]).split('').map(Number), option(row[1], row[2], row[3]))), 3),
     priorities: ranked((build.skillOrder ?? []).map(row => ({ ...option(row[1], row[2], row[3]), order: row[0].split('') })), 3),
     situational: itemRows(build.item),
+    places: [build.item1, build.item2, build.item3, build.item4, build.item5].map(itemRows),
   }
 }
 

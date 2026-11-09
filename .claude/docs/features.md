@@ -308,7 +308,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   where a resistance is due there and no measured option holds it, the champion's best answer to it (Zed's cores hold no
   magic resist: into five mages his third item was Lord Dominik's Regards) — later items after the closest measured
   core — none in a marksman's core (`isMarksman`: its resistance is its boots, LoLTheory) —, plus up to two of the
-  draft's answers, each bought in half a percent of the champion's games or more (`ANSWER_SHARE`), from its pool
+  draft's answers, each bought in half a percent of the champion's games or more (`ANSWER_SHARE`) and in 1 % of
+  that place's games (`placeShare`, `PLACE_SHARE`: lolalytics' item1 to item5 and Blitz's item slot pooled — Guardian
+  Angel is Ashe's fifth item, 10 games of 67,000 at her second; no marksman buys Death's Dance), from its pool
   (`situationalPool`: every item bought on the
   lane, lolalytics' item list and Blitz's items outside the cores pooled; else what the cores and follow-ups measured):
   each need of the draft no measured option answers (`draftNeeds`, standing out past `STANDS_OUT`, a due resistance

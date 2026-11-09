@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BuildOptions, ItemOption } from '~/utils/sources/model'
 import type { JevOption } from '~/utils/jev-build'
 import type { Answer, Needs } from '~/utils/jev-needs'
-import { WORLD_ATLAS, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
+import { PLACE_SHARE, WORLD_ATLAS, closestCore, coreSlot, damageKind, firstSlots, itemEffect, laidBuild, laterSlot, measuredPool, placeShare, plainAbility, reliable, roomFor, situationalPool, standardCore, startingSets, statsPool } from '~/utils/jev-build'
 import { answersDraft, fitOf } from '~/utils/jev-needs'
 import { supportResists } from '~/utils/jev-rules'
 import { withItemStats } from '~/utils/jev-item-stats'
@@ -240,5 +240,25 @@ describe('laidBuild', () => {
     expect(build.order).toEqual([6692, 3047, 3142, 6694, 3071])
     expect(build.summonerSpells).toMatchObject({ spell1Id: 4, spell2Id: 12 })
     expect(build.runePage).toBeNull()
+  })
+})
+
+describe('placeShare', () => {
+  // Ashe's fourth item (lolalytics 67,838 games): Lord Dominik's 13.5 %, Guardian Angel 1.2 %, Death's Dance not bought.
+  const fourth = [m(9158, [3036]), m(822, [3026]), m(58086, [3031])]
+  const blitz = new Map([[3036, { games: 900, winRate: 0.52, wpa: 0 }], [3026, { games: 60, winRate: 0.5, wpa: 0 }], [6333, { games: 6, winRate: 0.4, wpa: 0 }]])
+
+  it('adds lolalytics and Blitz games at the place', () => {
+    const share = placeShare(fourth, blitz)!
+    const total = 9158 + 822 + 58086 + 900 + 60 + 6
+    expect(share(3036)).toBeCloseTo((9158 + 900) / total)
+    expect(share(3026)).toBeGreaterThanOrEqual(PLACE_SHARE)
+    expect(share(6333)).toBeLessThan(PLACE_SHARE)
+    expect(share(3143)).toBe(0)
+  })
+
+  it('sets no bar where neither source measured the place', () => {
+    expect(placeShare(undefined, undefined)).toBeNull()
+    expect(placeShare([], new Map())).toBeNull()
   })
 })

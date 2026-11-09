@@ -222,6 +222,29 @@ export function damageKind(tags: string[]): 'ad' | 'ap' | null {
 const SITUATIONAL = 2
 
 /**
+ * The share of a place's games an item must be bought at to be one of the
+ * draft's answers there (`placeShare`): the place of the build players buy it
+ * at, not only how often — Guardian Angel is Ashe's fifth item (3.8 % of
+ * them, 1.2 % of her fourth), her second in 10 games of 67,000, and was taken
+ * there for the armor a rule made due.
+ */
+export const PLACE_SHARE = 0.01
+
+/**
+ * Each item's share of the games at one place of the build (`place`, 1 the
+ * first completed item), the source's measures of that place (lolalytics'
+ * `places`) and Blitz's (its item stats at that slot) added up; null where
+ * neither measured the place, which then sets no bar.
+ */
+export function placeShare(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): ((id: number) => number) | null {
+  const games = new Map<number, number>()
+  for (const option of places ?? []) games.set(option.itemIds[0]!, (games.get(option.itemIds[0]!) ?? 0) + option.games)
+  for (const [id, stat] of slot ?? []) games.set(id, (games.get(id) ?? 0) + stat.games)
+  const total = [...games.values()].reduce((sum, count) => sum + count, 0)
+  return total > 0 ? id => (games.get(id) ?? 0) / total : null
+}
+
+/**
  * The share of the champion's games an item must be bought in to be one of
  * the draft's answers: what one game in two hundred sees is a build; below
  * it, a handful of games — Death's Dance on Ashe (84 games, 0.1 %) and
