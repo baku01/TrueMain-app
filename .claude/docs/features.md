@@ -849,7 +849,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   rate on Windows); in sight again before the window shows. Only the app's own webview: nothing of the game is touched.
 - **Feels like an app** (`plugins/native.client.ts`, `main.css`, `tauri*.conf.json`): the top bar drags the window from
   anywhere (`data-tauri-drag-region="deep"`), a file or link dropped from outside is refused, controls keep the arrow
-  cursor, inner panes do not chain their scroll, pulses stop under reduced motion; WebView2's autofill suggestions and
+  cursor, inner panes do not chain their scroll; WebView2's autofill suggestions and
   macOS's link previews are off, and the macOS window restates the base one (`tests/tauri-window-config.test.ts`: the
   zoom shortcuts went missing there once).
   Unsigned by Apple and Microsoft for the beta.

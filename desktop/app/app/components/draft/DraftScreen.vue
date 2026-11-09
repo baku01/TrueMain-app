@@ -200,7 +200,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
   <div class="relative isolate flex h-full flex-col gap-3 overflow-hidden px-4 pb-3 pt-3">
     <!-- The room: our champion's splash far behind, the two sides' colours rising from their edges. -->
     <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
-      <ChampionArt v-if="duel.championId" :key="duel.championId" :champion-id="duel.championId" kind="splash" fade="none" position="50% 25%" :skeleton="false" class="absolute inset-0 scale-110 opacity-[0.09] blur-2xl transition-opacity duration-700" />
+      <ChampionArt v-if="duel.championId" :key="duel.championId" :champion-id="duel.championId" kind="splash" fade="none" position="50% 25%" class="absolute inset-0 scale-110 opacity-[0.09] blur-2xl transition-opacity duration-700" />
       <div class="absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-ally/[0.09] to-transparent" />
       <div class="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-enemy/[0.09] to-transparent" />
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,var(--ui-bg)_100%)]" />

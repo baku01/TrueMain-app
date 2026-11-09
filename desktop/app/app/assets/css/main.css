@@ -803,9 +803,7 @@ a[href] {
   .animate-overlay-in,
   .animate-overlay-soon::after,
   .animate-overlay-ready,
-  .animate-tip-time,
-  .animate-tm-pulse,
-  .animate-pulse {
+  .animate-tip-time {
     animation: none !important;
   }
 }
