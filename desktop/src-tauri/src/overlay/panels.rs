@@ -293,6 +293,14 @@ fn wanted(
             size.0,
         );
         ((rect.x, rect.y), (rect.width, rect.height))
+    } else if let Some(base) = settings.stacked_on(panel) {
+        // Under the panel it stacks on, at that one's measured size.
+        let base_size = overlay.size(base);
+        let base_origin = settings.origin(base, screen.area, base_size);
+        (
+            OverlaySettings::under(screen.area, base_origin, base_size, size),
+            size,
+        )
     } else {
         (settings.origin(panel, screen.area, size), size)
     };

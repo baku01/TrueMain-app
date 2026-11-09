@@ -47,10 +47,14 @@ const EDGE_MARGIN: f64 = 16.0;
 /// announcements and, top right, its own score strip.
 const TOP_MARGIN: f64 = 56.0;
 
-/// The tips' own place until the player drags them: centred, just under the
-/// objectives' strip on its top-centre spot — the five anchors are the other
-/// panels', and a tip reads best by the timers most of them announce.
+/// The place the tips were given before they stacked under the objectives:
+/// a fraction of the screen, which a larger objectives panel or a smaller
+/// screen ran into. A file that still holds it never had them dragged, and
+/// reads as no place of their own.
 pub const TIPS_PLACE: OverlayPoint = OverlayPoint { x: 0.5, y: 0.14 };
+
+/// Points between a stacked panel and the one it sits under.
+const STACK_GAP: f64 = 8.0;
 
 /// One panel of the overlay, each in its own window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -287,7 +291,7 @@ pub struct OverlaySettings {
     /// Its anchor and custom place are kept but never read: the scoreboard
     /// places it (`OverlayPanel::on_scoreboard`).
     pub lane_gold: PanelSettings,
-    /// On its own place (`TIPS_PLACE`) until dragged.
+    /// Under the objectives' panel until dragged (`stacked_on`).
     pub tips: PanelSettings,
     /// The lane-gold plates moved up (negative) or down from where the
     /// scoreboard's rows are measured to be, in pixels of a 1080p screen, for
@@ -314,10 +318,7 @@ impl Default for OverlaySettings {
             stats: at(OverlayPanel::Stats, OverlayAnchor::CenterLeft),
             objectives: at(OverlayPanel::Objectives, OverlayAnchor::TopCenter),
             lane_gold: at(OverlayPanel::LaneGold, OverlayAnchor::TopCenter),
-            tips: PanelSettings {
-                custom: Some(TIPS_PLACE),
-                ..at(OverlayPanel::Tips, OverlayAnchor::TopCenter)
-            },
+            tips: at(OverlayPanel::Tips, OverlayAnchor::TopCenter),
             scoreboard_nudge: 0.0,
         }
     }
@@ -471,6 +472,33 @@ impl OverlaySettings {
         self.panel(panel).enabled && (inputs.preview || (self.enabled && inputs.game_running))
     }
 
+    /// The panel `panel` sits under while it has no place of its own: the
+    /// tips, under the objectives' panel when that one is on — where League
+    /// prints its announcements, by the timers most tips count down to —,
+    /// whatever size the objectives take. With the objectives off they go to
+    /// their anchor like any panel.
+    pub fn stacked_on(&self, panel: OverlayPanel) -> Option<OverlayPanel> {
+        (panel == OverlayPanel::Tips && self.tips.custom.is_none() && self.objectives.enabled)
+            .then_some(OverlayPanel::Objectives)
+    }
+
+    /// The top-left corner of a window of `size` stacked under the window at
+    /// `base_origin` of `base_size`: centred on it, `STACK_GAP` below, kept on
+    /// the screen.
+    pub fn under(
+        screen: Rect,
+        base_origin: (f64, f64),
+        base_size: (f64, f64),
+        size: (f64, f64),
+    ) -> (f64, f64) {
+        let x = base_origin.0 + (base_size.0 - size.0) / 2.0;
+        let y = base_origin.1 + base_size.1 + STACK_GAP;
+        (
+            clamp_into(x, screen.x, screen.width, size.0).round(),
+            clamp_into(y, screen.y, screen.height, size.1).round(),
+        )
+    }
+
     /// `panel`'s top-left corner on `screen` for a window of `size`, kept
     /// entirely on the screen.
     pub fn origin(&self, panel: OverlayPanel, screen: Rect, size: (f64, f64)) -> (f64, f64) {
@@ -597,6 +625,15 @@ impl OverlaySettings {
         }
         .with_new_panels_placed(|panel| fields.contains_key(panel.field()))
         .with_valid_triggers()
+        .with_tips_stacked()
+    }
+
+    /// The tips' former default place read as none: they stack under the objectives.
+    fn with_tips_stacked(mut self) -> Self {
+        if self.tips.custom == Some(TIPS_PLACE) {
+            self.tips.custom = None;
+        }
+        self
     }
 
     /// Each panel the file does not know — it predates the panel — on its
@@ -606,8 +643,11 @@ impl OverlaySettings {
     /// objectives still gives the item value. A panel on a place of its own
     /// (the tips') takes no spot.
     fn with_new_panels_placed(mut self, known: impl Fn(OverlayPanel) -> bool) -> Self {
-        // The lane gold sits on the scoreboard, never on an anchor: it holds no spot.
-        let anchored = |panel: OverlayPanel| panel != OverlayPanel::LaneGold;
+        // The lane gold sits on the scoreboard and the tips under the
+        // objectives, never on an anchor: they hold no spot.
+        let anchored = |panel: OverlayPanel| {
+            panel != OverlayPanel::LaneGold && panel != OverlayPanel::Tips
+        };
         let new: Vec<OverlayPanel> = OverlayPanel::ALL
             .into_iter()
             .filter(|panel| {
@@ -1311,34 +1351,42 @@ mod tests {
     }
 
     #[test]
-    fn the_tips_sit_under_the_objectives_on_a_panel_like_the_others() {
+    fn the_tips_stack_under_the_objectives_whatever_their_size() {
         let defaults = OverlaySettings::default();
-        assert_eq!(defaults.tips.custom, Some(TIPS_PLACE));
+        assert_eq!(defaults.tips.custom, None);
         assert!(defaults.tips.enabled);
         assert_eq!(defaults.tips.trigger, PanelTrigger::Always);
         assert!(LaneGold.see_through() && !Tips.see_through() && !Objectives.see_through());
-        // Centred, below the objectives' strip on its top-centre spot.
-        let objectives = defaults.origin(Objectives, SCREEN, (292.0, 62.0));
-        let tips = defaults.origin(Tips, SCREEN, (292.0, 40.0));
-        assert_eq!(tips.0, objectives.0);
-        assert!(tips.1 > objectives.1 + 62.0);
+        assert_eq!(defaults.stacked_on(Tips), Some(Objectives));
+        assert_eq!(defaults.stacked_on(Stats), None);
+        // Centred under the objectives' window, 8 points below it, at any size.
+        let objectives = defaults.origin(Objectives, SCREEN, (409.0, 122.0));
+        let tips = OverlaySettings::under(SCREEN, objectives, (409.0, 122.0), (292.0, 60.0));
+        assert_eq!(tips, ((objectives.0 + 58.5).round(), objectives.1 + 130.0));
+        // Dragged, or with the objectives off, they are a panel like the others.
+        let mut dragged = OverlaySettings::default();
+        dragged.tips.custom = Some(OverlayPoint { x: 0.1, y: 0.8 });
+        assert_eq!(dragged.stacked_on(Tips), None);
+        let mut alone = OverlaySettings::default();
+        alone.objectives.enabled = false;
+        assert_eq!(alone.stacked_on(Tips), None);
     }
 
     #[test]
-    fn a_file_from_before_the_tips_gets_them_on_their_own_place() {
+    fn a_file_from_before_the_tips_or_with_their_former_place_stacks_them() {
         let old = r#"{"version":4,"objectives":{"enabled":true,"anchor":"top-center"}}"#;
         let settings = OverlaySettings::from_json(old);
         assert_eq!(settings.tips, OverlaySettings::default().tips);
         assert_eq!(settings.objectives.anchor, OverlayAnchor::TopCenter);
         assert!(settings.shows(Tips, &in_game()));
+        let former = r#"{"version":5,"tips":{"enabled":true,"anchor":"top-center","custom":{"x":0.5,"y":0.14}}}"#;
+        assert_eq!(OverlaySettings::from_json(former).tips.custom, None);
 
-        // Dragged, and put back on an anchor, they stay where the file says.
-        let dragged = r#"{"version":4,"tips":{"enabled":false,"anchor":"center-left","custom":{"x":0.1,"y":0.8}}}"#;
+        // Dragged, they stay where the file says.
+        let dragged = r#"{"version":5,"tips":{"enabled":false,"anchor":"center-left","custom":{"x":0.1,"y":0.8}}}"#;
         let settings = OverlaySettings::from_json(dragged);
         assert_eq!(settings.tips.custom, Some(OverlayPoint { x: 0.1, y: 0.8 }));
         assert!(!settings.tips.enabled);
-        let anchored = r#"{"version":4,"tips":{"anchor":"center-left","custom":null}}"#;
-        assert_eq!(OverlaySettings::from_json(anchored).tips.custom, None);
     }
 
     #[test]

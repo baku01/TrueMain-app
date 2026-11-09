@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { DEV_OVERLAY_VIEW } from '~/types/overlay'
-import { customAt, panelBox, panelSize } from '~/utils/overlay-layout'
+import { DEV_OVERLAY_VIEW, stackedOn } from '~/types/overlay'
+import { customAt, panelBox, panelSize, stackedBox } from '~/utils/overlay-layout'
 
 const screen = { width: 2560, height: 1440 }
 const at = (custom: { x: number, y: number }) => ({ enabled: true, anchor: 'top-left' as const, custom })
@@ -26,11 +26,19 @@ describe('overlay layout', () => {
     expect(custom).toEqual({ x: 1, y: 0 })
   })
 
-  it('puts the tips under the objectives\' strip, centred, until they are dragged', () => {
-    const { objectives, tips } = DEV_OVERLAY_VIEW.settings
-    const strip = panelBox(objectives, panelSize('objectives', 1), screen)
-    const tip = panelBox(tips, panelSize('tips', 1), screen)
-    expect(tip.x).toBe(strip.x)
-    expect(tip.y).toBeGreaterThan(strip.y + strip.height)
+  it('stacks the tips under the objectives, centred, whatever size the objectives take, until they are dragged', () => {
+    const settings = DEV_OVERLAY_VIEW.settings
+    expect(stackedOn(settings, 'tips')).toBe('objectives')
+    expect(stackedOn(settings, 'stats')).toBeNull()
+    for (const scale of [1, 1.4]) {
+      const strip = panelBox(settings.objectives, panelSize('objectives', scale), screen)
+      const tip = stackedBox(strip, panelSize('tips', 1), screen)
+      expect(tip.x + tip.width / 2).toBeCloseTo(strip.x + strip.width / 2, 0)
+      // Whole points, as the shell places windows.
+      expect(tip.y).toBe(Math.round(strip.y + strip.height + 8))
+    }
+    // Dragged, or with the objectives off, the tips stand on their own.
+    expect(stackedOn({ ...settings, tips: { ...settings.tips, custom: { x: 0.1, y: 0.8 } } }, 'tips')).toBeNull()
+    expect(stackedOn({ ...settings, objectives: { ...settings.objectives, enabled: false } }, 'tips')).toBeNull()
   })
 })

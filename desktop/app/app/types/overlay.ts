@@ -10,8 +10,13 @@ export const onScoreboard = (panel: OverlayPanel) => panel === 'lane-gold'
 /** Mirrors `OverlayPanel::see_through`: a window with no background, the page drawing only what covers the game. */
 export const seeThrough = (panel: OverlayPanel) => panel === 'lane-gold'
 
-/** Mirrors `TIPS_PLACE`: the tips' own place until dragged, under the objectives' strip. */
-export const TIPS_PLACE = { x: 0.5, y: 0.14 } as const
+/**
+ * Mirrors `OverlaySettings::stacked_on`: the panel `panel` sits under while it
+ * has no place of its own — the tips, under the objectives when they are on.
+ */
+export function stackedOn(settings: OverlaySettings, panel: OverlayPanel): OverlayPanel | null {
+  return panel === 'tips' && !settings.tips.custom && settings.objectives.enabled ? 'objectives' : null
+}
 
 /** The dictionary keys of what each panel is called and shows (`i18n/overlay.ts`). */
 const PANEL_TEXT: Record<OverlayPanel, { label: string, description: string }> = {
@@ -80,7 +85,7 @@ export interface OverlaySettings {
   objectives: OverlayPanelSettings
   /** Placed by the scoreboard: its anchor and custom place are never read. */
   laneGold: OverlayPanelSettings
-  /** On its own place (`TIPS_PLACE`) until dragged. */
+  /** Under the objectives' panel until dragged (`stackedOn`). */
   tips: OverlayPanelSettings
   /** The lane-gold plates moved up (negative) or down, in pixels of a 1080p screen, ±`SCOREBOARD_NUDGE`. */
   scoreboardNudge: number
@@ -159,7 +164,7 @@ export const DEV_OVERLAY_VIEW: OverlayView = {
     stats: { enabled: true, anchor: 'center-left', custom: null, trigger: { kind: 'always' }, scale: 1 },
     objectives: { enabled: true, anchor: 'top-center', custom: null, trigger: { kind: 'always' }, scale: 1 },
     laneGold: { enabled: true, anchor: 'top-center', custom: null, trigger: TAB_HELD, scale: 1 },
-    tips: { enabled: true, anchor: 'top-center', custom: { ...TIPS_PLACE }, trigger: { kind: 'always' }, scale: 1 },
+    tips: { enabled: true, anchor: 'top-center', custom: null, trigger: { kind: 'always' }, scale: 1 },
     scoreboardNudge: 0,
   },
   supported: true,
