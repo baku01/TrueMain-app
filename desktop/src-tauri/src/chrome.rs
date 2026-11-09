@@ -36,7 +36,8 @@ fn parse_hex(text: &str) -> Option<(u8, u8, u8)> {
 }
 
 /// The app icon in the theme's colours (`useAppTheme`): `png` for the Dock on
-/// macOS, `rgba` (`size` by `size` pixels) for the window and the taskbar.
+/// macOS, `rgba` (`size` by `size` pixels) for the window and the taskbar —
+/// on Windows its small icon and its large one (`set_taskbar_icon`).
 /// Neither puts the bundle's own icon back (TrueMain's theme). The Dock's
 /// holds while the app runs: Finder keeps the bundle's.
 #[tauri::command]
@@ -57,6 +58,7 @@ pub fn set_app_icon(
     };
     if let Some(icon) = icon {
         if let Some(window) = app.get_webview_window("main") {
+            set_taskbar_icon(&window, &icon);
             let _ = window.set_icon(icon);
         }
     }
@@ -83,6 +85,65 @@ fn dock_icon(png: Option<&[u8]>) {
     // SAFETY: on the main thread (`mtm`); a nil image is AppKit's own way back to the bundle's icon.
     unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(image.as_deref()) };
 }
+
+/// The taskbar's icon on Windows: the window's large icon (`ICON_BIG`). Tauri's
+/// `set_icon` sets only the small one (`ICON_SMALL`, the title bar's), so the
+/// taskbar kept the bundle's icon whatever the theme. Made from the same
+/// pixels as tao makes an icon (`RgbaIcon::into_windows_icon`); the large icon
+/// set before is destroyed once replaced — the bundle's own, the window's at
+/// creation, is not ours to destroy.
+#[cfg(windows)]
+fn set_taskbar_icon(window: &WebviewWindow, icon: &Image<'_>) {
+    use std::sync::Mutex;
+    use windows::Win32::Foundation::{LPARAM, WPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateIcon, DestroyIcon, SendMessageW, HICON, ICON_BIG, WM_SETICON,
+    };
+    /// The large icon this app made last, as a raw handle.
+    static OURS: Mutex<Option<isize>> = Mutex::new(None);
+    let Ok(hwnd) = window.hwnd() else {
+        return;
+    };
+    // BGRA, and the AND mask from the alpha, as tao lays them out.
+    let mut bgra = icon.rgba().to_vec();
+    let mut and_mask = Vec::with_capacity(bgra.len() / 4);
+    for pixel in bgra.chunks_exact_mut(4) {
+        and_mask.push(pixel[3].wrapping_sub(u8::MAX));
+        pixel.swap(0, 2);
+    }
+    // SAFETY: CreateIcon copies both buffers, each sized to the icon's pixels;
+    // WM_SETICON goes to a window this process owns; only an icon made here is
+    // destroyed, after the window holds the new one.
+    unsafe {
+        let Ok(handle) = CreateIcon(
+            None,
+            icon.width() as i32,
+            icon.height() as i32,
+            1,
+            32,
+            and_mask.as_ptr(),
+            bgra.as_ptr(),
+        ) else {
+            return;
+        };
+        SendMessageW(
+            hwnd,
+            WM_SETICON,
+            Some(WPARAM(ICON_BIG as usize)),
+            Some(LPARAM(handle.0 as isize)),
+        );
+        let previous = OURS
+            .lock()
+            .expect("taskbar icon poisoned")
+            .replace(handle.0 as isize);
+        if let Some(previous) = previous {
+            let _ = DestroyIcon(HICON(previous as *mut core::ffi::c_void));
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn set_taskbar_icon(_window: &WebviewWindow, _icon: &Image<'_>) {}
 
 #[cfg(windows)]
 fn paint_caption(window: &WebviewWindow, (r, g, b): (u8, u8, u8)) {
