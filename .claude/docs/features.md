@@ -294,7 +294,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   credible edge of half a win-rate point or more;
   `draft` (items, boots), a need of the enemy team it answers by 0.25 more than the most played, its draft part 0.25
   above (a due resistance, armor into physical burst, Grievous Wounds into heavy healing, Tenacity into heavy crowd
-  control; magic resist into magic burst alike — `RESIST_BURST`, the kit read not scaling the answer); `lane` (runes,
+  control; resistance boots into burst of their kind — `RESIST_BURST`, boots only, the kit read not scaling the answer);
+  `lane` (runes,
   spells, starters), Jev's lane fit 0.3 above the most played's at confidence 0.7 or more; `due` (items), a resistance a
   rule makes due at the slot that the most played lacks — the rule is the reason, no margin, a shortfall read against
   two points (`DEVIATE.due`) — and never one a point or more credibly worse otherwise, popular or not. A popular pick's reason is the part that gained it
@@ -306,7 +307,9 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (`coreSlot`: the cores starting with them, else holding them in any order, else every core under 30 games), plus,
   where a resistance is due there and no measured option holds it, the champion's best answer to it (Zed's cores hold no
   magic resist: into five mages his third item was Lord Dominik's Regards) — later items after the closest measured
-  core, plus up to two of the draft's answers from the champion's pool (`situationalPool`: every item bought on the
+  core — none in a marksman's core (`isMarksman`: its resistance is its boots, LoLTheory) —, plus up to two of the
+  draft's answers, each bought in half a percent of the champion's games or more (`ANSWER_SHARE`), from its pool
+  (`situationalPool`: every item bought on the
   lane, lolalytics' item list and Blitz's items outside the cores pooled; else what the cores and follow-ups measured):
   each need of the draft no measured option answers (`draftNeeds`, standing out past `STANDS_OUT`, a due resistance
   first) gets its best answer, by answer then games (`draftAnswers`) — sorted by games and cut to one, Eclipse took

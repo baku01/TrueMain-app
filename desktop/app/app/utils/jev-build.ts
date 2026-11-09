@@ -222,6 +222,16 @@ export function damageKind(tags: string[]): 'ad' | 'ap' | null {
 const SITUATIONAL = 2
 
 /**
+ * The share of the champion's games an item must be bought in to be one of
+ * the draft's answers: what one game in two hundred sees is a build; below
+ * it, a handful of games — Death's Dance on Ashe (84 games, 0.1 %) and
+ * Randuin's Omen (418, 0.3 %) took her fourth and third items. Between
+ * LoLDraftAI's 1 % for rune pages and iTero's 0.25 %, and under Locket of the
+ * Iron Solari on an enchanter (0.99 %, +4.3 points of win probability).
+ */
+export const ANSWER_SHARE = 0.005
+
+/**
  * The draft's answers a slot adds to what was measured in it, none already in
  * the build: each need of `needs` that no option measured here answers
  * (`STANDS_OUT`) takes its best answer from the champion's items — the one that
@@ -236,7 +246,7 @@ const SITUATIONAL = 2
 function draftAnswers(measuredHere: ItemOption[], held: number[], situational: Situational, limit: number, unmetOnly = false): ItemOption[] {
   const idOf = (option: ItemOption) => option.itemIds[0]!
   const here = new Set(measuredHere.flatMap(option => option.itemIds))
-  const open = situational.pool.filter(option => option.games >= MIN_GAMES && !here.has(idOf(option)) && fitsWith(idOf(option), held) && (situational.suits?.(idOf(option)) ?? true) && situational.answersDraft(idOf(option)))
+  const open = situational.pool.filter(option => option.games >= MIN_GAMES && option.pickRate >= ANSWER_SHARE && !here.has(idOf(option)) && fitsWith(idOf(option), held) && (situational.suits?.(idOf(option)) ?? true) && situational.answersDraft(idOf(option)))
   const value = (option: ItemOption, need: keyof Needs) => answerTo(situational.answers(idOf(option)), need)
   const unmet = situational.needs.filter(need => !measuredHere.some(option => value(option, need) >= STANDS_OUT))
   const queued = unmet.flatMap((need, rank) => open

@@ -147,10 +147,12 @@ function total(parts: Parts, weights: Weights): number {
 }
 
 /**
- * A draft whose damage is of one kind and comes in bursts: that resistance
- * answers it whatever our champion makes of it — armor against assassins that
- * kill a marksman before it attacks, magic resist against mages and assassins
- * whose combo kills an assassin before his own lands.
+ * A draft whose damage is of one kind and comes in bursts: boots of that
+ * resistance answer it whatever our champion makes of them — Plated Steelcaps
+ * against assassins that kill a marksman before it attacks, Mercury's Treads
+ * against mages whose combo kills an assassin before his own lands. Boots
+ * only: on an item the kit still weighs, or a tank's Randuin's Omen took a
+ * marksman's third item.
  */
 const RESIST_BURST = { share: 0.8, burst: 0.5 }
 
@@ -300,7 +302,7 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       // (LoLTheory: Plated Steelcaps for a marksman into an AD assassin, blog.loltheory.gg/what-is-armor-league-of-legends),
       // magic burst alike (`RESIST_BURST`).
       const needs = slot.lane ? context.lane : context.team
-      const intoBurst = needs.burst >= RESIST_BURST.burst && (['physical', 'magic'] as const).some(resist => needs[resist] >= RESIST_BURST.share && fit.answers.some(answer => answer.need === resist))
+      const intoBurst = slot.kind === 'boots' && needs.burst >= RESIST_BURST.burst && (['physical', 'magic'] as const).some(resist => needs[resist] >= RESIST_BURST.share && fit.answers.some(answer => answer.need === resist))
       parts.draft = 0.5 + 0.5 * fit.fit * (intoBurst ? 1 : parts.kit ?? 1)
       answers = fit.answers
       misfit = fit.misfit

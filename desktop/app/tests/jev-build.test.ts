@@ -183,6 +183,15 @@ describe('situational answers', () => {
     expect(slot.options.map(option => [option.itemIds[0], !!option.situational])).toEqual([[3814, false], [3156, true], [3139, true]])
   })
 
+  it('adds no answer bought in under one game in two hundred: Ashe\'s Death\'s Dance (84 games) and Randuin\'s Omen (418)', () => {
+    const options = optionsOf([core], () => [{ slot: 4, options: [m(7779, [3814])] }])
+    const share = (games: number, id: number, pickRate: number) => ({ ...m(games, [id]), pickRate })
+    const pool = [share(84, 6333, 0.001), share(418, 3143, 0.003), share(11600, 3026, 0.086)]
+    const answers = (id: number): Answer[] => (id === 3814 ? [] : [{ need: 'physical', value: 1 }])
+    const slot = laterSlot(options, core, 4, [6699, 2520, 3036], names, { pool, answersDraft: () => true, answers, needs: ['physical'] })!
+    expect(slot.options.map(option => option.itemIds[0])).toEqual([3814, 3026])
+  })
+
   it('adds one item, the one answering the draft most, where the slot answers every need already', () => {
     const options = optionsOf([core], () => [{ slot: 4, options: [m(7779, [3814]), m(900, [3065])] }])
     const answers = answering({ 3814: { burst: 0.44 }, 3065: { magic: 1 }, 6692: { burst: 0.29 }, 3156: { magic: 1, burst: 0.44 } })

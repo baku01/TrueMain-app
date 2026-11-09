@@ -275,13 +275,16 @@ describe('rankSlot', () => {
     expect(ranked.reason).toEqual({ kind: 'draft', need: 'physical' })
   })
 
-  it('reads magic resist into magic burst whatever the kit makes of it, as armor into physical burst (Zed into Ekko, Anivia, Locke, Aurelion Sol, Amumu)', () => {
+  it('reads magic resist boots into magic burst whatever the kit makes of them, as armor boots into physical burst; on an item the kit still weighs (Ashe took Randuin\'s Omen)', () => {
+    const reads = new Map([[3111, item({ kit: 0.5 })], [3065, item({ kit: 0.5 })]])
+    const boots: JevSlot = { name: 'boots', kind: 'boots', lane: true, options: [option('o0', [3006]), option('o1', [3111])] }
+    const bootsDraft = (burst: number) => rankSlot(boots, context(needs({ physical: 0.07, magic: 0.85, burst }), reads)).scored.o1!.parts.draft!
+    const bootsFit = fitOf([3111], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
+    expect(bootsDraft(0.73)).toBeCloseTo(0.5 + 0.5 * bootsFit)
+    expect(bootsDraft(0.2)).toBeCloseTo(0.5 + 0.5 * bootsFit * 0.5)
     const slot: JevSlot = { name: 'item4', kind: 'item', lane: false, options: [option('o0', [3071]), option('o1', [3065])] }
-    const reads = new Map([[3065, item({ kit: 0.5 })]])
-    const draftOf = (burst: number) => rankSlot(slot, context(needs({ physical: 0.07, magic: 0.85, burst }), reads)).scored.o1!.parts.draft!
-    const fit = fitOf([3065], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
-    expect(draftOf(0.73)).toBeCloseTo(0.5 + 0.5 * fit)
-    expect(draftOf(0.2)).toBeCloseTo(0.5 + 0.5 * fit * 0.5)
+    const itemFit = fitOf([3065], needs({ physical: 0.07, magic: 0.85 }), reads, tags).fit
+    expect(rankSlot(slot, context(needs({ physical: 0.07, magic: 0.85, burst: 0.73 }), reads)).scored.o1!.parts.draft).toBeCloseTo(0.5 + 0.5 * itemFit * 0.5)
   })
 
   it('weighs an item\'s parts as WEIGHTS says, an unread kit giving its weight to the rest', () => {

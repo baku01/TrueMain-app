@@ -67,6 +67,17 @@ export const isEnchanter = (champion: { classes: string[] }, position: string): 
   position === 'UTILITY' && champion.classes[0] === 'Support' && champion.classes[1] === 'Mage'
 
 /**
+ * A marksman on the bottom lane, by its first Riot class: LoLTheory names its
+ * resistance apart from the rule's item slots — "Plated Steelcaps for ADCs
+ * facing an AD assassin or heavy auto-attacks"
+ * (/what-is-armor-league-of-legends) —, so the rule takes no core place of a
+ * marksman: Guardian Angel at Ashe's second item was the rule's, not the
+ * bracket's (8.6 % of her games, mostly later).
+ */
+export const isMarksman = (champion: { classes: string[] }, position: string): boolean =>
+  position === 'BOTTOM' && champion.classes[0] === 'Marksman'
+
+/**
  * When boots are finished, for an enchanter (`isEnchanter`): "Upgrade boots
  * after your second item, not first" (/how-to-play-support-lol) — the boots'
  * timing at its lowest urgency, after the second item; elsewhere Jev's

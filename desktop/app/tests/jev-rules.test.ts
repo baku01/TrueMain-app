@@ -3,7 +3,7 @@ import type { ItemRead } from '~/utils/jev-read'
 import type { JevOption, JevSlot } from '~/utils/jev-build'
 import type { Needs } from '~/utils/jev-recommend'
 import { rankSlot } from '~/utils/jev-recommend'
-import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, isEnchanter, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { RESIST_DUE, bootsUrgency, dueAt, duesOf, healCutFits, isEnchanter, isMarksman, supportResists, withDraftBoots } from '~/utils/jev-rules'
 
 const item = (fields: Partial<ItemRead> = {}): ItemRead => ({ antiHeal: 0, tenacity: 0, antiBurst: 0, vsAutos: 0, vsTanks: 0, kit: 0.5, ...fields })
 const TAGS: Record<number, string[]> = { 6333: ['Damage', 'Armor', 'Health'], 3071: ['Damage', 'Health', 'ArmorPenetration'], 3047: ['Armor', 'Boots'], 3065: ['SpellBlock', 'Health'], 3036: ['Damage', 'ArmorPenetration'], 3156: ['SpellBlock', 'Damage', 'LifeSteal'] }
@@ -66,6 +66,12 @@ describe('an enchanter\'s resistances (LoLTheory)', () => {
   const RIOT: Record<number, string[]> = { 3190: ['Health', 'SpellBlock', 'Armor', 'Aura', 'Active', 'MagicResist', 'AbilityHaste'], 3109: ['Health', 'HealthRegen', 'Armor', 'Aura', 'Active', 'CooldownReduction', 'AbilityHaste'], 2524: ['Health', 'SpellBlock', 'Armor', 'AttackSpeed', 'NonbootsMovement', 'AbilityHaste'], 3157: ['Armor', 'SpellDamage', 'Active'], 3102: ['SpellBlock', 'SpellDamage'], 3111: ['Boots', 'SpellBlock', 'Tenacity'], 6620: ['Health', 'SpellDamage', 'ManaRegen', 'CooldownReduction', 'AbilityHaste'], 2526: ['Health'], 3116: ['Health', 'SpellDamage'] }
   const riot = (id: number) => RIOT[id] ?? []
   const support = supportResists(riot)
+
+  it('tells a marksman on the bottom lane, whose resistance is its boots, not a core place', () => {
+    expect(isMarksman({ classes: ['Marksman'] }, 'BOTTOM')).toBe(true)
+    expect(isMarksman({ classes: ['Marksman', 'Assassin'] }, 'MIDDLE')).toBe(false)
+    expect(isMarksman({ classes: ['Mage', 'Marksman'] }, 'BOTTOM')).toBe(false)
+  })
 
   it('tells an enchanter by its classes on the support lane', () => {
     expect(isEnchanter({ classes: ['Support', 'Mage'] }, 'UTILITY')).toBe(true)

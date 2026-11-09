@@ -15,7 +15,7 @@ import { withItemStats } from '~/utils/jev-item-stats'
 import { fitsWith } from '~/utils/item-groups'
 import { batches, enemyRequest, itemReadKey, itemRequest, keepItemRead, knownItemRead, laneRequest, readItem, scoreOf } from '~/utils/jev-read'
 import { answersDraft, draftNeeds, fitOf, rankSlot } from '~/utils/jev-recommend'
-import { bootsUrgency, dueAt, healCutFits, isEnchanter, supportResists, withDraftBoots } from '~/utils/jev-rules'
+import { bootsUrgency, dueAt, healCutFits, isEnchanter, isMarksman, supportResists, withDraftBoots } from '~/utils/jev-rules'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { LANE_BASE, laneOptions } from '~/utils/jev-bases'
 
@@ -240,10 +240,12 @@ export function useJevBuild(
         answers: id => fitOf([id], team, itemReads, tags, { due }).answers,
         needs,
       })
-      // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due there.
+      // Each place of the core read after what the build chose before it (`coreSlot`), and the resistance a rule makes due
+      // there — none in a marksman's core, whose resistance is its boots (`isMarksman`).
+      const marksman = isMarksman(ours, position)
       for (let index = 0; index < CORE_ITEMS; index++) {
         if (jevCore.length >= roomOf('pick')) break
-        const due = dueNow()
+        const due = marksman ? [] : dueNow()
         const slot = coreSlot(options, index, jevCore, names, due.length ? answering(due, due) : undefined)
         const open = slot?.options.filter(option => option.itemIds.every(fitsBuild)) ?? []
         if (!slot || !open.length) continue
