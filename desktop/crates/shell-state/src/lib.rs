@@ -101,9 +101,7 @@ impl AppState {
             lcu::uri::LOBBY => {
                 // A lobby left is deleted with a `null` body, which reads as
                 // no lobby; one with a champion select reads as no picks.
-                let lobby = serde_json::from_value::<Lobby>(event.data.clone())
-                    .ok()
-                    .and_then(|lobby| lobby.lobby_state());
+                let lobby = Lobby::picks(&event.data);
                 let changed = lobby != self.lobby;
                 self.lobby = lobby;
                 changed
