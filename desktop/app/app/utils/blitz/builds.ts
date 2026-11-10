@@ -20,7 +20,7 @@ export interface Tally { games: number, wins: number, win_rate: number, pick_rat
 
 export interface BlitzBuildDoc {
   games: number
-  /** The lane the document reads (`SUPPORT`, `BOT`…). */
+  /** The lane the document reads, as Riot names it (`UTILITY`, `BOTTOM`…). */
   individual_position?: string
   win_rate: number
   pick_rate: number
