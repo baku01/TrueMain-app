@@ -61,8 +61,13 @@ const selectedShards = computed(() => [
        column (secondary tree + shards) is the taller of the two, and the
        primary tree used to pack its rows at the top and leave the difference as
        dead space under the last row. Stretched and spread, both columns start
-       and end on the same line. -->
-  <div class="flex flex-wrap items-stretch gap-x-6 gap-y-4 p-0.5">
+       and end on the same line.
+
+       `justify-center`: where the pane is too narrow for the two side by side
+       (the app zoomed in), the second wraps under the first — each line
+       centred, not pushed to the left edge. Side by side the block is as wide
+       as its trees, so it changes nothing there. -->
+  <div class="flex flex-wrap items-stretch justify-center gap-x-6 gap-y-4 p-0.5">
     <!-- Primary tree (left) -->
     <section
       v-if="primary"
