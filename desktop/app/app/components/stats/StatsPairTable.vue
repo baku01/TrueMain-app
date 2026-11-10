@@ -31,6 +31,8 @@ const sorted = computed(() => {
   return [...props.rows].sort((a, b) => value(b) - value(a) || b.games - a.games)
 })
 const shown = computed(() => (expanded.value ? sorted.value : sorted.value.slice(0, LIMIT)))
+/** A pair's first column as wide as the longest first name shown (its portrait and gap, then the name), so the second champion stands close, at one place on every row. */
+const pairColumns = computed(() => `minmax(0, calc(2.25rem + ${Math.max(0, ...shown.value.map(row => nameOf(row.championId).length))}ch)) auto minmax(0, 1fr)`)
 const columns = computed(() => [
   { key: 'tier' as const, label: t('stats.col.tier'), align: 'text-center' },
   { key: 'winRate' as const, label: props.pair ? t('stats.col.duoWr') : t('stats.col.wr'), align: 'text-right' },
@@ -65,8 +67,8 @@ const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${
             </span>
           </td>
           <td class="py-1">
-            <!-- A pair in two equal columns, so the second champion starts at the same place on every row. -->
-            <span class="min-w-0 items-center gap-2" :class="pair ? 'grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'flex'">
+            <!-- A pair in columns as wide as the longest first name, so the second champion starts at the same place on every row. -->
+            <span class="min-w-0 items-center gap-2" :class="pair ? 'grid' : 'flex'" :style="pair ? { gridTemplateColumns: pairColumns } : undefined">
               <template v-for="(id, at) in pair ? [row.championId, row.allyChampionId] : [row.allyChampionId]" :key="`${id}-${at}`">
                 <span v-if="at > 0" class="text-dimmed">&amp;</span>
                 <NuxtLink :to="{ path: `/champions/${id}`, query: { position: at === 0 && pair ? row.position : row.allyPosition } }" class="flex min-w-0 items-center gap-2 hover:text-primary">
