@@ -9,7 +9,17 @@
 //! (`/lol-lobby/v1/lobby/members/localMember/player-slots`), the same write
 //! Blitz's lobby builds make.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// A field the client may send as `null`, read as its default: one `null` in
+/// a slot must not lose the whole lobby, and the lobby screen with it.
+fn or_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
 
 /// `GET /lol-lobby/v2/lobby`, reduced to what the lobby screen reads.
 ///
@@ -19,13 +29,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Lobby {
+    #[serde(deserialize_with = "or_default")]
     pub game_config: LobbyGameConfig,
+    #[serde(deserialize_with = "or_default")]
     pub local_member: LobbyMember,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct LobbyGameConfig {
+    #[serde(deserialize_with = "or_default")]
     pub queue_id: i64,
 }
 
@@ -34,6 +47,7 @@ pub struct LobbyGameConfig {
 pub struct LobbyMember {
     /// Empty in every queue with a champion select: only a queue without one
     /// asks for the champions in the lobby.
+    #[serde(deserialize_with = "or_default")]
     pub player_slots: Vec<PlayerSlot>,
 }
 
@@ -43,7 +57,9 @@ pub struct LobbyMember {
 #[serde(rename_all = "camelCase", default)]
 pub struct PlayerSlot {
     /// Zero (or below) while the slot is empty.
+    #[serde(deserialize_with = "or_default")]
     pub champion_id: i64,
+    #[serde(deserialize_with = "or_default")]
     pub position_preference: String,
 }
 
@@ -67,6 +83,22 @@ pub struct LobbySlot {
 }
 
 impl Lobby {
+    /// The picks of a lobby as the client sends it (`uri::LOBBY`): `None` for
+    /// no lobby (a `null` body: one left), a lobby with no picks, and one that
+    /// does not read — that one said in the log, as the lobby screen is lost.
+    pub fn picks(data: &serde_json::Value) -> Option<LobbyState> {
+        if data.is_null() {
+            return None;
+        }
+        match serde_json::from_value::<Lobby>(data.clone()) {
+            Ok(lobby) => lobby.lobby_state(),
+            Err(error) => {
+                tracing::warn!(%error, "the lobby did not read");
+                None
+            }
+        }
+    }
+
     /// The picks, or `None` in a lobby with none — every queue with a
     /// champion select, whose screen is the draft.
     pub fn lobby_state(&self) -> Option<LobbyState> {
@@ -182,6 +214,29 @@ mod tests {
             }),
             "lanes are upper-case and an empty slot is unknown, not champion zero"
         );
+    }
+
+    #[test]
+    fn a_null_field_reads_as_its_default_and_keeps_the_lobby() {
+        let mut lobby = swiftplay();
+        lobby["localMember"]["playerSlots"][1]["positionPreference"] = serde_json::Value::Null;
+        lobby["localMember"]["playerSlots"][1]["championId"] = serde_json::Value::Null;
+        let state = Lobby::picks(&lobby).unwrap();
+        assert_eq!(
+            state.slots[0],
+            LobbySlot {
+                champion_id: Some(103),
+                position: "MIDDLE".into()
+            }
+        );
+        assert_eq!(
+            state.slots[1],
+            LobbySlot {
+                champion_id: None,
+                position: String::new()
+            }
+        );
+        assert!(Lobby::picks(&serde_json::Value::Null).is_none());
     }
 
     #[test]

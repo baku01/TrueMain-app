@@ -65,7 +65,8 @@ const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${
             </span>
           </td>
           <td class="py-1">
-            <span class="flex min-w-0 items-center gap-2">
+            <!-- A pair in two equal columns, so the second champion starts at the same place on every row. -->
+            <span class="min-w-0 items-center gap-2" :class="pair ? 'grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'flex'">
               <template v-for="(id, at) in pair ? [row.championId, row.allyChampionId] : [row.allyChampionId]" :key="`${id}-${at}`">
                 <span v-if="at > 0" class="text-dimmed">&amp;</span>
                 <NuxtLink :to="{ path: `/champions/${id}`, query: { position: at === 0 && pair ? row.position : row.allyPosition } }" class="flex min-w-0 items-center gap-2 hover:text-primary">

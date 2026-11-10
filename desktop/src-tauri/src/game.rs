@@ -104,6 +104,9 @@ async fn poll(readings: mpsc::Sender<serde_json::Value>) {
     tracing::info!("a game is running; reading it");
     let mut failures = 0_u32;
     loop {
+        // The next reading is due a poll after this one began, not after its answer came: a slow
+        // answer does not stretch the cadence, so the tips hear of the game every half second.
+        let started = tokio::time::Instant::now();
         match client.all_game_data().await {
             Ok(payload) => {
                 failures = 0;
@@ -118,6 +121,6 @@ async fn poll(readings: mpsc::Sender<serde_json::Value>) {
                 tracing::debug!(%error, failures, "the game does not answer yet");
             }
         }
-        tokio::time::sleep(live_client::next_poll(failures)).await;
+        tokio::time::sleep_until(started + live_client::next_poll(failures)).await;
     }
 }
