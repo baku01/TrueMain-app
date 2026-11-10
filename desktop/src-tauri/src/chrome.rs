@@ -47,6 +47,7 @@ pub fn set_app_icon(
     rgba: Option<Vec<u8>>,
     size: u32,
 ) -> Result<(), String> {
+    let themed = rgba.is_some();
     let icon = match rgba {
         Some(pixels) => {
             if pixels.len() != (size as usize) * (size as usize) * 4 {
@@ -57,11 +58,16 @@ pub fn set_app_icon(
         None => app.default_window_icon().cloned(),
     };
     if let Some(icon) = icon {
+        // The shortcuts too: a window launched from one is shown on the taskbar under its icon.
+        #[cfg(windows)]
+        crate::shortcut_icon::paint(&app, themed.then(|| (icon.rgba().to_vec(), icon.width())));
         if let Some(window) = app.get_webview_window("main") {
             set_taskbar_icon(&window, &icon);
             let _ = window.set_icon(icon);
         }
     }
+    #[cfg(not(windows))]
+    let _ = themed;
     #[cfg(target_os = "macos")]
     app.run_on_main_thread(move || dock_icon(png.as_deref()))
         .map_err(|error| error.to_string())?;

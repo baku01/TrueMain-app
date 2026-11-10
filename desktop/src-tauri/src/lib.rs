@@ -22,6 +22,8 @@ mod overlay;
 mod ready_check;
 mod record;
 mod runes;
+#[cfg(windows)]
+mod shortcut_icon;
 #[cfg(debug_assertions)]
 mod sim;
 mod site;
