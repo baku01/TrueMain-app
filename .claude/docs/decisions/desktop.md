@@ -1007,3 +1007,11 @@ scores an off-class item low; the item reads' cache key carries the questions' v
   launched from a shortcut shows on the taskbar under that shortcut's icon, so `WM_SETICON` alone left the taskbar on
   the bundle's icon; TrueMain's own theme points the shortcuts back at the executable's. The installer's update
   recreates the shortcuts, and the next start paints them again (2026-11-10) — no issue yet
+- Analytics reads a champion against one lane opponent ("Contra…", or a click on a matchup of its lane): the whole page
+  over that matchup's games where the source measures it (`MATCHUP_SOURCES`). lolalytics' API does not answer a
+  matchup (`build-full` with `vs` is a 404), so the app reads its `/vs/` page's data — `lolalytics.com/lol/{champion}/
+  vs/{opponent}/build/q-data.json`, the address Hexgate reads, allowed in the shell as `lolalyticsweb` — Qwik's state,
+  decoded back into the same document the API answers (`qwikBuild`): objects and lists name their values by index in
+  base 36. The page takes no region, so a matchup is every server's. Blitz reads the matchup's own build document,
+  never the lane's in its place, its header from the lane's matchups; the win rate is set against the champion's
+  usual one. op.gg, Tencent and TrueMain measure none: the page says so and shows the lane (2026-11-10) — no issue yet

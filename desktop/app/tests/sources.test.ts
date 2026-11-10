@@ -156,6 +156,14 @@ describe('lolalytics', () => {
     expect(usual.boots.map(option => option.itemIds)).toEqual([[3020]])
   })
 
+  it('reads a page\'s Qwik state back into the build: objects and lists by index in base 36, a string reached so a value', async () => {
+    const { qwikBuild } = await import('~/utils/sources/lolalytics')
+    // Ashe against Jinx: the build names its item list, games and header by index; "16.22" is a value, not an index.
+    const state = { _objs: [{ item1: '1', n: '2', header: '3' }, ['4'], 4458, { n: '2', wr: '5', patch: '6' }, ['7', '8'], 50.52, '16.22', 2523, 51.3, { other: '2' }] }
+    expect(qwikBuild(state)).toEqual({ item1: [[2523, 51.3]], n: 4458, header: { n: 4458, wr: 50.52, patch: '16.22' } })
+    expect(qwikBuild({ _objs: [{ other: '1' }, 2] })).toBeNull()
+  })
+
   it('reads TrueMain\'s brackets as lolalytics tiers', async () => {
     const { lolalyticsTier } = await import('~/utils/sources/lolalytics')
     expect(lolalyticsTier('MASTER_PLUS')).toBe('master_plus')

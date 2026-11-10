@@ -8,7 +8,13 @@ import { formatPercentage } from '#shared/utils/ddragon'
  * when it has them, pick rate and games. The strips sort together — hardest,
  * easiest or most played first.
  */
-const props = defineProps<{ lanes: LaneRows[], kind?: 'counter' | 'synergy' }>()
+const props = defineProps<{
+  lanes: LaneRows[]
+  kind?: 'counter' | 'synergy'
+  /** The lane whose champions open the page against them (`pick`): the champion's own, its lane opponents. */
+  pickable?: string | null
+}>()
+const emit = defineEmits<{ pick: [championId: number] }>()
 const { t } = useT()
 const { nameOf, portraitOf } = useChampionStatics()
 
@@ -37,12 +43,21 @@ const delta = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
     <div v-for="lane in sorted" :key="lane.position" class="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-3 rounded-xl bg-accented/15 p-2">
       <p class="text-center text-sm font-semibold text-highlighted">{{ kind === 'synergy' ? (LANE_KEYS[lane.position] ? t(LANE_KEYS[lane.position]!) : lane.position) : t('analytics.matchups.lane', { lane: LANE_KEYS[lane.position] ? t(LANE_KEYS[lane.position]!) : lane.position }) }}</p>
       <ul class="flex gap-1.5 overflow-x-auto pb-1">
-        <li v-for="row in lane.rows" :key="row.championId" class="flex w-[5.25rem] shrink-0 flex-col items-center gap-0.5 rounded-lg bg-accented/25 px-1 py-1.5 text-center leading-tight" :title="nameOf(row.championId)">
-          <img v-if="portraitOf(row.championId)" :src="portraitOf(row.championId)!" :alt="nameOf(row.championId)" width="36" height="36" class="img-skeleton size-9 rounded-md">
-          <span class="text-[13px] font-semibold tabular-nums" :class="tone(row.winRate)">{{ formatPercentage(row.winRate, 1) }}</span>
-          <span v-if="row.delta1 !== undefined" class="whitespace-nowrap text-[10px] tabular-nums text-muted">{{ t('analytics.delta1') }} {{ delta(row.delta1) }}</span>
-          <span v-if="row.delta2 !== undefined" class="whitespace-nowrap text-[10px] tabular-nums text-muted">{{ t('analytics.delta2') }} {{ delta(row.delta2) }}</span>
-          <span class="whitespace-nowrap text-[10px] tabular-nums text-dimmed"><template v-if="row.pickRate !== null">{{ formatPercentage(row.pickRate, 1) }} · </template>{{ row.games.toLocaleString() }}</span>
+        <li v-for="row in lane.rows" :key="row.championId" class="w-[5.25rem] shrink-0">
+          <component
+            :is="lane.position === pickable ? 'button' : 'div'"
+            :type="lane.position === pickable ? 'button' : undefined"
+            class="flex w-full flex-col items-center gap-0.5 rounded-lg bg-accented/25 px-1 py-1.5 text-center leading-tight"
+            :class="lane.position === pickable ? 'cursor-pointer transition-colors hover:bg-accented/60' : ''"
+            :title="lane.position === pickable ? t('analytics.versus.open', { name: nameOf(row.championId) }) : nameOf(row.championId)"
+            @click="lane.position === pickable && emit('pick', row.championId)"
+          >
+            <img v-if="portraitOf(row.championId)" :src="portraitOf(row.championId)!" :alt="nameOf(row.championId)" width="36" height="36" class="img-skeleton size-9 rounded-md">
+            <span class="text-[13px] font-semibold tabular-nums" :class="tone(row.winRate)">{{ formatPercentage(row.winRate, 1) }}</span>
+            <span v-if="row.delta1 !== undefined" class="whitespace-nowrap text-[10px] tabular-nums text-muted">{{ t('analytics.delta1') }} {{ delta(row.delta1) }}</span>
+            <span v-if="row.delta2 !== undefined" class="whitespace-nowrap text-[10px] tabular-nums text-muted">{{ t('analytics.delta2') }} {{ delta(row.delta2) }}</span>
+            <span class="whitespace-nowrap text-[10px] tabular-nums text-dimmed"><template v-if="row.pickRate !== null">{{ formatPercentage(row.pickRate, 1) }} · </template>{{ row.games.toLocaleString() }}</span>
+          </component>
         </li>
       </ul>
     </div>

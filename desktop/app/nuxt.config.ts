@@ -69,6 +69,8 @@ export default defineNuxtConfig({
       '/__riot': { target: 'https://www.leagueoflegends.com', changeOrigin: true },
       // The other sources Settings can pick (`src-tauri/src/sources.rs` in the app): Blitz, lolalytics and op.gg's official API.
       '/__lolalytics': { target: 'https://a1.lolalytics.com/mega', changeOrigin: true },
+      // lolalytics' own pages' data (a champion against one opponent). Not `/__lolalyticsweb`: `/__lolalytics` would take it, a prefix.
+      '/__lola-web': { target: 'https://lolalytics.com/lol', changeOrigin: true },
       '/__opgg': { target: 'https://mcp-api.op.gg/mcp', changeOrigin: true },
       '/__tencent': { target: 'https://lol.qq.com/act/lbp/common/guides', changeOrigin: true },
       '/__championmastery': { target: 'https://championmastery.gg', changeOrigin: true },

@@ -8,7 +8,7 @@ import { truemainAnalytics } from '~/utils/sources/analytics-truemain'
 import { dataSource } from '~/utils/data-source'
 
 /** One champion's analytics on a lane, from the source Settings picked. */
-const READERS: Record<DataSource, (championId: number, position: string, eloBracket: unknown, region?: string) => Promise<ChampionAnalytics>> = {
+const READERS: Record<DataSource, (championId: number, position: string, eloBracket: unknown, region?: string, opponentId?: number | null) => Promise<ChampionAnalytics>> = {
   truemain: truemainAnalytics,
   blitz: blitzAnalytics,
   opgg: opggAnalytics,
@@ -16,7 +16,14 @@ const READERS: Record<DataSource, (championId: number, position: string, eloBrac
   tencent: tencentAnalytics,
 }
 
-/** `region` narrows the read to one server where the source measures them (lolalytics); `all` is every server. */
-export function readAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all'): Promise<ChampionAnalytics> {
-  return READERS[dataSource.value](championId, position, eloBracket, region)
+/** The sources that read a champion against one opponent (`ChampionAnalytics.versus`). */
+export const MATCHUP_SOURCES: readonly DataSource[] = ['lolalytics', 'blitz']
+
+/**
+ * `region` narrows the read to one server where the source measures them
+ * (lolalytics); `all` is every server. `opponentId` reads the lane against
+ * that champion where the source measures it (`MATCHUP_SOURCES`).
+ */
+export function readAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all', opponentId: number | null = null): Promise<ChampionAnalytics> {
+  return READERS[dataSource.value](championId, position, eloBracket, region, opponentId)
 }
