@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildCoreView } from '~/types/build'
+import type { BlitzBuildDoc } from '~/utils/blitz/builds'
+import { questRewardOptions } from '~/utils/blitz/options'
 import { questRewardsOf, rewardApart, rewardPlace, starterApart } from '~/utils/support-quest'
 
 const m = (games: number, id: number) => ({ games, winRate: 0.5, pickRate: 0.1, itemIds: [id] })
@@ -7,9 +9,19 @@ const set = (itemIds: number[]) => ({ itemIds, games: 900, pickRate: 0.9, winRat
 
 describe('support quest', () => {
   it('reads the rewards among a source\'s items, each its share of the picks, most first (Blitz\'s Lulu)', () => {
-    const rewards = questRewardsOf([m(700, 3504), m(4015, 3871), m(9320, 3870), m(47, 3869)])
+    const rewards = questRewardsOf([m(700, 3504), m(4015, 3871), m(9320, 3870), m(47, 3869)], true)
     expect(rewards.map(option => option.itemIds[0])).toEqual([3870, 3871, 3869])
     expect(rewards[0]!.pickRate).toBeCloseTo(9320 / 13382)
+  })
+
+  it('reads no reward off the support lane: Ashe\'s 7 picks in 71,593 games are no build of hers', () => {
+    expect(questRewardsOf([m(5, 3871), m(1, 3869), m(1, 3876)], false)).toEqual([])
+  })
+
+  it('reads Blitz\'s rewards on the lane Riot names UTILITY only, as its documents write it', () => {
+    const doc = (lane: string) => ({ games: 80591, individual_position: lane, situationalItems: [{ itemId: 3870, games: 9320, wins: 4800, pick_rate: 0.1 }, { itemId: 3871, games: 4015, wins: 2000, pick_rate: 0.05 }] }) as unknown as BlitzBuildDoc
+    expect(questRewardOptions(doc('UTILITY')).map(option => option.itemIds[0])).toEqual([3870, 3871])
+    expect(questRewardOptions(doc('BOTTOM'))).toEqual([])
   })
 
   it('tells lolalytics\' first item of a support, its reward, from a first item bought', () => {

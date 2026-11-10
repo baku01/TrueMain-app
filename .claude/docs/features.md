@@ -349,7 +349,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (`startingSets`). A support's quest reward (Celestial Opposition, Dream Maker, Zaz'Zak's Realmspike, Solstice
   Sleigh, Bloodsong — `utils/support-quest`) is picked, never bought: no place of any buying order. The sources
   read it apart (`BuildOptions.questRewards`: lolalytics' `supportItem`, whose cores and first item are the reward —
-  `boughtCores`, its places from the second —, Blitz's items outside the cores), TrueMain's own builds have it
+  `boughtCores`, its places from the second —, Blitz's items outside the cores; on the support lane only: Ashe has a
+  handful of picks too), TrueMain's own builds have it
   among the starting items (`rewardApart`); Jev ranks it as a slot of its own (`quest`, by statistics, draft and
   kit, `LaidBuild.questReward`) in the setup row, the build views beside the starting items (`BuildQuestReward`),
   the item set as its own block after them ("Recompensa da Missão"), and in game the next-item panel and the

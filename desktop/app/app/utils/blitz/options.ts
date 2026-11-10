@@ -70,7 +70,7 @@ export const situationalOptions = (doc: BlitzBuildDoc): ItemOption[] =>
   outsideCores(doc).filter(option => !STARTER_LINE.has(option.itemIds[0]!))
 
 /** The support quest's rewards picked (`utils/support-quest`), which Blitz counts among the items outside the cores. */
-export const questRewardOptions = (doc: BlitzBuildDoc): ItemOption[] => questRewardsOf(outsideCores(doc))
+export const questRewardOptions = (doc: BlitzBuildDoc): ItemOption[] => questRewardsOf(outsideCores(doc), doc.individual_position === 'UTILITY')
 
 /** Boots over every core path that carries a pair and every follow-up that is one: the reading when Blitz lists no items outside the cores. */
 function bootsFromCores(doc: BlitzBuildDoc, count: number): ItemOption[] {

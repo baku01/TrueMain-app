@@ -38,7 +38,7 @@ export interface LolalyticsSummary {
 }
 
 export interface LolalyticsBuild {
-  header: { patch: string, n: number, wr: number, pr: number, br: number, tier: string, rank: number, rankTotal: number, avgWr: number, topWin?: number, topElo?: string, damage?: Record<string, number>, counters?: { strong: number[], weak: number[] } }
+  header: { patch: string, lane?: string, n: number, wr: number, pr: number, br: number, tier: string, rank: number, rankTotal: number, avgWr: number, topWin?: number, topElo?: string, damage?: Record<string, number>, counters?: { strong: number[], weak: number[] } }
   runes: { stats: Record<string, [number, number, number][]> }
   spells?: [string, number, number, number][]
   startSet?: [string, number, number, number][]
@@ -265,7 +265,7 @@ export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<Build
     // Every item bought, the support quest's line and the jungle pets apart: bought at the start, never a choice later.
     situational: itemRows(build.item).filter(entry => !STARTER_LINE.has(entry.itemIds[0]!)),
     places,
-    questRewards: questRewardsOf(itemRows(build.supportItem)),
+    questRewards: questRewardsOf(itemRows(build.supportItem), build.header.lane === 'support'),
   }
 }
 

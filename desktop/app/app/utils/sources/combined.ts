@@ -66,8 +66,9 @@ export function combineOptions(first: BuildOptions | null, second: BuildOptions 
     situational: first.situational || second.situational
       ? poolMeasures([first.situational ?? [], second.situational ?? []], option => ids(option.itemIds), games)
       : undefined,
+    // Each source's rewards are a support lane's already (`questRewardsOf`): pooled, they are too.
     questRewards: first.questRewards || second.questRewards
-      ? questRewardsOf(poolMeasures([first.questRewards ?? [], second.questRewards ?? []], option => ids(option.itemIds), games))
+      ? questRewardsOf(poolMeasures([first.questRewards ?? [], second.questRewards ?? []], option => ids(option.itemIds), games), true)
       : undefined,
     places: first.places || second.places
       ? Array.from({ length: Math.max(first.places?.length ?? 0, second.places?.length ?? 0) }, (_, at) => {
