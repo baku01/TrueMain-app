@@ -2,6 +2,7 @@
 // The matchup page, as the site and the desktop app both render it (#1732):
 // each app's route file wraps this with its own head tags and nothing else.
 import { POSITION_OPTIONS, isChampionPosition, type ChampionPosition } from '#common/utils/positions'
+import { moveLane } from '#common/utils/matchup-lane'
 
 const { t } = useT()
 
@@ -36,13 +37,10 @@ const enemySlots = ref(emptySlots())
 
 // The played role is owned by the matchup stage on both sides — a leftover
 // pick there would be a second control for the same slot (and an ally on the
-// player's own position is rejected by the API).
-watch(playedPosition, (position) => {
-  if (position) {
-    allySlots.value[position] = null
-    enemySlots.value[position] = null
-  }
-})
+// player's own position is rejected by the API). A role picked moves no
+// champion: the old duel stays in its lane, the new lane's picks become the
+// matchup (`movedTo`).
+const matchup = { championId: playedChampionId, position: playedPosition, opponentId: opponentChampionId, allies: allySlots, enemies: enemySlots }
 
 // Deep-link the matchup (champion, role, opponent) so a matchup is shareable.
 // The eight remaining slots stay ephemeral — a full draft in the URL is noise.
@@ -133,7 +131,7 @@ function setEnemy(position: ChampionPosition, championId: number | null) {
       :lane="recommendation?.lane ?? null"
       :lane-loading="isLoading"
       @update:played-champion-id="playedChampionId = $event"
-      @update:played-position="playedPosition = $event"
+      @update:played-position="moveLane(matchup, $event)"
       @update:opponent-champion-id="opponentChampionId = $event"
       @update:ally="setAlly"
       @update:enemy="setEnemy"

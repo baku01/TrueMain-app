@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import type { CompositionBuildRequest } from '~/types/build'
 import { POSITION_OPTIONS, type ChampionPosition } from '#common/utils/positions'
+import { moveLane } from '#common/utils/matchup-lane'
 import JevBuildAdvice from '~/components/jev/JevBuildAdvice.vue'
 
 const { t } = useT()
@@ -18,13 +19,9 @@ const opponentChampionId = ref<number | null>(null)
 const allySlots = ref(emptySlots())
 const enemySlots = ref(emptySlots())
 
-// Our own lane's slots belong to us and our opponent, not to the teams around us.
-watch(playedPosition, (position) => {
-  if (position) {
-    allySlots.value[position] = null
-    enemySlots.value[position] = null
-  }
-})
+// Our own lane's slots belong to us and our opponent, not to the teams around us. A lane picked moves no champion:
+// the old duel stays in its lane, the new lane's picks become the matchup (`movedTo`).
+const matchup = { championId: playedChampionId, position: playedPosition, opponentId: opponentChampionId, allies: allySlots, enemies: enemySlots }
 
 // In champion select the board follows the client — our pick, our lane, both teams — until the player turns it off.
 const { inDraft, board } = useJevClientDraft()
@@ -86,7 +83,7 @@ const request = computed<CompositionBuildRequest | null>(() => {
         :lane="null"
         :lane-loading="false"
         @update:played-champion-id="playedChampionId = $event"
-        @update:played-position="playedPosition = $event"
+        @update:played-position="moveLane(matchup, $event)"
         @update:opponent-champion-id="opponentChampionId = $event"
         @update:ally="(position, id) => (allySlots[position] = id)"
         @update:enemy="(position, id) => (enemySlots[position] = id)"
