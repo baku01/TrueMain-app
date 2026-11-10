@@ -1001,3 +1001,9 @@ marksman-only and enchanter-only rules (`isMarksman`, `isEnchanter`). The class 
 whatever its class (`OWN_SHARE`). Jev reads the same profile as text with our kit (`itemizationOf`), so its kit read
 scores an off-class item low; the item reads' cache key carries the questions' version so older reads are not reused
 (2026-11-09) — no issue yet
+- On Windows the theme's app icon also goes onto TrueMain's own shortcuts — the Start menu's (the user's and every
+  user's), the desktop's and a pinned taskbar button's, each checked to point at our executable — as an `.ico` written
+  under the app's local data, a new file per icon since the shell caches icons by path (`shortcut_icon.rs`). A window
+  launched from a shortcut shows on the taskbar under that shortcut's icon, so `WM_SETICON` alone left the taskbar on
+  the bundle's icon; TrueMain's own theme points the shortcuts back at the executable's. The installer's update
+  recreates the shortcuts, and the next start paints them again (2026-11-10) — no issue yet

@@ -57,7 +57,7 @@ const lit = (index: number, option: { note?: string }) => !!option.note || (prop
           :title="option.note || undefined"
           class="relative rounded-lg transition-colors"
           :class="[
-            layout === 'rows' ? 'flex w-full items-center gap-3 px-2.5 py-2 text-left' : 'flex flex-col items-center gap-1 px-2 pb-1.5 pt-2',
+            layout === 'rows' ? 'flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-2.5 py-2 text-left' : 'flex flex-col items-center gap-1 px-2 pb-1.5 pt-2',
             fill && layout !== 'rows' ? 'w-full px-1' : '',
             lit(index, option) ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : index === 0 && !selectable ? 'bg-accented/50' : 'bg-accented/20',
             selectable ? 'hover:bg-accented/60' : '',
@@ -72,10 +72,10 @@ const lit = (index: number, option: { note?: string }) => !!option.note || (prop
             </template>
             <GameTooltipSummonerSpellIcon v-for="id in option.spellIds ?? []" :key="`s-${id}`" :spell="summoners?.[id] ?? null" :width="size" :height="size" class="shrink-0 rounded-md" :style="icon" />
           </span>
-          <!-- A row reads like Blitz's: the win rate in a chip, then the games and the share. -->
-          <span v-if="layout === 'rows'" class="ml-auto flex min-w-0 items-center gap-2 whitespace-nowrap">
-            <span class="rounded px-1.5 py-0.5 text-xs font-bold tabular-nums" :class="chip(option.winRate)">{{ percent(option.winRate) }}</span>
-            <span class="min-w-[4.75rem] text-right text-[11px] leading-tight tabular-nums text-muted">
+          <!-- A row reads like Blitz's: the win rate in a chip, then the games and the share — under the chip, never past the card, where a narrow pane (a zoomed one) leaves no room beside it. -->
+          <span v-if="layout === 'rows'" class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+            <span class="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold tabular-nums" :class="chip(option.winRate)">{{ percent(option.winRate) }}</span>
+            <span class="min-w-[4.75rem] whitespace-nowrap text-right text-[11px] leading-tight tabular-nums text-muted">
               {{ t('panel.games', { games: compact.format(option.games) }) }}
               <span class="block text-[10px] text-dimmed">{{ percent(option.pickRate, 0) }}</span>
             </span>
