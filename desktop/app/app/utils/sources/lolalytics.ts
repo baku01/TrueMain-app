@@ -31,6 +31,10 @@ export interface LolalyticsSummary {
   items?: {
     start?: { n: number, wr: number, set: number[] }
     core?: { set: number[], wr: number, n: number }
+    /** A matchup's page names its core item by item instead (`/vs/`): each the most bought at its place. */
+    item1?: { id: number, n: number, wr: number }
+    item2?: { id: number, n: number, wr: number }
+    item3?: { id: number, n: number, wr: number }
     item4?: { id: number, n: number, wr: number }[]
     item5?: { id: number, n: number, wr: number }[]
     item6?: { id: number, n: number, wr: number }[]
