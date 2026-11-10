@@ -1,8 +1,20 @@
 import type { ChampionAnalytics, LaneRows, Objective, RuneStat, SkillPath, SummaryBuild, TrendSeries } from '~/utils/sources/analytics'
 import type { LolalyticsSummary } from '~/utils/sources/lolalytics'
 import { damageShares, emptyAnalytics, lettersOf, pointsOf } from '~/utils/sources/analytics'
+import type { Measure } from '~/utils/sources/model'
 import { measure } from '~/utils/sources/model'
 import { lolalyticsLane, lolalyticsOptionsOf, readLolalyticsBuild, readLolalyticsMatchup, readLolalyticsTeam } from '~/utils/sources/lolalytics'
+
+/**
+ * The core path: the API's (`core`, three items and their games), or — on a
+ * matchup's page, which names it item by item — its three places' most bought,
+ * measured as its third, the one the path is built by.
+ */
+function coreOf(items: LolalyticsSummary['items'], m: (entry: { n: number, wr: number } | undefined) => Measure): SummaryBuild['core'] {
+  if (items?.core) return { ...m(items.core), itemIds: items.core.set }
+  const places = [items?.item1, items?.item2, items?.item3]
+  return places.every(entry => entry?.id) ? { ...m(items?.item3), itemIds: places.map(entry => entry!.id) } : null
+}
 
 /** One of lolalytics' two named builds — the most played (`pick`) or the one that wins most (`win`). */
 function summaryBuild(summary: LolalyticsSummary | undefined): SummaryBuild | null {
@@ -25,7 +37,7 @@ function summaryBuild(summary: LolalyticsSummary | undefined): SummaryBuild | nu
         }
       : null,
     starters: items?.start ? { ...m(items.start), itemIds: items.start.set } : null,
-    core: items?.core ? { ...m(items.core), itemIds: items.core.set } : null,
+    core: coreOf(items, m),
     after: ([4, 5, 6] as const).flatMap((slot) => {
       const options = (items?.[`item${slot}`] ?? []).map(entry => ({ ...m(entry), itemId: entry.id }))
       return options.length ? [{ slot, options }] : []
