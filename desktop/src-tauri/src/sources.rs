@@ -51,6 +51,9 @@ fn base(source: &str) -> Option<&'static str> {
         // Blitz's champion insights (tips, strengths, weaknesses), published beside its site.
         "nexus" => Some("https://utils.iesdev.com/static/json/nexus/lol/"),
         "lolalytics" => Some("https://a1.lolalytics.com/mega/"),
+        // lolalytics' own pages' data, for what its API does not answer (a
+        // champion against one opponent): `{champion}/vs/{opponent}/build/q-data.json`.
+        "lolalyticsweb" => Some("https://lolalytics.com/lol/"),
         // The guides lol.qq.com's own pages load: scripts (`var X = {…};`), read as their object.
         "tencent" => Some("https://lol.qq.com/act/lbp/common/guides/"),
         // Any player's mastery points per champion, which Blitz does not keep:
@@ -268,6 +271,9 @@ mod tests {
         assert!(url("utils", "esports/worlds-2026/matches").is_ok());
         assert!(url("lolalytics", "").is_ok());
         assert!(url("lolalytics", "x").is_err());
+        assert!(url("lolalyticsweb", "ashe/vs/jinx/build/q-data.json").is_ok());
+        assert!(url("lolalyticsweb", "").is_err());
+        assert!(url("lolalyticsweb", "ashe/../x").is_err());
         assert!(url("tencent", "champDetail/champDetail_103.js").is_ok());
         assert!(url("other", "x").is_err());
         assert!(url("data", "../secret").is_err());

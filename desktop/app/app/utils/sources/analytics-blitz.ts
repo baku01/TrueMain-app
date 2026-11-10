@@ -5,7 +5,8 @@ import { matchupsFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
 import { synergiesFromBlitz } from '~/utils/blitz/synergies'
 import { POSITIONS } from '#common/utils/positions'
 import { readProMatches } from '~/utils/blitz/pro'
-import { blitzOptions } from '~/utils/sources/blitz'
+import { blitzOptions, blitzOptionsOf } from '~/utils/sources/blitz'
+import { readBlitzBuildDoc } from '~/utils/blitz/builds'
 
 /**
  * Blitz's analytics: the header with the patch before, the lanes, the build
@@ -27,7 +28,7 @@ interface Row {
   previous_patch_stats: { patch: string, games: number, win_rate: number, role_pickrate: number, ban_rate: number | null } | null
 }
 
-export async function blitzAnalytics(championId: number, position: string, eloBracket: unknown): Promise<ChampionAnalytics> {
+export async function blitzAnalytics(championId: number, position: string, eloBracket: unknown, _region?: string, opponentId: number | null = null): Promise<ChampionAnalytics> {
   const query = { position, eloBracket }
   const allies = POSITIONS.filter(lane => lane !== position)
   const [rows, options, matchups, trend, pros, synergies] = await Promise.all([
@@ -38,7 +39,10 @@ export async function blitzAnalytics(championId: number, position: string, eloBr
       champion_id: championId,
       columns: 'individual_position,patch,games,win_rate,pick_rate,champion_ban_rate,champion_role_tier,role_pct_games,previous_patch_stats',
     }),
-    blitzOptions(championId, position),
+    // Against one opponent, that matchup's own document — never the lane's in its place, which would read as the matchup's.
+    opponentId
+      ? readBlitzBuildDoc(championId, position, opponentId).then(doc => (doc ? blitzOptionsOf(doc) : null)).catch(() => null)
+      : blitzOptions(championId, position),
     matchupsFromBlitz(championId, query),
     trendFromBlitz(championId, query),
     readProMatches(championId, position).catch(() => []),
@@ -61,6 +65,14 @@ export async function blitzAnalytics(championId: number, position: string, eloBr
       averageWinRate: null,
       previous: previous ? { patch: previous.patch, winRate: previous.win_rate, pickRate: previous.role_pickrate, banRate: previous.ban_rate, games: previous.games } : null,
     }
+  }
+  // Against one opponent, the matchup's own figures from the lane's matchups, read against the champion's own win rate.
+  const versus = opponentId ? matchups.matchups.find(entry => entry.opponentChampionId === opponentId) : undefined
+  if (opponentId) {
+    analytics.versus = options ? opponentId : null
+    analytics.header = versus
+      ? { games: versus.games, winRate: versus.winRate, pickRate: versus.playRate, banRate: null, tier: null, rank: null, rankTotal: null, averageWinRate: row?.win_rate ?? null, previous: null }
+      : null
   }
   analytics.lanes = lanes
     .map(entry => ({ position: truemainPosition(entry.individual_position), share: entry.role_pct_games ?? 0 }))

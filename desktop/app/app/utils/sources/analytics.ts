@@ -92,6 +92,8 @@ export interface RuneStat { primary: Measure | null, secondary: Measure | null }
 
 export interface ChampionAnalytics {
   patch: string | null
+  /** The opponent the figures are read against (one lane matchup), null when they are the lane's — a source that measures no matchup leaves it so. */
+  versus: number | null
   header: AnalyticsHeader | null
   /** The lanes the champion is played on, with the share of its games on each. */
   lanes: { position: string, share: number }[]
@@ -140,6 +142,7 @@ export interface ChampionAnalytics {
 
 export const emptyAnalytics = (): ChampionAnalytics => ({
   patch: null,
+  versus: null,
   header: null,
   lanes: [],
   options: null,

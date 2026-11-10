@@ -38,7 +38,7 @@ export interface LolalyticsSummary {
 }
 
 export interface LolalyticsBuild {
-  header: { patch: string, lane?: string, n: number, wr: number, pr: number, br: number, tier: string, rank: number, rankTotal: number, avgWr: number, topWin?: number, topElo?: string, damage?: Record<string, number>, counters?: { strong: number[], weak: number[] } }
+  header: { patch: string, lane?: string, n: number, usualWinRate?: number, wr: number, pr: number, br: number, tier: string, rank: number, rankTotal: number, avgWr: number, topWin?: number, topElo?: string, damage?: Record<string, number>, counters?: { strong: number[], weak: number[] } }
   runes: { stats: Record<string, [number, number, number][]> }
   spells?: [string, number, number, number][]
   startSet?: [string, number, number, number][]
@@ -225,6 +225,62 @@ function boughtCores(cores: ItemOption[]): ItemOption[] {
       : { ...core, itemIds })
   }
   return [...merged.values()]
+}
+
+/**
+ * lolalytics' own pages hand their data over as Qwik's state (`q-data.json`):
+ * every value once in `_objs`, objects and lists naming theirs by index in
+ * base 36 — a string reached so is a value, not another index. The build is
+ * the object holding `item1` and `n`, read back whole: the same document the
+ * API's `build-full` answers.
+ */
+export function qwikBuild(state: { _objs?: unknown[] }): LolalyticsBuild | null {
+  const objs = state._objs ?? []
+  const value = (ref: unknown, depth: number): unknown => {
+    if (typeof ref !== 'string' || depth > 64) return ref
+    const index = Number.parseInt(ref, 36)
+    return Number.isNaN(index) || index < 0 || index >= objs.length ? ref : resolved(objs[index], depth + 1)
+  }
+  const resolved = (entry: unknown, depth: number): unknown => {
+    if (Array.isArray(entry)) return entry.map(ref => value(ref, depth))
+    if (entry && typeof entry === 'object') return Object.fromEntries(Object.entries(entry).map(([key, ref]) => [key, value(ref, depth)]))
+    return entry
+  }
+  const root = objs.find(entry => !!entry && typeof entry === 'object' && !Array.isArray(entry) && 'item1' in entry && 'n' in entry)
+  const build = root ? resolved(root, 0) as LolalyticsBuild : null
+  return build?.header ? build : null
+}
+
+/** One of lolalytics' own pages' data (`lolalyticsweb` in the shell, `/__lola-web` in `npm run dev`). */
+async function readPage<T>(path: string, query: Record<string, string>): Promise<T> {
+  if (insideTauri()) {
+    const { invoke } = await import('@tauri-apps/api/core')
+    return await invoke<T>('source_get', { source: 'lolalyticsweb', path, query: Object.entries(query) })
+  }
+  return await $fetch<T>(`/__lola-web/${path}`, { query })
+}
+
+const matchups = new Map<string, Promise<LolalyticsBuild | null>>()
+
+/**
+ * A champion's whole build against one opponent on its lane — lolalytics'
+ * `/vs/` page, which its API does not answer — over every server's games
+ * (the page takes no region), at Settings' window; null when lolalytics has
+ * no such matchup.
+ */
+export function readLolalyticsMatchup(championId: number, position: string, opponentId: number, eloBracket?: unknown): Promise<LolalyticsBuild | null> {
+  const key = `${championId}:${position}:${opponentId}:${lolalyticsTier(eloBracket)}`
+  let answer = matchups.get(key)
+  if (!answer) {
+    answer = Promise.all([championSlug(championId), championSlug(opponentId), lolalyticsWindow().catch(() => null)]).then(async ([slug, versus, patch]) => {
+      if (!slug || !versus) return null
+      const lane = lolalyticsLane(position)
+      return qwikBuild(await readPage<{ _objs?: unknown[] }>(`${slug}/vs/${versus}/build/q-data.json`, { lane, vslane: lane, tier: lolalyticsTier(eloBracket), ...(patch ? { patch } : {}) }))
+    })
+    answer.catch(() => matchups.delete(key))
+    keepBounded(matchups, key, answer)
+  }
+  return answer
 }
 
 export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<BuildOptions> {

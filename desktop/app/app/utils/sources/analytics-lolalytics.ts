@@ -2,7 +2,7 @@ import type { ChampionAnalytics, LaneRows, Objective, RuneStat, SkillPath, Summa
 import type { LolalyticsSummary } from '~/utils/sources/lolalytics'
 import { damageShares, emptyAnalytics, lettersOf, pointsOf } from '~/utils/sources/analytics'
 import { measure } from '~/utils/sources/model'
-import { lolalyticsLane, lolalyticsOptionsOf, readLolalyticsBuild, readLolalyticsTeam } from '~/utils/sources/lolalytics'
+import { lolalyticsLane, lolalyticsOptionsOf, readLolalyticsBuild, readLolalyticsMatchup, readLolalyticsTeam } from '~/utils/sources/lolalytics'
 
 /** One of lolalytics' two named builds — the most played (`pick`) or the one that wins most (`win`). */
 function summaryBuild(summary: LolalyticsSummary | undefined): SummaryBuild | null {
@@ -62,10 +62,14 @@ const itemRow = ([ids, wr, pr, games, minute]: Row) => ({
   ...(minute !== undefined ? { minute } : {}),
 })
 
-export async function lolalyticsAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all'): Promise<ChampionAnalytics> {
-  const build = await readLolalyticsBuild(championId, position, eloBracket, region)
+export async function lolalyticsAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all', opponentId: number | null = null): Promise<ChampionAnalytics> {
+  // Against one opponent: its `/vs/` page, the same document over that matchup's games only.
+  const build = opponentId
+    ? await readLolalyticsMatchup(championId, position, opponentId, eloBracket).catch(() => null)
+    : await readLolalyticsBuild(championId, position, eloBracket, region)
   const analytics = emptyAnalytics()
   if (!build) return analytics
+  analytics.versus = opponentId
   const header = build.header
 
   analytics.patch = header.patch
@@ -77,7 +81,8 @@ export async function lolalyticsAnalytics(championId: number, position: string, 
     tier: header.tier,
     rank: header.rank,
     rankTotal: header.rankTotal,
-    averageWinRate: rate(header.avgWr),
+    // Against an opponent, the champion's own win rate is what the matchup's is read against.
+    averageWinRate: rate(opponentId ? header.usualWinRate ?? header.avgWr : header.avgWr),
     previous: null,
   }
   analytics.lanes = Object.entries(build.nav?.lanes ?? {})

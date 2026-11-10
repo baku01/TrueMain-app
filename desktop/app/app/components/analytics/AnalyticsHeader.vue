@@ -7,7 +7,12 @@ import { formatPercentage } from '#shared/utils/ddragon'
  * and ban rates and games, each against the bracket's average or the patch
  * before when the source keeps them, and its damage by type.
  */
-const props = defineProps<{ header: NonNullable<ChampionAnalytics['header']>, damage: ChampionAnalytics['damage'] }>()
+const props = defineProps<{
+  header: NonNullable<ChampionAnalytics['header']>
+  damage: ChampionAnalytics['damage']
+  /** Read against one opponent: the win rate set against the champion's usual one, not its bracket's average. */
+  versus?: boolean
+}>()
 const { t } = useT()
 
 const percent = (value: number | null) => (value === null ? '—' : formatPercentage(value, 2))
@@ -18,8 +23,8 @@ const tiles = computed(() => {
   const { header } = props
   const previous = header.previous
   return [
-    { key: 'winRate', value: percent(header.winRate), delta: header.averageWinRate !== null ? { value: header.winRate - header.averageWinRate, text: t('analytics.header.vsAverage', { delta: signed(header.winRate - header.averageWinRate) }) } : previous ? { value: header.winRate - previous.winRate, text: t('analytics.header.vsPrevious', { delta: signed(header.winRate - previous.winRate), patch: previous.patch }) } : null },
-    ...(header.averageWinRate !== null ? [{ key: 'average', value: percent(header.averageWinRate), delta: null }] : []),
+    { key: 'winRate', value: percent(header.winRate), delta: header.averageWinRate !== null ? { value: header.winRate - header.averageWinRate, text: t(props.versus ? 'analytics.header.vsUsual' : 'analytics.header.vsAverage', { delta: signed(header.winRate - header.averageWinRate) }) } : previous ? { value: header.winRate - previous.winRate, text: t('analytics.header.vsPrevious', { delta: signed(header.winRate - previous.winRate), patch: previous.patch }) } : null },
+    ...(header.averageWinRate !== null ? [{ key: props.versus ? 'usual' : 'average', value: percent(header.averageWinRate), delta: null }] : []),
     { key: 'pickRate', value: percent(header.pickRate), delta: previous ? { value: header.pickRate - previous.pickRate, text: t('analytics.header.vsPrevious', { delta: signed(header.pickRate - previous.pickRate), patch: previous.patch }) } : null },
     { key: 'banRate', value: percent(header.banRate), delta: previous && header.banRate !== null && previous.banRate !== null ? { value: header.banRate - previous.banRate, text: t('analytics.header.vsPrevious', { delta: signed(header.banRate - previous.banRate), patch: previous.patch }) } : null },
     { key: 'games', value: header.games.toLocaleString(), delta: null },
