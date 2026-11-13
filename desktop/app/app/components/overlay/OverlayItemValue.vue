@@ -59,10 +59,10 @@ const number = formatCount
       <span class="stat-value text-lg leading-none tabular-nums text-enemy">{{ number(teams.theirs) }}</span>
     </div>
     <!-- Each side's share of the item gold on the map, meeting where it stands: the same bar as the win probability's. -->
-    <div class="relative flex h-1 overflow-hidden rounded-full bg-elevated ring-1 ring-inset ring-white/5" aria-hidden="true">
-      <span class="bg-linear-to-r from-ally/60 to-ally transition-[width] duration-700 ease-[var(--tm-ease)]" :style="{ width: `${share}%` }" />
-      <span class="w-px bg-white/70" />
-      <span class="flex-1 bg-linear-to-r from-enemy to-enemy/60" />
+    <div class="relative h-1 overflow-hidden rounded-full bg-elevated ring-1 ring-inset ring-white/5" aria-hidden="true">
+      <span class="absolute inset-0 origin-left bg-linear-to-r from-ally/60 to-ally transition-transform duration-700 ease-[var(--tm-ease)] will-change-transform" :style="{ transform: `scaleX(${share / 100})` }" />
+      <span class="absolute inset-0 origin-right bg-linear-to-r from-enemy to-enemy/60 transition-transform duration-700 ease-[var(--tm-ease)] will-change-transform" :style="{ transform: `scaleX(${1 - share / 100})` }" />
+      <span class="absolute inset-0 transition-transform duration-700 ease-[var(--tm-ease)] will-change-transform" :style="{ transform: `translateX(${share}%)` }"><span class="block h-full w-px bg-white/70" /></span>
     </div>
 
     <ul v-if="lanes" class="flex flex-col gap-1 border-t border-default pt-2">
