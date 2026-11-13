@@ -10,7 +10,8 @@ import { captionColor } from '~/utils/app-theme'
  *   Catppuccin flavour's own);
  * - on macOS the title bar is drawn over by the top bar (`tauri.macos.conf.json`):
  *   `in-tauri` and `fullscreen` say when the traffic lights sit in it;
- * - the routes the shell asks for (`app://navigate`: ⌘, opens Settings);
+ * - the routes the shell asks for (`app://navigate`: ⌘, opens Settings, the
+ *   menu bar's Go menu its pages) and its history moves (`app://history`);
  * - a file or a link dropped from outside is refused: with HTML drag and drop
  *   on (`dragDropEnabled: false`, for the draft's lanes and the overlay's
  *   layout), the webview would open it in place of the app;
@@ -53,6 +54,8 @@ export default defineNuxtPlugin(() => {
       void invoke('set_window_theme', { dark: value !== 'light', caption: captionColor(choice.value) }).catch(() => {}), { immediate: true })
   })
   void import('@tauri-apps/api/event').then(({ listen }) => listen<string>('app://navigate', event => void router.push(event.payload)))
+  // The menu bar's Go › Back and Forward (⌘[ and ⌘]).
+  void import('@tauri-apps/api/event').then(({ listen }) => listen<string>('app://history', event => (event.payload === 'back' ? router.back() : router.forward())))
 
   const external = (event: DragEvent) => !!event.dataTransfer && ['Files', 'text/uri-list'].some(type => event.dataTransfer!.types.includes(type))
   window.addEventListener('dragover', (event) => {
