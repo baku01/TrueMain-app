@@ -2,16 +2,18 @@
 import type { AbilityData } from '~/utils/ability-data'
 import { getActiveLocale } from '#common/utils/i18n'
 import AbilityClip from '~/components/Champion/AbilityClip.vue'
-import { readAbilities } from '~/utils/ability-data'
+import { quickAbilities, readAbilities } from '~/utils/ability-data'
 
 /** The tooltip's card: the champion's abilities read when it opens (kept for the session), this one drawn compact. */
 const props = defineProps<{ championId: number, spellKey: 'P' | 'Q' | 'W' | 'E' | 'R' }>()
-const ability = shallowRef<AbilityData | null>(null)
+const read = shallowRef<AbilityData | null>(null)
 const failed = ref(false)
 const { championStatic } = useStaticData()
 readAbilities(props.championId, getActiveLocale().startsWith('pt') ? 'pt' : 'en')
-  .then(list => (ability.value = list.find(entry => entry.key === props.spellKey) ?? null))
+  .then(list => (read.value = list.find(entry => entry.key === props.spellKey) ?? null))
   .catch(() => (failed.value = true))
+// Data Dragon's until the game data is read (`quickAbilities`): the clip and the text show at once.
+const ability = computed(() => read.value ?? quickAbilities(championStatic(props.championId)).find(entry => entry.key === props.spellKey) ?? null)
 </script>
 
 <template>
