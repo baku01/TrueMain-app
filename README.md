@@ -109,7 +109,8 @@ Os instaladores mais recentes, gerados pelo GitHub Actions a partir da branch `m
 
 | Sistema | Download |
 |---|---|
-| **macOS** (Apple Silicon e Intel) | [TrueMain-macOS.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS.dmg) |
+| **macOS** (Apple Silicon: M1, M2, M3…) | [TrueMain-macOS-AppleSilicon.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS-AppleSilicon.dmg) |
+| **macOS** (Intel) | [TrueMain-macOS-Intel.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS-Intel.dmg) |
 | **Windows** (64 bits) | [TrueMain-Windows-setup.exe](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-Windows-setup.exe) |
 
 Todas as versões: [Releases](https://github.com/baku01/TrueMain-app/releases). Os instaladores **não são assinados**: no **macOS**, depois de copiar o app para Aplicativos, rode `xattr -cr /Applications/TrueMain.app`; no **Windows**, o SmartScreen avisa de "editor desconhecido" (clique em *Mais informações* e *Executar assim mesmo*).

@@ -23,11 +23,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS
+          # One build per Mac: Apple Silicon (M1, M2…) natively, and Intel apart,
+          # each its own download and update (`latest.json`'s darwin-aarch64 and darwin-x86_64).
+          - name: macOS-AppleSilicon
             runner: macos-15
-            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
-            args: --target universal-apple-darwin --bundles app,dmg
-            bundle: desktop/target/universal-apple-darwin/release/bundle
+            rust-targets: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles app,dmg
+            bundle: desktop/target/aarch64-apple-darwin/release/bundle
+          - name: macOS-Intel
+            runner: macos-15
+            rust-targets: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles app,dmg
+            bundle: desktop/target/x86_64-apple-darwin/release/bundle
           - name: Windows
             runner: windows-2025
             rust-targets: ""
@@ -70,13 +77,14 @@ jobs:
           BUNDLE: ${{ matrix.bundle }}
         run: |
           mkdir -p dist
-          if [ "${{ matrix.name }}" = "macOS" ]; then
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            name="TrueMain-${{ matrix.name }}"
             app=$(ls -d "$BUNDLE"/macos/*.app)
             codesign --verify --deep --strict "$app"
-            cp "$BUNDLE"/dmg/*.dmg dist/TrueMain-macOS.dmg
+            cp "$BUNDLE"/dmg/*.dmg "dist/$name.dmg"
             # The in-app update: the app bundle, archived, and its signature.
-            cp "$BUNDLE"/macos/*.app.tar.gz dist/TrueMain-macOS.app.tar.gz
-            cp "$BUNDLE"/macos/*.app.tar.gz.sig dist/TrueMain-macOS.app.tar.gz.sig
+            cp "$BUNDLE"/macos/*.app.tar.gz "dist/$name.app.tar.gz"
+            cp "$BUNDLE"/macos/*.app.tar.gz.sig "dist/$name.app.tar.gz.sig"
           else
             cp "$BUNDLE"/nsis/*-setup.exe dist/TrueMain-Windows-setup.exe
             # On Windows the installer is the update; its signature beside it.
@@ -111,17 +119,17 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           shopt -s nullglob
-          files=(dist/TrueMain-macOS.dmg dist/TrueMain-Windows-setup.exe dist/TrueMain-macOS.app.tar.gz dist/TrueMain-macOS.app.tar.gz.sig dist/TrueMain-Windows-setup.exe.sig)
+          files=(dist/TrueMain-macOS-AppleSilicon.dmg dist/TrueMain-macOS-Intel.dmg dist/TrueMain-Windows-setup.exe dist/TrueMain-macOS-AppleSilicon.app.tar.gz dist/TrueMain-macOS-AppleSilicon.app.tar.gz.sig dist/TrueMain-macOS-Intel.app.tar.gz dist/TrueMain-macOS-Intel.app.tar.gz.sig dist/TrueMain-Windows-setup.exe.sig)
           existing=()
           for file in "${files[@]}"; do [ -f "$file" ] && existing+=("$file"); done
           if [ ${#existing[@]} -eq 0 ]; then
             echo "::error::Neither platform produced an installer"
             exit 1
           fi
-          # Both platforms or none: the release is replaced whole, so one built
-          # alone (a runner GitHub did not start) would take the other's
-          # download and update away — the latest release stays as it is.
-          for needed in dist/TrueMain-macOS.dmg dist/TrueMain-macOS.app.tar.gz dist/TrueMain-Windows-setup.exe; do
+          # Every platform or none: the release is replaced whole, so one built
+          # alone (a runner GitHub did not start) would take the others'
+          # downloads and updates away — the latest release stays as it is.
+          for needed in dist/TrueMain-macOS-AppleSilicon.dmg dist/TrueMain-macOS-AppleSilicon.app.tar.gz dist/TrueMain-macOS-Intel.dmg dist/TrueMain-macOS-Intel.app.tar.gz dist/TrueMain-Windows-setup.exe; do
             if [ ! -f "$needed" ]; then
               echo "::error::$needed was not built: the latest release is left as it is"
               exit 1
@@ -132,16 +140,19 @@ jobs:
           # build's version, and per platform the bundle and its signature.
           base="https://github.com/$GH_REPO/releases/download/latest"
           sig() { [ -f "$1" ] && cat "$1" || true; }
-          mac_sig=$(sig dist/TrueMain-macOS.app.tar.gz.sig)
+          arm_sig=$(sig dist/TrueMain-macOS-AppleSilicon.app.tar.gz.sig)
+          intel_sig=$(sig dist/TrueMain-macOS-Intel.app.tar.gz.sig)
           win_sig=$(sig dist/TrueMain-Windows-setup.exe.sig)
           jq -n \
             --arg version "0.5.$GITHUB_RUN_NUMBER" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg notes "Build $GITHUB_SHA" \
-            --arg mac_url "$base/TrueMain-macOS.app.tar.gz" --arg mac_sig "$mac_sig" \
+            --arg arm_url "$base/TrueMain-macOS-AppleSilicon.app.tar.gz" --arg arm_sig "$arm_sig" \
+            --arg intel_url "$base/TrueMain-macOS-Intel.app.tar.gz" --arg intel_sig "$intel_sig" \
             --arg win_url "$base/TrueMain-Windows-setup.exe" --arg win_sig "$win_sig" \
             '{version: $version, notes: $notes, pub_date: $date, platforms: (
-              (if $mac_sig != "" then {"darwin-aarch64": {url: $mac_url, signature: $mac_sig}, "darwin-x86_64": {url: $mac_url, signature: $mac_sig}} else {} end)
+              (if $arm_sig != "" then {"darwin-aarch64": {url: $arm_url, signature: $arm_sig}} else {} end)
+              + (if $intel_sig != "" then {"darwin-x86_64": {url: $intel_url, signature: $intel_sig}} else {} end)
               + (if $win_sig != "" then {"windows-x86_64": {url: $win_url, signature: $win_sig}} else {} end))}' > dist/latest.json
           cat dist/latest.json
           gh release delete latest --yes || true
