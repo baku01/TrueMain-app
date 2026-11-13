@@ -24,7 +24,7 @@ defineShortcuts({
   <header data-tauri-drag-region="deep" class="app-topbar @container grid grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-3 px-4">
     <div class="flex min-w-0 items-center gap-2.5">
       <NuxtLink to="/" :aria-label="t('nav.dashboard')" class="shrink-0">
-        <AppWordmark class="text-lg" />
+        <AppWordmark class="app-wordmark text-lg" />
       </NuxtLink>
       <UButton
         v-if="updateVersion"

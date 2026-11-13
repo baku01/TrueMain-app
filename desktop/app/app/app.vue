@@ -91,7 +91,7 @@ watch(screen, (next, previous) => {
 <template>
   <UApp>
     <NuxtPage v-if="standalone" />
-    <div v-else class="app-shell flex h-screen flex-col overflow-hidden bg-default text-default">
+    <div v-else class="flex h-screen flex-col overflow-hidden bg-default text-default">
       <AppLoadingBar />
       <DataSourcePicker />
       <!-- The bar across the top, the rail down the left, the page beside it. -->

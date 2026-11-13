@@ -10,19 +10,10 @@ import { describe, expect, it } from 'vitest'
  */
 const read = (file: string) => JSON.parse(readFileSync(resolve(__dirname, '../../src-tauri', file), 'utf8'))
 
-/** The keys macOS sets apart on purpose: a window clear to the system's material behind it (vibrancy). */
-const MAC_OWN: Record<string, unknown> = { backgroundColor: '#00000000' }
-
 describe('the macOS window config', () => {
-  it('restates every key of the base window, with the same value — but those macOS sets apart', () => {
+  it('restates every key of the base window, with the same value', () => {
     const base = read('tauri.conf.json').app.windows[0] as Record<string, unknown>
     const mac = read('tauri.macos.conf.json').app.windows[0] as Record<string, unknown>
-    for (const [key, value] of Object.entries(base)) expect(mac[key], key).toEqual(key in MAC_OWN ? MAC_OWN[key] : value)
-  })
-
-  it('is transparent over the sidebar\'s material, following the window\'s focus', () => {
-    const mac = read('tauri.macos.conf.json').app.windows[0] as Record<string, unknown>
-    expect(mac.transparent).toBe(true)
-    expect(mac.windowEffects).toEqual({ effects: ['sidebar'], state: 'followsWindowActiveState' })
+    for (const [key, value] of Object.entries(base)) expect(mac[key], key).toEqual(value)
   })
 })
