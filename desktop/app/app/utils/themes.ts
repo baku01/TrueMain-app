@@ -86,6 +86,26 @@ function palette(spec: Spec): Palette {
 }
 
 /**
+ * The secondary type of the app's own light themes, read against its page as
+ * much as its panes: at Catppuccin's steps their greys came to 2.1–3.9:1 on
+ * the page, under the 4.5:1 small text needs. Each step is how far from the
+ * base toward the text: muted text 4.5:1 and dimmed 3:1 on the page, the
+ * tones above them kept in order.
+ */
+const LIGHT_TEXT = { text: 0.86, toned: 0.76, muted: 0.66, dimmed: 0.54 } as const
+/** On a pink page (Cinnamoroll's, Sakura's), deeper for the same contrast. */
+const PINK_TEXT = { text: 0.92, toned: 0.86, muted: 0.79, dimmed: 0.63 } as const
+
+function readableText(base: string, text: string, steps: { text: number, toned: number, muted: number, dimmed: number }): Record<string, string> {
+  return {
+    '--ui-text': mix(base, text, steps.text),
+    '--ui-text-toned': mix(base, text, steps.toned),
+    '--ui-text-muted': mix(base, text, steps.muted),
+    '--ui-text-dimmed': mix(base, text, steps.dimmed),
+  }
+}
+
+/**
  * Cinnamoroll's pink (#f5d6e1) where it is seen first: on the light theme the
  * frame — the side rail and the top bar (`--ui-bg-elevated`) — is the pink
  * itself, the page a paler pink under white panes, hovers and borders its
@@ -94,6 +114,7 @@ function palette(spec: Spec): Palette {
  * stays legible on it (6.8:1).
  */
 const CINNAMOROLL_LIGHT: Record<string, string> = {
+  ...readableText('#fffafc', '#4b4363', PINK_TEXT),
   '--ui-bg-elevated': '#f5d6e1',
   '--ui-bg': '#fdf0f5',
   '--ui-bg-muted': '#fae4ec',
@@ -123,6 +144,7 @@ const CINNAMOROLL_NIGHT_CSS = `& .rail-item[data-active] { background-color: #f5
  * rose for the accent that small text can carry (4.55:1 on white).
  */
 const SAKURA_LIGHT: Record<string, string> = {
+  ...readableText('#ffffff', '#3d4a66', PINK_TEXT),
   '--ui-bg-elevated': '#ffd9e4',
   '--ui-bg': '#fff0f4',
   '--ui-bg-muted': '#ffe6ee',
@@ -162,24 +184,24 @@ export const THEMES = {
   // One Dark (Atom's).
   'one-dark': { light: false, accent: 'blue', palette: palette({ base: '#282c34', mantle: '#21252b', crust: '#1b1f24', text: '#dcdfe4', red: '#e06c75', peach: '#d19a66', yellow: '#e5c07b', green: '#98c379', teal: '#56b6c2', sky: '#56b6c2', blue: '#61afef', mauve: '#c678dd', pink: '#e386c4' }) },
   // Soviet: the banner's red and gold on black, the posters' paper for type.
-  'soviet': { light: false, accent: 'red', icon: { tile: '#b3000c', mark: '#ffcc00' }, palette: palette({ base: '#1c1515', mantle: '#161010', crust: '#0f0a0a', text: '#f2e6d0', red: '#e0161f', maroon: '#a3121a', peach: '#e0672a', yellow: '#ffcc00', green: '#7f9a3a', teal: '#5f9e8f', sky: '#8fb2c2', blue: '#5b7fb5', mauve: '#b06a8a', pink: '#e07a86', rosewater: '#f2d7b0', flamingo: '#e8a98a' }) },
+  'soviet': { light: false, accent: 'red', icon: { tile: '#b3000c', mark: '#ffcc00' }, palette: palette({ base: '#211a19', mantle: '#161010', crust: '#0f0a0a', text: '#f2e6d0', red: '#e0161f', maroon: '#a3121a', peach: '#e0672a', yellow: '#ffcc00', green: '#7f9a3a', teal: '#5f9e8f', sky: '#8fb2c2', blue: '#5b7fb5', mauve: '#b06a8a', pink: '#e07a86', rosewater: '#f2d7b0', flamingo: '#e8a98a' }) },
   // Cinnamoroll: a pastel pink page (#f5d6e1) under white panes, the puppy's sky blue beside it. On the light page
   // the pink is too pale to be read (1.3:1 on white), so the accent there is its deep shade (4.65:1); the night
   // twin takes the pink itself as its accent.
   'cinnamoroll': { light: true, accent: 'pink', pair: 'cinnamoroll-night', icon: { image: cinnamorollVampire }, tokens: CINNAMOROLL_LIGHT, css: CINNAMOROLL_CSS, palette: palette({ base: '#fffafc', mantle: '#fcf0f5', crust: '#f5d6e1', text: '#4b4363', red: '#d04a6c', peach: '#d9773f', yellow: '#c08a1e', green: '#3f9a72', teal: '#2f9a9c', sky: '#3a9fd0', blue: '#3d84c7', mauve: '#9a5fb5', pink: '#b84d78', rosewater: '#d98aa7', flamingo: '#d97893', lavender: '#7d7fd6' }) },
-  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { image: cinnamorollWitch }, tokens: CINNAMOROLL_NIGHT, css: CINNAMOROLL_NIGHT_CSS, palette: palette({ base: '#2b2433', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
+  'cinnamoroll-night': { light: false, accent: 'pink', pair: 'cinnamoroll', icon: { image: cinnamorollWitch }, tokens: CINNAMOROLL_NIGHT, css: CINNAMOROLL_NIGHT_CSS, palette: palette({ base: '#302937', mantle: '#241e2b', crust: '#1d1823', text: '#f7eef3', red: '#f28aa5', peach: '#f6b89a', yellow: '#f6dc9a', green: '#a8dcc0', teal: '#9fdcdc', sky: '#a8d8f0', blue: '#8ec5ec', mauve: '#d6b3ec', pink: '#f5d6e1', rosewater: '#f5d6e1', flamingo: '#f0bfd0', lavender: '#c6c8f5' }) },
   'cinnamoroll-sakura': { light: true, accent: 'pink', icon: { image: cinnamorollVampire }, tokens: SAKURA_LIGHT, css: SAKURA_CSS, palette: palette({ base: '#ffffff', mantle: '#fff0f4', crust: '#ffd9e4', text: '#3d4a66', red: '#d6435e', peach: '#e07a4f', yellow: '#c08a1e', green: '#3f9a6f', teal: '#2a9d9a', sky: '#3b9ad6', blue: '#2f7fc2', mauve: '#9a6fd0', pink: '#cf3f74', rosewater: '#f4a3bd', flamingo: '#ec8fae', lavender: '#7f8ce0' }) },
   // K/DA FIRESTARTER: the cover's wine black for the page, its title's pale pink for type, its neon magenta for the
   // accent — lifted from the cover's #d41263 (3.7:1 on the page) to #ff4f93 (6.2:1) so small text can carry it —, its
   // crimson and rose beside it. The light twin: the title's pink for the page, the cover's wine for type, the magenta
   // deepened to #c2105a (5.6:1).
-  'kda-firestarter': { light: false, accent: 'pink', pair: 'kda-firestarter-light', icon: { image: kdaFirestarter }, palette: palette({ base: '#1f070e', mantle: '#18050b', crust: '#110308', text: '#fad7e0', red: '#ff5a6e', maroon: '#a3194d', peach: '#ff8a6b', yellow: '#ffc56b', green: '#5fd6a0', teal: '#4fd0cc', sky: '#7cc4f2', blue: '#6f9cff', mauve: '#c77dff', pink: '#ff4f93', flamingo: '#d26a8e', rosewater: '#e29eb3', lavender: '#e3a6ff' }) },
-  'kda-firestarter-light': { light: true, accent: 'pink', pair: 'kda-firestarter', icon: { image: kdaFirestarter }, palette: palette({ base: '#fff5f8', mantle: '#fde8ef', crust: '#fad7e0', text: '#3a0a18', red: '#c8183e', maroon: '#8f0c31', peach: '#b4461f', yellow: '#8f6200', green: '#1a7a4f', teal: '#137f7c', sky: '#1c6ea6', blue: '#3a5fd0', mauve: '#8a3fc4', pink: '#c2105a', flamingo: '#b8476b', rosewater: '#d26a8e', lavender: '#7a5ad0' }) },
+  'kda-firestarter': { light: false, accent: 'pink', pair: 'kda-firestarter-light', icon: { image: kdaFirestarter }, palette: palette({ base: '#250d14', mantle: '#18050b', crust: '#110308', text: '#fad7e0', red: '#ff5a6e', maroon: '#a3194d', peach: '#ff8a6b', yellow: '#ffc56b', green: '#5fd6a0', teal: '#4fd0cc', sky: '#7cc4f2', blue: '#6f9cff', mauve: '#c77dff', pink: '#ff4f93', flamingo: '#d26a8e', rosewater: '#e29eb3', lavender: '#e3a6ff' }) },
+  'kda-firestarter-light': { light: true, accent: 'pink', pair: 'kda-firestarter', icon: { image: kdaFirestarter }, tokens: readableText('#fff5f8', '#3a0a18', LIGHT_TEXT), palette: palette({ base: '#fff5f8', mantle: '#fde8ef', crust: '#fad7e0', text: '#3a0a18', red: '#c8183e', maroon: '#8f0c31', peach: '#b4461f', yellow: '#8f6200', green: '#1a7a4f', teal: '#137f7c', sky: '#1c6ea6', blue: '#3a5fd0', mauve: '#8a3fc4', pink: '#c2105a', flamingo: '#b8476b', rosewater: '#d26a8e', lavender: '#7a5ad0' }) },
   // Christmas: the night's navy behind Kayn for the page, Santa's hat for the accent (its #d55b50 lit to #ef6a5f, 5.5:1
   // on the page), the fur's white for type, a Christmas green and the ornaments' gold beside them. The light twin
   // (Snow): snow for the page, the navy for type, the hat's red deepened to #c0392b (5.2:1).
   'christmas': { light: false, accent: 'red', pair: 'christmas-light', icon: { image: christmasKayn }, palette: palette({ base: '#141c37', mantle: '#101321', crust: '#0b0e1a', text: '#ecebee', red: '#ef6a5f', maroon: '#a62f2f', peach: '#f0935f', yellow: '#f2c14e', green: '#5cc785', teal: '#4fb8a8', sky: '#8fbde6', blue: '#5b8fd6', mauve: '#a98bd6', pink: '#ec8fa6', rosewater: '#f3e9e4', flamingo: '#e8a49a', lavender: '#b9c3f0' }) },
-  'christmas-light': { light: true, accent: 'red', pair: 'christmas', icon: { image: christmasKayn }, palette: palette({ base: '#f7f9fc', mantle: '#eef2f8', crust: '#e2e8f2', text: '#141c37', red: '#c0392b', maroon: '#8e2a26', peach: '#b04d18', yellow: '#8f6200', green: '#1e7d45', teal: '#167a70', sky: '#2a6fae', blue: '#2b4c9a', mauve: '#6f4fb0', pink: '#b8406a', rosewater: '#c58a7f', flamingo: '#c06a5f', lavender: '#5a6ac8' }) },
+  'christmas-light': { light: true, accent: 'red', pair: 'christmas', icon: { image: christmasKayn }, tokens: readableText('#f7f9fc', '#141c37', LIGHT_TEXT), palette: palette({ base: '#f7f9fc', mantle: '#eef2f8', crust: '#e2e8f2', text: '#141c37', red: '#c0392b', maroon: '#8e2a26', peach: '#b04d18', yellow: '#8f6200', green: '#1e7d45', teal: '#167a70', sky: '#2a6fae', blue: '#2b4c9a', mauve: '#6f4fb0', pink: '#b8406a', rosewater: '#c58a7f', flamingo: '#c06a5f', lavender: '#5a6ac8' }) },
 } satisfies Record<string, ThemeDef>
 
 export type PaletteTheme = keyof typeof THEMES
