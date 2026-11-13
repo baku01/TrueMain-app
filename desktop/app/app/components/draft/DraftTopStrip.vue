@@ -64,11 +64,12 @@ const urgent = computed(() => props.secondsLeft > 0 && props.secondsLeft <= 10)
             :class="urgent && 'text-primary! drop-shadow-[0_0_10px_var(--color-rosegold-500)]'"
           >{{ secondsLeft }}</span>
         </div>
+        <!-- The bar slides rather than grows (`transform`, the GPU's work): the same look, no layout every frame. -->
         <div class="h-1 overflow-hidden rounded-full bg-accented">
           <div
-            class="h-full rounded-full transition-[width] duration-1000 ease-linear"
+            class="h-full w-full rounded-full transition-transform duration-1000 ease-linear will-change-transform"
             :class="urgent ? 'bg-primary' : 'bg-ink-300'"
-            :style="{ width: `${progress * 100}%` }"
+            :style="{ transform: `translateX(${(progress - 1) * 100}%)` }"
           />
         </div>
       </div>

@@ -51,10 +51,11 @@ const progress = computed(() => (props.total && props.total > 0 ? Math.min(100, 
       </div>
     </div>
     <div v-if="progress !== null" class="h-0.5 overflow-hidden rounded-full bg-white/8" aria-hidden="true">
+      <!-- The bar slides rather than grows (`transform`, the GPU's work): the same look, no layout every frame over the game. -->
       <span
-        class="block h-full rounded-full transition-[width] duration-700 ease-[var(--tm-ease)]"
+        class="block h-full w-full rounded-full transition-transform duration-700 ease-[var(--tm-ease)] will-change-transform"
         :class="ready ? 'bg-stat-gold shadow-[0_0_6px] shadow-stat-gold/70' : 'bg-stat-gold/55'"
-        :style="{ width: `${progress}%` }"
+        :style="{ transform: `translateX(${progress - 100}%)` }"
       />
     </div>
   </div>
