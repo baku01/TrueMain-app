@@ -3,7 +3,7 @@ import type { AbilityData } from '~/utils/ability-data'
 import { getActiveLocale } from '#common/utils/i18n'
 import AbilityClip from '~/components/Champion/AbilityClip.vue'
 import ChampionInsights from '~/components/Champion/ChampionInsights.vue'
-import { perRank, readAbilities } from '~/utils/ability-data'
+import { perRank, quickAbilities, readAbilities } from '~/utils/ability-data'
 import { warmClips } from '~/utils/ability-clips'
 
 /**
@@ -28,13 +28,13 @@ const status = ref<'pending' | 'ready' | 'error'>('pending')
 watch(() => props.championId, async (id) => {
   status.value = 'pending'
   abilities.value = []
+  // Every clip of the tab starts downloading now, the one on screen first: they do not wait on the game data.
+  warmClips(id, ['Q', 'W', 'E', 'R', 'P'])
   try {
     const read = await readAbilities(id, getActiveLocale().startsWith('pt') ? 'pt' : 'en')
     if (id !== props.championId) return
     abilities.value = read
     status.value = 'ready'
-    // Every clip of the tab starts downloading now, the one on screen first.
-    warmClips(id, ['Q', 'W', 'E', 'R', 'P'])
   }
   catch {
     if (id === props.championId) status.value = 'error'
@@ -43,23 +43,26 @@ watch(() => props.championId, async (id) => {
 
 const active = ref<AbilityData['key']>('Q')
 watch(() => props.championId, () => (active.value = 'Q'))
-const current = computed(() => abilities.value.find(entry => entry.key === active.value) ?? abilities.value[0] ?? null)
+/** The game data's abilities once read; Data Dragon's until then, so the clips and texts show at once (`quickAbilities`). */
+const shown = computed(() => (abilities.value.length ? abilities.value : quickAbilities(championStatic(props.championId))))
+const view = computed(() => (shown.value.length ? 'ready' : status.value))
+const current = computed(() => shown.value.find(entry => entry.key === active.value) ?? shown.value[0] ?? null)
 const iconOf = (key: string) => championStatic(props.championId)?.championSpells[key]?.iconUrl ?? null
 </script>
 
 <template>
   <!-- One screen: the abilities and the insights on the left, the picked ability on the right; a column that runs long scrolls on its own, never the page. -->
   <div class="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
-    <div v-if="status === 'pending'" aria-busy="true" class="contents">
+    <div v-if="view === 'pending'" aria-busy="true" class="contents">
       <div class="space-y-2"><USkeleton v-for="row in 5" :key="row" class="h-16 w-full rounded-xl" /></div>
       <USkeleton class="h-96 w-full rounded-2xl" />
     </div>
-    <p v-else-if="status === 'error'" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('abilities.failed') }}</p>
+    <p v-else-if="view === 'error'" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('abilities.failed') }}</p>
 
     <template v-else>
       <div class="min-h-0 lg:overflow-y-auto">
       <ul class="space-y-1.5" role="listbox" :aria-label="t('abilities.tab')">
-        <li v-for="entry in abilities" :key="entry.key">
+        <li v-for="entry in shown" :key="entry.key">
           <button
             type="button"
             role="option"

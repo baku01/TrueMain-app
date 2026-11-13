@@ -1,3 +1,4 @@
+import type { ChampionStaticData } from '#shared/types/static-data'
 import { championTraits } from '~/utils/sources/champions'
 /**
  * A champion's abilities with every figure the game shows, read from
@@ -302,6 +303,35 @@ export function fillDescription(source: string, values: Map<string, number[]>, c
 }
 
 // ─── Reading ────────────────────────────────────────────────────────────────
+
+/**
+ * The abilities as Data Dragon's champion file has them (`championStatic`):
+ * Q, W, E and R with their description, cooldown, cost and range per rank, no
+ * passive — what is shown at once, the clips with them, while Community
+ * Dragon's game data, whose figures fill the descriptions, is read (on
+ * 2026-11-13 it answered every file in 20 s).
+ */
+export function quickAbilities(statics: ChampionStaticData | null | undefined): AbilityData[] {
+  if (!statics) return []
+  const numbers = (burn?: string) => (burn ?? '').split('/').map(Number).filter(value => Number.isFinite(value))
+  return (['Q', 'W', 'E', 'R'] as const).flatMap((key): AbilityData[] => {
+    const spell = statics.championSpells[key]
+    if (!spell) return []
+    const cooldown = numbers(spell.cooldownBurn)
+    const cost = numbers(spell.costBurn)
+    return [{
+      key,
+      name: spell.name,
+      html: safeDescription(spell.description ?? ''),
+      cooldown,
+      cost,
+      range: numbers(spell.rangeBurn),
+      maxRank: Math.max(cooldown.length, 1),
+      ammo: null,
+      resource: cost.some(value => value > 0) ? statics.partype : null,
+    }]
+  })
+}
 
 const reads = new Map<string, Promise<AbilityData[]>>()
 
