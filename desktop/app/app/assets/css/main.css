@@ -875,3 +875,21 @@ a[href] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/*
+ * macOS: the window is the system's own material — the sidebar's vibrancy
+ * (`windowEffects` in `tauri.macos.conf.json`), blurred by the window server
+ * on the GPU from what lies behind the window. The rail and the top bar let
+ * it through as Finder's and Mail's sidebars do; the page itself stays opaque,
+ * for its theme's colours and for reading. Hardware acceleration off
+ * (`reduce-effects`) keeps every part opaque.
+ */
+:root.platform-macos.in-tauri:not(.reduce-effects),
+:root.platform-macos.in-tauri:not(.reduce-effects) body,
+:root.platform-macos.in-tauri:not(.reduce-effects) .app-shell {
+  background: transparent;
+}
+:root.platform-macos.in-tauri:not(.reduce-effects) .app-nav,
+:root.platform-macos.in-tauri:not(.reduce-effects) .app-topbar {
+  background-color: color-mix(in oklch, var(--ui-bg-elevated) 62%, transparent);
+}

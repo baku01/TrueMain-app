@@ -79,7 +79,7 @@ const compact = computed(() => folded.value || narrow.value)
 </script>
 
 <template>
-  <nav class="flex flex-col border-r border-default bg-elevated transition-[width] duration-200" :class="compact ? 'w-14' : 'w-52'" :aria-label="t('nav.truemain')">
+  <nav class="app-nav flex flex-col border-r border-default bg-elevated transition-[width] duration-200" :class="compact ? 'w-14' : 'w-52'" :aria-label="t('nav.truemain')">
     <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-2 py-3 [scrollbar-width:none] [@media(max-height:800px)]:space-y-1.5 [@media(max-height:800px)]:py-2">
       <section v-for="(group, index) in groups" :key="index" :aria-label="group.label ?? undefined">
         <h2 v-if="group.label && !compact" class="truncate px-2.5 pb-1 stat-label">{{ group.label }}</h2>
