@@ -51,6 +51,19 @@ const { bans, pending: banPending, error: banError } = useDraftBans(draft, laneP
 
 const enemyLanes = computed(() => recommendation.value?.enemyLanes ?? [])
 const { slots, pinned, hasCorrections, swap, reset } = useLaneAssignment(enemyLanes)
+/**
+ * Our lane opponent by hand: the guess stands until the player picks another
+ * enemy, which is moved onto our lane — the same pinned swap as the enemy
+ * column's, so the other lanes re-solve around it.
+ */
+const opponentOpen = ref(false)
+const { nameOf } = useChampionStatics()
+function chooseOpponent(championId: number) {
+  const from = slots.value.find(slot => slot.championId === championId)?.lane
+  const to = props.draft.myPosition
+  if (from && to) swap(from, to as typeof from)
+  opponentOpen.value = false
+}
 watch(pinned, value => (pinnedLanes.value = value), { deep: true })
 
 // ─── The two teams ──────────────────────────────────────────────────────────
@@ -274,8 +287,37 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
               <ChampionPortrait v-if="duel.championId" :champion-id="duel.championId" size="sm" class="size-6! rounded-md! ring-1 ring-ally/60" />
               <span v-else class="size-6 rounded-md border border-dashed border-default" />
               <span class="stat-label">{{ t('draft.duel.vs') }}</span>
-              <ChampionPortrait v-if="duel.opponentId" :champion-id="duel.opponentId" size="sm" class="size-6! rounded-md! ring-1 ring-enemy/60" />
-              <span v-else class="size-6 rounded-md border border-dashed border-default" />
+              <!-- The guessed opponent, changeable: any enemy put on our lane by hand. -->
+              <UPopover v-if="recommendation !== null && draft.enemyChampions.length" v-model:open="opponentOpen" :content="{ align: 'end', sideOffset: 6 }">
+                <button type="button" class="flex items-center gap-0.5 rounded-md hover:bg-accented/50" :title="t('draft.duel.pickOpponent')" :aria-label="t('draft.duel.pickOpponent')">
+                  <ChampionPortrait v-if="duel.opponentId" :champion-id="duel.opponentId" size="sm" class="size-6! rounded-md! ring-1 ring-enemy/60" />
+                  <span v-else class="size-6 rounded-md border border-dashed border-default" />
+                  <UIcon name="i-lucide-chevron-down" class="size-3 text-dimmed" />
+                </button>
+                <template #content>
+                  <div class="flex flex-col gap-1 p-2">
+                    <p class="stat-label px-1">{{ t('draft.duel.pickOpponent') }}</p>
+                    <div class="flex gap-1.5">
+                      <button
+                        v-for="id in draft.enemyChampions"
+                        :key="id"
+                        type="button"
+                        class="rounded-md p-0.5 transition-colors hover:bg-accented"
+                        :class="id === duel.opponentId ? 'ring-2 ring-enemy/70' : ''"
+                        :title="nameOf(id)"
+                        :aria-label="nameOf(id)"
+                        @click="chooseOpponent(id)"
+                      >
+                        <ChampionPortrait :champion-id="id" size="sm" class="size-9! rounded-md!" />
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </UPopover>
+              <template v-else>
+                <ChampionPortrait v-if="duel.opponentId" :champion-id="duel.opponentId" size="sm" class="size-6! rounded-md! ring-1 ring-enemy/60" />
+                <span v-else class="size-6 rounded-md border border-dashed border-default" />
+              </template>
               <span v-if="build && build.championId === duel.championId && build.lane?.winRate != null" class="text-xs font-semibold tabular-nums text-highlighted" :title="t('draft.duel.laneWinRate')">{{ `${(build.lane.winRate * 100).toFixed(1)}%` }}</span>
             </div>
 
