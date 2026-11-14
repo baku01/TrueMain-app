@@ -1,4 +1,6 @@
+import type { ChampionMatchupEntry, ChampionMatchups } from '#shared/types/champions/matchups'
 import type { BuildOptions, Measure, SlotGroup } from '~/utils/sources/model'
+import { wilson } from '~/utils/blitz/stats'
 import { questRewardsOf } from '~/utils/support-quest'
 
 /**
@@ -77,4 +79,29 @@ export function combineOptions(first: BuildOptions | null, second: BuildOptions 
         })
       : undefined,
   }
+}
+
+/**
+ * Two sources' matchups of one champion on one lane, pooled opponent by
+ * opponent: games and wins added, the win rate and its Wilson interval read
+ * from them (lolalytics gives no interval), the play rate weighed by games;
+ * either alone where the other measured none.
+ */
+export function combineMatchups(championId: number, position: string, answers: (ChampionMatchups | null)[]): ChampionMatchups {
+  const pooled = new Map<number, ChampionMatchupEntry & { played: number }>()
+  for (const entry of answers.flatMap(answer => answer?.matchups ?? [])) {
+    const known = pooled.get(entry.opponentChampionId)
+    if (!known) {
+      pooled.set(entry.opponentChampionId, { ...entry, played: entry.playRate * entry.games })
+      continue
+    }
+    known.games += entry.games
+    known.wins += entry.wins
+    known.played += entry.playRate * entry.games
+  }
+  const matchups = [...pooled.values()].map(({ played, ...entry }) => {
+    const [low, high] = wilson(entry.wins, entry.games)
+    return { ...entry, winRate: entry.games ? entry.wins / entry.games : 0, playRate: entry.games ? played / entry.games : 0, winRateLowerBound: low, winRateUpperBound: high }
+  })
+  return { championId, position, patch: answers.find(answer => answer?.patch)?.patch ?? null, matchups }
 }

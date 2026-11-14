@@ -3,13 +3,16 @@ import type { TeamRow } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { EnemyCounter } from '~/utils/draft-counters'
 import { enemyCounters } from '~/utils/draft-counters'
+import { combineMatchups } from '~/utils/sources/combined'
+import { lolalyticsMatchups } from '~/utils/sources/lolalytics'
+import { matchupsFromBlitz } from '~/utils/blitz/stats'
 
 /**
  * Each enemy's counters on the lane it holds, keyed by the enemy's champion id:
- * its matchups are asked of the active source (TrueMain or the one Settings
- * picked) once per champion, lane and bracket and kept for the session, and the
- * counters are re-read from them as champions are picked and banned. An enemy
- * with no lane yet has none.
+ * its matchups read from lolalytics and Blitz pooled (`combineMatchups`),
+ * whatever source Settings picked — not TrueMain's — once per champion, lane
+ * and bracket and kept for the session, and the counters re-read from them as
+ * champions are picked and banned. An enemy with no lane yet has none.
  */
 export function useEnemyCounters(
   draft: Ref<DraftState>,
@@ -28,9 +31,12 @@ export function useEnemyCounters(
     for (const { championId, key, lane } of current) {
       if (key in answers.value) continue
       answers.value = { ...answers.value, [key]: null }
-      apiGet<ChampionMatchups>(`/champions/${championId}/matchups`, { position: lane, eloBracket: eloBracket.value ?? undefined }, { background: true })
-        .then(answer => (answers.value = { ...answers.value, [key]: answer }))
-        .catch(() => {})
+      const query = { position: lane, eloBracket: eloBracket.value ?? undefined }
+      void Promise.all([lolalyticsMatchups(championId, query).catch(() => null), matchupsFromBlitz(championId, query).catch(() => null)])
+        .then(([lolalytics, blitz]) => {
+          if (!lolalytics && !blitz) return
+          answers.value = { ...answers.value, [key]: combineMatchups(championId, lane, [lolalytics, blitz]) }
+        })
     }
   }, { immediate: true })
 
