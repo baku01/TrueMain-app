@@ -1,8 +1,13 @@
 import type { ChampionBuild, ChampionBuildResponse } from '~/types/build'
 import type { BuildOptions } from '~/utils/sources/model'
 import type { BlitzBuildDoc } from '~/utils/blitz/builds'
-import { buildsFromBlitz, most, readBlitzBuildRows } from '~/utils/blitz/builds'
+import type { PlaceMeasures } from '~/utils/item-set'
+import { buildsFromBlitz, isBoots, most, readBlitzBuildRows } from '~/utils/blitz/builds'
+import { bootsOptions } from '~/utils/blitz/options'
 import { blitzOptionsOf } from '~/utils/sources/blitz'
+import { measuredPlaces } from '~/utils/item-set'
+import { INVENTORY } from '~/utils/jev-build'
+import { isQuestReward } from '~/utils/support-quest'
 
 /**
  * Blitz's builds named as Blitz names them. Its lane answer
@@ -23,10 +28,33 @@ export function playstyleName(doc: BlitzBuildDoc): string | null {
   return label.length ? label.join(' · ') : null
 }
 
-/** One playstyle's build: its document's most played core path, with its own runes, spells, starter and skills, under its name. */
+/**
+ * What a playstyle's players buy at each place of its builds, read from its
+ * own document: the boots, and each place of its cores — boots and a
+ * support's quest reward left out, as its builds' paths leave them. A
+ * playstyle's item set offers these at each place, not the whole lane's: a
+ * tank's choices, not a bruiser's.
+ */
+export function playstyleMeasures(doc: BlitzBuildDoc): PlaceMeasures {
+  const places = Array.from({ length: INVENTORY }, () => new Map<number, number>())
+  for (const core of doc.coreItems ?? []) {
+    core.itemIds.split(',').map(Number).filter(id => !isBoots(id) && !isQuestReward(id)).forEach((id, at) => {
+      places[at]?.set(id, (places[at]!.get(id) ?? 0) + core.games)
+    })
+  }
+  const boots = new Map(bootsOptions(doc, Number.POSITIVE_INFINITY).map(option => [option.itemIds[0]!, option.games]))
+  return { boots, places }
+}
+
+/** A playstyle's build with its place blocks measured on its own document (`playstyleMeasures`). */
+function withOwnPlaces(build: ChampionBuild, measures: PlaceMeasures): ChampionBuild {
+  return { ...build, places: measuredPlaces(build.core.itemPath?.itemIds ?? [], build.core.boots?.itemIds ?? [], measures) }
+}
+
+/** One playstyle's build: its document's most played core path, with its own runes, spells, starter, skills and place blocks, under its name. */
 function playstyleBuild(championId: number, position: string, doc: BlitzBuildDoc): ChampionBuild | null {
   const build = buildsFromBlitz(championId, position, doc).builds[0]
-  return build ? { ...build, name: playstyleName(doc) } : null
+  return build ? { ...withOwnPlaces(build, playstyleMeasures(doc)), name: playstyleName(doc) } : null
 }
 
 /**
@@ -40,8 +68,10 @@ export function buildsFromPlaystyles(championId: number, position: string, docs:
   if (sorted.length < 2) {
     const answer = buildsFromBlitz(championId, position, sorted[0])
     const name = named && sorted[0] ? playstyleName(sorted[0]) : null
+    if (!name) return answer
     // One playstyle's paths share its name: the most played carries it, the others stay unnamed rather than read alike.
-    return name ? { ...answer, builds: answer.builds.map((build, index) => (index === 0 ? { ...build, name } : build)) } : answer
+    const measures = playstyleMeasures(sorted[0]!)
+    return { ...answer, builds: answer.builds.map((build, index) => ({ ...withOwnPlaces(build, measures), ...(index === 0 ? { name } : {}) })) }
   }
   const builds = sorted.flatMap(doc => playstyleBuild(championId, position, doc) ?? [])
   return { championId, patch: sorted[0]!.patch ?? null, position, totalGames: sorted.reduce((sum, doc) => sum + doc.games, 0), builds }

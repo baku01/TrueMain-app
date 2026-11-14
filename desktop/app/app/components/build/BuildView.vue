@@ -54,6 +54,7 @@ const props = defineProps<{
 /** The kit picked in the list, shown instead of a build; `null` while a build or a main is. */
 const kitId = defineModel<string | null>('kitId', { default: null })
 const prosOpen = ref(false)
+const stylesOpen = ref(false)
 const kitShown = computed(() => props.kits?.find(kit => kit.id === kitId.value) ?? null)
 
 const { t } = useT()
@@ -103,13 +104,17 @@ const shown = computed(() => {
   if (selected.value === 'pro' && pro.value) return pro.value.option
   return options.value.find(option => option.key === (selected.value ?? defaultKey.value)) ?? options.value[0] ?? null
 })
+/** Blitz's playstyles of the lane (Bruiser, Tank…), a list a click away in champion select; the other rows are the header's buttons. */
+const styleOptions = computed(() => options.value.filter(option => option.key.startsWith('style-')))
+const headerOptions = computed(() => options.value.filter(option => !option.key.startsWith('style-')).slice(0, 6))
+const styleShown = computed(() => (!kitShown.value && shown.value?.key.startsWith('style-') ? shown.value : null))
 // An import of the build on screen keeps it as the previous build; a kit is the player's own already.
 provide(REMEMBER_BUILD, () => {
   if (!kitShown.value) remember(shown.value)
 })
 /** A row named after a Blitz playstyle opens the panel on that playstyle's options. */
 const { preset: panelPreset, ready: panelReady } = usePlaystylePreset(toRef(props, 'championId'), toRef(props, 'position'), shown)
-const panelShown = computed(() => !!shown.value && ((external && shown.value.key.startsWith('lane-')) || (shown.value.key.startsWith('otp-') && !!panelPreset.value)))
+const panelShown = computed(() => !!shown.value && ((external && shown.value.key.startsWith('lane-')) || ((shown.value.key.startsWith('otp-') || shown.value.key.startsWith('style-')) && !!panelPreset.value)))
 const { nameOf } = useChampionStatics()
 /** What an import is named after: the champion, against the draft's lane opponent when there is one (`TrueMain Aatrox vs Akali`). */
 const importName = computed(() => {
@@ -143,6 +148,8 @@ function choiceOf(option: BuildOption, title: string): ImportChoice {
     situational: situationalFromTree(option.buildTree, path),
     draft: draftItemBlocks.value,
     questReward: option.core.questReward?.itemIds,
+    // A playstyle's own place blocks; the lane's measures stand in for any other build (`withMeasuredPlaces`).
+    places: option.places,
   }
 }
 function titleOf(option: BuildOption): string {
@@ -179,7 +186,7 @@ const emptyMessage = computed(() => t('build.view.none'))
       <div class="min-w-48"><slot name="header" /></div>
       <div class="flex flex-wrap gap-1.5">
         <button
-          v-for="option in options.slice(0, 6)"
+          v-for="option in headerOptions"
           :key="option.key"
           type="button"
           class="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold tabular-nums ring-1 ring-inset transition-colors"
@@ -207,6 +214,38 @@ const emptyMessage = computed(() => t('build.view.none'))
           <UIcon name="i-lucide-package" class="size-4" />{{ kit.name }}
         </button>
       </div>
+      <!-- Blitz's playstyles of the lane, whatever the source: the one picked takes the card, and the item set its import writes. -->
+      <UPopover v-if="styleOptions.length" v-model:open="stylesOpen" :content="{ align: 'start' }">
+        <button
+          type="button"
+          class="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ring-1 ring-inset transition-colors"
+          :class="styleShown ? 'bg-accented/70 text-highlighted ring-primary/50' : 'text-muted ring-default hover:text-highlighted'"
+          :title="t('buildx.stylesHint')"
+        >
+          <UIcon name="i-lucide-shapes" class="size-4 text-primary" />
+          <span class="max-w-28 truncate">{{ styleShown?.name ?? t('buildx.styles') }}</span>
+          <UIcon name="i-lucide-chevron-down" class="size-3.5" />
+        </button>
+        <template #content>
+          <div class="flex w-72 flex-col gap-0.5 p-2">
+            <p class="stat-label px-1 pb-1">{{ t('buildx.styles') }}</p>
+            <button
+              v-for="option in styleOptions"
+              :key="option.key"
+              type="button"
+              class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accented/60"
+              :class="styleShown?.key === option.key ? 'bg-accented/70 text-highlighted' : 'text-default'"
+              @click="pick(option.key); stylesOpen = false"
+            >
+              <GameTooltipPerkIcon v-if="option.keystoneId && runeTree" :perk="runeTree.perks[option.keystoneId] ?? null" :width="20" :height="20" class="size-5 rounded-full bg-black/30" />
+              <GameTooltipItemIcon :item="items[option.firstItemId] ?? null" :width="20" :height="20" class="rounded" />
+              <span class="min-w-0 flex-1 truncate font-semibold">{{ option.name }}</span>
+              <span class="tabular-nums text-muted">{{ option.games.toLocaleString() }}</span>
+              <span v-if="option.winRate !== null" class="w-12 text-right font-semibold tabular-nums text-data-good">{{ formatPercentage(option.winRate, 1) }}</span>
+            </button>
+          </div>
+        </template>
+      </UPopover>
       <!-- The pros' builds: a list a click away, the one picked shown in this card. -->
       <UPopover v-if="blitz || external" v-model:open="prosOpen" :content="{ align: 'start' }">
         <button

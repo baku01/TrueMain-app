@@ -14,8 +14,9 @@ import { positionLabel } from '#common/utils/positions'
  * under its own heading ("vs Zed"), then the builds played in that matchup
  * when the source measures them (Blitz), then the champion's lane builds.
  * The player's previous build on the champion and lane heads the list
- * (`useBuildOptions`), and the one-tricks' builds close it, read from Blitz
- * whatever the source — its badge says so. A build the source names by its
+ * (`useBuildOptions`), and Blitz's playstyles of the lane (Bruiser, Tank…)
+ * and the one-tricks' builds close it, read from Blitz whatever the source —
+ * their badge says so. A build the source names by its
  * playstyle (Blitz's Bruiser, Lethality…) carries the name on its row. On a
  * lane the champion is rarely played on, a note says so and the main lane's
  * builds follow the lane's (`useBuildOptions`' `thinLane`).
@@ -47,6 +48,7 @@ const draftOption = computed(() => props.options.find(option => option.key === '
 const previousOption = computed(() => props.options.find(option => option.key === 'previous') ?? null)
 const versusOptions = computed(() => props.options.filter(option => option.key.startsWith('versus-')))
 const otpOptions = computed(() => props.options.filter(option => option.key.startsWith('otp-')))
+const styleOptions = computed(() => props.options.filter(option => option.key.startsWith('style-')))
 const laneOptions = computed(() => props.options.filter(option => option.key.startsWith('lane-')))
 const mainOptions = computed(() => props.options.filter(option => option.key.startsWith('main-')))
 
@@ -66,6 +68,7 @@ const groups = computed<Group[]>(() => [
     : []),
   ...(laneOptions.value.length ? [{ label: draftOption.value || versusOptions.value.length ? t('build.list.onLane') : t('build.list.builds'), opponent: null, versus: '', options: laneOptions.value }] : []),
   ...(mainOptions.value.length && props.thinLane ? [{ label: t('buildx.main', { lane: positionLabel(props.thinLane.main) ?? props.thinLane.main }), opponent: null, versus: '', icon: 'i-lucide-route', options: mainOptions.value }] : []),
+  ...(styleOptions.value.length ? [{ label: t('buildx.styles'), opponent: null, versus: '', icon: 'i-lucide-shapes', badge: 'Blitz', options: styleOptions.value }] : []),
   ...(otpOptions.value.length ? [{ label: t('buildx.otp'), opponent: null, versus: '', icon: 'i-lucide-crosshair', badge: 'Blitz', options: otpOptions.value }] : []),
 ])
 </script>

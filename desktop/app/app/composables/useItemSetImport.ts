@@ -83,7 +83,7 @@ export function useItemSetImport() {
         const championKey = champions.value.get(championId)?.alias
         if (!championKey) throw new Error(EMPTY_BUILD)
         const orders = position ? await readBlitzBuildDoc(championId, position).then(doc => doc?.itemOrders ?? null).catch(() => null) : null
-        // A Jev build brings its places from its slots; any other, the lane's measures at each place of its path.
+        // A Jev build brings its places from its slots, a playstyle's from its own games; any other, the lane's measures at each place of its path.
         const measures = !build.places && position ? await lanePlaces(championId, position).catch(() => null) : null
         const set = recommendedSet(withMeasuredPlaces({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft, places: build.places, questReward: build.questReward }, measures), championKey, blockTitles(), items.value, orders)
         const { invoke } = await import('@tauri-apps/api/core')
@@ -115,7 +115,9 @@ export function useItemSetImport() {
       return write(subject.championId, subject.champion, subject.position, async () => ({ starter: keep(starter), boots: keep(boots), core: keep(core), situational: keep(rest), bootsAt, draft: draft?.map(block => ({ ...block, items: keep(block.items) })), places: places?.map(entry => ({ ...entry, items: keep(entry.items) })), questReward: questReward && keep(questReward) }))
     }
     const draft = subject.draft?.map(block => ({ ...block, items: block.items.filter(known) }))
-    return write(subject.championId, subject.champion, subject.position, async () => ({ ...itemSetBuild(subject.build.core, await situational(subject), known), draft }))
+    // A playstyle's build brings its own place blocks; any other, the lane's measures (`write`).
+    const places = subject.build.places?.map(entry => ({ ...entry, items: entry.items.filter(known) }))
+    return write(subject.championId, subject.champion, subject.position, async () => ({ ...itemSetBuild(subject.build.core, await situational(subject), known), draft, places }))
   }
 
   onScopeDispose(() => clearTimeout(doneTimer))

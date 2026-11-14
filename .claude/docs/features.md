@@ -484,8 +484,12 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   the other blocks, item by item, a block "Item 3 — opções" (`PlaceItemBlock`): the build's item at that place and up
   to three others the lane's players buy there (`measuredPlaces` over `lanePlaces`: lolalytics' item1 to item5 and
   Blitz's item slots pooled, each in 30 games and 1 % of the place's games, most played first, none the build bought
-  earlier), the boots' options joining the boots block; a Jev build brings its own from its slots, a kit's set has
-  none, a set holds 16 blocks at most. The draft's automatic import writes the same blocks. One set,
+  earlier), the boots' options joining the boots block; a Jev build brings its own from its slots, a Blitz
+  playstyle's build its own document's (`playstyleMeasures`: a tank's choices, not the lane's bruisers'), a kit's set has
+  none, a set holds 16 blocks at most. Blitz's playstyles of the lane (Bruiser, Tank, Lethality…, `readBlitzBuild`,
+  only when Blitz answers two documents or more) are rows of every build view whatever the source — the list's
+  "Build styles" group, champion select's "Build styles" menu beside "Pro players" —, so the one picked is the build
+  shown and the item set imported; while Blitz is the source they are the lane's rows already. The draft's automatic import writes the same blocks. One set,
   replaced in place, moved to the next champion imported. The player's own sets are written back exactly as read; a
   list that cannot be read writes nothing, and a player set missing after the write is reported. Every outcome is a
   toast. Nothing is written without the click.
