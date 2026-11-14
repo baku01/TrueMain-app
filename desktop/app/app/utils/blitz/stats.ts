@@ -88,7 +88,7 @@ export interface BlitzMatchupEntry extends ChampionMatchupEntry {
  * The 95% interval of a win rate over `games` (Wilson), which TrueMain's
  * answer carries and Blitz's does not: the matchup views shade a thin sample by it.
  */
-function wilson(wins: number, games: number): [number, number] {
+export function wilson(wins: number, games: number): [number, number] {
   if (games === 0) return [0, 1]
   const z = 1.96
   const p = wins / games
