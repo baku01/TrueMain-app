@@ -1,3 +1,5 @@
+import type { PlaceItemBlock } from '~/utils/item-set'
+
 /**
  * The slice of `ChampionResponse` (the site's champion page endpoint) the draft
  * reads. Mirrors `web/shared/types/champions.ts`; fields the app does not draw
@@ -69,6 +71,8 @@ export interface ChampionBuild {
   core: BuildCoreView
   /** The playstyle the source names the build by (Blitz's tags: `Bruiser`, `Lethality · AD`); absent where the source names none. */
   name?: string | null
+  /** Each place of its buying order with the items to choose from there, measured on its playstyle's own games (`playstyleMeasures`); absent where the lane's measures stand in. */
+  places?: PlaceItemBlock[]
 }
 
 export interface ChampionBuildResponse {
@@ -151,4 +155,6 @@ export interface BuildOption {
   standard?: boolean
   /** The playstyle the source names the build by (`ChampionBuild.name`). */
   name?: string | null
+  /** Its item set's place blocks, its playstyle's own (`ChampionBuild.places`). */
+  places?: PlaceItemBlock[]
 }

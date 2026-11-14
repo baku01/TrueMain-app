@@ -3,7 +3,7 @@ import type { BuildOption, ChampionBuild, ChampionBuildResponse } from '~/types/
 import type { DraftBuild } from '~/composables/useDraftBuild'
 import type { BuildOptions } from '~/utils/sources/model'
 import { fromBlitz } from '~/utils/data-source'
-import { playstyleOptions, readBlitzOtpBuilds } from '~/utils/blitz/playstyles'
+import { playstyleOptions, readBlitzBuild, readBlitzOtpBuilds } from '~/utils/blitz/playstyles'
 import { readPreviousBuild, storePreviousBuild } from '~/utils/previous-build'
 import { rewardApart } from '~/utils/support-quest'
 
@@ -30,6 +30,7 @@ function rowOf(group: string, build: ChampionBuild): BuildOption {
     games: build.games,
     winRate: build.winRate,
     name: build.name ?? null,
+    ...(build.places ? { places: build.places } : {}),
   }
 }
 
@@ -42,8 +43,12 @@ function rowOf(group: string, build: ChampionBuild): BuildOption {
  */
 export const THIN_LANE_GAMES = 300
 
-/** The one-tricks' builds on the lane, from Blitz whatever the source (`readBlitzOtpBuilds`); null until read or when none can be. */
-function useOtpBuilds(championId: Ref<number>, position: Ref<string>) {
+/**
+ * Builds of the lane read from Blitz whatever the source: the one-tricks'
+ * (`readBlitzOtpBuilds`), the playstyles' (`readBlitzBuild`). Null until read
+ * or when none can be.
+ */
+function useBlitzBuilds(championId: Ref<number>, position: Ref<string>, readBuilds: (championId: number, position: string) => Promise<ChampionBuildResponse | null>) {
   const answer = shallowRef<ChampionBuildResponse | null>(null)
   let latest = 0
   watch(() => `${championId.value}:${position.value}`, async () => {
@@ -52,10 +57,15 @@ function useOtpBuilds(championId: Ref<number>, position: Ref<string>) {
     const champion = championId.value
     const lane = position.value
     if (!lane) return
-    const builds = await readBlitzOtpBuilds(champion, lane).catch(() => null)
+    const builds = await readBuilds(champion, lane).catch(() => null)
     if (read === latest) answer.value = builds
   }, { immediate: true })
   return answer
+}
+
+/** Blitz's playstyles of the lane, read whatever the source: none while Blitz is the source — the lane's rows are its playstyles then. */
+async function readPlaystyles(championId: number, position: string): Promise<ChampionBuildResponse | null> {
+  return fromBlitz() ? null : await readBlitzBuild(championId, position)
 }
 
 /**
@@ -64,8 +74,9 @@ function useOtpBuilds(championId: Ref<number>, position: Ref<string>) {
  * them, so it is the earlier visit's, not the click just made), the draft's
  * own build, the builds played against the lane opponent (Blitz), the lane's
  * builds, the main lane's when the lane has too few games (`THIN_LANE_GAMES`),
- * and the one-tricks' builds. The default is the draft's own, else the main
- * lane's most played on a thin lane, else the lane's most played.
+ * Blitz's playstyles of the lane (Bruiser, Tank…) whatever the source, and the
+ * one-tricks' builds. The default is the draft's own, else the main lane's
+ * most played on a thin lane, else the lane's most played.
  */
 export function useBuildOptions(
   championId: Ref<number>,
@@ -76,7 +87,8 @@ export function useBuildOptions(
   /** Blitz measures builds by lane matchup: against the draft's lane opponent, its builds in those games (Blitz's "matchup builds"). */
   const versusOpponent = computed(() => (fromBlitz() ? draft.value?.opponentId ?? null : null))
   const { response: versusResponse } = useChampionBuilds(championId, position, versusOpponent)
-  const otp = useOtpBuilds(championId, position)
+  const otp = useBlitzBuilds(championId, position, readBlitzOtpBuilds)
+  const styles = useBlitzBuilds(championId, position, readPlaystyles)
 
   // A lane the champion is rarely played on: its main lane's builds beside the lane's own.
   const { mainEntryOf } = useTierList()
@@ -122,6 +134,8 @@ export function useBuildOptions(
     list.push(...versus.filter(build => build.games > 0).map(build => rowOf('versus', build)))
     list.push(...(response.value?.builds ?? []).map(build => rowOf('lane', build)))
     if (mainPosition.value && mainResponse.value?.championId === championId.value) list.push(...mainResponse.value.builds.map(build => rowOf('main', build)))
+    // A lane Blitz answers with one document has no playstyle: its builds are the lane's own, unnamed.
+    if (styles.value?.championId === championId.value) list.push(...styles.value.builds.filter(build => build.name).map(build => rowOf('style', build)))
     if (otp.value?.championId === championId.value) list.push(...otp.value.builds.map(build => rowOf('otp', build)))
     // A support's quest reward on its own, wherever a source wrote it (`rewardApart`).
     return list.map(option => ({ ...option, core: rewardApart(option.core) }))
@@ -133,7 +147,7 @@ export function useBuildOptions(
    * lane's most played rather than the lane's.
    */
   const defaultKey = computed(() => {
-    const opened = (option: BuildOption) => option.key !== 'previous' && !option.key.startsWith('otp-')
+    const opened = (option: BuildOption) => option.key !== 'previous' && !option.key.startsWith('otp-') && !option.key.startsWith('style-')
     const draftRow = options.value.find(option => option.key === 'draft')
     const mainRow = thinLane.value ? options.value.find(option => option.key.startsWith('main-')) : undefined
     return draftRow?.key ?? mainRow?.key ?? options.value.find(opened)?.key ?? options.value[0]?.key ?? null
@@ -144,7 +158,7 @@ export function useBuildOptions(
 
 /**
  * The build panel's options for a row named after a Blitz playstyle (a lane
- * row while Blitz is the source, a one-trick row): that playstyle's own
+ * row while Blitz is the source, a playstyle's row, a one-trick row): that playstyle's own
  * document, not the lane's biggest. `undefined` for any other row — the panel
  * reads the source as always — and while the playstyle's are read; null when
  * they cannot be.
@@ -156,7 +170,7 @@ export function usePlaystylePreset(championId: Ref<number>, position: Ref<string
     const option = shown.value
     if (!option?.name) return null
     if (option.key.startsWith('otp-')) return { name: option.name, otp: true }
-    return fromBlitz() && option.key.startsWith('lane-') ? { name: option.name, otp: false } : null
+    return option.key.startsWith('style-') || (fromBlitz() && option.key.startsWith('lane-')) ? { name: option.name, otp: false } : null
   })
   let latest = 0
   watch(() => [championId.value, position.value, named.value?.name, named.value?.otp] as const, async ([champion, lane, name, otp]) => {

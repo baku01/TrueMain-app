@@ -69,4 +69,16 @@ describe('buildsFromPlaystyles', () => {
   it('answers no build for no document', () => {
     expect(buildsFromPlaystyles(266, 'TOP', []).builds).toEqual([])
   })
+
+  it('gives each playstyle the place blocks of its own games, not the lane\'s', () => {
+    // Sion top: a tank's cores, and a bruiser's whose items a tank's set must not offer.
+    const tank = doc(6100, ['Tank'], [['3084,3075,3068', 4000], ['3084,3065,3068', 1500], ['6665,3075,3068', 600]], 8437)
+    const fighter = doc(2000, ['Bruiser'], [['6610,3071,6333', 2000]], 8010)
+    const [tankBuild, fighterBuild] = buildsFromPlaystyles(14, 'TOP', [tank, fighter]).builds
+    // The first place offers the tank's other opener, the second its other item; the third, bought alike by all, offers none.
+    expect(tankBuild!.places).toEqual([{ place: 1, items: [3084, 6665] }, { place: 2, items: [3075, 3065] }])
+    expect(fighterBuild!.places).toEqual([])
+    // A lane of one document is the lane itself: its builds take the lane's measures on import.
+    expect(buildsFromPlaystyles(14, 'TOP', [tank]).builds[0]!.places).toBeUndefined()
+  })
 })
