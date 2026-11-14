@@ -55,16 +55,25 @@ export async function blitzRows<T>(name: string, query: BlitzQuery): Promise<T[]
 /** Blitz's queue for ranked solo, which every read here is about. */
 export const SOLO_QUEUE = 'RANKED_SOLO_5X5'
 
+/** The tiers Blitz pools with every tier above them; `ALL`, `IRON+` to `GOLD+` and `GRANDMASTER+` answer no row. */
+const BLITZ_PLUS = new Set(['PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER'])
+
 /**
  * TrueMain's elo bracket (`?eloBracket=`, `elo-brackets.ts`) as Blitz's tier
- * filter: `GOLD` stays `GOLD`, `MASTER_PLUS` is `MASTER+`, and `ALL` is
- * `IRON+` — Blitz's `ALL` answers its all-lanes rows only. No bracket reads
- * Blitz's own default, Emerald+ (`SOURCE_ELO_BRACKET`).
+ * filter: `GOLD` stays `GOLD` and `MASTER_PLUS` is `MASTER+`. A "+" Blitz does
+ * not pool (`BLITZ_PLUS`) reads the nearest it holds: below Platinum the tier
+ * alone — the games of a player of it, as the draft's bracket wants —,
+ * `GRANDMASTER_PLUS` `MASTER+`, and `ALL` the widest pool Blitz has,
+ * `PLATINUM+`. No bracket reads Blitz's own default, Emerald+
+ * (`SOURCE_ELO_BRACKET`).
  */
 export function blitzTier(eloBracket: unknown): string {
   const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket.toUpperCase() : SOURCE_ELO_BRACKET
-  if (bracket === 'ALL') return 'IRON+'
-  return bracket.endsWith('_PLUS') ? `${bracket.slice(0, -'_PLUS'.length)}+` : bracket
+  if (bracket === 'ALL') return 'PLATINUM+'
+  if (!bracket.endsWith('_PLUS')) return bracket
+  const tier = bracket.slice(0, -'_PLUS'.length)
+  if (BLITZ_PLUS.has(tier)) return `${tier}+`
+  return tier === 'GRANDMASTER' ? 'MASTER+' : tier
 }
 
 /** A lane as Blitz names it in a query: `BOT` and `SUPPORT` where TrueMain says `BOTTOM` and `UTILITY`. */
