@@ -14,6 +14,10 @@ import { matchupsFromBlitz } from '~/utils/blitz/stats'
  * and bracket and kept for the session, and the counters re-read from them as
  * champions are picked and banned. An enemy with no lane yet has none.
  */
+/** How often, and how long apart (growing), an enemy's matchups are asked again when no source answered. */
+const RETRIES = 3
+const RETRY_MS = 4000
+
 export function useEnemyCounters(
   draft: Ref<DraftState>,
   enemyRows: Ref<TeamRow[]>,
@@ -27,16 +31,25 @@ export function useEnemyCounters(
       ? [{ championId: row.championId, key: `${row.championId}-${row.lane}-${eloBracket.value ?? ''}`, lane: row.lane }]
       : []))
 
+  /**
+   * One enemy's matchups, asked again a few times when neither source
+   * answered — five enemies read at once in champion select, a source slow or
+   * refusing one of them, which then never showed its counters that session.
+   */
+  function request(championId: number, key: string, lane: string, attempt = 0) {
+    const query = { position: lane, eloBracket: eloBracket.value ?? undefined }
+    void Promise.all([lolalyticsMatchups(championId, query).catch(() => null), matchupsFromBlitz(championId, query).catch(() => null)])
+      .then(([lolalytics, blitz]) => {
+        if (lolalytics || blitz) answers.value = { ...answers.value, [key]: combineMatchups(championId, lane, [lolalytics, blitz]) }
+        else if (attempt < RETRIES) setTimeout(() => request(championId, key, lane, attempt + 1), RETRY_MS * (attempt + 1))
+      })
+  }
+
   watch(asked, (current) => {
     for (const { championId, key, lane } of current) {
       if (key in answers.value) continue
       answers.value = { ...answers.value, [key]: null }
-      const query = { position: lane, eloBracket: eloBracket.value ?? undefined }
-      void Promise.all([lolalyticsMatchups(championId, query).catch(() => null), matchupsFromBlitz(championId, query).catch(() => null)])
-        .then(([lolalytics, blitz]) => {
-          if (!lolalytics && !blitz) return
-          answers.value = { ...answers.value, [key]: combineMatchups(championId, lane, [lolalytics, blitz]) }
-        })
+      request(championId, key, lane)
     }
   }, { immediate: true })
 
