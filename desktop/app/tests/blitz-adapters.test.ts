@@ -25,8 +25,13 @@ describe('Blitz words', () => {
   it('reads TrueMain\'s elo brackets as Blitz tiers', () => {
     expect(blitzTier('MASTER_PLUS')).toBe('MASTER+')
     expect(blitzTier('GOLD')).toBe('GOLD')
-    expect(blitzTier('ALL')).toBe('IRON+')
+    expect(blitzTier('ALL')).toBe('PLATINUM+')
     expect(blitzTier(undefined)).toBe('EMERALD+')
+    // The "+" Blitz pools no games for: the tier alone below Platinum, Master+ above it.
+    expect(blitzTier('SILVER_PLUS')).toBe('SILVER')
+    expect(blitzTier('GOLD_PLUS')).toBe('GOLD')
+    expect(blitzTier('PLATINUM_PLUS')).toBe('PLATINUM+')
+    expect(blitzTier('GRANDMASTER_PLUS')).toBe('MASTER+')
   })
 
   it('names the lanes each side\'s way', () => {

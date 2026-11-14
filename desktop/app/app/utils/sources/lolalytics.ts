@@ -88,10 +88,13 @@ const LANE: Record<string, string> = { TOP: 'top', JUNGLE: 'jungle', MIDDLE: 'mi
 const POSITION: Record<string, string> = { top: 'TOP', jungle: 'JUNGLE', middle: 'MIDDLE', bottom: 'BOTTOM', support: 'UTILITY' }
 export const lolalyticsLane = (position: string) => LANE[position] ?? 'middle'
 
-/** TrueMain's elo bracket as lolalytics' tier: `MASTER_PLUS` is `master_plus`, every tier is `all`; none reads lolalytics' own default, Emerald+ (`SOURCE_ELO_BRACKET`). */
+/** The "+" brackets lolalytics pools no games for (`silver_plus` answers nothing): below Gold it keeps each tier alone, and `all` holds them. */
+const LOLALYTICS_ALL = new Set(['IRON_PLUS', 'BRONZE_PLUS', 'SILVER_PLUS'])
+
+/** TrueMain's elo bracket as lolalytics' tier: `MASTER_PLUS` is `master_plus`, every tier is `all`, and so is a "+" below Gold (`LOLALYTICS_ALL`); none reads lolalytics' own default, Emerald+ (`SOURCE_ELO_BRACKET`). */
 export function lolalyticsTier(eloBracket: unknown): string {
-  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket : SOURCE_ELO_BRACKET
-  return bracket.toLowerCase()
+  const bracket = typeof eloBracket === 'string' && eloBracket ? eloBracket.toUpperCase() : SOURCE_ELO_BRACKET
+  return LOLALYTICS_ALL.has(bracket) ? 'all' : bracket.toLowerCase()
 }
 
 /**

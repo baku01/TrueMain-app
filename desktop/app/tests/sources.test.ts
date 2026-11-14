@@ -169,6 +169,9 @@ describe('lolalytics', () => {
     expect(lolalyticsTier('MASTER_PLUS')).toBe('master_plus')
     expect(lolalyticsTier('ALL')).toBe('all')
     expect(lolalyticsTier(undefined)).toBe('emerald_plus')
+    // lolalytics pools no "+" below Gold: every tier holds them.
+    expect(lolalyticsTier('SILVER_PLUS')).toBe('all')
+    expect(lolalyticsTier('GOLD_PLUS')).toBe('gold_plus')
   })
 
   it('makes TrueMain\'s lane builds from the options: one per core, boots apart, the first item the tree\'s root', async () => {
