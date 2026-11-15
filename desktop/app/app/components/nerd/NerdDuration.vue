@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DurationReport, Overview } from '~/utils/nerd-stats/analysis'
 import type { GameRow } from '~/utils/nerd-stats/features'
+import { durationContrast, isFew } from '~/utils/nerd-stats/insights'
 
 /**
  * The win rate over the game's length: the kernel-smoothed curve with its
@@ -8,7 +9,9 @@ import type { GameRow } from '~/utils/nerd-stats/features'
  * points with their Wilson intervals, a coin flip ruled at 50%, and a
  * crosshair reading the curve at any minute. Under it, on the same minutes,
  * how many games ended there, wins and losses stacked — one chart per measure,
- * never two scales on one plot.
+ * never two scales on one plot. Said first in a sentence: the length the
+ * player wins most and least at, and how sure the gap is; the bandwidth and
+ * the effect size are behind "show the maths".
  */
 const props = defineProps<{
   duration: DurationReport
@@ -48,7 +51,7 @@ const MIN_BIN_GAMES = 3
 const binPoints = computed(() => props.duration.bins.filter(bin => bin.games >= MIN_BIN_GAMES).map(bin => ({
   ...bin,
   at: Number.isFinite(bin.to) ? (bin.from === 0 ? bin.to - 2 : (bin.from + bin.to) / 2) : bin.from + 2.5,
-  label: bin.from === 0 ? `< ${bin.to}` : Number.isFinite(bin.to) ? `${bin.from}–${bin.to}` : `${bin.from}+`,
+  label: binLabel(bin),
 })))
 
 /** Games per two minutes, wins under losses. */
@@ -65,6 +68,21 @@ const histogram = computed(() => {
   return buckets
 })
 const tallest = computed(() => Math.max(1, ...histogram.value.map(bucket => bucket.wins + bucket.losses)))
+
+/** A five-minute bin's name: `< 20`, `25–30`, `40+`. */
+const binLabel = (bin: { from: number, to: number }) => (bin.from === 0 ? `< ${bin.to}` : Number.isFinite(bin.to) ? `${bin.from}–${bin.to}` : `${bin.from}+`)
+
+const contrast = computed(() => durationContrast(props.duration))
+const lead = computed(() => {
+  const read = contrast.value
+  if (!read) return ''
+  return t('nerd.duration.say', { best: binLabel(read.best), bestRate: f.percent(read.best.rate), bestGames: read.best.games, worst: binLabel(read.worst), worstRate: f.percent(read.worst.rate), worstGames: read.worst.games })
+})
+const symbols = computed(() => [
+  { symbol: 'h', value: `${f.number(props.duration.bandwidth, 1)} min`, meaning: t('nerd.sym.h') },
+  { symbol: 'd', value: props.duration.effect ? f.signed(props.duration.effect.d, 2) : '—', meaning: t('nerd.sym.dDuration') },
+  { symbol: `${t('nerd.symbol.ci')} 95%`, meaning: t('nerd.sym.wilson') },
+])
 
 const hoverX = ref<number | null>(null)
 function track(event: PointerEvent) {
@@ -87,14 +105,7 @@ function leave() {
 
 <template>
   <section class="surface rounded-lg">
-    <header class="flex flex-wrap items-center gap-3 border-b border-default px-4 py-3.5">
-      <span class="tm-emblem grid size-9 shrink-0 place-items-center rounded-lg text-primary">
-        <UIcon name="i-tabler-hourglass" class="size-5" />
-      </span>
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-highlighted">{{ t('nerd.duration.title') }}</h2>
-        <p class="text-xs text-muted">{{ t('nerd.duration.subtitle', { count: overview.games, bandwidth: f.number(duration.bandwidth, 1) }) }}</p>
-      </div>
+    <NerdCardHeader icon="i-tabler-hourglass" :title="t('nerd.duration.title')" :technical="t('nerd.duration.technical')" :subtitle="t('nerd.duration.subtitle', { count: overview.games })">
       <div class="flex gap-2">
         <div class="rounded-lg bg-elevated/50 px-3 py-1.5 ring-1 ring-default">
           <p class="stat-label">{{ t('nerd.duration.wins') }}</p>
@@ -104,12 +115,12 @@ function leave() {
           <p class="stat-label">{{ t('nerd.duration.losses') }}</p>
           <p class="font-display text-lg font-semibold text-highlighted">{{ f.minutes(duration.loss) }}</p>
         </div>
-        <div class="rounded-lg bg-elevated/50 px-3 py-1.5 ring-1 ring-default">
-          <p class="stat-label">Cohen d</p>
-          <p class="font-display text-lg font-semibold text-highlighted">{{ duration.effect ? f.signed(duration.effect.d, 2) : '—' }}</p>
-        </div>
       </div>
-    </header>
+    </NerdCardHeader>
+
+    <div v-if="lead && contrast" class="px-4 pt-4">
+      <NerdLead :text="lead" :confidence="contrast.confidence" :few="isFew(overview.games)" icon="i-tabler-hourglass" :tone="contrast.best.rate >= overview.rate ? 'win' : 'neutral'" />
+    </div>
 
     <div :ref="el => (tip.box.value = el as HTMLElement)" class="relative p-4 pl-12">
       <!-- The win rate over the minutes. -->
@@ -118,6 +129,7 @@ function leave() {
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 size-full overflow-visible" role="img" :aria-label="t('nerd.duration.curveLabel')">
           <line v-for="tick in [0, 25, 75, 100]" :key="tick" x1="0" x2="100" :y1="tick" :y2="tick" class="stroke-[var(--ui-border)]" vector-effect="non-scaling-stroke" />
           <line x1="0" x2="100" y1="50" y2="50" class="stroke-[var(--ui-border-accented)]" vector-effect="non-scaling-stroke" />
+          <line x1="0" x2="100" :y1="y(overview.rate)" :y2="y(overview.rate)" class="stroke-[var(--ui-text-muted)]" stroke-dasharray="4 4" vector-effect="non-scaling-stroke" />
           <polygon :points="band" class="nerd-fade fill-(--nerd-win)/12" />
           <polyline :points="line" fill="none" class="nerd-fade stroke-(--nerd-win)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
           <line v-if="hoverX !== null" :x1="hoverX" :x2="hoverX" y1="0" y2="100" class="stroke-[var(--ui-text-dimmed)]" vector-effect="non-scaling-stroke" />
@@ -144,6 +156,12 @@ function leave() {
         <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-(--ui-text-highlighted)" />{{ t('nerd.duration.bins') }}</span>
         <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-(--nerd-win)" />{{ t('nerd.wins') }}</span>
         <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-(--nerd-loss)" />{{ t('nerd.losses') }}</span>
+        <span class="flex items-center gap-1.5"><span class="h-px w-3 bg-(--ui-border-accented)" />{{ t('nerd.ref.coin') }}</span>
+        <span class="flex items-center gap-1.5"><span class="nerd-dash w-3" />{{ t('nerd.ref.average', { rate: f.percent(overview.rate) }) }}</span>
+      </div>
+      <div class="mt-2 space-y-2">
+        <NerdHowTo :text="t('nerd.duration.how')" />
+        <NerdDetails :symbols="symbols" />
       </div>
       <NerdTip :tip="tip.tip.value" />
     </div>

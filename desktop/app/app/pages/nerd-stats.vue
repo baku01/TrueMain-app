@@ -6,12 +6,16 @@ import { HISTORY_DEEP_CEILING } from '~/composables/usePlayerRecord'
 
 /**
  * Stats for nerds: every figure the app holds about the player's own games,
- * read against winning. The headline record with its interval, a fitted
- * formula of victory and how well it predicts games it never saw, which
- * metrics come with winning and by how much, the win rate by game length,
- * hour, weekday, sitting, champion, lane, rune and item, the streaks, how the
- * metrics move together, and every game in a sortable table — each method
- * named and explained in a tab of its own.
+ * read against winning — for a player, not a statistician. Every block says
+ * its takeaway first, in a sentence written from the real figures, with how
+ * far it can be trusted in a word (strong, moderate, weak, uncertain) instead
+ * of a p-value; the figures behind it — d, r, q, the odds ratios, the AUC —
+ * are a "show the maths" away, each symbol explained in a line, and the
+ * methods tab writes every formula out. Inside: the headline record, what
+ * weighs most on winning (a fitted formula, in the game's own units, and a
+ * calculator), what comes with the wins, the win rate by game length, hour,
+ * weekday, sitting, champion, lane, rune and item, the streaks, how the
+ * metrics move together, and every game in a sortable table.
  *
  * The games are the client's (`usePlayerRecord`) and, past the twenty or so
  * it keeps, the player's games on Blitz and those this machine saved before
@@ -128,11 +132,11 @@ const tab = computed<Tab>({
 
           <Transition mode="out-in" enter-active-class="nerd-tab-enter" leave-active-class="nerd-tab-leave">
             <div v-if="tab === 'overview'" key="overview" class="space-y-5">
-              <NerdFormula :model="report.model" :games="report.overview.games" />
-              <NerdDrivers :metrics="report.metrics" :games="report.overview.games" />
+              <NerdFormula :model="report.model" :games="report.overview.games" :minutes="report.overview.duration" />
+              <NerdDrivers :metrics="report.metrics" :games="report.overview.games" :rate="report.overview.rate" />
             </div>
             <div v-else-if="tab === 'metrics'" key="metrics" class="space-y-5">
-              <NerdDistributions :metrics="report.metrics" />
+              <NerdDistributions :metrics="report.metrics" :rate="report.overview.rate" />
               <NerdHeatmap :matrix="report.correlation" :games="report.overview.games" />
             </div>
             <div v-else-if="tab === 'time'" key="time" class="space-y-5">
@@ -144,7 +148,7 @@ const tab = computed<Tab>({
               <NerdGroups :report="report" />
             </div>
             <div v-else-if="tab === 'games'" key="games">
-              <NerdGames :rows="rows" />
+              <NerdGames :rows="rows" :source-of="deep.sourceOf" />
             </div>
             <div v-else key="methods">
               <NerdMethods :report="report" />
@@ -157,6 +161,19 @@ const tab = computed<Tab>({
 </template>
 
 <style>
+/* A reference line on the page's charts — the player's own average — dashed, beside the solid coin flip. */
+.nerd-dash {
+  display: block;
+  height: 0;
+  border-top: 1.5px dashed var(--ui-text-muted);
+}
+
+.nerd-dash-v {
+  display: block;
+  width: 0;
+  border-left: 1.5px dashed var(--ui-text-muted);
+}
+
 /*
  * The page's two outcome colours and its diverging midpoint. A win is the
  * app's accent, a loss red, as the pro games' rows have them (`pro-win`,

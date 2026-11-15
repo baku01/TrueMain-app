@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { GroupRate, NerdReport } from '~/utils/nerd-stats/analysis'
 import { POSITION_BY_VALUE } from '#common/utils/positions'
+import { groupConfidence, groupContrast } from '~/utils/nerd-stats/insights'
 
 /**
  * The win rate by what the player chose — champion, lane, queue, keystone,
@@ -8,8 +9,10 @@ import { POSITION_BY_VALUE } from '#common/utils/positions'
  * Wilson interval beside its empirical-Bayes estimate (`groupRates`): the raw
  * rate a hollow ring on its interval, the shrunk one a filled dot on its 95%
  * credible interval, both on a 0–100% track with the player's own rate (the
- * prior's mean) ruled across it. The prior is stated above the table: how
- * many games of evidence each group starts from.
+ * prior's mean) ruled across it. The prior is said above the table in plain
+ * words — how many of the player's games each choice is pulled toward their
+ * average by — and the best and worst choice of the kind first, with how far
+ * each row can be trusted.
  */
 const props = defineProps<{ report: NerdReport }>()
 
@@ -39,6 +42,26 @@ const sorted = computed(() => {
   return groups
 })
 const shown = computed(() => (all.value ? sorted.value : sorted.value.slice(0, SHOWN)))
+
+const best = computed(() => groupContrast(group.value))
+const lead = computed(() => {
+  const read = best.value
+  if (!read) return ''
+  return t('nerd.groups.say', {
+    best: identity(read.best).name,
+    bestRate: f.percent(read.best.shrunk.rate),
+    bestGames: read.best.games,
+    worst: identity(read.worst).name,
+    worstRate: f.percent(read.worst.shrunk.rate),
+    worstGames: read.worst.games,
+  })
+})
+const symbols = computed(() => [
+  { symbol: `p̃ = (${t('nerd.symbol.win')} + α) / (n + α + β)`, meaning: t('nerd.sym.shrunk') },
+  { symbol: 'α', value: f.number(group.value.prior.alpha, 1), meaning: t('nerd.sym.alpha') },
+  { symbol: 'β', value: f.number(group.value.prior.beta, 1), meaning: t('nerd.sym.betaPrior') },
+  { symbol: 'α + β', value: f.number(group.value.prior.strength, 0), meaning: t('nerd.sym.strength') },
+])
 
 /** What a group is called and the icons it shows. */
 function identity(entry: GroupRate): { name: string, icons: string[], round?: boolean } {
@@ -72,23 +95,20 @@ function identity(entry: GroupRate): { name: string, icons: string[], round?: bo
 
 <template>
   <section class="surface rounded-lg">
-    <header class="flex flex-wrap items-center gap-3 border-b border-default px-4 py-3.5">
-      <span class="tm-emblem grid size-9 shrink-0 place-items-center rounded-lg text-primary">
-        <UIcon name="i-tabler-chart-histogram" class="size-5" />
-      </span>
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-highlighted">{{ t('nerd.groups.title') }}</h2>
-        <p class="text-xs text-muted">
-          {{ t('nerd.groups.prior', { alpha: f.number(group.prior.alpha, 1), beta: f.number(group.prior.beta, 1), strength: f.number(group.prior.strength, 0), mean: f.percent(group.prior.mean, 1) }) }}
-        </p>
-      </div>
+    <NerdCardHeader
+      icon="i-tabler-chart-histogram"
+      :title="t('nerd.groups.title')"
+      :technical="t('nerd.groups.technical')"
+      :subtitle="t('nerd.groups.prior', { strength: f.number(group.prior.strength, 0), mean: f.percent(group.prior.mean, 1) })"
+    >
       <AppSegmented v-model="sort" :items="sorts" />
-    </header>
+    </NerdCardHeader>
 
     <div class="space-y-3 p-4">
       <AppSegmented v-model="kind" :items="kinds" />
+      <NerdLead v-if="lead && best" :text="lead" :confidence="groupConfidence(best.best, group.prior)" icon="i-tabler-trophy" />
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[60rem] text-xs">
+        <table class="w-full min-w-[66rem] text-xs">
           <thead class="text-dimmed">
             <tr class="text-left">
               <th class="pb-2 font-medium">{{ t(`nerd.groups.${kind}`) }}</th>
@@ -101,6 +121,7 @@ function identity(entry: GroupRate): { name: string, icons: string[], round?: bo
                   <span v-for="tick in [0, 0.25, 0.5, 0.75, 1]" :key="tick" class="absolute -translate-x-1/2 tabular-nums" :style="{ left: `${tick * 100}%` }">{{ f.percent(tick, 0) }}</span>
                 </div>
               </th>
+              <th class="pb-2 text-right font-medium">{{ t('nerd.confidence.label') }}</th>
               <th class="pb-2 text-right font-medium">KDA</th>
               <th class="pb-2 text-right font-medium">{{ t('nerd.col.score') }}</th>
               <th class="pb-2 text-right font-medium">LP</th>
@@ -134,6 +155,7 @@ function identity(entry: GroupRate): { name: string, icons: string[], round?: bo
                   <span class="absolute top-[70%] size-2.5 -translate-1/2 rounded-full bg-primary ring-2 ring-(--tm-pane)" :style="{ left: `${entry.shrunk.rate * 100}%` }" />
                 </div>
               </td>
+              <td class="py-1.5 text-right"><NerdConfidence :level="groupConfidence(entry, group.prior)" :detail="`${f.percent(entry.shrunk.low, 0)} – ${f.percent(entry.shrunk.high, 0)}`" /></td>
               <td class="py-1.5 text-right tabular-nums">{{ f.number(entry.kda, 2) }}</td>
               <td class="py-1.5 text-right tabular-nums text-muted">{{ entry.performance === null ? '—' : f.number(entry.performance, 0) }}</td>
               <td class="py-1.5 text-right tabular-nums text-muted">{{ entry.lp === null ? '—' : f.signed(entry.lp) }}</td>
@@ -147,7 +169,10 @@ function identity(entry: GroupRate): { name: string, icons: string[], round?: bo
         <span class="flex items-center gap-1.5"><span class="h-3 w-px bg-(--ui-border-accented)" />{{ t('nerd.groups.legendMean') }}</span>
         <UButton v-if="sorted.length > SHOWN" class="ml-auto" size="xs" color="neutral" variant="ghost" :label="all ? t('nerd.groups.less') : t('nerd.groups.more', { count: sorted.length - SHOWN })" @click="all = !all" />
       </div>
-      <p class="text-[11px] leading-relaxed text-dimmed">{{ t('nerd.groups.hint') }}</p>
+      <NerdHowTo :text="t('nerd.groups.how')" />
+      <NerdDetails :symbols="symbols">
+        <p class="text-[11px] leading-relaxed text-dimmed">{{ t('nerd.groups.hint') }}</p>
+      </NerdDetails>
     </div>
   </section>
 </template>
