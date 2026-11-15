@@ -131,15 +131,18 @@ describe('the formula in the player\'s units', () => {
     const weights = formulaWeights(model([feature('deathsPerMin', 0.2, 0.1, -0.4), feature('csPerMin', 6, 1, 0.5), feature('firstBlood', 0.4, 0.49, 0.15, 0.5)]), 30)
     expect(weights.map(weight => weight.key)).toEqual(['csPerMin', 'deathsPerMin', 'firstBlood'])
     const [cs, deaths, blood] = weights
-    expect(cs).toMatchObject({ from: 6, to: 7, step: 1, before: 0.5 })
-    expect(cs!.after).toBeCloseTo(sigmoid(0.5))
+    // The average game: every metric at its mean, first blood at the commoner answer (no, 0.4 rounds to 0).
+    const typical = 0.15 * (0 - 0.4) / 0.49
+    expect(cs).toMatchObject({ from: 6, to: 7, step: 1 })
+    expect(cs!.before).toBeCloseTo(sigmoid(typical))
+    expect(cs!.after).toBeCloseTo(sigmoid(typical + 0.5))
     // 0.1 deaths a minute over 30 minutes is 3 a game: a step of 2.5, from 6 to 8.5.
     expect(deaths).toMatchObject({ step: 2.5 })
     expect(deaths!.from).toBeCloseTo(6)
-    expect(deaths!.after).toBeCloseTo(sigmoid(-0.4 * ((8.5 / 30 - 0.2) / 0.1)))
+    expect(deaths!.after).toBeCloseTo(sigmoid(typical - 0.4 * ((8.5 / 30 - 0.2) / 0.1)))
     expect(deaths!.change).toBeLessThan(0)
     expect(blood).toMatchObject({ binary: true, from: 0, to: 1 })
-    expect(blood!.before).toBeCloseTo(sigmoid(0.15 * (0 - 0.4) / 0.49))
+    expect(blood!.before).toBeCloseTo(sigmoid(typical))
     expect(blood!.after).toBeCloseTo(sigmoid(0.15 * (1 - 0.4) / 0.49))
     expect(cs!.confidence).toBe('strong')
     expect(blood!.confidence).toBe('uncertain')

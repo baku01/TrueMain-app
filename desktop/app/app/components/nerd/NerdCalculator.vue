@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ModelReport } from '~/utils/nerd-stats/analysis'
-import { naturalUnit, niceStep } from '~/utils/nerd-stats/formula-insights'
+import { naturalUnit, niceStep, typicalLogit, typicalValue } from '~/utils/nerd-stats/formula-insights'
 import { sigmoid } from '~/utils/nerd-stats/logistic'
 
 /**
@@ -24,7 +24,7 @@ const rows = computed(() => props.model.features.map((feature) => {
   const binary = unit.format === 'binary'
   const min = binary ? 0 : feature.p5 * unit.scale
   const max = binary ? 1 : feature.p95 * unit.scale
-  return { feature, unit, binary, min, max, step: binary ? 1 : niceStep((max - min) / 40), mean: binary ? Math.round(feature.mean) : feature.mean * unit.scale }
+  return { feature, unit, binary, min, max, step: binary ? 1 : niceStep((max - min) / 40), mean: typicalValue(feature) * unit.scale }
 }))
 
 // Every metric starts at the player's mean: their "typical game".
@@ -38,7 +38,7 @@ const probability = computed(() => sigmoid(rows.value.reduce((total, row) => {
   const value = (inputs.value[row.feature.key] ?? row.mean) / row.unit.scale
   return total + row.feature.beta * (value - row.feature.mean) / row.feature.sd
 }, props.model.intercept)))
-const typical = computed(() => sigmoid(props.model.intercept))
+const typical = computed(() => sigmoid(typicalLogit(props.model)))
 </script>
 
 <template>

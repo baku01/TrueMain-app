@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ModelReport } from '~/utils/nerd-stats/analysis'
+import type { MetricAssociation, ModelReport } from '~/utils/nerd-stats/analysis'
 import { MIN_MODEL_EVENTS, MIN_MODEL_GAMES } from '~/utils/nerd-stats/analysis'
 import { formulaWeights, modelGrade } from '~/utils/nerd-stats/formula-insights'
 
@@ -17,6 +17,8 @@ const props = defineProps<{
   games: number
   /** The player's average game length, in minutes. */
   minutes: number
+  /** Each metric read alone against winning: a weight that points the other way is flagged. */
+  metrics: MetricAssociation[]
 }>()
 
 const { t } = useT()
@@ -24,6 +26,17 @@ const f = useNerdFormat()
 const say = useNerdSay()
 
 const weights = computed(() => (props.model ? formulaWeights(props.model, props.minutes) : []))
+
+/**
+ * Whether a weight points against the metric's own relation with winning: a
+ * metric that overlaps with others in the formula (CS and the gold lead) can
+ * pull the other way once they are held equal — said, so it is not read as
+ * "more CS loses games".
+ */
+const against = (key: string, change: number) => {
+  const r = props.metrics.find(entry => entry.definition.key === key)?.correlation?.r ?? 0
+  return change !== 0 && Math.abs(r) >= 0.05 && Math.sign(r) !== Math.sign(change)
+}
 const scale = computed(() => Math.max(0.05, ...weights.value.map(weight => Math.abs(weight.change))))
 const grade = computed(() => (props.model ? modelGrade(props.model) : null))
 
@@ -110,6 +123,9 @@ const symbols = computed(() => [
                 <span class="text-right text-xs font-semibold tabular-nums" :class="weight.change >= 0 ? 'text-(--nerd-win)' : 'text-(--nerd-loss)'">{{ t('nerd.points', { diff: f.points(weight.change) }) }}</span>
               </div>
               <p class="mt-1 pl-7 text-[11.5px] leading-relaxed text-muted"><NerdRich :text="say.step(weight)" /></p>
+              <p v-if="against(weight.key, weight.change)" class="mt-1 flex gap-1.5 pl-7 text-[11px] leading-snug text-dimmed">
+                <UIcon name="i-lucide-info" class="mt-px size-3.5 shrink-0 text-warning" />{{ t('nerd.formula.counter') }}
+              </p>
             </li>
           </ul>
           <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-dimmed">

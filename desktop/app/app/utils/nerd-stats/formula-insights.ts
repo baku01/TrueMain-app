@@ -12,7 +12,7 @@ import { sigmoid } from './logistic'
  * becomes "this much more of it, in the units the game shows — CS a minute,
  * deaths a game, vision a game — takes your chance of winning from this to
  * that", starting from the player's average game, where every metric sits at
- * its mean and the chance is σ(β₀).
+ * its mean (a yes/no one at the commoner answer).
  */
 
 /**
@@ -56,7 +56,7 @@ export interface FormulaWeight {
   from: number
   to: number
   step: number
-  /** The chance of winning before and after the step, every other metric at the player's average. */
+  /** The chance of winning before and after the step, every other metric as in the player's average game (`typicalValue`). */
   before: number
   after: number
   /** `after − before`, in rate points: the bar the page draws. */
@@ -65,9 +65,19 @@ export interface FormulaWeight {
   confidence: Confidence
 }
 
-/** The chance of winning with one metric moved to `value` (in its own units), the others at the player's average. */
+const isBinary = (feature: ModelFeature) => DEFINITION_BY_KEY.get(feature.key)?.format === 'binary'
+
+/** Where a metric sits in the player's average game: its mean — a yes/no metric at the commoner answer, as a game can only have one. */
+export const typicalValue = (feature: ModelFeature) => (isBinary(feature) ? Math.round(feature.mean) : feature.mean)
+
+/** The log-odds of the player's average game (`typicalValue` for every metric): σ of it is the chance every step starts from. */
+export function typicalLogit(model: ModelReport): number {
+  return model.features.reduce((total, feature) => total + feature.beta * (typicalValue(feature) - feature.mean) / feature.sd, model.intercept)
+}
+
+/** The chance of winning with one metric moved to `value` (in its own units), the others as in the player's average game. */
 export function chanceWith(model: ModelReport, feature: ModelFeature, value: number): number {
-  return sigmoid(model.intercept + feature.beta * (value - feature.mean) / feature.sd)
+  return sigmoid(typicalLogit(model) + feature.beta * (value - typicalValue(feature)) / feature.sd)
 }
 
 /**
@@ -77,13 +87,13 @@ export function chanceWith(model: ModelReport, feature: ModelFeature, value: num
  */
 export function formulaWeights(model: ModelReport, minutes: number): FormulaWeight[] {
   return model.features.map<FormulaWeight>((feature) => {
-    const binary = DEFINITION_BY_KEY.get(feature.key)?.format === 'binary'
+    const binary = isBinary(feature)
     const unit = naturalUnit(feature.key, minutes)
     const step = binary ? 1 : niceStep(feature.sd * unit.scale)
     const from = binary ? 0 : feature.mean * unit.scale
     const to = binary ? 1 : from + step
-    const before = binary ? chanceWith(model, feature, 0) : sigmoid(model.intercept)
-    const after = binary ? chanceWith(model, feature, 1) : chanceWith(model, feature, to / unit.scale)
+    const before = chanceWith(model, feature, binary ? 0 : feature.mean)
+    const after = chanceWith(model, feature, binary ? 1 : to / unit.scale)
     const z = feature.se > 0 ? feature.beta / feature.se : 0
     return { key: feature.key, binary, unit, from, to, step, before, after, change: after - before, confidence: confidenceOf(feature.se > 0 ? twoSidedP(z) : null) }
   }).sort((a, b) => Math.abs(b.change) - Math.abs(a.change))

@@ -132,7 +132,7 @@ const tab = computed<Tab>({
 
           <Transition mode="out-in" enter-active-class="nerd-tab-enter" leave-active-class="nerd-tab-leave">
             <div v-if="tab === 'overview'" key="overview" class="space-y-5">
-              <NerdFormula :model="report.model" :games="report.overview.games" :minutes="report.overview.duration" />
+              <NerdFormula :model="report.model" :games="report.overview.games" :minutes="report.overview.duration" :metrics="report.metrics" />
               <NerdDrivers :metrics="report.metrics" :games="report.overview.games" :rate="report.overview.rate" />
             </div>
             <div v-else-if="tab === 'metrics'" key="metrics" class="space-y-5">
