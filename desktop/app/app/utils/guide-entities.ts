@@ -1,5 +1,6 @@
 import type { BuildRunePage } from '~/types/build'
 import type { GuideRunePage } from '~/utils/mobafire'
+import { isLiveChampionId } from '#shared/utils/ddragon'
 import { DDRAGON } from '~/utils/static-data'
 
 /**
@@ -38,12 +39,53 @@ const SHARDS: Record<string, number> = {
   tenacity: 5013,
 }
 
-interface ItemFile { data: Record<string, { name: string, maps?: Record<string, boolean>, gold?: { purchasable?: boolean } }> }
-interface SummonerFile { data: Record<string, { key: string, name: string }> }
-interface ChampionFile { data: Record<string, { key: string, name: string }> }
-type RuneFile = { id: number, name: string, slots: { runes: { id: number, name: string }[] }[] }[]
+export interface ItemFile { data: Record<string, { name: string, maps?: Record<string, boolean>, gold?: { purchasable?: boolean } }> }
+export interface SummonerFile { data: Record<string, { key: string, name: string, modes?: string[] }> }
+export interface ChampionFile { data: Record<string, { key: string, name: string }> }
+export type RuneFile = { id: number, name: string, slots: { runes: { id: number, name: string }[] }[] }[]
 
 const indexes = new Map<string, Promise<GuideIndex>>()
+
+/** Whether a summoner spell is the Rift's own: Data Dragon lists each one again for other modes. */
+const onTheRift = (spell: SummonerFile['data'][string]) => !spell.modes || spell.modes.includes('CLASSIC')
+
+/**
+ * The index from Data Dragon's four `en_US` files. A name the files give more
+ * than once keeps the Rift's own: an item sold on Summoner's Rift before
+ * another map's or mode's of the same name, and a summoner spell of the
+ * classic mode before its twins — the Arena's Flash, and every spell again
+ * under "League classique" (`SummonerFlash_Jade`, `modes: ['JADE']`), whose
+ * old art a guide drew when the last of a name won.
+ */
+export function buildGuideIndex(items: ItemFile, summoners: SummonerFile, runes: RuneFile, champions: ChampionFile): GuideIndex {
+  const index: GuideIndex = { items: new Map(), spells: new Map(), runes: new Map(), styles: new Map(), champions: new Map() }
+  // Summoner's Rift's purchasable item first: a name can be another map's or mode's item too.
+  const itemRows = Object.entries(items.data)
+    .map(([id, item]) => ({ id: Number(id), name: item.name, rift: !!item.maps?.['11'] && item.gold?.purchasable !== false }))
+    .sort((a, b) => Number(b.rift) - Number(a.rift) || a.id - b.id)
+  for (const item of itemRows) {
+    if (!index.items.has(nameKey(item.name))) index.items.set(nameKey(item.name), item.id)
+  }
+  const spellRows = Object.values(summoners.data)
+    .map(spell => ({ id: Number(spell.key), name: spell.name, rift: onTheRift(spell) }))
+    .sort((a, b) => Number(b.rift) - Number(a.rift) || a.id - b.id)
+  for (const spell of spellRows) {
+    if (!index.spells.has(nameKey(spell.name))) index.spells.set(nameKey(spell.name), spell.id)
+  }
+  for (const style of runes) {
+    index.styles.set(nameKey(style.name), style.id)
+    for (const slot of style.slots) {
+      for (const rune of slot.runes) index.runes.set(nameKey(rune.name), rune.id)
+    }
+  }
+  for (const [word, id] of Object.entries(SHARDS)) index.runes.set(word, id)
+  // The live champions only: a mode's kit of a champion (`Jade_Ahri`, 60103) shares its name.
+  for (const champion of Object.values(champions.data)) {
+    const id = Number(champion.key)
+    if (isLiveChampionId(id)) index.champions.set(nameKey(champion.name), id)
+  }
+  return index
+}
 
 /** The patch's index, read once per patch; a failed read is not kept. */
 export function guideIndex(patch: string): Promise<GuideIndex> {
@@ -57,24 +99,7 @@ export function guideIndex(patch: string): Promise<GuideIndex> {
         $fetch<RuneFile>(`${base}/runesReforged.json`),
         $fetch<ChampionFile>(`${base}/champion.json`),
       ])
-      const index: GuideIndex = { items: new Map(), spells: new Map(), runes: new Map(), styles: new Map(), champions: new Map() }
-      // Summoner's Rift's purchasable item first: a name can be another map's or mode's item too.
-      const itemRows = Object.entries(items.data)
-        .map(([id, item]) => ({ id: Number(id), name: item.name, rift: !!item.maps?.['11'] && item.gold?.purchasable !== false }))
-        .sort((a, b) => Number(b.rift) - Number(a.rift) || a.id - b.id)
-      for (const item of itemRows) {
-        if (!index.items.has(nameKey(item.name))) index.items.set(nameKey(item.name), item.id)
-      }
-      for (const spell of Object.values(summoners.data)) index.spells.set(nameKey(spell.name), Number(spell.key))
-      for (const style of runes) {
-        index.styles.set(nameKey(style.name), style.id)
-        for (const slot of style.slots) {
-          for (const rune of slot.runes) index.runes.set(nameKey(rune.name), rune.id)
-        }
-      }
-      for (const [word, id] of Object.entries(SHARDS)) index.runes.set(word, id)
-      for (const champion of Object.values(champions.data)) index.champions.set(nameKey(champion.name), Number(champion.key))
-      return index
+      return buildGuideIndex(items, summoners, runes, champions)
     })()
     indexes.set(patch, read)
     read.catch(() => indexes.delete(patch))
