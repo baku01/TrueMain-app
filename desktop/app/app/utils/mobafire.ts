@@ -146,6 +146,9 @@ export interface GuideChapter {
   html: string
 }
 
+/** What an inline reference in an author's writing names (`span.guide-ref`, `sanitizeGuideHtml`). */
+export type GuideRefKind = 'item' | 'champion' | 'ability' | 'rune' | 'spell'
+
 export interface Guide {
   path: string
   slug: string
@@ -457,6 +460,55 @@ const DROPPED_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'f
 /** A colour the author gave their words (`color:#ff0000`), the one style kept. */
 const COLOR = /(?:^|;)\s*color\s*:\s*(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|[a-z]+)\s*(?:;|$)/i
 
+/** The site's kinds of inline reference (`ajax-tooltip {t:'Item',i:'…'}`), as the app's. */
+const REF_KINDS: Record<string, GuideRefKind> = { Item: 'item', Champion: 'champion', Ability: 'ability', ReforgedRune: 'rune', SummonerSpell: 'spell' }
+const KINDS = new Set<string>(Object.values(REF_KINDS))
+/** The longest name a reference keeps: a name, never a paragraph. */
+const REF_NAME = 80
+
+/**
+ * An inline reference to the game in an author's writing — the site's
+ * `<span class="ajax-tooltip {t:'Item',i:'…'}"><a …><img …>Name</a></span>`,
+ * or the mark this sanitizer made of one (a translation comes back through
+ * it) — as an empty `span.guide-ref`: its kind, its English name, the site's
+ * picture of it, and whether the author's text showed the name beside the
+ * picture. The guide draws it with the app's own icon and name
+ * (`GuidesChapter`), and the translation never sends it (`utils/guide-terms`).
+ * The site's own ids (`i`) are not Riot's: the name is what resolves it.
+ */
+function guideRefOf(element: Element, tag: string, doc: Document): Element | null {
+  const className = element.getAttribute('class') ?? ''
+  let kind: string | undefined
+  let name: string
+  let image: string | null
+  let named: boolean
+  if (tag === 'span' && /\bguide-ref\b/.test(className)) {
+    kind = element.getAttribute('data-kind') ?? undefined
+    name = element.getAttribute('data-name') ?? ''
+    image = element.getAttribute('data-image')
+    named = element.getAttribute('data-text') === '1'
+  }
+  else {
+    kind = REF_KINDS[className.match(/\bajax-tooltip\b[^{]*\{\s*t\s*:\s*'(\w+)'/)?.[1] ?? '']
+    if (!kind) return null
+    const picture = tag === 'img' ? element : element.querySelector('img')
+    image = imageOf(picture)
+    const shown = tag === 'img' ? '' : text(element)
+    named = !!shown
+    const slug = (tag === 'a' ? element : element.querySelector('a'))?.getAttribute('href')?.match(/\/league-of-legends\/[a-z-]+\/([a-z0-9-]+?)(?:-\d+)?$/)?.[1]?.replace(/-/g, ' ')
+    name = element.getAttribute('title')?.trim() || shown || picture?.getAttribute('alt')?.replace(/^LoL [^:]*:\s*/, '').trim() || slug || ''
+  }
+  name = name.replace(/\s+/g, ' ').trim()
+  if (!kind || !KINDS.has(kind) || !name || name.length > REF_NAME) return null
+  const ref = doc.createElement('span')
+  ref.setAttribute('class', 'guide-ref')
+  ref.setAttribute('data-kind', kind)
+  ref.setAttribute('data-name', name)
+  if (image && allowedImage(image)) ref.setAttribute('data-image', image)
+  if (named) ref.setAttribute('data-text', '1')
+  return ref
+}
+
 function clean(node: Node, into: Node, doc: Document) {
   for (const child of Array.from(node.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
@@ -467,6 +519,13 @@ function clean(node: Node, into: Node, doc: Document) {
     const element = child as Element
     const tag = element.tagName.toLowerCase()
     if (DROPPED_TAGS.has(tag)) continue
+    const ref = guideRefOf(element, tag, doc)
+    if (ref) {
+      into.appendChild(ref)
+      continue
+    }
+    // A mark that does not hold is dropped whole: it has no writing of its own.
+    if (tag === 'span' && /\bguide-ref\b/.test(element.getAttribute('class') ?? '')) continue
     // A video: its thumbnail, opened in the player's browser on a click (`GuidesChapter`).
     const video = tag === 'lite-youtube' ? element.getAttribute('videoid') : element.getAttribute('data-video')
     if ((tag === 'lite-youtube' || (tag === 'div' && element.hasAttribute('data-video'))) && video && VIDEO_ID.test(video)) {

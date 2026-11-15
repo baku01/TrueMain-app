@@ -1,14 +1,38 @@
 <script setup lang="ts">
+import type { FunctionalComponent, VNodeArrayChildren } from 'vue'
+import { h } from 'vue'
 import type { GuideChapter } from '~/utils/mobafire'
+import type { ProseNode } from '~/utils/guide-prose'
+import { proseTree } from '~/utils/guide-prose'
+import GuidesRef from '~/components/guides/Ref.vue'
 
 /**
  * One chapter of a guide, folding as the site's do: the author's writing,
  * kept to what `sanitizeGuideHtml` allows. A video in it is its thumbnail,
  * opened on YouTube in the player's browser on a click (`open_guide_video`).
+ *
+ * The writing is drawn from its tree (`proseTree`) rather than by `v-html`,
+ * so each of the author's inline references to the game — an item, a rune,
+ * a spell, a champion, an ability — is the app's own `GuidesRef`: its icon,
+ * its tooltip, its name in the player's language.
  */
-defineProps<{ chapter: GuideChapter }>()
+const props = defineProps<{ chapter: GuideChapter }>()
 const open = ref(true)
 const { t } = useT()
+
+const tree = computed(() => proseTree(props.chapter.html))
+
+/** The tree as elements; void ones (`img`, `br`, `hr`) without children. */
+function draw(nodes: ProseNode[]): VNodeArrayChildren {
+  return nodes.map((node) => {
+    if (typeof node === 'string') return node
+    if ('ref' in node) return h(GuidesRef, { reference: node.ref })
+    return h(node.tag, node.attrs, node.children.length ? draw(node.children) : undefined)
+  })
+}
+
+const Prose: FunctionalComponent<{ nodes: ProseNode[] }> = ({ nodes }) => draw(nodes)
+Prose.props = ['nodes']
 
 async function play(event: MouseEvent) {
   const video = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-video]')?.dataset.video
@@ -29,8 +53,10 @@ async function play(event: MouseEvent) {
       <span class="flex-1 text-sm font-semibold uppercase tracking-wide text-highlighted">{{ chapter.title }}</span>
       <UIcon :name="open ? 'i-lucide-minus' : 'i-lucide-plus'" class="size-4 text-muted" />
     </button>
-    <!-- eslint-disable-next-line vue/no-v-html, vuejs-accessibility/no-static-element-interactions, vuejs-accessibility/click-events-have-key-events -- built by `sanitizeGuideHtml`, from an allow-list, element by element; the click is a video's in it -->
-    <div v-if="open" class="guide-html border-t border-default/60 px-5 py-4 text-sm leading-relaxed text-default" :data-watch="t('guides.watchVideo')" @click="play" v-html="chapter.html" />
+    <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions, vuejs-accessibility/click-events-have-key-events -- the click is a video's in the writing -->
+    <div v-if="open" class="guide-html border-t border-default/60 px-5 py-4 text-sm leading-relaxed text-default" :data-watch="t('guides.watchVideo')" @click="play">
+      <Prose :nodes="tree" />
+    </div>
   </section>
 </template>
 
