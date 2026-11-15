@@ -249,6 +249,14 @@ describe('win probability added', () => {
     const pool = statsPool(new Map([[3071, stat(0.02, 108)], [1036, stat(0.1, 500)]]), [m(300, [6694])], id => id !== 1036)
     expect(pool.map(option => option.itemIds[0])).toEqual([6694, 3071])
   })
+
+  it('pools an item both measured: the larger sample\'s games, the win rates by weight, the lane\'s pick rate', () => {
+    const luden = { ...m(171051, [6655]), winRate: 0.5131, pickRate: 0.6 }
+    const [pooled] = statsPool(new Map([[6655, { games: 152972, winRate: 0.5138, wpa: 0.01 }]]), [luden], () => true)
+    expect(pooled).toMatchObject({ itemIds: [6655], games: 171051, pickRate: 0.6 })
+    expect(pooled!.winRate).toBeGreaterThan(0.5131)
+    expect(pooled!.winRate).toBeLessThan(0.5138)
+  })
 })
 
 describe('laidBuild', () => {
@@ -279,6 +287,14 @@ describe('placeShare', () => {
     expect(share(3026)).toBeGreaterThanOrEqual(PLACE_SHARE)
     expect(share(6333)).toBe(0)
     expect(share(3143)).toBe(0)
+  })
+
+  it('pools Blitz\'s slot when it counts the place\'s games: each item\'s larger count, one only Blitz saw joining', () => {
+    const same = new Map([[3036, { games: 8400, winRate: 0.52, wpa: 0 }], [3031, { games: 52000, winRate: 0.5, wpa: 0 }], [6333, { games: 700, winRate: 0.4, wpa: 0 }]])
+    const share = placeShare(fourth, same)!
+    const total = 9158 + 822 + 58086 + 700
+    expect(share(3036)).toBeCloseTo(9158 / total)
+    expect(share(6333)).toBeCloseTo(700 / total)
   })
 
   it('reads Blitz\'s item slot where lolalytics measured the place not at all', () => {

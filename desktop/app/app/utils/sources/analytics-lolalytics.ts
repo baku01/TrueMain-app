@@ -3,7 +3,7 @@ import type { LolalyticsSummary } from '~/utils/sources/lolalytics'
 import { damageShares, emptyAnalytics, lettersOf, pointsOf } from '~/utils/sources/analytics'
 import type { Measure } from '~/utils/sources/model'
 import { measure } from '~/utils/sources/model'
-import { lolalyticsLane, lolalyticsOptionsOf, readLolalyticsBuild, readLolalyticsMatchup, readLolalyticsTeam } from '~/utils/sources/lolalytics'
+import { bracketLift, lolalyticsLane, lolalyticsOptionsOf, lowered, readLolalyticsBuild, readLolalyticsMatchup, readLolalyticsTeam, recentred } from '~/utils/sources/lolalytics'
 
 /**
  * The core path: the API's (`core`, three items and their games), or — on a
@@ -215,5 +215,66 @@ export async function lolalyticsAnalytics(championId: number, position: string, 
   analytics.counters = header.counters ? { strong: header.counters.strong, weak: header.counters.weak } : null
   const top = build.sidebar?.topStats
   analytics.best = top ? { winRate: rate(top.topwin), games: top.toppick, players: top.topcount, elo: top.topelo, expertRank: top.toprank } : null
-  return analytics
+  const curves = [...new Set(analytics.trend.winRate.map(series => series.label))]
+  const lifts = new Map(await Promise.all(curves.map(async label => [label, await bracketLift(label.toUpperCase(), opponentId ? 'all' : region)] as const)))
+  return recentredAnalytics(analytics, build.lift ?? 0, lifts)
+}
+
+/**
+ * `analytics` with every win rate of the bracket `lift` lower (`bracketLift`):
+ * lolalytics' figures as the other sources count the same games, so they pool
+ * with theirs (`utils/sources/analytics-combined`) — the line the champion is
+ * read against (`averageWinRate`) too, its gap to it kept. The trend's curves
+ * are each their own bracket's (`lifts`, by label); the players' own win
+ * rates (`topPlayers`, `best`) are theirs, not the bracket's.
+ */
+function recentredAnalytics(analytics: ChampionAnalytics, lift: number, lifts: Map<string, number>): ChampionAnalytics {
+  const win = (winRate: number) => lowered(winRate, lift)
+  const one = <T extends Measure>(entry: T | null): T | null => entry && { ...entry, winRate: win(entry.winRate) }
+  const all = <T extends Measure>(list: T[]): T[] => list.map(entry => ({ ...entry, winRate: win(entry.winRate) }))
+  const build = (summary: SummaryBuild | null): SummaryBuild | null => summary && {
+    skillPriority: one(summary.skillPriority),
+    skillOrder: one(summary.skillOrder),
+    spells: one(summary.spells),
+    runes: one(summary.runes),
+    starters: one(summary.starters),
+    core: one(summary.core),
+    after: summary.after.map(group => ({ ...group, options: all(group.options) })),
+  }
+  const rows = (lanes: LaneRows[]) => lanes.map(lane => ({ ...lane, rows: lane.rows.map(row => ({ ...row, winRate: win(row.winRate) })) }))
+  const header = analytics.header
+  return {
+    ...analytics,
+    header: header && {
+      ...header,
+      winRate: win(header.winRate),
+      averageWinRate: header.averageWinRate === null ? null : win(header.averageWinRate),
+      previous: header.previous && { ...header.previous, winRate: win(header.previous.winRate) },
+    },
+    options: analytics.options && recentred(analytics.options, lift),
+    summary: { common: build(analytics.summary.common), winning: build(analytics.summary.winning) },
+    skillPaths: {
+      priority: all(analytics.skillPaths.priority),
+      level6: all(analytics.skillPaths.level6),
+      level10: all(analytics.skillPaths.level10),
+      level15: all(analytics.skillPaths.level15),
+    },
+    runeStats: new Map([...analytics.runeStats].map(([id, stat]) => [id, { primary: one(stat.primary), secondary: one(stat.secondary) }])),
+    itemSlots: analytics.itemSlots.map(slot => ({ ...slot, options: all(slot.options) })),
+    skillLevels: analytics.skillLevels.map(level => ({ ...level, skills: level.skills.map(one) })),
+    matchups: rows(analytics.matchups),
+    synergies: rows(analytics.synergies),
+    objectives: analytics.objectives.map(objective => ({ ...objective, secure: one(objective.secure), conceded: one(objective.conceded) })),
+    gameLength: all(analytics.gameLength),
+    trend: {
+      ...analytics.trend,
+      winRate: analytics.trend.winRate.map(series => ({ ...series, points: series.points.map(point => ({ ...point, value: lowered(point.value, lifts.get(series.label) ?? 0) })) })),
+    },
+    spellTable: all(analytics.spellTable),
+    startingSets: all(analytics.startingSets),
+    startingItems: all(analytics.startingItems),
+    earlyItems: all(analytics.earlyItems),
+    itemSets: analytics.itemSets.map(set => ({ ...set, options: all(set.options) })),
+    itemLists: { popular: all(analytics.itemLists.popular), winning: all(analytics.itemLists.winning), all: all(analytics.itemLists.all) },
+  }
 }

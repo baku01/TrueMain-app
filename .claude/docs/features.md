@@ -272,7 +272,14 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   matchups, trend, counters and synergies (Ahri 53.02 % → 51.28 %; Mobalytics 51.30, Blitz 51.33), its analytics page
   keeping its own scale. A source whose games, cell by cell, sit outside 0.6–1/0.6 of the first source's counted
   another population — a bracket it does not keep (Mobalytics' and Blitz's Gold for Gold+, 0.31; op.gg's lists, no
-  bracket) — and is left out (`sameGames`). An option a
+  bracket) — and is left out (`sameGames`). Pick, ban and play rates pool only over sources measuring them alike
+  (`sameScale`): Blitz's pick and ban rates are ~0.54 of the others' (its list's picks add up to 534 %, lolalytics'
+  987 %), op.gg's matchups give no play rate. The Analytics page reads every source too (`analytics-read`,
+  `analytics-combined`, Mobalytics' own `analytics-mobalytics`): figures several measure pooled section by section,
+  what one alone measures (objectives, game length, the trend by elo) its own; a region is lolalytics' alone; Blitz's
+  build documents never join another source's builds (their keystones win 4–6 points above the lane's — they count
+  other games). Jev's item pool and place shares pool lolalytics' and Blitz's item stats the same way (`statsPool`,
+  `placeGames`). An option a
   source left out is below its threshold there, not 0; cores are compared without their boots (lolalytics' hold them,
   Mobalytics' do not), a source's own cores that then read alike added up (other games). Blitz's lane builds count every
   rank (309,020 games for Ahri against ~264,000 Emerald+) and are not averaged in: they stay its own rows (playstyles,

@@ -7,6 +7,7 @@ import { isBoots } from '~/utils/blitz/builds'
 import { STARTER_LINE, fitsWith } from '~/utils/item-groups'
 import { STANDS_OUT, answerTo } from '~/utils/jev-needs'
 import { buysBoots } from '~/utils/sources/model'
+import { poolMeasure, sameGames } from '~/utils/sources/combined'
 
 /**
  * The Jev matchup page's build, its structure: every choice of a build — rune
@@ -243,19 +244,27 @@ const SITUATIONAL = 2
  */
 export const PLACE_SHARE = 0.01
 
+/** One of Blitz's item stats as a measure: its share of the games left to the sources that measure one. */
+const statOption = (id: number, stat: ItemStat): ItemOption => ({ itemIds: [id], games: stat.games, winRate: stat.winRate, pickRate: 0 })
+
 /**
  * Each item's games at one place of the build (1 the first completed item):
- * the source's measures of that place (lolalytics' `places`), else Blitz's
- * (its item stats at that slot) — never the two added up: they count the same
- * games (`utils/sources/combined`).
+ * the sources' measures of that place (lolalytics' `places`) and Blitz's (its
+ * item stats at that slot) as one — each item's the larger source's, never
+ * the two added up: they count the same games (Ahri's Luden's first, Emerald+:
+ * 164,357 games on lolalytics, 147,075 on Blitz). A slot Blitz numbers
+ * otherwise (its third for Ahri is four tenths of lolalytics' third) counts
+ * other games and is left out (`sameGames`).
  */
 export function placeGames(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): Map<number, number> {
+  const blitz = [...(slot ?? [])].map(([id, stat]) => statOption(id, stat))
+  const counted = sameGames([places ?? [], blitz], list => new Map(list.map(option => [String(option.itemIds[0]), option.games])))
   const games = new Map<number, number>()
-  if (places?.length) {
-    for (const option of places) games.set(option.itemIds[0]!, (games.get(option.itemIds[0]!) ?? 0) + option.games)
-    return games
+  for (const list of counted) {
+    const own = new Map<number, number>()
+    for (const option of list) own.set(option.itemIds[0]!, (own.get(option.itemIds[0]!) ?? 0) + option.games)
+    for (const [id, count] of own) games.set(id, Math.max(games.get(id) ?? 0, count))
   }
-  for (const [id, stat] of slot ?? []) games.set(id, (games.get(id) ?? 0) + stat.games)
   return games
 }
 
@@ -428,15 +437,19 @@ export function situationalPool(options: BuildOptions, completed: (id: number) =
 
 /**
  * The champion's items as Blitz's item stats measure them on the lane — every
- * completed item it was seen finishing — joined to the measured pool (the
- * larger sample kept).
+ * completed item it was seen finishing — joined to the measured pool: an item
+ * both measured is pooled as the sources' figures are (`poolMeasure`: the
+ * larger sample's games, the win rates averaged by weight), since they count
+ * the same Emerald+ games — Ahri's Luden's, 171,051 games on lolalytics and
+ * 152,972 on Blitz, 51.31 % and 51.38 % —; one only Blitz measured joins as
+ * it is.
  */
 export function statsPool(stats: Map<number, ItemStat>, measuredItems: ItemOption[], completed: (id: number) => boolean): ItemOption[] {
   const pool = new Map(measuredItems.map(option => [option.itemIds[0]!, option]))
   for (const [id, stat] of stats) {
     if (!completed(id) || !chosen(id)) continue
     const known = pool.get(id)
-    if (!known || known.games < stat.games) pool.set(id, { itemIds: [id], games: stat.games, winRate: stat.winRate, pickRate: known?.pickRate ?? 0 })
+    pool.set(id, known ? { ...poolMeasure([known, statOption(id, stat)]), itemIds: [id], pickRate: known.pickRate } : statOption(id, stat))
   }
   return [...pool.values()]
 }

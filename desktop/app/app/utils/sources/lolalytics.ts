@@ -191,10 +191,9 @@ const lifts = new Map<string, Promise<number>>()
  * Mobalytics, 51.33 % on Blitz; across 20 lanes' 841 matchups lolalytics sat
  * 1.4 to 2.0 points over Mobalytics on every one —, so the reads that answer
  * for the merged figures (`lolalyticsOptions`, `lolalyticsRows`,
- * `lolalyticsMatchups`, `lolalyticsTrend`, the counters, the synergies) take
- * it off: the same games then part by 0.2 to 0.4 points (`SOURCE_SPREAD`).
- * The analytics page keeps lolalytics' own figures, read against its own
- * `avgWr`. 0 when the list cannot be read.
+ * `lolalyticsMatchups`, `lolalyticsTrend`, the counters, the synergies, the
+ * analytics) take it off: the same games then part by 0.2 to 0.4 points
+ * (`SOURCE_SPREAD`). 0 when the list cannot be read.
  */
 export function bracketLift(eloBracket?: unknown, region = 'all', patch?: string): Promise<number> {
   const tier = lolalyticsTier(eloBracket)
@@ -213,7 +212,7 @@ export function bracketLift(eloBracket?: unknown, region = 'all', patch?: string
 }
 
 /** `options` with every win rate `lift` lower (`bracketLift`). */
-function recentred(options: BuildOptions, lift: number): BuildOptions {
+export function recentred(options: BuildOptions, lift: number): BuildOptions {
   if (!lift) return options
   const lower = <T extends Measure>(list: T[]) => list.map(entry => ({ ...entry, winRate: lowered(entry.winRate, lift) }))
   const lowerMap = (measures: Map<number, Measure>) => new Map([...measures].map(([id, entry]) => [id, { ...entry, winRate: lowered(entry.winRate, lift) }]))

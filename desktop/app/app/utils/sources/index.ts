@@ -101,7 +101,7 @@ const POOLED: Provider[] = [lolalyticsProvider, mobalyticsProvider, blitzProvide
 const SOURCE_BUDGET_MS = 8000
 
 /** Each read's answer, or null when it failed or outlasted the budget. */
-function settled<T>(reads: Promise<T>[]): Promise<(T | null)[]> {
+export function settled<T>(reads: Promise<T>[]): Promise<(T | null)[]> {
   return Promise.all(reads.map(read => Promise.race([
     read.catch(() => null),
     new Promise<null>(resolve => setTimeout(resolve, SOURCE_BUDGET_MS, null)),
