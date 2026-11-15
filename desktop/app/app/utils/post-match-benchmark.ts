@@ -13,12 +13,9 @@ import type { PostMatchBenchmark } from '~/utils/post-match'
 export type BenchmarkSource = 'truemain' | 'blitz'
 
 /**
- * The sources asked, in turn, with `picked` chosen in Settings: the picked one
- * first when it carries the figures, then the others that do. TrueMain is
- * asked only when it is the one picked: with another source the shell refuses
- * every request to it (`api.rs`, `NotFromSourceError`), a rule this read does
- * not get around. op.gg, lolalytics and Tencent carry none (see
- * `readPostMatchBenchmark`), so with them Blitz answers.
+ * The sources asked, in turn, that carry the figures: Blitz — TrueMain only
+ * for a `picked` TrueMain, which the app no longer picks. op.gg, lolalytics,
+ * Mobalytics and Tencent carry none (see `readPostMatchBenchmark`).
  */
 export function benchmarkOrder(picked: DataSource): BenchmarkSource[] {
   return picked === 'truemain' ? ['truemain', 'blitz'] : ['blitz']

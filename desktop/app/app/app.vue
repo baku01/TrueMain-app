@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { GameflowPhase } from '~/types/lcu'
 import { SERVER_FLAGS_KEY } from '#common/utils/server-flag'
-import DataSourcePicker from '~/components/settings/DataSourcePicker.vue'
 
 const { state, screen, ready } = useLcuState()
 const router = useRouter()
@@ -93,7 +92,6 @@ watch(screen, (next, previous) => {
     <NuxtPage v-if="standalone" />
     <div v-else class="flex h-screen flex-col overflow-hidden bg-default text-default">
       <AppLoadingBar />
-      <DataSourcePicker />
       <!-- The bar across the top, the rail down the left, the page beside it. -->
       <AppTopbar class="h-12 shrink-0 border-b border-default bg-elevated" />
       <div class="flex min-h-0 flex-1">

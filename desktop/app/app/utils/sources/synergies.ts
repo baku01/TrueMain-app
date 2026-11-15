@@ -2,7 +2,7 @@ import type { ChampionSynergies } from '#shared/types/champions'
 import type { DataSource } from '~/utils/data-source'
 import type { SynergyRow } from '~/utils/synergies'
 import { apiGet } from '~/composables/useApi'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { synergyTier, withEnoughGames } from '~/utils/synergies'
 import { duosFromBlitz, synergiesFromBlitz } from '~/utils/blitz/synergies'
 import { lolalyticsLane, readLolalyticsTeam } from '~/utils/sources/lolalytics'
@@ -61,11 +61,11 @@ export async function readSynergies(championId: number, position: string, ally: 
     const answer = await READERS[source]!(championId, position, ally)
     return { ...answer, rows: withEnoughGames(answer.rows) }
   }
-  const { source, answer } = await readFirst(standInOrder(dataSource.value, SYNERGY_SOURCES), read, blank)
+  const { source, answer } = await readFirst(standInOrder(leadSource.value, SYNERGY_SOURCES), read, blank)
   return { source, ...answer }
 }
 
 export async function readDuos(position: string, ally: string): Promise<SynergySourceRead> {
-  const { source, answer } = await readFirst(standInOrder(dataSource.value, DUO_SOURCES), () => duosFromBlitz(position, ally), blank)
+  const { source, answer } = await readFirst(standInOrder(leadSource.value, DUO_SOURCES), () => duosFromBlitz(position, ally), blank)
   return { source, ...answer }
 }

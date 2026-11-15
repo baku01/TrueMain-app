@@ -79,6 +79,7 @@ export default defineNuxtConfig({
       // MOBAFire answers no proxy (Cloudflare refuses a plain HTTP client, `src-tauri/src/mobafire.rs`):
       // `MOBAFIRE_DEV_ORIGIN` points the dev server at a browser of your own that relays the pages.
       '/__mobafire': { target: process.env.MOBAFIRE_DEV_ORIGIN || 'https://www.mobafire.com', changeOrigin: true },
+      '/__mobalytics': { target: 'https://app.mobalytics.gg/api/lol/graphql/v1', changeOrigin: true },
       '/__op-gg': { target: 'https://op.gg', changeOrigin: true, followRedirects: true, headers: { 'user-agent': 'TrueMain-Desktop (dev)' } },
       '/__jev': { target: 'https://api.typesafe.ai', changeOrigin: true },
       '/__blitz/data': { target: 'https://data.v2.iesdev.com/api/v1/query_objects/prod/lol', changeOrigin: true },

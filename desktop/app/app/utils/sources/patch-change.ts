@@ -1,7 +1,7 @@
 import type { ChampionTierListResponse } from '#shared/types/champions'
 import type { DataSource } from '~/utils/data-source'
 import { apiGet } from '~/composables/useApi'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { previousPatch } from '~/utils/data-window'
 import { SOLO_QUEUE, blitzRows, blitzTier, truemainPosition } from '~/utils/blitz/client'
 import { lolalyticsRows } from '~/utils/sources/lolalytics'
@@ -90,6 +90,6 @@ const READERS: Partial<Record<DataSource, (eloBracket: unknown) => Promise<Read>
 }
 
 export async function readWinRateChanges(eloBracket?: unknown): Promise<WinRateChanges> {
-  const { source, answer } = await readFirst(standInOrder(dataSource.value, PATCH_CHANGE_SOURCES), source => READERS[source]!(eloBracket), read => !read.changes.size)
+  const { source, answer } = await readFirst(standInOrder(leadSource.value, PATCH_CHANGE_SOURCES), source => READERS[source]!(eloBracket), read => !read.changes.size)
   return { source, ...answer }
 }

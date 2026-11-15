@@ -58,15 +58,8 @@ export function useDraftRecommendation(
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function ask(request: object): Promise<DraftRecommendation> {
-    // Another source picked in Settings: its tier list and matchups, never TrueMain's model.
-    const provider = activeProvider()
-    if (provider) return await draftRecommendationFromSource(provider, request as Parameters<typeof draftRecommendationFromSource>[1])
-    if (insideTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return await invoke<DraftRecommendation>('draft_recommendation', { request })
-    }
-    // `npm run dev` in a browser: the dev server proxies `/api` (nuxt.config).
-    return await $fetch<DraftRecommendation>('/api/champions/draft', { method: 'POST', body: request })
+    // The sources' tier list and matchups (`utils/sources`); TrueMain's model is never asked.
+    return await draftRecommendationFromSource(activeProvider(), request as Parameters<typeof draftRecommendationFromSource>[1])
   }
 
   async function fetchRecommendation() {

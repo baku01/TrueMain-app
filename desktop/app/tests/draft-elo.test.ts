@@ -32,6 +32,18 @@ const lcu = ref<{ riotId: string | null }>({ riotId: 'Faker#KR1' })
 const rankHistory = ref<{ tier: string }[]>([])
 const posted = vi.hoisted(() => [] as { url: string, body: Record<string, unknown> }[])
 
+vi.mock('~/utils/sources', () => ({ activeProvider: () => ({}) }))
+vi.mock('~/utils/sources/draft', () => ({
+  draftRecommendationFromSource: vi.fn(async (_provider: unknown, body: Record<string, unknown>) => {
+    posted.push({ url: 'sources:draft', body })
+    return { enemyLanes: [], candidates: [] }
+  }),
+  draftBansFromSource: vi.fn(async (_provider: unknown, body: Record<string, unknown>) => {
+    posted.push({ url: 'sources:bans', body })
+    return { candidates: [] }
+  }),
+}))
+
 const draft = (fields: Partial<DraftState> = {}): DraftState => ({
   myPosition: 'MIDDLE',
   myChampion: null,
@@ -62,10 +74,6 @@ beforeEach(() => {
   vi.stubGlobal('insideTauri', () => false)
   vi.stubGlobal('useLcuState', () => ({ state: lcu }))
   vi.stubGlobal('usePlayerRecord', () => ({ rankHistory }))
-  vi.stubGlobal('$fetch', async (url: string, options: { body: Record<string, unknown> }) => {
-    posted.push({ url, body: options.body })
-    return url.endsWith('/bans') ? { candidates: [] } : { enemyLanes: [], candidates: [] }
-  })
 })
 
 afterEach(() => {
@@ -114,7 +122,7 @@ describe('the draft requests', () => {
     useDraftRecommendation(ref(draft()), ref({}), ref([103]), bracket)
 
     await vi.advanceTimersByTimeAsync(200)
-    expect(posted.at(-1)).toMatchObject({ url: '/api/champions/draft', body: { eloBracket: 'GOLD_PLUS', candidates: [103] } })
+    expect(posted.at(-1)).toMatchObject({ url: 'sources:draft', body: { eloBracket: 'GOLD_PLUS', candidates: [103] } })
     expect(posted.at(-1)!.body).not.toHaveProperty('patch')
 
     bracket.value = null
@@ -128,6 +136,6 @@ describe('the draft requests', () => {
     useDraftBans(ref(draft()), ref([103, 7]), ref(true), ref('MASTER_PLUS'))
 
     await vi.advanceTimersByTimeAsync(200)
-    expect(posted.at(-1)).toMatchObject({ url: '/api/champions/draft/bans', body: { eloBracket: 'MASTER_PLUS', position: 'MIDDLE' } })
+    expect(posted.at(-1)).toMatchObject({ url: 'sources:bans', body: { eloBracket: 'MASTER_PLUS', position: 'MIDDLE' } })
   })
 })

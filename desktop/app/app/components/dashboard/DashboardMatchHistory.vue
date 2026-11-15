@@ -63,9 +63,6 @@ provide(MATCH_DETAIL_SOURCE, (nameTag, matchId) => {
   return { data, isLoading, notFound }
 })
 
-// A row's score is TrueMain's when it holds the game, else graded from the client's (#2075).
-const storedScores = useTruemainScores(() => (props.blitzPlatform ? '' : props.nameTag))
-
 const { t } = useT()
 const PAGE_SIZE = 10
 const page = ref(1)
@@ -82,7 +79,6 @@ const pageMatches = computed(() => listed.value
   .map(game => toMatchSummary(
     game,
     lpDeltaOf(game, props.allGames, props.rankHistory),
-    storedScores.value[String(game.gameId)],
   )))
 
 // Read ahead until the page after this one is full, or the client has none left

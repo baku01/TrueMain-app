@@ -8,7 +8,6 @@
  */
 import { answerStaticEndpoint } from '~/utils/static-endpoints'
 import { answerFromSource, answerPostFromSource } from '~/utils/sources'
-import { externalSource } from '~/utils/data-source'
 import { readChampionBuild } from '~/utils/champion-build-read'
 import { currentPatch } from '~/utils/sources/champions'
 
@@ -16,32 +15,14 @@ type QueryValue = string | number | boolean | null | undefined
 /** A list repeats its key, one pair per entry (`?player=a&player=b`). */
 type Query = Record<string, QueryValue | readonly QueryValue[]>
 
-/** The query as `[key, value]` pairs, empty values left out rather than sent blank. */
-function pairs(query: Query): [string, string][] {
-  return Object.entries(query)
-    .flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).map(entry => [key, entry] as const))
-    .filter(([, value]) => value !== null && value !== undefined && value !== '')
-    .map(([key, value]) => [key, String(value)])
-}
-
-/** The pairs as `$fetch` takes them: a key met twice becomes a list. */
-function fetchQuery(query: Query): Record<string, string | string[]> {
-  const result: Record<string, string | string[]> = {}
-  for (const [key, value] of pairs(query)) {
-    const known = result[key]
-    result[key] = known === undefined ? value : [...(Array.isArray(known) ? known : [known]), value]
-  }
-  return result
-}
-
 /**
- * With another source picked in Settings, TrueMain is never asked: a read the
- * source has no answer for fails here, before anything leaves the app, and
- * the page shows that part as unavailable.
+ * TrueMain is never asked (`utils/data-source.ts`): a read no source has an
+ * answer for fails here, before anything leaves the app, and the page shows
+ * that part as unavailable.
  */
 export class NotFromSourceError extends Error {
   constructor(path: string) {
-    super(`${path} is TrueMain's alone: not read with another data source`)
+    super(`${path} is TrueMain's alone: not read from the other sources`)
     this.name = 'NotFromSourceError'
   }
 }
@@ -63,37 +44,28 @@ function tracked<T>(work: Promise<T>, options: ReadOptions): Promise<T> {
 }
 
 /**
- * A read-only GET. Inside Tauri only the paths `api_get` lists are reachable —
- * the shell is not a general proxy onto the API.
+ * A read in TrueMain's API's shapes, answered by the sources
+ * (`answerFromSource`); a path they have no counterpart for fails
+ * (`NotFromSourceError`) — TrueMain itself is never asked, not even to stand in.
  */
 export function apiGet<T>(path: string, query: Query = {}, options: ReadOptions = {}): Promise<T> {
   return tracked((async () => {
-    // Settings picked another source: the reads it has a counterpart for are answered from it, in TrueMain's shapes.
-    const external = answerFromSource(path, query)
-    if (external !== undefined) return await external as T
-    if (externalSource()) throw new NotFromSourceError(path)
-    if (insideTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return await invoke<T>('api_get', { path, query: pairs(query) })
-    }
-    return await $fetch<T>(`/api${path}`, { query: fetchQuery(query), signal: options.signal })
+    const fromSources = answerFromSource(path, query)
+    if (fromSources === undefined) throw new NotFromSourceError(path)
+    return await fromSources as T
   })(), options)
 }
 
 /**
  * A POST read — the composition build and its games, which take the draft as
- * a body. Inside Tauri only the paths `api_post` lists are reachable.
+ * a body — answered by the sources (`answerPostFromSource`); TrueMain is
+ * never asked.
  */
 export function apiPost<T>(path: string, body: unknown, query: Query = {}, options: ReadOptions = {}): Promise<T> {
   return tracked((async () => {
-    const external = answerPostFromSource(path, body, query)
-    if (external !== undefined) return await external as T
-    if (externalSource()) throw new NotFromSourceError(path)
-    if (insideTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return await invoke<T>('api_post', { path, query: pairs(query), request: body })
-    }
-    return await $fetch<T>(`/api${path}`, { method: 'POST', body: body as Record<string, unknown>, query: fetchQuery(query), signal: options.signal })
+    const fromSources = answerPostFromSource(path, body, query)
+    if (fromSources === undefined) throw new NotFromSourceError(path)
+    return await fromSources as T
   })(), options)
 }
 

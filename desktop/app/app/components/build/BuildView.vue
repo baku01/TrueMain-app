@@ -8,7 +8,6 @@ import type { ImportBuild } from '~/utils/recommended-item-set'
 import type { ItemSetSubject } from '~/composables/useItemSetImport'
 import type { Needs } from '~/utils/jev-recommend'
 import type { DraftOptional } from '~/utils/jev-optionals'
-import { externalSource, fromBlitz } from '~/utils/data-source'
 import { situationalFromTree } from '~/utils/item-set'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { kitPaths } from '~/utils/kit-tree'
@@ -81,10 +80,7 @@ watch(defaultKey, (first) => {
   if (selected.value !== 'pro') selected.value = first
 }, { immediate: true })
 
-/** A pro picked in the list (Blitz only): their last game's build, and whose it is. */
-const blitz = fromBlitz()
-/** Settings picked a source other than TrueMain: its lane builds show every option it measured. */
-const external = externalSource() !== null
+/** A pro picked in the list (Blitz's pros, each with their last game): that game's build, and whose it is. */
 const pro = ref<{ option: BuildOption, player: string } | null>(null)
 function selectPro(option: BuildOption, player: string) {
   kitId.value = null
@@ -114,7 +110,7 @@ provide(REMEMBER_BUILD, () => {
 })
 /** A row named after a Blitz playstyle opens the panel on that playstyle's options. */
 const { preset: panelPreset, ready: panelReady } = usePlaystylePreset(toRef(props, 'championId'), toRef(props, 'position'), shown)
-const panelShown = computed(() => !!shown.value && ((external && shown.value.key.startsWith('lane-')) || ((shown.value.key.startsWith('otp-') || shown.value.key.startsWith('style-')) && !!panelPreset.value)))
+const panelShown = computed(() => !!shown.value && (shown.value.key.startsWith('lane-') || ((shown.value.key.startsWith('otp-') || shown.value.key.startsWith('style-')) && !!panelPreset.value)))
 const { nameOf } = useChampionStatics()
 /** What an import is named after: the champion, against the draft's lane opponent when there is one (`TrueMain Aatrox vs Akali`). */
 const importName = computed(() => {
@@ -248,7 +244,7 @@ const emptyMessage = computed(() => t('build.view.none'))
         </template>
       </UPopover>
       <!-- The pros' builds: a list a click away, the one picked shown in this card. -->
-      <UPopover v-if="blitz || external" v-model:open="prosOpen" :content="{ align: 'start' }">
+      <UPopover v-model:open="prosOpen" :content="{ align: 'start' }">
         <button
           type="button"
           class="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ring-1 ring-inset transition-colors"
@@ -259,8 +255,7 @@ const emptyMessage = computed(() => t('build.view.none'))
         </button>
         <template #content>
           <div class="max-h-[28rem] w-80 overflow-y-auto p-2">
-            <BuildPros v-if="blitz" :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="(...args) => { selectPro(...args); prosOpen = false }" />
-            <ProbuildTopPlayers v-else :champion-id="championId" :position="position" compact selectable @select="(...args) => { selectPro(...args); prosOpen = false }" />
+            <BuildPros :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="(...args) => { selectPro(...args); prosOpen = false }" />
           </div>
         </template>
       </UPopover>
@@ -339,10 +334,8 @@ const emptyMessage = computed(() => t('build.view.none'))
           <h3 class="px-2 pb-1 stat-label">{{ t('kit.list.label') }}</h3>
           <KitList v-model="kitId" :kits="kits" />
         </section>
-        <!-- Settings reads from Blitz: its pros, each with their last game's build. -->
-        <BuildPros v-if="blitz" :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="selectPro" />
-        <!-- op.gg and lolalytics: their ranked players; a pick reads that player's last game on the champion from Blitz. -->
-        <ProbuildTopPlayers v-else-if="external" :champion-id="championId" :position="position" compact selectable @select="selectPro" />
+        <!-- Blitz's pros, each with their last game's build. -->
+        <BuildPros :champion-id="championId" :position="position" :selected-key="selected === 'pro' && !kitShown ? pro?.option.key : null" @select="selectPro" />
       </div>
     </aside>
 

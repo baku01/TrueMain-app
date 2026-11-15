@@ -17,7 +17,7 @@ const emit = defineEmits<{ select: [option: BuildOption, player: string] }>()
 const { t } = useT()
 
 const SOURCE_NAME: Record<string, string> = { truemain: 'TrueMain', blitz: 'Blitz', opgg: 'op.gg', lolalytics: 'lolalytics', tencent: 'Tencent' }
-const source = computed(() => SOURCE_NAME[dataSource.value] ?? dataSource.value)
+const source = computed(() => SOURCE_NAME[leadSource.value] ?? leadSource.value)
 const players = ref<TopPlayer[] | null>(null)
 
 let latest = 0

@@ -1,81 +1,52 @@
 import { readonly, shallowRef } from 'vue'
 
 /**
- * Where the app reads its numbers (Settings, personal build only): TrueMain,
- * or another source — Blitz, op.gg (its official API), lolalytics or
- * Tencent (both experimental: read off public endpoints they do not
- * document). Kept across launches. Every read that has a counterpart in the
- * chosen source asks it first (`apiGet`, `readChampionBuild`,
- * `utils/sources`); a read with none stays on TrueMain whatever the choice.
+ * Where the app reads its numbers: every source at once, nothing to choose.
+ * lolalytics, Mobalytics, Blitz, op.gg and Tencent (China) answer the
+ * statistics, builds and recommendations, merged without counting a game
+ * twice (`utils/sources`, `utils/sources/combined`). TrueMain's own API is
+ * not asked — not even to stand in when they all fail: the shell refuses it
+ * (`api.rs`), and what only it had is shown as unavailable.
  *
- * A module-level ref rather than `useState`: `apiGet` is called outside any
- * component. Changing the source reloads the window (`setDataSource`), so the
- * session caches every page keeps are never a mix of two.
+ * Listed most complete first: lolalytics and Mobalytics count nearly every
+ * ranked game (Ahri's mid lane on 16.22, Emerald+: 262,160 and 263,049
+ * games), op.gg and Blitz about nine tenths of them, Tencent China's servers
+ * apart. A read only some sources measure asks them in this order, the first
+ * that answers kept.
  */
-export const DATA_SOURCES = ['truemain', 'blitz', 'opgg', 'lolalytics', 'tencent'] as const
+export const DATA_SOURCES = ['lolalytics', 'mobalytics', 'blitz', 'opgg', 'tencent'] as const
 
-export type DataSource = typeof DATA_SOURCES[number]
+/** A source a reader may list — TrueMain among them, though it is never asked (`standInOrder`). */
+export type DataSource = typeof DATA_SOURCES[number] | 'truemain'
 
 /** The sources whose reads are not TrueMain's. */
 export type ExternalSource = Exclude<DataSource, 'truemain'>
 
-const STORAGE_KEY = 'truemain-data-source'
+/**
+ * The source a read asks first when it measures the figure: the most
+ * complete. What it does not measure, the readers' own orders (`standInOrder`,
+ * `rankHistoryOrder`, …) ask of the others, in turn.
+ */
+export const LEAD_SOURCE: DataSource = 'lolalytics'
 
-function readStored(): DataSource {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return (DATA_SOURCES as readonly string[]).includes(stored ?? '') ? stored as DataSource : 'truemain'
-  }
-  catch {
-    return 'truemain'
-  }
-}
-
-const current = shallowRef<DataSource>(import.meta.client ? readStored() : 'truemain')
-
-export const dataSource = readonly(current)
-
-export const fromBlitz = () => current.value === 'blitz'
-
-/** The source the reads go to when it is not TrueMain; null on TrueMain. */
-export const externalSource = (): ExternalSource | null => (current.value === 'truemain' ? null : current.value)
+/** The lead source as the readers that once followed Settings' pick read it. */
+export const leadSource = readonly(shallowRef<DataSource>(LEAD_SOURCE))
 
 /**
- * The elo bracket another source reads when none is picked: the one its own
- * site opens on (lolalytics, Blitz and op.gg all open on Emerald+), not
- * TrueMain's Master+ — on lolalytics, Aatrox's top lane on one patch is 3,370
- * games in Master+ and 18,877 in Emerald+.
+ * The elo bracket the sources read when none is picked: the one their own
+ * sites open on (lolalytics, Mobalytics, Blitz and op.gg all open on
+ * Emerald+), not TrueMain's Master+ — on lolalytics, Aatrox's top lane on one
+ * patch is 3,370 games in Master+ and 18,877 in Emerald+.
  */
 export const SOURCE_ELO_BRACKET = 'EMERALD_PLUS'
 
 /**
- * Tell the shell whether TrueMain is the source: with another one it refuses
- * every request to TrueMain's API, the ones it makes on its own included, and
- * keeps the choice for the next launch (`api.rs`).
+ * Tell the shell TrueMain's API is never to be asked (`api.rs`): it refuses
+ * every request to it, its own included — the choice an older version kept
+ * when TrueMain was the picked source is overwritten.
  */
-export async function syncDataSourceWithShell(source: DataSource = current.value) {
+export async function syncDataSourceWithShell() {
   if (!insideTauri()) return
   const { invoke } = await import('@tauri-apps/api/core')
-  await invoke('set_data_source', { external: source !== 'truemain' }).catch(() => {})
-}
-
-export async function setDataSource(next: DataSource) {
-  if (next === current.value) return
-  try {
-    localStorage.setItem(STORAGE_KEY, next)
-  }
-  catch {
-    // Storage unavailable: the choice holds until the window closes.
-  }
-  current.value = next
-  await clearSourceCache()
-  await syncDataSourceWithShell(next)
-  window.location.reload()
-}
-
-/** The shell's kept source answers dropped, so the reloaded window reads afresh (`sources.rs`). */
-async function clearSourceCache() {
-  if (!insideTauri()) return
-  const { invoke } = await import('@tauri-apps/api/core')
-  await invoke('clear_source_cache').catch(() => {})
+  await invoke('set_data_source', { external: true }).catch(() => {})
 }

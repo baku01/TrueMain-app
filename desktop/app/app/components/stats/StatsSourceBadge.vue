@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DataSource } from '~/utils/data-source'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 
 /**
  * The source a view's numbers actually came from, as the pros' list names
@@ -10,14 +10,14 @@ import { dataSource } from '~/utils/data-source'
 const props = defineProps<{ source: DataSource }>()
 const { t } = useT()
 const name = computed(() => t(`source.name.${props.source}`))
-const standIn = computed(() => props.source !== dataSource.value)
+const standIn = computed(() => props.source !== leadSource.value)
 </script>
 
 <template>
   <UBadge
     :label="t('stats.source', { source: name })"
     :icon="standIn ? 'i-lucide-info' : undefined"
-    :title="standIn ? t('stats.sourceStandIn', { source: name, picked: t(`source.name.${dataSource}`) }) : undefined"
+    :title="standIn ? t('stats.sourceStandIn', { source: name, picked: t(`source.name.${leadSource}`) }) : undefined"
     color="primary"
     variant="subtle"
     size="sm"

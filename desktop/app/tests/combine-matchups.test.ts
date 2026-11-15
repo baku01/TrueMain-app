@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChampionMatchupEntry } from '#shared/types/champions/matchups'
-import { combineMatchups } from '~/utils/sources/combined'
+import { combineMatchups, weightOf } from '~/utils/sources/combined'
 import { enemyCounters } from '~/utils/draft-counters'
 
 const row = (opponentChampionId: number, games: number, wins: number, playRate: number, bounds: [number, number] = [0, 1]): ChampionMatchupEntry => ({
@@ -9,14 +9,14 @@ const row = (opponentChampionId: number, games: number, wins: number, playRate: 
 })
 
 describe('combineMatchups', () => {
-  it('pools lolalytics and Blitz opponent by opponent, the Wilson interval read from the games added', () => {
-    // Malphite on top: lolalytics and Blitz both measure Darius; Garen only lolalytics, Sion only Blitz.
+  it('pools lolalytics and Blitz opponent by opponent: the rates by weight, the games the largest source\'s', () => {
+    // Malphite on top: lolalytics and Blitz both measure Darius (the same games); Garen only lolalytics, Sion only Blitz.
     const lolalytics = { championId: 54, position: 'TOP', patch: '16.22', matchups: [row(122, 800, 360, 0.05), row(86, 300, 170, 0.03)] }
     const blitz = { championId: 54, position: 'TOP', patch: '16.22', matchups: [row(122, 200, 90, 0.07, [0.38, 0.52]), row(14, 120, 50, 0.02, [0.33, 0.5])] }
     const pooled = combineMatchups(54, 'TOP', [lolalytics, blitz])
     const darius = pooled.matchups.find(entry => entry.opponentChampionId === 122)!
-    expect(darius).toMatchObject({ games: 1000, wins: 450, winRate: 0.45 })
-    expect(darius.playRate).toBeCloseTo((0.05 * 800 + 0.07 * 200) / 1000)
+    expect(darius).toMatchObject({ games: 800, wins: 360, winRate: 0.45 })
+    expect(darius.playRate).toBeCloseTo((0.05 * weightOf(800) + 0.07 * weightOf(200)) / (weightOf(800) + weightOf(200)))
     expect(darius.winRateUpperBound).toBeGreaterThan(0.45)
     expect(darius.winRateUpperBound).toBeLessThan(0.49)
     expect(pooled.matchups.map(entry => entry.opponentChampionId).sort((a, b) => a - b)).toEqual([14, 86, 122])

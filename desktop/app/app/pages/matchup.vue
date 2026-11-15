@@ -10,20 +10,19 @@ import DraftBuildAdvice from '~/components/draft/DraftBuildAdvice.vue'
 
 const { t } = useT()
 
-if (externalSource()) {
-  provide(MATCH_DETAIL_SOURCE, (_nameTag, matchId) => {
-    const data = ref<Awaited<ReturnType<typeof blitzMatchDetail>>>(null)
-    const isLoading = ref(true)
-    const notFound = ref(false)
-    watch(matchId, async (id) => {
-      isLoading.value = true
-      data.value = await blitzMatchDetail(id).catch(() => null)
-      notFound.value = !data.value
-      isLoading.value = false
-    }, { immediate: true })
-    return { data, isLoading, notFound }
-  })
-}
+// A game opened from the tool reads Blitz's copy (Riot's match-v5): TrueMain's is never asked.
+provide(MATCH_DETAIL_SOURCE, (_nameTag, matchId) => {
+  const data = ref<Awaited<ReturnType<typeof blitzMatchDetail>>>(null)
+  const isLoading = ref(true)
+  const notFound = ref(false)
+  watch(matchId, async (id) => {
+    isLoading.value = true
+    data.value = await blitzMatchDetail(id).catch(() => null)
+    notFound.value = !data.value
+    isLoading.value = false
+  }, { immediate: true })
+  return { data, isLoading, notFound }
+})
 </script>
 
 <template>

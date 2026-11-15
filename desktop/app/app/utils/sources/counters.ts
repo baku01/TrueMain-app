@@ -1,6 +1,6 @@
 import type { DataSource } from '~/utils/data-source'
 import type { CounterRow } from '~/utils/counters'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { matchupsFromBlitz } from '~/utils/blitz/stats'
 import { lolalyticsLane, readLolalyticsBuild } from '~/utils/sources/lolalytics'
 import { readFirst, standInOrder } from '~/utils/sources/stand-in'
@@ -56,7 +56,7 @@ const READERS: Partial<Record<DataSource, (championId: number, position: string)
 
 export async function readCounters(championId: number, position: string): Promise<CounterRead> {
   const { source, answer } = await readFirst(
-    standInOrder(dataSource.value, COUNTER_SOURCES),
+    standInOrder(leadSource.value, COUNTER_SOURCES),
     source => READERS[source]!(championId, position),
     answer => !answer.rows.length,
   )

@@ -7,7 +7,6 @@ import type {
 } from '~/types/build'
 import { activeProvider } from '~/utils/sources'
 import { compositionFromSource } from '~/utils/sources/composition'
-import { externalSource } from '~/utils/data-source'
 
 /** Whose build to show: a champion on its lane, and the draft around it from its side. */
 export interface BuildSubject {
@@ -79,20 +78,9 @@ export function useDraftBuild(subject: Ref<BuildSubject | null>) {
   let controller: AbortController | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  async function post(champion: number, body: CompositionBuildRequest, signal: AbortSignal) {
-    // Another source picked in Settings: the build from it, read against the draft (`utils/sources/composition.ts`).
-    const provider = activeProvider()
-    if (provider) return await compositionFromSource(provider, champion, body as Parameters<typeof compositionFromSource>[2], externalSource() === 'blitz') as unknown as CompositionBuildResponse
-    if (insideTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return await invoke<CompositionBuildResponse>('composition_build', { championId: champion, request: body })
-    }
-    // `npm run dev` in a browser: the dev server proxies `/api` (nuxt.config).
-    return await $fetch<CompositionBuildResponse>(`/api/champions/${champion}/composition-build`, {
-      method: 'POST',
-      body,
-      signal,
-    })
+  async function post(champion: number, body: CompositionBuildRequest, _signal: AbortSignal) {
+    // The sources' build, read against the draft (`utils/sources/composition.ts`); TrueMain is never asked.
+    return await compositionFromSource(activeProvider(), champion, body as Parameters<typeof compositionFromSource>[2], true) as unknown as CompositionBuildResponse
   }
 
   async function standard(champion: number, position: string, signal: AbortSignal): Promise<DraftBuild | null> {

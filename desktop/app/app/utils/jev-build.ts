@@ -245,12 +245,16 @@ export const PLACE_SHARE = 0.01
 
 /**
  * Each item's games at one place of the build (1 the first completed item):
- * the source's measures of that place (lolalytics' `places`) and Blitz's (its
- * item stats at that slot) added up.
+ * the source's measures of that place (lolalytics' `places`), else Blitz's
+ * (its item stats at that slot) — never the two added up: they count the same
+ * games (`utils/sources/combined`).
  */
 export function placeGames(places: ItemOption[] | undefined, slot: Map<number, ItemStat> | undefined): Map<number, number> {
   const games = new Map<number, number>()
-  for (const option of places ?? []) games.set(option.itemIds[0]!, (games.get(option.itemIds[0]!) ?? 0) + option.games)
+  if (places?.length) {
+    for (const option of places) games.set(option.itemIds[0]!, (games.get(option.itemIds[0]!) ?? 0) + option.games)
+    return games
+  }
   for (const [id, stat] of slot ?? []) games.set(id, (games.get(id) ?? 0) + stat.games)
   return games
 }

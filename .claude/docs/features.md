@@ -256,6 +256,32 @@ mounted components (`ProcessSummaryView`, `PanelTitle`). No page-level tests.
 Reads the local League client (LCU) in Rust; the webview renders the state. Details and dev workflow in
 `desktop/README.md`; decisions in [`decisions/desktop.md`](decisions/desktop.md).
 
+- **Data sources, merged** (`utils/data-source.ts`, `utils/sources/index.ts` `activeProvider`, `utils/sources/combined.ts`,
+  Settings' "Fontes de dados" card) — no source to pick any more (the launch picker and Settings' radio cards are gone):
+  every read asks lolalytics, Mobalytics, Blitz and op.gg at once (an 8 s budget per source) and averages their
+  answers, because they count the same ranked games (Ahri's mid lane on 16.22, Emerald+: 262,160 / 263,049 / 244,970 /
+  240,148 games) — never adds them. Each rate (win, pick, ban, an option's share, a matchup) is the mean weighed by
+  w = 1/(0.25/n + τ²), τ = one point of win rate for the sources' processing spread (Briar against Viego: 52.5 % and
+  50.4 % over the same ~3,800 games) — near-equal for large samples, a thin one counting little (multiple-frame
+  estimator for units every frame holds: the frames' mean, Mecatti 2007; BLUE with a source bias, Lyons 1988). The games
+  shown are the largest source's (the nested samples' effective size, a lower bound on distinct games). An option a
+  source left out is below its threshold there, not 0; cores are compared without their boots (lolalytics' hold them,
+  Mobalytics' do not), a source's own cores that then read alike added up (other games). Blitz's lane builds count every
+  rank (309,020 games for Ahri against ~264,000 Emerald+) and are not averaged in: they stay its own rows (playstyles,
+  one-tricks, the matchup's builds, which only Blitz measures and which come first against a lane opponent). Tencent
+  (China's servers, another population and meta: win-rate rank correlation 0.27–0.83 with lolalytics by lane) is never
+  averaged in; it answers only when the others answer nothing. Reads only some sources measure ask the lead source
+  (lolalytics) first, then Blitz, then the others (`standInOrder`). TrueMain's own API is never asked — not even to
+  stand in: the shell refuses it from launch (`api.rs`), and what only it had (true mains' scores, its item context,
+  its composition model) is shown as unavailable.
+- **Mobalytics** (`utils/sources/mobalytics.ts`, shell source `mobalytics`, dev proxy `/__mobalytics`) — the GraphQL
+  endpoint its own pages ask (`app.mobalytics.gg/api/lol/graphql/v1/query`, a plain GET with the query in the address,
+  no key): a lane's builds by kind (the most popular, alternatives, off-meta), each with its games and wins, rune page,
+  spells, skill order and items by stage; the lane's figures by patch; its counters (counted from the opponent's side:
+  the champion's wins are the opponent's losses, the gold lead at 15 changes sign). Slugs are the sources' names
+  (`championSlug`), ranks `EmeraldPlus`/`MasterPlus`/…, a "+" it does not pool read as the tier alone. A build's later
+  items and situational lists carry the whole build's games, so they are left to the sources that count items.
+
 - **ProBuild** — `/probuild` replaces Truemains in the sidebar (the leaderboard stays at `/truemains`; the champion page still lists a champion's truemains). It reads truemain.lol, not the player's own Riot key: the champion page's endpoint (`champion_build`, `composables/useProBuilds.ts`) for the five lanes of a picked champion, laid out by `utils/site-build.ts` — keystones, rune pages, items and spell pairs with their games and wins. The page opens on the lane most played; fewer than 30 games is flagged as noise. The local high-elo collector's shell code (`src-tauri/src/highelo.rs`) is still in the repo but nothing in the app starts or reads it.
 - **Riot API key** (`/settings`, gear in the top bar) — the player's own key, typed once, kept by the shell in the system credential store (Keychain / Credential Manager; never in the webview) and verified with one `lol/status/v4/platform-data` call (`src-tauri/src/riot.rs`). Riot's `X-App-Rate-Limit` headers give the key's windows (a personal key is 20/s and 100/2 min), shown with what is spent and the sustained budget per minute. The dashboard's purchase/skill order (`riot_match_events`) spends it.
 - **Hardware acceleration** (`/settings`, "Performance" card, `src-tauri/src/graphics.rs`, `useGraphics`) — on by default, kept in `graphics.json` in the app's config folder. Off: on Windows, WebView2 starts with `--disable-gpu --disable-gpu-compositing` (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, set at the top of `run()` before any webview, so the overlay's windows get the same switches) from the next launch, with a "Restart now" button; on both systems a `reduce-effects` class on `<html>` drops every `backdrop-filter` and every animation but spinners at once. macOS' WKWebView has no GPU switch — on a Mac the toggle only does the second part, and says so.

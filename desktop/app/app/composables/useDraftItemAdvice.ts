@@ -1,46 +1,20 @@
 import type { BuildSubject } from '~/composables/useDraftBuild'
-import type { NextItemCandidate, NextItemRequest, NextItemResponse } from '~/utils/next-item'
 import type { DraftItemPush } from '~/utils/draft-damage'
-import { draftPush, isDraftReason, PUSH_MIN_RATIO } from '~/utils/draft-damage'
 import type { SourceBuildStep } from '~/utils/draft-build'
-import { draftBuildFromOptions, enemySituation, proShares, winRateFactor } from '~/utils/draft-build'
+import { draftBuildFromOptions, enemySituation, proShares } from '~/utils/draft-build'
 import { readProMatches } from '~/utils/blitz/pro'
 import { activeProvider } from '~/utils/sources'
-import { externalSource } from '~/utils/data-source'
-
-/** How many completed items the draft's build runs to, the boots apart. */
-const BUILD_ITEMS = 5
 
 /** One item of the build for this draft, and the situation that put it there when the draft did. */
 export interface DraftBuildStep {
   itemId: number
   isBoots: boolean
-  /** TrueMain's model: the item's share in a game like this one, and usually. */
-  share?: number
-  baseShare?: number
-  /** Another source: the games it measured the item in. */
+  /** The games the sources measured the item in. */
   games?: number
   /** The share of the latest pro games on the champion and lane it was finished in; absent without pro games. */
   pros?: number | null
   /** The enemy or lane situation that moved it up; null when it is the standard pick at its step. */
   reason: { axis: string, bucket: 'High' | 'Low' } | null
-}
-
-/**
- * The candidate a step settles on — the most taken in a draft like this one,
- * weighed by how it wins against the branch (shrunk by its games, so a rare
- * lucky item moves nothing) — with its reason when the draft moved it.
- */
-function stepOf(slot: NextItemResponse['build'], isBoots: boolean, skip: ReadonlySet<number>): DraftBuildStep | null {
-  const open = (slot?.candidates ?? []).filter(candidate => !skip.has(candidate.itemId))
-  const games = open.reduce((sum, candidate) => sum + candidate.games, 0)
-  const baseline = games ? open.reduce((sum, candidate) => sum + candidate.wins, 0) / games : 0.5
-  const topShare = Math.max(0, ...open.map(candidate => candidate.share))
-  const score = (candidate: NextItemCandidate) => candidate.share * winRateFactor(candidate.games ? candidate.wins / candidate.games : 0, candidate.games, baseline)
-  const best = open.filter(candidate => candidate.share >= topShare * 0.1).sort((a, b) => score(b) - score(a))[0]
-  if (!best) return null
-  const reason = best.share >= best.baseShare * PUSH_MIN_RATIO ? best.reasons.find(entry => isDraftReason(entry.axis)) ?? null : null
-  return { itemId: best.itemId, isBoots, share: best.share, baseShare: best.baseShare, reason: reason ? { axis: reason.axis, bucket: reason.bucket } : null }
 }
 
 /** Picks land in bursts at the end of a phase: wait for the board to settle before asking. */
@@ -69,76 +43,10 @@ export function useDraftItemAdvice(subject: Ref<BuildSubject | null>) {
   let generation = 0
   let settle: ReturnType<typeof setTimeout> | undefined
 
-  async function ask(current: BuildSubject) {
-    const mine = ++generation
-    const body: NextItemRequest = {
-      position: current.request.position,
-      items: [],
-      allies: current.request.allies,
-      enemies: current.request.enemies,
-    }
-    pending.value = true
-    try {
-      const answer = await apiPost<NextItemResponse>(`/champions/${current.championId}/next-item`, body, {}, { background: true })
-      if (mine !== generation) return
-      pushes.value = [draftPush('boots', answer.boots), draftPush('build', answer.build)].filter((push): push is DraftItemPush => push !== null)
-      void walk(mine, current, body, answer)
-    }
-    catch {
-      // Advice that does not load is advice not shown: the build below stands on its own.
-      if (mine === generation) pushes.value = []
-    }
-    finally {
-      if (mine === generation) pending.value = false
-    }
-  }
-
-  /** The build for this draft, a step at a time from the first answer; dropped when the draft changes under it. */
-  async function walk(mine: number, current: BuildSubject, body: NextItemRequest, first: NextItemResponse) {
-    buildPending.value = true
-    const held: number[] = []
-    const steps: DraftBuildStep[] = []
-    // The boots the draft pushes when it pushes some — the same the advice names — else the most taken.
-    const pushedBoots = draftPush('boots', first.boots)
-    const boots: DraftBuildStep | null = pushedBoots
-      ? { itemId: pushedBoots.itemId, isBoots: true, share: pushedBoots.share, baseShare: pushedBoots.baseShare, reason: pushedBoots.reason }
-      : stepOf(first.boots, true, new Set())
-    // Where the mains complete the boots in the whole order, when the API gives it: second by default.
-    const bootsAt = Math.max(0, first.order?.findIndex(step => step.isBoots) ?? 1)
-    let answer: NextItemResponse | null = first
-    try {
-      while (answer && steps.filter(step => !step.isBoots).length < BUILD_ITEMS) {
-        const step = stepOf(answer.build, false, new Set(held))
-        if (!step) break
-        steps.push(step)
-        held.push(step.itemId)
-        if (steps.filter(entry => !entry.isBoots).length >= BUILD_ITEMS) break
-        answer = await apiPost<NextItemResponse>(`/champions/${current.championId}/next-item`, { ...body, items: [...held, ...(boots ? [boots.itemId] : [])] }, {}, { background: true })
-        if (mine !== generation) return
-      }
-      if (boots) steps.splice(Math.min(bootsAt, steps.length), 0, boots)
-      if (mine === generation) build.value = steps
-      // The pros beside TrueMain's steps: the share of their latest games each item was finished in.
-      const opponent = current.request.enemies.find(enemy => enemy.position === current.request.position)?.championId ?? null
-      const pro = await readProMatches(current.championId, current.request.position).catch(() => [])
-      if (mine === generation && pro.length) {
-        const shares = proShares(pro, opponent, items.value)
-        build.value = steps.map(step => ({ ...step, pros: shares.get(step.itemId) ?? 0 }))
-      }
-    }
-    catch {
-      // What was read stands: a build cut short is still the start of one.
-      if (mine === generation) build.value = boots ? [...steps.slice(0, bootsAt), boots, ...steps.slice(bootsAt)] : steps
-    }
-    finally {
-      if (mine === generation) buildPending.value = false
-    }
-  }
-
   /**
-   * Another source picked in Settings: the build from what it measured for the
-   * champion (`utils/draft-build.ts`), read against the enemy team from Riot's
-   * champion data — TrueMain is not asked.
+   * The build from what the sources measured for the champion
+   * (`utils/draft-build.ts`), read against the enemy team from Riot's champion
+   * data. TrueMain's model is never asked.
    */
   async function fromSource(mine: number, current: BuildSubject) {
     pending.value = true
@@ -188,7 +96,7 @@ export function useDraftItemAdvice(subject: Ref<BuildSubject | null>) {
       return
     }
     const mine = generation
-    settle = setTimeout(() => (externalSource() ? fromSource(mine, current) : ask(current)), SETTLE_MS)
+    settle = setTimeout(() => void fromSource(mine, current), SETTLE_MS)
   }, { immediate: true })
 
   onScopeDispose(() => clearTimeout(settle))

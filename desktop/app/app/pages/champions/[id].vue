@@ -2,7 +2,6 @@
 import ChampionAbilities from '~/components/Champion/ChampionAbilities.vue'
 import ChampionCounters from '~/components/Champion/ChampionCounters.vue'
 import ChampionSynergies from '~/components/Champion/ChampionSynergies.vue'
-import { externalSource } from '~/utils/data-source'
 import { POSITIONS, positionLabel } from '#common/utils/positions'
 import type { Lane } from '~/types/draft'
 
@@ -16,7 +15,7 @@ const route = useRoute()
 const router = useRouter()
 
 const championId = computed(() => Number(route.params.id))
-const { nameOf, aliasOf, portraitOf, splashOf } = useChampionStatics()
+const { nameOf, portraitOf, splashOf } = useChampionStatics()
 const { entries, entryOf, patch } = useTierList()
 
 /** The lanes the champion is tiered on, most played first. */
@@ -137,17 +136,6 @@ const { data: trend, pending: trendPending } = useChampionTrend(championId, lane
                 size="xs"
                 :aria-label="t('dash.champion.matchup')"
                 :title="t('dash.champion.against')"
-              />
-              <!-- TrueMain's site, only when TrueMain is the source. -->
-              <UButton
-                v-if="aliasOf(championId) && !externalSource()"
-                icon="i-lucide-external-link"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                :aria-label="t('dash.openOnSite')"
-                :title="t('dash.openOnSite')"
-                @click="openOnSite(`/champions/${aliasOf(championId)!.toLowerCase()}`)"
               />
             </div>
           </div>

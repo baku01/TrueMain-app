@@ -18,7 +18,7 @@ const { items, summoners, runeTree, loadChampion, championStatic } = useStaticDa
 const { mainEntryOf } = useTierList()
 
 const SOURCE_NAME: Record<string, string> = { truemain: 'TrueMain', blitz: 'Blitz', opgg: 'op.gg', lolalytics: 'lolalytics', tencent: 'Tencent' }
-const source = computed(() => SOURCE_NAME[dataSource.value] ?? dataSource.value)
+const source = computed(() => SOURCE_NAME[leadSource.value] ?? leadSource.value)
 const ELOS = ['ALL', 'GOLD_PLUS', 'PLATINUM_PLUS', 'EMERALD_PLUS', 'DIAMOND_PLUS', 'MASTER_PLUS'] as const
 const LANE_KEYS: Record<string, string> = { TOP: 'probuild.role.top', JUNGLE: 'probuild.role.jungle', MIDDLE: 'probuild.role.middle', BOTTOM: 'probuild.role.bottom', UTILITY: 'probuild.role.utility' }
 
@@ -28,7 +28,7 @@ const position = ref<string | null>(null)
 const elo = ref<typeof ELOS[number]>('EMERALD_PLUS')
 /** lolalytics reads a region; the others read the whole world. */
 const region = ref<typeof LOLALYTICS_REGIONS[number]>('all')
-const regional = computed(() => dataSource.value === 'lolalytics')
+const regional = computed(() => leadSource.value === 'lolalytics')
 const regions = computed(() => LOLALYTICS_REGIONS.map(value => ({ value, label: value === 'all' ? t('analytics.region.all') : value.toUpperCase() })))
 const analytics = shallowRef<ChampionAnalytics | null>(null)
 const reading = ref(false)
@@ -51,7 +51,7 @@ const matches = computed(() => matching(query.value, championId.value))
 const opponentQuery = ref('')
 const opponentId = ref<number | null>(null)
 const opponentMatches = computed(() => matching(opponentQuery.value, opponentId.value))
-const matchupSource = computed(() => MATCHUP_SOURCES.includes(dataSource.value))
+const matchupSource = computed(() => MATCHUP_SOURCES.includes(leadSource.value))
 function pickOpponent(id: number | null) {
   opponentId.value = id
   opponentQuery.value = id === null ? '' : nameOf(id)
