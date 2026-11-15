@@ -192,6 +192,26 @@ pub async fn mobafire_page(app: AppHandle, path: String) -> Result<String, Strin
     }
 }
 
+/// Opens a guide's YouTube video in the player's browser: a video's id
+/// (eleven letters, digits, `-` or `_`), never an address the webview makes up.
+#[tauri::command]
+pub fn open_guide_video(app: AppHandle, video: String) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+
+    let id = video.len() == 11
+        && video
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if !id {
+        return Err(format!("{video} is not a YouTube video"));
+    }
+    // As `open_patch_note`: the rule above is the whole guard.
+    #[allow(deprecated)]
+    app.shell()
+        .open(format!("https://www.youtube.com/watch?v={video}"), None)
+        .map_err(|error| error.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

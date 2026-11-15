@@ -482,7 +482,13 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   ranked authors, the guides under the site's dividers with their rating ring, votes, the author's rank, tags, its pages,
   and the trending guides beside them; a guide opens on its banner, each build (recommended items, the rune pages and
   spell sets switched as the author offers them, the items by section, the ability order), its threats and synergies by
-  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`). The site has no API and sits
+  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`; a YouTube video is its
+  thumbnail, opened in the browser, `open_guide_video`). What the game names is drawn from the app's own data
+  (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's `en_US` ids) — icons, tooltips and names
+  in the player's language, a rune page as every one in the app, ready to import; the rest of the words, the author's,
+  are machine-translated into the app's language by Google Translate's public endpoint (`utils/translate.ts`,
+  `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), with a switch to
+  the original. The site has no API and sits
   behind Cloudflare, which refuses any plain HTTP client: the shell reads its pages in a hidden window of its own on
   mobafire.com (the system's webview) and takes their HTML back (`eval_with_callback`); when Cloudflare asks to confirm
   a person is there, the window is shown for the player to tick it — never answered for them — and the page says so.

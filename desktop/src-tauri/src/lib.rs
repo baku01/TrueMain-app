@@ -412,6 +412,7 @@ pub fn run() {
             news::riot_patch_notes_page,
             news::open_patch_note,
             mobafire::mobafire_page,
+            mobafire::open_guide_video,
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.
