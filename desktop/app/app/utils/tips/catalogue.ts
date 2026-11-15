@@ -59,6 +59,12 @@ interface TipRule {
   priority: number
   /** Seconds a tip waits in the queue before it is stale and dropped. */
   ttl: number
+  /**
+   * Said now or not at all — our health, the level 2 race: the moment passes
+   * in seconds, so it takes the screen from any tip but an urgent countdown
+   * once that one has been read a glance (`TipQueue`), first of its priority.
+   */
+  immediate?: boolean
 }
 
 /** From this priority a tip is a countdown about to run out (half a minute, Smite): the pane marks it. */
@@ -67,7 +73,7 @@ export const URGENT_PRIORITY = 5
 /** A tip that is never news (the minimap, a cannon wave with nothing to buy): it waits for a quiet screen, and any other takes its place. */
 export const FILLER_PRIORITY = 1
 
-const rule = (category: TipCategory, priority: number, ttl: number): TipRule => ({ category, priority, ttl })
+const rule = (category: TipCategory, priority: number, ttl: number, immediate = false): TipRule => ({ category, priority, ttl, ...(immediate ? { immediate } : {}) })
 // A countdown goes stale with the clock: a minute's warning shown 20 s late says the wrong thing.
 const minute = rule('objective', 4, 8)
 const halfMinute = rule('objective', URGENT_PRIORITY, 8)
@@ -105,17 +111,17 @@ export const TIP_RULES: Record<TipKey, TipRule> = {
   'ward.control.back.baron': rule('ward', 3, 15),
   'ward.control.place.baron': rule('ward', 3, 15),
   // The level 2 race lasts seconds.
-  'lane.levelTwoFirst': rule('lane', 4, 5),
-  'lane.levelTwoBehind': rule('lane', 4, 5),
+  'lane.levelTwoFirst': rule('lane', 4, 5, true),
+  'lane.levelTwoBehind': rule('lane', 4, 5, true),
   'lane.opponentDead': rule('lane', 3, 10),
   'lane.cannon': rule('lane', FILLER_PRIORITY, 6),
   // Health and the map's numbers move by the second: said now or not at all.
-  'lane.lowHealth': rule('lane', 4, 6),
+  'lane.lowHealth': rule('lane', 4, 6, true),
   'lane.spikeMine': rule('lane', 3, 10),
   'lane.spikeTheirs': rule('lane', 3, 10),
   'lane.levelAhead': rule('lane', 3, 10),
   'lane.levelBehind': rule('lane', 3, 10),
-  'recall.lowHealth': rule('recall', 4, 6),
+  'recall.lowHealth': rule('recall', 4, 6, true),
   'recall.richHurt': rule('recall', 3, 10),
   'ward.idle': rule('ward', 2, 15),
   'macro.ace': rule('objective', URGENT_PRIORITY, 8),

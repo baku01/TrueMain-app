@@ -99,6 +99,16 @@ describe('sameGames', () => {
   })
 })
 
+describe('sameScale', () => {
+  it('pools the pick and ban rates only over the sources measuring them alike: Blitz\'s are half the others\'', () => {
+    const row = (games: number, winRate: number, pickRate: number, banRate: number) => ({ championId: 103, position: 'MIDDLE', games, wins: Math.round(games * winRate), winRate, pickRate, lanePlayRate: 0.95, banRate, trueMainCount: 0, tier: 'S', tierScore: 15, patchVersion: '16.22', lastUpdatedAtUtc: '', topBuild: null })
+    const [ahri] = combineRows([[row(264372, 0.5128, 0.1148, 0.0365)], [row(244970, 0.5133, 0.0613, 0.0196)]])
+    expect(ahri!.pickRate).toBeCloseTo(0.1148)
+    expect(ahri!.banRate).toBeCloseTo(0.0365)
+    expect(ahri!.winRate).toBeGreaterThan(0.5128)
+  })
+})
+
 describe('effectiveGames', () => {
   it('is the games for a thin cell and caps at what the sources\' spread leaves for a large one', () => {
     expect(effectiveGames(0.5, 100, 3)).toBeGreaterThan(99)

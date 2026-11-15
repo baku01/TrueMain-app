@@ -60,17 +60,49 @@ const SAME_GAMES = [0.6, 1 / 0.6] as const
  * figure toward its own.
  */
 export function sameGames<T>(answers: T[], cells: (answer: T) => Map<string, number>): T[] {
+  return alike(answers, cells, SAME_GAMES, true)
+}
+
+/**
+ * How far a source's shares — pick, ban and play rates — may sit from the
+ * first source's, cell by cell, and still be the same measure. Blitz's pick
+ * and ban rates are another: about 0.54 of the others' over the same games
+ * (Ahri's mid lane, Emerald+: 6.13 % and 1.96 % on Blitz, 11.41 % and 3.65 %
+ * on lolalytics, 11.38 % and 3.66 % on Mobalytics; its list's picks add up
+ * to 534 %, lolalytics' to 987 %, ten picks a game). Its matchups' play rates
+ * are the others' (Zed against Ahri: 4.74 %, 4.26 %, 4.72 %).
+ */
+const SAME_SCALE = [0.8, 1.25] as const
+
+/**
+ * The answers whose shares measure what the first one's do (`SAME_SCALE`),
+ * by the same rule as `sameGames`; an answer giving none (op.gg's matchups,
+ * every play rate 0) measures none.
+ */
+export function sameScale<T>(answers: T[], cells: (answer: T) => Map<string, number>): T[] {
+  return alike(answers, cells, SAME_SCALE, false)
+}
+
+/**
+ * The answers whose cells sit within `band` of the first answer's — the
+ * first that has a positive one —, by the median of their ratios over the
+ * cells both give; one sharing no cell with it is kept, one without a
+ * positive cell only when `unmeasured`.
+ */
+function alike<T>(answers: T[], cells: (answer: T) => Map<string, number>, band: readonly [number, number], unmeasured: boolean): T[] {
   const counted = answers.map(answer => ({ answer, cells: cells(answer) }))
-  const first = counted.find(entry => [...entry.cells.values()].some(games => games > 0))
-  if (!first) return answers
+  const positive = (entry: typeof counted[number]) => [...entry.cells.values()].some(value => value > 0)
+  const first = counted.find(positive)
+  if (!first) return unmeasured ? answers : []
   return counted.filter((entry) => {
     if (entry === first) return true
-    const ratios = [...entry.cells].flatMap(([key, games]) => {
+    if (!positive(entry)) return unmeasured
+    const ratios = [...entry.cells].flatMap(([key, value]) => {
       const base = first.cells.get(key)
-      return base && games > 0 ? [games / base] : []
+      return base && value > 0 ? [value / base] : []
     }).sort((a, b) => a - b)
     const median = ratios[Math.floor(ratios.length / 2)]
-    return median === undefined || (median >= SAME_GAMES[0] && median <= SAME_GAMES[1])
+    return median === undefined || (median >= band[0] && median <= band[1])
   }).map(entry => entry.answer)
 }
 
@@ -197,12 +229,15 @@ export function effectiveGames(winRate: number, games: number, sources: number):
  */
 export function combineMatchups(championId: number, position: string, answers: (ChampionMatchups | null)[]): ChampionMatchups {
   const counted = sameGames(answers.filter((answer): answer is ChampionMatchups => !!answer), answer => new Map(answer.matchups.map(entry => [String(entry.opponentChampionId), entry.games])))
+  // The play rates pooled over the sources measuring them alike (`sameScale`).
+  const playing = new Set(sameScale(counted, answer => new Map(answer.matchups.map(entry => [String(entry.opponentChampionId), entry.playRate]))).flatMap(answer => answer.matchups))
   const byOpponent = new Map<number, ChampionMatchupEntry[]>()
   for (const entry of counted.flatMap(answer => answer.matchups)) {
     if (entry.games > 0) byOpponent.set(entry.opponentChampionId, [...(byOpponent.get(entry.opponentChampionId) ?? []), entry])
   }
   const matchups = [...byOpponent.values()].map((entries) => {
-    const pooled = poolMeasure(entries.map(entry => ({ ...entry, pickRate: entry.playRate })))
+    const played = entries.filter(entry => playing.has(entry))
+    const pooled = { ...poolMeasure(entries.map(entry => ({ ...entry, pickRate: entry.playRate }))), pickRate: mean(played.map(entry => ({ value: entry.playRate, games: entry.games }))) ?? 0 }
     const gold = entries.filter(entry => entry.averageGoldDiffAt15 !== null)
     const goldDiff = mean(gold.map(entry => ({ value: entry.averageGoldDiffAt15!, games: entry.goldDiffLaneGames || entry.games })))
     const wins = Math.round(pooled.winRate * pooled.games)
@@ -228,16 +263,18 @@ export function combineMatchups(championId: number, position: string, answers: (
  * rest (tier, build) the first row's — the order given, most complete first.
  */
 export function combineRows(answers: ChampionSummaryResponse[][]): ChampionSummaryResponse[] {
+  const keyOf = (row: ChampionSummaryResponse) => `${row.championId}:${row.position}`
+  const kept = sameGames(answers, rows => new Map(rows.map(row => [keyOf(row), row.games])))
+  // The pick and ban rates pooled over the sources measuring them alike (`sameScale`), else the first row's.
+  const sharing = new Set(sameScale(kept, rows => new Map(rows.map(row => [keyOf(row), row.pickRate]))).flat())
   const byKey = new Map<string, ChampionSummaryResponse[]>()
-  for (const row of sameGames(answers, rows => new Map(rows.map(row => [`${row.championId}:${row.position}`, row.games]))).flat()) {
-    const key = `${row.championId}:${row.position}`
-    byKey.set(key, [...(byKey.get(key) ?? []), row])
-  }
+  for (const row of kept.flat()) byKey.set(keyOf(row), [...(byKey.get(keyOf(row)) ?? []), row])
   return [...byKey.values()].map((rows) => {
     const counted = rows.filter(row => row.games > 0)
     const measured = counted.length ? counted : rows
+    const shared = measured.filter(row => sharing.has(row))
     const first = rows[0]!
-    const rate = (pick: (row: ChampionSummaryResponse) => number) => mean(measured.map(row => ({ value: pick(row), games: row.games || 1 }))) ?? pick(first)
+    const rate = (pick: (row: ChampionSummaryResponse) => number, over = measured) => mean(over.map(row => ({ value: pick(row), games: row.games || 1 }))) ?? pick(first)
     const games = Math.max(...rows.map(row => row.games))
     const winRate = rate(row => row.winRate)
     return {
@@ -245,8 +282,8 @@ export function combineRows(answers: ChampionSummaryResponse[][]): ChampionSumma
       games,
       wins: Math.round(winRate * games),
       winRate,
-      pickRate: rate(row => row.pickRate),
-      banRate: rate(row => row.banRate ?? 0),
+      pickRate: rate(row => row.pickRate, shared),
+      banRate: rate(row => row.banRate ?? 0, shared),
       lanePlayRate: rate(row => row.lanePlayRate),
     }
   })
@@ -255,12 +292,15 @@ export function combineRows(answers: ChampionSummaryResponse[][]): ChampionSumma
 /** The sources' trends of one lane as one, patch by patch (`poolMeasure`'s rule). */
 export function combineTrends(championId: number, position: string, answers: ChampionTrendResponse[]): ChampionTrendResponse {
   const byPatch = new Map<string, ChampionTrendResponse['points']>()
-  for (const point of sameGames(answers, answer => new Map(answer.points.map(point => [point.patch, point.games]))).flatMap(answer => answer.points)) byPatch.set(point.patch, [...(byPatch.get(point.patch) ?? []), point])
+  const kept = sameGames(answers, answer => new Map(answer.points.map(point => [point.patch, point.games])))
+  const sharing = new Set(sameScale(kept, answer => new Map(answer.points.map(point => [point.patch, point.pickRate]))).flatMap(answer => answer.points))
+  for (const point of kept.flatMap(answer => answer.points)) byPatch.set(point.patch, [...(byPatch.get(point.patch) ?? []), point])
   const points = [...byPatch.entries()].map(([patch, points]) => {
     const counted = points.filter(point => point.games > 0)
     const measured = counted.length ? counted : points
-    const rate = (pick: (point: ChampionTrendResponse['points'][number]) => number) => mean(measured.map(point => ({ value: pick(point), games: point.games || 1 }))) ?? pick(points[0]!)
-    return { patch, winRate: rate(point => point.winRate), pickRate: rate(point => point.pickRate), banRate: rate(point => point.banRate ?? 0), games: Math.max(...points.map(point => point.games)) }
+    const shared = points.filter(point => sharing.has(point))
+    const rate = (pick: (point: ChampionTrendResponse['points'][number]) => number, over = measured) => mean(over.map(point => ({ value: pick(point), games: point.games || 1 }))) ?? pick(points[0]!)
+    return { patch, winRate: rate(point => point.winRate), pickRate: rate(point => point.pickRate, shared), banRate: rate(point => point.banRate ?? 0, shared), games: Math.max(...points.map(point => point.games)) }
   }).sort((a, b) => a.patch.localeCompare(b.patch, undefined, { numeric: true }))
   return { championId, position, points }
 }

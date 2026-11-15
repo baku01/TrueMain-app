@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GameRow, MetricKey } from '~/utils/nerd-stats/features'
+import type { GameSource } from '~/utils/deep-history'
 import { DEFINITION_BY_KEY } from '~/utils/nerd-stats/features'
 import { POSITION_BY_VALUE } from '#common/utils/positions'
 
@@ -7,9 +8,13 @@ import { POSITION_BY_VALUE } from '#common/utils/positions'
  * Every game the analysis read, one row each with every figure it was read
  * for — the table view of every chart on the page. Sorted by any column (a
  * second click turns the order over); a figure the game did not carry is a
- * dash, never a zero.
+ * dash, never a zero. The last column says where each game was read from.
  */
-const props = defineProps<{ rows: GameRow[] }>()
+const props = defineProps<{
+  rows: GameRow[]
+  /** Where each game was read from (`useDeepHistory`). */
+  sourceOf?: (gameId: number) => GameSource | null
+}>()
 
 const { t } = useT()
 const f = useNerdFormat()
@@ -62,6 +67,10 @@ const columns = computed<Column[]>(() => [
   { key: 'session', label: t('nerd.col.session'), value: row => row.session, show: row => t('nerd.col.sessionNth', { n: row.session }) },
   metricColumn('performance'),
   { key: 'lp', label: 'LP', value: row => row.lpDelta, show: row => (row.lpDelta === null ? '—' : f.signed(row.lpDelta)) },
+  { key: 'source', label: t('nerd.col.source'), value: row => props.sourceOf?.(row.game.gameId) ?? null, show: (row) => {
+    const source = props.sourceOf?.(row.game.gameId)
+    return source ? t(`nerd.sourceShort.${source}`) : '—'
+  }, align: 'left' },
 ])
 
 const sortKey = ref('date')
@@ -88,15 +97,7 @@ const sorted = computed(() => {
 
 <template>
   <section class="surface rounded-lg">
-    <header class="flex flex-wrap items-center gap-3 border-b border-default px-4 py-3.5">
-      <span class="tm-emblem grid size-9 shrink-0 place-items-center rounded-lg text-primary">
-        <UIcon name="i-tabler-table" class="size-5" />
-      </span>
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-highlighted">{{ t('nerd.games.title') }}</h2>
-        <p class="text-xs text-muted">{{ t('nerd.games.subtitle', { count: rows.length }) }}</p>
-      </div>
-    </header>
+    <NerdCardHeader icon="i-tabler-table" :title="t('nerd.games.title')" :subtitle="t('nerd.games.subtitle', { count: rows.length })" />
     <div class="max-h-[70vh] overflow-auto">
       <table class="w-full min-w-max text-xs">
         <thead class="sticky top-0 z-10 bg-(--tm-pane) shadow-[0_1px_0_var(--ui-border)]">

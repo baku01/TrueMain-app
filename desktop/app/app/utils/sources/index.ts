@@ -6,7 +6,7 @@ import type { BuildOptions } from '~/utils/sources/model'
 import type { CompositionBuildRequest } from '#shared/types/composition'
 import { readBlitzBuild } from '~/utils/blitz/playstyles'
 import { damageProfilesFromBlitz, matchupsFromBlitz, tierListFromBlitz, trendFromBlitz } from '~/utils/blitz/stats'
-import { directoryFromBlitz } from '~/utils/blitz/directory'
+import { blitzDirectoryRows, directoryFromBlitz } from '~/utils/blitz/directory'
 import { MIN_MATCHUP_GAMES, blitzOptions, blitzOptionsOf } from '~/utils/sources/blitz'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
 import { compositionFromSource, compositionGamesFromBlitz } from '~/utils/sources/composition'
@@ -101,7 +101,7 @@ const POOLED: Provider[] = [lolalyticsProvider, mobalyticsProvider, blitzProvide
 const SOURCE_BUDGET_MS = 8000
 
 /** Each read's answer, or null when it failed or outlasted the budget. */
-function settled<T>(reads: Promise<T>[]): Promise<(T | null)[]> {
+export function settled<T>(reads: Promise<T>[]): Promise<(T | null)[]> {
   return Promise.all(reads.map(read => Promise.race([
     read.catch(() => null),
     new Promise<null>(resolve => setTimeout(resolve, SOURCE_BUDGET_MS, null)),
@@ -114,7 +114,7 @@ const present = <T>(answers: (T | null)[]) => answers.filter((answer): answer is
 async function pooledRows(query: Record<string, unknown>): Promise<ChampionSummaryResponse[]> {
   const answers = await settled([
     lolalyticsRows(query),
-    directoryFromBlitz({ ...query, page: 1, pageSize: 5000 }).then(answer => answer.rows),
+    blitzDirectoryRows(query),
     opggRows(query),
   ])
   return combineRows(present(answers))
@@ -128,6 +128,9 @@ async function pooledRows(query: Record<string, unknown>): Promise<ChampionSumma
  * in. Its builds stay its own rows (playstyles, one-tricks, the matchup's).
  */
 const POOLED_BUILDS: Provider[] = [lolalyticsProvider, mobalyticsProvider, opggProvider]
+
+/** The build a row of the champions list shows: lolalytics', else op.gg's. */
+const rowBuilds = firstAnswering([lolalyticsProvider, opggProvider])
 
 /** The global sources as one provider: each read their answers averaged, the games the largest source's. */
 const pooledProvider: Provider = {
@@ -144,7 +147,9 @@ const pooledProvider: Provider = {
     })).filter(group => group.entries.length > 0)
     return { patchVersion: rows[0]?.patchVersion ?? await currentPatch(), position, tiers }
   },
-  directory: async query => pageDirectory(await pooledRows(query), query, (championId, position) => pooledProvider.builds(championId, position)),
+  // Each row's build, its icons only: one source's, lolalytics' (the read its champion page reuses), else op.gg's —
+  // pooling three sources for every row of the list was three requests a row, a thousand for the whole list.
+  directory: async query => pageDirectory(await pooledRows(query), query, (championId, position) => rowBuilds.builds(championId, position)),
   matchups: async (championId, query) => {
     const position = typeof query.position === 'string' && query.position ? query.position : 'MIDDLE'
     return combineMatchups(championId, position, await settled(POOLED.map(source => source.matchups(championId, query))))

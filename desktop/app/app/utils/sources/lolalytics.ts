@@ -177,6 +177,20 @@ const rate = (percent: number) => percent / 100
 export const lowered = (winRate: number, lift: number) => Math.min(Math.max(winRate - lift, 0), 1)
 
 const lifts = new Map<string, Promise<number>>()
+const tierLists = new Map<string, Promise<TierAnswer>>()
+
+/** One `tier` list, kept for the session: the champions list's rows and the bracket's lift read the same one. */
+function readTierList(query: Record<string, string>): Promise<TierAnswer> {
+  const full = { lane: 'all', region: 'all', ...query, ep: 'tier' }
+  const key = JSON.stringify(Object.entries(full).sort(([a], [b]) => a.localeCompare(b)))
+  let answer = tierLists.get(key)
+  if (!answer) {
+    answer = read<TierAnswer>(full)
+    answer.catch(() => tierLists.delete(key))
+    keepBounded(tierLists, key, answer)
+  }
+  return answer
+}
 
 /**
  * How far a bracket's games, as lolalytics counts them, are won above half of
@@ -191,17 +205,16 @@ const lifts = new Map<string, Promise<number>>()
  * Mobalytics, 51.33 % on Blitz; across 20 lanes' 841 matchups lolalytics sat
  * 1.4 to 2.0 points over Mobalytics on every one —, so the reads that answer
  * for the merged figures (`lolalyticsOptions`, `lolalyticsRows`,
- * `lolalyticsMatchups`, `lolalyticsTrend`, the counters, the synergies) take
- * it off: the same games then part by 0.2 to 0.4 points (`SOURCE_SPREAD`).
- * The analytics page keeps lolalytics' own figures, read against its own
- * `avgWr`. 0 when the list cannot be read.
+ * `lolalyticsMatchups`, `lolalyticsTrend`, the counters, the synergies, the
+ * analytics) take it off: the same games then part by 0.2 to 0.4 points
+ * (`SOURCE_SPREAD`). 0 when the list cannot be read.
  */
 export function bracketLift(eloBracket?: unknown, region = 'all', patch?: string): Promise<number> {
   const tier = lolalyticsTier(eloBracket)
   const key = `${tier}:${region}:${patch ?? ''}`
   let answer = lifts.get(key)
   if (!answer) {
-    answer = read<TierAnswer>({ ep: 'tier', lane: 'all', tier, region, ...(patch ? { patch } : {}) }).then((list) => {
+    answer = readTierList({ tier, region, ...(patch ? { patch } : {}) }).then((list) => {
       const entries = Object.values(list.tier ?? {}).flatMap(group => Object.values(group.lane ?? {}).flatMap(({ cid }) => Object.values(cid ?? {})))
       const games = entries.reduce((sum, entry) => sum + entry.games, 0)
       return games > 0 ? entries.reduce((sum, entry) => sum + entry.games * rate(entry.wr), 0) / games - 0.5 : 0
@@ -213,7 +226,7 @@ export function bracketLift(eloBracket?: unknown, region = 'all', patch?: string
 }
 
 /** `options` with every win rate `lift` lower (`bracketLift`). */
-function recentred(options: BuildOptions, lift: number): BuildOptions {
+export function recentred(options: BuildOptions, lift: number): BuildOptions {
   if (!lift) return options
   const lower = <T extends Measure>(list: T[]) => list.map(entry => ({ ...entry, winRate: lowered(entry.winRate, lift) }))
   const lowerMap = (measures: Map<number, Measure>) => new Map([...measures].map(([id, entry]) => [id, { ...entry, winRate: lowered(entry.winRate, lift) }]))
@@ -428,7 +441,7 @@ export async function lolalyticsRows(query: Record<string, unknown>): Promise<Ch
   // The patch picked on the page wins over the window; the list says which patch it is.
   const picked = pickedPatch(query.patch)
   const [answer, patch, lift] = await Promise.all([
-    read<TierAnswer>({ ep: 'tier', lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
+    readTierList({ lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
     picked ?? patchRead(),
     bracketLift(query.eloBracket, 'all', picked ?? undefined),
   ])

@@ -1,40 +1,45 @@
 <script setup lang="ts">
 import type { MetricAssociation } from '~/utils/nerd-stats/analysis'
+import type { MetricSplit } from '~/utils/nerd-stats/insights'
 import type { MetricTiming } from '~/utils/nerd-stats/features'
+import { isFew, metricSplit } from '~/utils/nerd-stats/insights'
 
 /**
- * What comes with winning, every metric ranked by the size of its effect:
- * Cohen's d between the wins and the losses with its 95% interval as a forest
- * plot around zero, the means in each, the point-biserial r with its p-value
- * and its Benjamini–Hochberg q (thirty-odd metrics tested at once), and how
- * many games carry it. A metric whose interval clears zero is coloured by the
- * side it leans to; one that does not stays grey, whatever its point estimate.
- * The result's own consequences (towers, barons, level, length) are hidden by
- * default: that a won game has more towers says nothing about why.
+ * What comes with winning, said plainly: each metric as the player's win rate
+ * in their games with more of it against those with less — ahead against
+ * behind for a lead, yes against no, the top bin against the bottom one —
+ * drawn as two dots on a 0–100% track with a coin flip and their own average
+ * ruled across it, the gap in points and how far it can be trusted (its
+ * q-value, in a word). Ranked by the size of the effect (Cohen's d), the
+ * strongest first; the result's own consequences (towers, barons, level,
+ * length) hidden by default, since a won game having more towers says nothing
+ * about why. The table of d, r, p and q is behind "show the maths".
  */
 const props = defineProps<{
   metrics: MetricAssociation[]
   games: number
+  /** The player's overall win rate. */
+  rate: number
 }>()
 
 const { t } = useT()
 const f = useNerdFormat()
+const say = useNerdSay()
 const tip = useChartTip()
 
 const showOutcome = ref(false)
 const shown = computed(() => props.metrics.filter(entry => entry.effect && (showOutcome.value || entry.definition.timing !== 'outcome')))
 const hiddenCount = computed(() => props.metrics.filter(entry => entry.definition.timing === 'outcome').length)
+const rows = computed(() => shown.value.flatMap((entry) => {
+  const split = metricSplit(entry)
+  return split ? [{ entry, split }] : []
+}))
 
-const bound = computed(() => Math.min(5, Math.max(1, ...shown.value.map(entry => Math.max(Math.abs(entry.effect!.low), Math.abs(entry.effect!.high))))))
-const along = (d: number) => (Math.max(-bound.value, Math.min(bound.value, d)) / bound.value + 1) * 50
-const ticks = computed(() => {
-  const step = bound.value > 2.5 ? 1 : 0.5
-  const out: number[] = []
-  for (let tick = -Math.floor(bound.value / step) * step; tick <= bound.value + 1e-9; tick += step) out.push(Number(tick.toFixed(1)))
-  return out
-})
+const SHOWN = 12
+const all = ref(false)
+const visible = computed(() => (all.value ? rows.value : rows.value.slice(0, SHOWN)))
 
-const toneOf = (entry: MetricAssociation) => (entry.effect!.low > 0 ? 'var(--nerd-win)' : entry.effect!.high < 0 ? 'var(--nerd-loss)' : 'var(--ui-text-dimmed)')
+const lead = computed(() => rows.value.find(row => row.entry.definition.timing !== 'outcome' && (row.split.confidence === 'strong' || row.split.confidence === 'moderate')) ?? null)
 
 const TIMING_ICONS: Record<MetricTiming, string> = {
   pregame: 'i-tabler-flag',
@@ -43,120 +48,128 @@ const TIMING_ICONS: Record<MetricTiming, string> = {
   outcome: 'i-tabler-trophy',
 }
 
-/** Cohen's own reading of |d|. */
-const sizeOf = (d: number) => {
-  const size = Math.abs(d)
-  return size >= 0.8 ? 'large' : size >= 0.5 ? 'medium' : size >= 0.2 ? 'small' : 'negligible'
-}
+const sideLabel = (split: MetricSplit, high: boolean) => t(`nerd.drivers.side.${split.kind}.${high ? 'high' : 'low'}`)
 
-function showRow(event: MouseEvent | FocusEvent, entry: MetricAssociation) {
-  const effect = entry.effect!
+function showRow(event: MouseEvent | FocusEvent, entry: MetricAssociation, split: MetricSplit) {
   tip.show(event, t(`nerd.metric.${entry.definition.key}`), [
-    { label: t('nerd.drivers.dLabel', { size: t(`nerd.size.${sizeOf(effect.d)}`) }), value: f.signed(effect.d, 2), swatch: toneOf(entry) },
-    { label: t('nerd.drivers.ciLabel'), value: `${f.number(effect.low, 2)} – ${f.number(effect.high, 2)}` },
-    { label: t('nerd.wins'), value: f.metric(entry.definition, effect.meanA), swatch: 'var(--nerd-win)' },
-    { label: t('nerd.losses'), value: f.metric(entry.definition, effect.meanB), swatch: 'var(--nerd-loss)' },
+    { label: sideLabel(split, true), value: `${f.percent(split.high.rate)} · ${t('nerd.distributions.games', { count: split.high.games })}`, swatch: 'var(--ui-text-highlighted)' },
+    { label: sideLabel(split, false), value: `${f.percent(split.low.rate)} · ${t('nerd.distributions.games', { count: split.low.games })}`, swatch: 'var(--ui-text-dimmed)' },
   ])
 }
 </script>
 
 <template>
   <section class="surface rounded-lg">
-    <header class="flex flex-wrap items-center gap-3 border-b border-default px-4 py-3.5">
-      <span class="tm-emblem grid size-9 shrink-0 place-items-center rounded-lg text-primary">
-        <UIcon name="i-tabler-chart-arrows-vertical" class="size-5" />
-      </span>
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-highlighted">{{ t('nerd.drivers.title') }}</h2>
-        <p class="text-xs text-muted">{{ t('nerd.drivers.subtitle', { count: games }) }}</p>
-      </div>
+    <NerdCardHeader icon="i-tabler-chart-arrows-vertical" :title="t('nerd.drivers.title')" :technical="t('nerd.drivers.technical')" :subtitle="t('nerd.drivers.subtitle', { count: games })">
       <USwitch v-model="showOutcome" size="sm" :label="t('nerd.drivers.showOutcome', { count: hiddenCount })" />
-    </header>
+    </NerdCardHeader>
 
-    <div :ref="el => (tip.box.value = el as HTMLElement)" class="relative overflow-x-auto p-4">
-      <table class="w-full min-w-[56rem] text-xs">
-        <thead class="text-dimmed">
-          <tr class="text-left">
-            <th class="pb-2 font-medium">{{ t('nerd.col.metric') }}</th>
-            <th class="pb-2 text-right font-medium"><span class="inline-flex items-center gap-1"><span class="size-1.5 rounded-full bg-(--nerd-win)" />{{ t('nerd.col.meanWin') }}</span></th>
-            <th class="pb-2 text-right font-medium"><span class="inline-flex items-center gap-1"><span class="size-1.5 rounded-full bg-(--nerd-loss)" />{{ t('nerd.col.meanLoss') }}</span></th>
-            <th class="w-[34%] px-4 pb-2 font-medium">
-              <div class="relative h-3">
-                <span v-for="tick in ticks" :key="tick" class="absolute -translate-x-1/2 tabular-nums" :style="{ left: `${along(tick)}%` }">{{ f.signed(tick, tick % 1 ? 1 : 0) }}</span>
-              </div>
-            </th>
-            <th class="pb-2 text-right font-medium">d</th>
-            <th class="pb-2 text-right font-medium">r<sub>pb</sub></th>
-            <th class="pb-2 text-right font-medium">p</th>
-            <th class="pb-2 text-right font-medium">q</th>
-            <th class="pb-2 text-right font-medium">n</th>
-          </tr>
-        </thead>
-        <TransitionGroup tag="tbody" move-class="transition-transform duration-300">
-          <tr
-            v-for="(entry, index) in shown"
-            :key="entry.definition.key"
-            class="group border-t border-default/60 hover:bg-elevated/40"
-          >
-            <td class="py-1.5 pr-3">
-              <span class="flex items-center gap-2">
+    <div class="space-y-3 p-4">
+      <NerdLead
+        v-if="lead"
+        :text="say.split(lead.entry, lead.split)!"
+        :confidence="lead.split.confidence"
+        :detail="say.metricDetail(lead.entry)"
+        :few="isFew(games)"
+        :tone="lead.split.difference >= 0 ? 'win' : 'loss'"
+      />
+      <NerdLead v-else :text="t('nerd.drivers.noLead')" :few="isFew(games)" />
+
+      <div :ref="el => (tip.box.value = el as HTMLElement)" class="relative">
+        <div class="nerd-driver-grid pb-1 text-[10px] tabular-nums text-dimmed">
+          <span />
+          <div class="relative h-3">
+            <span v-for="tick in [0, 0.25, 0.5, 0.75, 1]" :key="tick" class="absolute -translate-x-1/2" :style="{ left: `${tick * 100}%` }">{{ f.percent(tick) }}</span>
+          </div>
+          <span class="text-right">{{ t('nerd.drivers.gap') }}</span>
+          <span class="text-right">{{ t('nerd.confidence.label') }}</span>
+        </div>
+        <TransitionGroup tag="ul" move-class="transition-transform duration-300" class="divide-y divide-default/60">
+          <li v-for="({ entry, split }, index) in visible" :key="entry.definition.key" class="nerd-driver-grid py-2">
+            <div class="min-w-0">
+              <p class="flex items-center gap-1.5 text-[13px] font-medium text-highlighted">
                 <UIcon :name="TIMING_ICONS[entry.definition.timing]" class="size-3.5 shrink-0 text-dimmed" :title="t(`nerd.timing.${entry.definition.timing}`)" />
-                <span class="font-medium text-highlighted">{{ t(`nerd.metric.${entry.definition.key}`) }}</span>
-              </span>
-            </td>
-            <td class="py-1.5 text-right tabular-nums text-toned">{{ f.metric(entry.definition, entry.effect!.meanA) }}</td>
-            <td class="py-1.5 text-right tabular-nums text-toned">{{ f.metric(entry.definition, entry.effect!.meanB) }}</td>
-            <td class="px-4 py-1.5">
-              <div
-                class="relative h-5"
-                tabindex="0"
-                role="img"
-                :aria-label="`${t(`nerd.metric.${entry.definition.key}`)}: d ${f.signed(entry.effect!.d, 2)}`"
-                @pointerenter="showRow($event, entry)"
-                @focus="showRow($event, entry)"
-                @pointerleave="tip.hide"
-                @blur="tip.hide"
-              >
-                <span v-for="tick in ticks" :key="tick" class="absolute inset-y-0 w-px" :class="tick === 0 ? 'bg-(--ui-border-accented)' : 'bg-(--ui-border)/50'" :style="{ left: `${along(tick)}%` }" />
-                <span
-                  class="nerd-whisker absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full"
-                  :style="{ left: `${along(entry.effect!.low)}%`, width: `${along(entry.effect!.high) - along(entry.effect!.low)}%`, background: toneOf(entry), animationDelay: `${Math.min(index, 20) * 30}ms` }"
-                />
-                <span
-                  class="absolute top-1/2 size-2.5 -translate-1/2 rounded-full ring-2 ring-(--tm-pane) transition-[left] duration-300"
-                  :style="{ left: `${along(entry.effect!.d)}%`, background: toneOf(entry) }"
-                />
-              </div>
-            </td>
-            <td class="py-1.5 text-right font-semibold tabular-nums text-highlighted">{{ f.signed(entry.effect!.d, 2) }}</td>
-            <td class="py-1.5 text-right tabular-nums">{{ entry.correlation ? f.signed(entry.correlation.r, 2) : '—' }}</td>
-            <td class="py-1.5 text-right tabular-nums text-muted">{{ entry.correlation ? f.pValue(entry.correlation.p) : '—' }}</td>
-            <td class="py-1.5 text-right tabular-nums" :class="entry.q < 0.05 ? 'font-semibold text-highlighted' : 'text-muted'">{{ f.pValue(entry.q) }}</td>
-            <td class="py-1.5 text-right tabular-nums text-dimmed">{{ entry.games }}</td>
-          </tr>
+                <span class="truncate">{{ t(`nerd.metric.${entry.definition.key}`) }}</span>
+              </p>
+              <p class="mt-0.5 text-[11.5px] leading-snug text-muted"><NerdRich :text="say.split(entry, split)!" /></p>
+            </div>
+            <div
+              class="relative h-6 self-center"
+              tabindex="0"
+              role="img"
+              :aria-label="`${t(`nerd.metric.${entry.definition.key}`)}: ${sideLabel(split, true)} ${f.percent(split.high.rate)}, ${sideLabel(split, false)} ${f.percent(split.low.rate)}`"
+              @pointerenter="showRow($event, entry, split)"
+              @focus="showRow($event, entry, split)"
+              @pointerleave="tip.hide"
+              @blur="tip.hide"
+            >
+              <span class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-accented/50" />
+              <span class="absolute inset-y-0 left-1/2 w-px bg-(--ui-border-accented)" />
+              <span class="nerd-dash-v absolute inset-y-0" :style="{ left: `${rate * 100}%` }" />
+              <span
+                class="nerd-span absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
+                :style="{
+                  left: `${Math.min(split.high.rate, split.low.rate) * 100}%`,
+                  width: `${Math.abs(split.difference) * 100}%`,
+                  background: split.difference >= 0 ? 'var(--nerd-win)' : 'var(--nerd-loss)',
+                  animationDelay: `${Math.min(index, 12) * 40}ms`,
+                }"
+              />
+              <span class="absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-(--tm-pane) ring-2 ring-(--ui-text-dimmed) transition-[left] duration-300" :style="{ left: `${split.low.rate * 100}%` }" />
+              <span class="absolute top-1/2 size-3 -translate-1/2 rounded-full bg-(--ui-text-highlighted) ring-2 ring-(--tm-pane) transition-[left] duration-300" :style="{ left: `${split.high.rate * 100}%` }" />
+            </div>
+            <span class="self-center text-right text-xs font-semibold tabular-nums" :class="split.difference >= 0 ? 'text-(--nerd-win)' : 'text-(--nerd-loss)'">{{ t('nerd.points', { diff: f.points(split.difference) }) }}</span>
+            <span class="self-center text-right"><NerdConfidence :level="split.confidence" :detail="say.metricDetail(entry)" /></span>
+          </li>
         </TransitionGroup>
-      </table>
-      <NerdTip :tip="tip.tip.value" />
-      <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-dimmed">
-        <span v-for="(icon, timing) in TIMING_ICONS" :key="timing" class="flex items-center gap-1"><UIcon :name="icon" class="size-3.5" />{{ t(`nerd.timing.${timing}`) }}</span>
+        <NerdTip :tip="tip.tip.value" />
       </div>
-      <p class="mt-2 text-[11px] leading-relaxed text-dimmed">{{ t('nerd.drivers.hint') }}</p>
+
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-dimmed">
+        <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-(--ui-text-highlighted)" />{{ t('nerd.drivers.legendHigh') }}</span>
+        <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full ring-2 ring-inset ring-(--ui-text-dimmed)" />{{ t('nerd.drivers.legendLow') }}</span>
+        <span class="flex items-center gap-1.5"><span class="h-3 w-px bg-(--ui-border-accented)" />{{ t('nerd.ref.coin') }}</span>
+        <span class="flex items-center gap-1.5"><span class="nerd-dash-v relative h-3" />{{ t('nerd.ref.average', { rate: f.percent(rate) }) }}</span>
+        <UButton v-if="rows.length > SHOWN" class="ml-auto" size="xs" color="neutral" variant="ghost" :label="all ? t('nerd.groups.less') : t('nerd.groups.more', { count: rows.length - SHOWN })" @click="all = !all" />
+      </div>
+      <NerdHowTo :text="t('nerd.drivers.how')" />
+
+      <NerdDetails>
+        <NerdDriversTable :metrics="shown" />
+      </NerdDetails>
     </div>
   </section>
 </template>
 
 <style scoped>
-.nerd-whisker {
-  transform-origin: center;
-  animation: nerd-whisker 600ms var(--tm-ease) backwards;
+.nerd-driver-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.1fr) minmax(10rem, 1fr) 4.5rem 6.5rem;
+  gap: 0.25rem 1rem;
 }
 
-@keyframes nerd-whisker {
+.nerd-span {
+  transform-origin: left;
+  animation: nerd-span 600ms var(--tm-ease) backwards;
+}
+
+@keyframes nerd-span {
   from { transform: scaleX(0); }
 }
 
+@media (max-width: 52rem) {
+  .nerd-driver-grid {
+    grid-template-columns: minmax(0, 1fr) 4.5rem 6.5rem;
+  }
+
+  .nerd-driver-grid > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .nerd-whisker {
+  .nerd-span {
     animation: none;
   }
 }

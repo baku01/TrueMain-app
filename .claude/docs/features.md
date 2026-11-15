@@ -272,7 +272,14 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   matchups, trend, counters and synergies (Ahri 53.02 % → 51.28 %; Mobalytics 51.30, Blitz 51.33), its analytics page
   keeping its own scale. A source whose games, cell by cell, sit outside 0.6–1/0.6 of the first source's counted
   another population — a bracket it does not keep (Mobalytics' and Blitz's Gold for Gold+, 0.31; op.gg's lists, no
-  bracket) — and is left out (`sameGames`). An option a
+  bracket) — and is left out (`sameGames`). Pick, ban and play rates pool only over sources measuring them alike
+  (`sameScale`): Blitz's pick and ban rates are ~0.54 of the others' (its list's picks add up to 534 %, lolalytics'
+  987 %), op.gg's matchups give no play rate. The Analytics page reads every source too (`analytics-read`,
+  `analytics-combined`, Mobalytics' own `analytics-mobalytics`): figures several measure pooled section by section,
+  what one alone measures (objectives, game length, the trend by elo) its own; a region is lolalytics' alone; Blitz's
+  build documents never join another source's builds (their keystones win 4–6 points above the lane's — they count
+  other games). Jev's item pool and place shares pool lolalytics' and Blitz's item stats the same way (`statsPool`,
+  `placeGames`). An option a
   source left out is below its threshold there, not 0; cores are compared without their boots (lolalytics' hold them,
   Mobalytics' do not), a source's own cores that then read alike added up (other games). Blitz's lane builds count every
   rank (309,020 games for Ahri against ~264,000 Emerald+) and are not averaged in: they stay its own rows (playstyles,
@@ -478,6 +485,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   and builds line up. The right column reads ranked card, Today, activity, champions, roles. The history has no visible "Match history"
   heading, and the dashboard carries no Riot legal line (the app's other pages keep it, `SharedPage`). The goals card (#1913)
   was removed in #2074 at the product owner's request. With no client: a waiting banner over the patch's best picks by lane.
+- **Stats for nerds** (`/nerd-stats`, `components/nerd/`, `utils/nerd-stats/`) — the player's own games read against winning: win rate with its likely range, what weighs most on the wins (a ridge logistic formula, cross-validated, read as "a typical step more of X, in the game's own units, takes your chance from A to B", with a calculator in those units), what comes with the wins (the win rate with more of each metric against with less), length, hours, weekdays, sittings, streaks, choices (Beta-Binomial adjusted rates), how the metrics move together, every game. Each block leads with a plain sentence written from the real figures and a confidence word (strong / moderate / weak / uncertain, from its p- or q-value, `insights.ts`), "few games — read it as a trend" under 40 games, a "how to read" line under every chart with 50% and the player's average ruled across, and the statistics (d, r, p, q, odds ratios, AUC, Brier) behind "show the maths", each symbol explained in a line; the Methods tab writes every formula out. The history goes past the client's ~20 games (`useDeepHistory`): once the client's pages end, the player's games on Blitz (about their latest 100, no Riot key) are read into the client's shape with their timeline marks (`gameOf`, `withMarks`), and every game read is kept on the machine per account (IndexedDB, `utils/history-store.ts`, newest 300), so the history grows across sessions; the hero says how many came from the client, Blitz and the saved store.
 - **Draft** (`/draft`) — bans and phase clock, both teams as tall pick cards with their tier on their lane, enemy lanes
   guessed and correctable (the lane icon under an enemy is a menu of lanes, or drag one onto another), under each placed enemy its **counters** on its lane (`useEnemyCounters`, `utils/draft-counters.ts`: the enemy's own matchups from the active source read from the other side, ≥ 40 games, ranked on the enemy's Wilson ceiling, picked and banned champions left out — the top three with their win rate, games in the tooltip), the lane duel (lane win rate). The draft's item build weighs each item's games by its win rate shrunk toward the lane's (`winRateFactor` in `utils/draft-build.ts`, both the other-source build and TrueMain's step-by-step `next-item` read), opens on the core that wins most for its games, and reads a healer on the enemy team (`EnemySustain`) to take the anti-heal the source measured. While our pick is open: the ranked picks ("My pool" =
   ten most-mastered champions on the lane, or every champion on the lane), in the endpoint's order — blind safety before

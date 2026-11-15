@@ -5,8 +5,9 @@ import { LANES } from '~/utils/site-build'
 import { LOLALYTICS_REGIONS } from '~/utils/sources/lolalytics'
 
 /**
- * Analytics: one champion on one lane, detail by detail, from the source
- * Settings picked (`utils/sources/analytics-*`) — its figures, the build with
+ * Analytics: one champion on one lane, detail by detail, every source's
+ * figures as one (`utils/sources/analytics-read`, `analytics-combined`) — the
+ * figures, the build with
  * every option measured, items slot by slot, the first levels skill by skill,
  * matchups and allies lane by lane, objectives, game length, the trend and the
  * best players. A section the source does not measure says so. A champion is
@@ -17,8 +18,10 @@ const { champions, nameOf, portraitOf } = useChampionStatics()
 const { items, summoners, runeTree, loadChampion, championStatic } = useStaticData()
 const { mainEntryOf } = useTierList()
 
-const SOURCE_NAME: Record<string, string> = { truemain: 'TrueMain', blitz: 'Blitz', opgg: 'op.gg', lolalytics: 'lolalytics', tencent: 'Tencent' }
-const source = computed(() => SOURCE_NAME[leadSource.value] ?? leadSource.value)
+const SOURCE_NAME: Record<string, string> = { mobalytics: 'Mobalytics', blitz: 'Blitz', opgg: 'op.gg', lolalytics: 'lolalytics', tencent: 'Tencent' }
+/** The sources the page's figures were read from, most complete first. */
+const sources = shallowRef<string[]>([])
+const source = computed(() => (sources.value.length ? sources.value : [leadSource.value]).map(name => SOURCE_NAME[name] ?? name).join(' · '))
 const ELOS = ['ALL', 'GOLD_PLUS', 'PLATINUM_PLUS', 'EMERALD_PLUS', 'DIAMOND_PLUS', 'MASTER_PLUS'] as const
 const LANE_KEYS: Record<string, string> = { TOP: 'probuild.role.top', JUNGLE: 'probuild.role.jungle', MIDDLE: 'probuild.role.middle', BOTTOM: 'probuild.role.bottom', UTILITY: 'probuild.role.utility' }
 
@@ -73,8 +76,9 @@ watch([championId, position, elo, region, opponentId], async ([id, lane, bracket
   try {
     const answer = await trackLoad(readAnalytics(id, lane, bracket, regional.value ? area : 'all', opponent))
     if (read !== latest) return
-    analytics.value = answer
-    failed.value = !answer.header && !answer.options
+    analytics.value = answer.analytics
+    sources.value = answer.sources
+    failed.value = !answer.analytics.header && !answer.analytics.options
   }
   catch {
     if (read === latest) failed.value = true

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SequenceReport } from '~/utils/nerd-stats/analysis'
+import { isFew, streakReading } from '~/utils/nerd-stats/insights'
 import { wilson } from '~/utils/nerd-stats/stats'
 
 /**
@@ -9,6 +10,9 @@ import { wilson } from '~/utils/nerd-stats/stats'
  * intervals and the two-proportion test between the first two; and how long
  * the runs of wins and of losses were, against what a sequence in random
  * order would give (a run of length k has probability (1 − p)·p^(k−1)).
+ * Said first in two sentences — the next game after a win against after a
+ * loss, and whether the results come in streaks — each with how sure; the
+ * test values are behind "show the maths".
  */
 const props = defineProps<{
   sequence: SequenceReport
@@ -19,12 +23,24 @@ const { t } = useT()
 const f = useNerdFormat()
 
 const runs = computed(() => props.sequence.runs)
-const verdict = computed(() => {
-  const test = runs.value
-  if (!test) return 'none'
-  if (test.p >= 0.05) return 'random'
-  return test.z < 0 ? 'streaky' : 'alternating'
-})
+const reading = computed(() => streakReading(props.sequence))
+const verdict = computed(() => reading.value.pattern)
+const momentumLine = computed(() => (Number.isFinite(reading.value.afterWin) && Number.isFinite(reading.value.afterLoss)
+  ? t('nerd.streaks.sayMomentum', { afterWin: f.percent(reading.value.afterWin), afterLoss: f.percent(reading.value.afterLoss) })
+  : ''))
+const symbols = computed(() => [
+  ...(runs.value
+    ? [
+        { symbol: 'R', value: String(runs.value.runs), meaning: t('nerd.sym.runs') },
+        { symbol: 'E[R]', value: f.number(runs.value.expected, 1), meaning: t('nerd.sym.expectedRuns') },
+        { symbol: 'z', value: f.signed(runs.value.z, 2), meaning: t('nerd.sym.z') },
+        { symbol: 'p', value: f.pValue(runs.value.p), meaning: t('nerd.sym.p') },
+      ]
+    : []),
+  ...(props.sequence.momentum
+    ? [{ symbol: `Δ = p_{${t('nerd.symbol.win')}} − p_{${t('nerd.symbol.loss')}}`, value: `${f.signed(props.sequence.momentum.difference * 100, 1)} pp · p = ${f.pValue(props.sequence.momentum.p)}`, meaning: t('nerd.sym.momentum') }]
+    : []),
+])
 
 /** The standard normal's density over z ∈ [−4, 4], in the plot's 0..100 units. */
 const Z = 4
@@ -77,15 +93,12 @@ const lengths = computed(() => {
 
 <template>
   <section class="surface rounded-lg">
-    <header class="flex flex-wrap items-center gap-3 border-b border-default px-4 py-3.5">
-      <span class="tm-emblem grid size-9 shrink-0 place-items-center rounded-lg text-primary">
-        <UIcon name="i-tabler-flame" class="size-5" />
-      </span>
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-highlighted">{{ t('nerd.streaks.title') }}</h2>
-        <p class="text-xs text-muted">{{ t('nerd.streaks.subtitle', { count: sequence.results.length }) }}</p>
-      </div>
-    </header>
+    <NerdCardHeader icon="i-tabler-flame" :title="t('nerd.streaks.title')" :technical="t('nerd.streaks.technical')" :subtitle="t('nerd.streaks.subtitle', { count: sequence.results.length })" />
+
+    <div class="grid gap-2 px-4 pt-4 xl:grid-cols-2">
+      <NerdLead v-if="momentumLine" :text="momentumLine" :confidence="reading.momentumConfidence" :few="isFew(sequence.results.length)" icon="i-tabler-arrow-forward-up" />
+      <NerdLead :text="t(`nerd.streaks.say.${verdict}`)" :confidence="verdict === 'streaky' || verdict === 'alternating' ? reading.patternConfidence : undefined" icon="i-tabler-arrows-shuffle" />
+    </div>
 
     <div class="grid gap-6 p-4 xl:grid-cols-3">
       <!-- The runs test. -->
@@ -94,7 +107,7 @@ const lengths = computed(() => {
         <template v-if="runs">
           <p class="mt-1 text-sm text-highlighted">
             <span class="font-display text-2xl font-semibold">{{ runs.runs }}</span>
-            <span class="ml-1.5 text-muted">{{ t('nerd.streaks.runsVs', { expected: f.number(runs.expected, 1), sd: f.number(runs.sd, 1) }) }}</span>
+            <span class="ml-1.5 text-muted">{{ t('nerd.streaks.runsVs', { expected: f.number(runs.expected, 0) }) }}</span>
           </p>
           <div class="relative mt-2 h-28">
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 size-full" role="img" :aria-label="t('nerd.streaks.zLabel', { z: f.signed(runs.z, 2), p: f.pValue(runs.p) })">
@@ -103,12 +116,12 @@ const lengths = computed(() => {
               <line x1="0" x2="100" y1="92" y2="92" class="stroke-[var(--ui-border-accented)]" vector-effect="non-scaling-stroke" />
               <line :x1="zx(runs.z)" :x2="zx(runs.z)" y1="4" y2="92" class="stroke-(--ui-text-highlighted)" stroke-width="2" vector-effect="non-scaling-stroke" />
             </svg>
-            <span class="absolute top-0 -translate-x-1/2 rounded bg-default px-1 text-[10px] font-semibold tabular-nums text-highlighted ring-1 ring-default" :style="{ left: `${zx(runs.z)}%` }">z = {{ f.signed(runs.z, 2) }}</span>
+            <span class="absolute top-0 -translate-x-1/2 rounded bg-default px-1 text-[10px] font-semibold text-highlighted ring-1 ring-default" :style="{ left: `${zx(runs.z)}%` }">{{ t('nerd.streaks.you') }}</span>
           </div>
-          <div class="flex justify-between text-[10px] tabular-nums text-dimmed"><span>−4</span><span>0</span><span>+4</span></div>
-          <p class="mt-2 text-xs text-muted">
-            <b class="font-semibold text-highlighted">p = {{ f.pValue(runs.p) }}</b> · {{ t(`nerd.streaks.verdict.${verdict}`) }}
-          </p>
+          <div class="flex justify-between text-[10px] text-dimmed"><span>{{ t('nerd.streaks.axisStreaky') }}</span><span>{{ t('nerd.streaks.axisChance') }}</span><span>{{ t('nerd.streaks.axisAlternating') }}</span></div>
+          <div class="mt-2">
+            <NerdHowTo :text="t('nerd.streaks.runsHow')" />
+          </div>
         </template>
         <p v-else class="mt-2 text-xs text-dimmed">{{ t('nerd.streaks.verdict.none') }}</p>
       </div>
@@ -123,15 +136,16 @@ const lengths = computed(() => {
               <span class="tabular-nums"><b class="font-semibold text-highlighted">{{ entry.games ? f.percent(entry.rate, 0) : '—' }}</b> <span class="text-dimmed">({{ entry.wins }}/{{ entry.games }})</span></span>
             </div>
             <div class="relative mt-1 h-2 rounded-full bg-accented/60">
-              <span class="absolute inset-y-0 left-1/2 w-px bg-(--ui-border-accented)" />
-              <span v-if="entry.games" class="absolute inset-y-0 rounded-full bg-primary/30" :style="{ left: `${entry.low * 100}%`, width: `${(entry.high - entry.low) * 100}%` }" />
-              <span v-if="entry.games" class="absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-primary ring-2 ring-(--tm-pane)" :style="{ left: `${entry.rate * 100}%` }" />
+              <span class="absolute inset-y-[-3px] left-1/2 w-px bg-(--ui-border-accented)" />
+              <span class="nerd-dash-v absolute inset-y-[-3px]" :style="{ left: `${rate * 100}%` }" />
+              <span v-if="entry.games" class="absolute inset-y-0 rounded-full" :class="entry.rate >= rate ? 'bg-(--nerd-win)/30' : 'bg-(--nerd-loss)/30'" :style="{ left: `${entry.low * 100}%`, width: `${(entry.high - entry.low) * 100}%` }" />
+              <span v-if="entry.games" class="absolute top-1/2 size-2.5 -translate-1/2 rounded-full ring-2 ring-(--tm-pane)" :class="entry.rate >= rate ? 'bg-(--nerd-win)' : 'bg-(--nerd-loss)'" :style="{ left: `${entry.rate * 100}%` }" />
             </div>
           </li>
         </ul>
-        <p v-if="sequence.momentum" class="mt-3 text-xs text-muted">
-          {{ t('nerd.streaks.momentumTest', { diff: f.signed(sequence.momentum.difference * 100, 1), z: f.signed(sequence.momentum.z, 2), p: f.pValue(sequence.momentum.p) }) }}
-        </p>
+        <div class="mt-3">
+          <NerdHowTo :text="t('nerd.streaks.momentumHow', { rate: f.percent(rate) })" />
+        </div>
       </div>
 
       <!-- How long the runs were. -->
@@ -155,7 +169,13 @@ const lengths = computed(() => {
           </div>
         </div>
         <p class="mt-2 flex items-center gap-1.5 text-[11px] text-dimmed"><span class="h-0.5 w-3 rounded-full bg-(--ui-text-highlighted)" />{{ t('nerd.streaks.expected') }}</p>
+        <div class="mt-2">
+          <NerdHowTo :text="t('nerd.streaks.lengthsHow')" />
+        </div>
       </div>
+    </div>
+    <div class="px-4 pb-4">
+      <NerdDetails :symbols="symbols" />
     </div>
   </section>
 </template>

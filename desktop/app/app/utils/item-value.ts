@@ -64,6 +64,9 @@ function sideMap(team: TeamObjectives, clock: number): SideMap {
   }
 }
 
+/** A creep score as the shell sends everyone's but ours (ours comes at each last hit): floored to 10, so the two sides compare alike. */
+const byWaves = (creepScore: number) => Math.floor(creepScore / 10) * 10
+
 /** Each lane's lead, ours over theirs; a lane missing a side counts nothing. */
 function laneLeads(game: GameState): LaneLead[] {
   const leads: LaneLead[] = []
@@ -71,7 +74,7 @@ function laneLeads(game: GameState): LaneLead[] {
     if (!ally || !enemy || !(ally.position in LEAD_WEIGHTS)) continue
     leads.push({
       lane: ally.position as WinProbabilityLane,
-      cs: ally.creepScore - enemy.creepScore,
+      cs: byWaves(ally.creepScore) - byWaves(enemy.creepScore),
       level: ally.level - enemy.level,
       kills: ally.kills - enemy.kills,
     })

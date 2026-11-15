@@ -7,7 +7,8 @@ import type { CorrelationMatrix } from '~/utils/nerd-stats/analysis'
  * for metrics that rise together, red for one rising as the other falls, the
  * neutral midpoint for none. Only the stronger cells carry their number; every
  * cell reads on hover and focus. Beside it, the metrics ranked by their
- * correlation with winning.
+ * correlation with winning, and first, in a sentence, the ones that come most
+ * with winning and with losing.
  */
 const props = defineProps<{
   matrix: CorrelationMatrix
@@ -32,6 +33,18 @@ const ranked = computed(() => props.matrix.keys.slice(1)
   .filter((entry): entry is { key: typeof entry.key, value: number } => entry.value !== null)
   .sort((a, b) => Math.abs(b.value) - Math.abs(a.value)))
 
+/** How strong a rank correlation is, in a word. */
+const strength = (value: number) => {
+  const size = Math.abs(value)
+  return t(`nerd.heatmap.strength.${size >= 0.5 ? 'strong' : size >= 0.3 ? 'moderate' : size >= 0.1 ? 'weak' : 'none'}`)
+}
+const lead = computed(() => {
+  const up = ranked.value.find(entry => entry.value > 0)
+  const down = ranked.value.find(entry => entry.value < 0)
+  if (!up || !down) return ''
+  return t('nerd.heatmap.say', { up: t(`nerd.metric.${up.key}`), upStrength: strength(up.value), down: t(`nerd.metric.${down.key}`), downStrength: strength(down.value) })
+})
+
 function showCell(event: MouseEvent | FocusEvent, row: number, column: number) {
   const value = props.matrix.values[row]![column] ?? null
   tip.show(event, `${name(props.matrix.keys[row]!)} × ${name(props.matrix.keys[column]!)}`, [
@@ -42,20 +55,17 @@ function showCell(event: MouseEvent | FocusEvent, row: number, column: number) {
 
 <template>
   <section class="surface rounded-lg">
-    <header class="flex flex-wrap items-center gap-3 border-b border-default px-4 py-3.5">
-      <span class="tm-emblem grid size-9 shrink-0 place-items-center rounded-lg text-primary">
-        <UIcon name="i-tabler-grid-dots" class="size-5" />
-      </span>
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-highlighted">{{ t('nerd.heatmap.title') }}</h2>
-        <p class="text-xs text-muted">{{ t('nerd.heatmap.subtitle', { count: games }) }}</p>
-      </div>
+    <NerdCardHeader icon="i-tabler-grid-dots" :title="t('nerd.heatmap.title')" :technical="t('nerd.heatmap.technical')" :subtitle="t('nerd.heatmap.subtitle', { count: games })">
       <div class="flex items-center gap-2 text-[10px] tabular-nums text-dimmed">
-        <span>−1</span>
+        <span>{{ t('nerd.heatmap.legendDown') }}</span>
         <span class="h-2 w-40 rounded-full" style="background: linear-gradient(in oklab to right, var(--nerd-loss), var(--nerd-mid), var(--nerd-win))" />
-        <span>+1</span>
+        <span>{{ t('nerd.heatmap.legendUp') }}</span>
       </div>
-    </header>
+    </NerdCardHeader>
+
+    <div v-if="lead" class="px-4 pt-4">
+      <NerdLead :text="lead" icon="i-tabler-arrows-join" />
+    </div>
 
     <div class="grid gap-5 p-4 2xl:grid-cols-[minmax(0,1fr)_17rem]">
       <div :ref="el => (tip.box.value = el as HTMLElement)" class="relative min-w-0 overflow-x-auto">
@@ -84,6 +94,9 @@ function showCell(event: MouseEvent | FocusEvent, row: number, column: number) {
           </template>
         </div>
         <NerdTip :tip="tip.tip.value" />
+        <div class="mt-3">
+          <NerdHowTo :text="t('nerd.heatmap.how')" />
+        </div>
       </div>
 
       <div class="min-w-0">
@@ -102,7 +115,11 @@ function showCell(event: MouseEvent | FocusEvent, row: number, column: number) {
             <span class="text-right tabular-nums text-highlighted">{{ f.signed(entry.value, 2) }}</span>
           </li>
         </ul>
-        <p class="mt-3 text-[11px] leading-relaxed text-dimmed">{{ t('nerd.heatmap.hint') }}</p>
+        <div class="mt-3">
+          <NerdDetails :symbols="[{ symbol: 'ρ', meaning: t('nerd.sym.rho') }]">
+            <p class="text-[11px] leading-relaxed text-dimmed">{{ t('nerd.heatmap.hint') }}</p>
+          </NerdDetails>
+        </div>
       </div>
     </div>
   </section>

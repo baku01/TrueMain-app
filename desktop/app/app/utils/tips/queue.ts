@@ -27,6 +27,13 @@ const MIN_SHOWN = 2
  */
 const busyShown = (seconds: number) => Math.max(READ.min, seconds - READ.glance)
 
+/**
+ * A tip's place in line: its priority, a tip said now or not at all
+ * (`immediate`) ahead of the others of its priority and of any lower — never
+ * of an urgent countdown's.
+ */
+const rank = (tip: Tip) => (tip.immediate ? Math.min(tip.priority + 0.5, URGENT_PRIORITY - 0.25) : tip.priority)
+
 export interface QueuedTip extends Tip {
   /** In arrival order: first come, first shown within a priority. */
   id: number
@@ -50,7 +57,9 @@ export interface ShownTip {
  * line of the same kind is other news, and goes on. A tip on screen gives
  * way to a more urgent one ready to show: at once when it is only a filler;
  * after `MIN_SHOWN` seconds when the newcomer is a countdown about to run out
- * (`URGENT_PRIORITY`) or would go stale waiting. The one put aside waits again
+ * (`URGENT_PRIORITY`), is said now or not at all (`immediate`: our health,
+ * which waited a whole tip's reading before and came too late) or would go
+ * stale waiting. The one put aside waits again
  * for its turn while it is fresh, a filler apart. The same key is never
  * queued twice. Time is passed in (wall-clock milliseconds), so it is tested
  * without a clock.
@@ -89,7 +98,7 @@ export class TipQueue {
     let next: QueuedTip | null = null
     for (const tip of this.waiting) {
       if (!this.ready(tip, now)) continue
-      if (!next || tip.priority > next.priority) next = tip
+      if (!next || rank(tip) > rank(next)) next = tip
     }
     if (!next) return null
     this.waiting = this.waiting.filter(tip => tip !== next)
@@ -121,8 +130,8 @@ export class TipQueue {
     if (!filler && now < shown.from + MIN_SHOWN * 1000) return false
     const leaves = this.leavesAt(now)
     return this.waiting.some(tip =>
-      tip.priority > shown.tip.priority && this.ready(tip, now)
-      && (filler || tip.priority >= URGENT_PRIORITY || tip.expiresAt <= leaves),
+      rank(tip) > rank(shown.tip) && this.ready(tip, now)
+      && (filler || tip.priority >= URGENT_PRIORITY || tip.immediate || tip.expiresAt <= leaves),
     )
   }
 

@@ -132,4 +132,24 @@ describe('TipQueue', () => {
     expect(screen(calm, [2999])).toEqual(['farm.ok'])
     expect(screen(calm, [3000])).toEqual(['jungle.spotted'])
   })
+
+  it('gives our low health the screen after 2 s, from a tip of its own priority too, never from a countdown', () => {
+    const queue = new TipQueue(() => 9)
+    queue.push(makeTip('jungle.gankWindow'), 0)
+    expect(screen(queue, [0])).toEqual(['jungle.gankWindow'])
+    queue.push(makeTip('recall.lowHealth'), 500)
+    expect(screen(queue, [1999])).toEqual(['jungle.gankWindow'])
+    expect(screen(queue, [2000])).toEqual(['recall.lowHealth'])
+    // Waiting with others of its priority, it goes first.
+    const line = new TipQueue(() => 9)
+    line.push(makeTip('ward.startBlue'), 0)
+    line.push(makeTip('lane.lowHealth'), 0)
+    expect(screen(line, [0])).toEqual(['lane.lowHealth'])
+    // A countdown about to run out keeps the screen.
+    const countdown = new TipQueue(() => 9)
+    countdown.push(makeTip('objective.baron.30s'), 0)
+    countdown.current(0)
+    countdown.push(makeTip('recall.lowHealth'), 0)
+    expect(screen(countdown, [3000])).toEqual(['objective.baron.30s'])
+  })
 })

@@ -21,7 +21,7 @@ const SORTS: Record<SortKey, (row: ChampionSummaryResponse) => number> = {
   tier: row => row.tierScore,
 }
 
-const BUILDS_AT_ONCE = 6
+const BUILDS_AT_ONCE = 10
 const BUILDS_DEADLINE_MS = 2_500
 
 export async function pageDirectory(

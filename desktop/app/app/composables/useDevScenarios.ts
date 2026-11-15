@@ -5,6 +5,8 @@ import type { AppState } from '~/types/lcu'
 import type { PlayerGame, PlayerRecord } from '~/types/record'
 import type { RankHistoryEntry } from '#shared/types/rank-history'
 import type { NextItemResponse } from '~/utils/next-item'
+import type { BlitzHistorySource } from '~/utils/deep-history'
+import { gameIdOfMatch } from '~/utils/deep-history'
 import { EMPTY_STATE } from '~/types/lcu'
 
 export interface Scenario {
@@ -37,6 +39,19 @@ export interface Scenario {
    * not measurements.
    */
   olderGames?: number
+  /**
+   * How many of the player's newest games Blitz's match list would hold —
+   * the record's and older ones, as a busy account's hundred do — read
+   * through the same converter as Blitz's answers (`fixtures/synthetic-blitz`)
+   * once the client's pages end.
+   */
+  blitzGames?: number
+  /**
+   * How many games older still this machine would have saved from earlier
+   * sessions (`utils/history-store`), the store's first contents when it
+   * holds none for the account.
+   */
+  savedGames?: number
 }
 
 /** Each scenario's made-up older history, built the first time it is paged into. */
@@ -111,16 +126,64 @@ export function useDevScenarios() {
   async function olderPage(begin: number, size: number): Promise<PlayerGame[]> {
     const found = scenarios.value.find(scenario => scenario.id === current.value)
     if (!found?.olderGames || !found.record) return []
+    const games = await olderGames(found)
+    await new Promise(resolve => setTimeout(resolve, 350))
+    const offset = begin - found.record.games.length
+    return offset < 0 ? [] : JSON.parse(JSON.stringify(games.slice(offset, Math.min(offset + size, found.olderGames))))
+  }
+
+  /** The scenario's made-up older games: enough for its client's pages, Blitz's list and the saved ones. */
+  async function olderGames(found: Scenario): Promise<PlayerGame[]> {
     let games = synthetic.get(found.id)
     if (!games) {
       const { syntheticHistory } = await import('~/fixtures/synthetic-history')
-      games = syntheticHistory(found.record.games, found.olderGames, found.id)
+      const record = found.record?.games ?? []
+      const count = Math.max(found.olderGames ?? 0, Math.max(0, (found.blitzGames ?? 0) - record.length) + (found.savedGames ?? 0))
+      games = syntheticHistory(record, count, found.id)
       synthetic.set(found.id, games)
     }
-    await new Promise(resolve => setTimeout(resolve, 350))
-    const offset = begin - found.record.games.length
-    return offset < 0 ? [] : JSON.parse(JSON.stringify(games.slice(offset, offset + size)))
+    return games
   }
 
-  return { scenarios, current, recommendation, record, rankHistory, nextItem, load, select, olderPage }
+  /**
+   * The player's games as Blitz would answer them, when the scenario names a
+   * Blitz list (`blitzGames`): its newest games' ids, and each match and
+   * timeline in Riot's shape after a moment's wait. Null otherwise.
+   */
+  function blitzHistory(): BlitzHistorySource | null {
+    const found = scenarios.value.find(scenario => scenario.id === current.value)
+    if (!found?.blitzGames || !found.record) return null
+    const platform = found.record.platformId ?? 'EUW1'
+    const puuid = `synthetic-${found.id}`
+    const listed = async () => [...found.record!.games, ...await olderGames(found)].slice(0, found.blitzGames)
+    const game = async (id: string) => {
+      const gameId = gameIdOfMatch(id)
+      const hit = (await listed()).find(entry => entry.gameId === gameId)
+      if (!hit) throw new Error(`no synthetic game ${id}`)
+      await new Promise(resolve => setTimeout(resolve, 120 + Math.random() * 160))
+      return hit
+    }
+    return {
+      puuid,
+      matchIds: async () => (await listed()).map(entry => `${platform}_${entry.gameId}`),
+      match: async (id) => {
+        const { matchAnswerOf } = await import('~/fixtures/synthetic-blitz')
+        return matchAnswerOf(await game(id), platform, puuid)
+      },
+      timeline: async (id) => {
+        const { timelineOf } = await import('~/fixtures/synthetic-blitz')
+        return timelineOf(await game(id))
+      },
+    }
+  }
+
+  /** The games the scenario's machine saved in earlier sessions (`savedGames`), older than Blitz's list. */
+  async function savedHistory(): Promise<PlayerGame[]> {
+    const found = scenarios.value.find(scenario => scenario.id === current.value)
+    if (!found?.savedGames || !found.record) return []
+    const skip = Math.max(0, (found.blitzGames ?? found.record.games.length) - found.record.games.length)
+    return JSON.parse(JSON.stringify((await olderGames(found)).slice(skip, skip + found.savedGames)))
+  }
+
+  return { scenarios, current, recommendation, record, rankHistory, nextItem, load, select, olderPage, blitzHistory, savedHistory }
 }
