@@ -50,10 +50,84 @@ export function guideItemIds(icons: GuideIcon[], index: GuideIndex): number[] {
  * knows is left out, and past the shop's 16 blocks the last ones give way.
  */
 export function guideItemBlocks(build: GuideBuild, index: GuideIndex, titles: { recommended: string, untitled: string }): NamedItemBlock[] {
+  return buildBlocks(build, index, titles, '').slice(0, MAX_BLOCKS)
+}
+
+/** One build's blocks, every title after `prefix` (`Build 2 — `) and within the shop's 40 characters. */
+function buildBlocks(build: GuideBuild, index: GuideIndex, titles: { recommended: string, untitled: string }, prefix: string): NamedItemBlock[] {
+  const title = (text: string) => shopText(`${prefix}${shopText(text, BLOCK_TITLE)}`, BLOCK_TITLE)
   return [
-    { title: shopText(titles.recommended, BLOCK_TITLE), items: guideItemIds(build.recommended, index) },
-    ...build.items.map(section => ({ title: shopText(section.title, BLOCK_TITLE) || titles.untitled, items: guideItemIds(section.items, index) })),
-  ].filter(block => block.items.length > 0).slice(0, MAX_BLOCKS)
+    { title: title(titles.recommended), items: guideItemIds(build.recommended, index) },
+    ...build.items.map(section => ({ title: title(shopText(section.title, BLOCK_TITLE) || titles.untitled), items: guideItemIds(section.items, index) })),
+  ].filter(block => block.items.length > 0)
+}
+
+/** What `guideItemSetBlocks` titles its blocks with, in the player's language. */
+export interface GuideSetTitles {
+  recommended: string
+  untitled: string
+  /** A build's name before each of its blocks' titles (`Build 2`). */
+  build: (number: number) => string
+  /** The block a build's last sections are gathered in, past its share of the shop's blocks. */
+  more: string
+}
+
+/**
+ * Every build of a guide in one item set: a guide of several builds (a tank
+ * and a lethality one, a jungle and a top one) gives the shop a single set
+ * holding them all, each build's blocks in turn under its name (`Build 2 —
+ * Core items`) — its recommended items, then each of its sections —, rather
+ * than a set per build or only the build on show. A guide of one build is
+ * `guideItemBlocks`.
+ *
+ * The shop's set holds 16 blocks: past them, a block that only repeats one of
+ * an earlier build (the same starting items in every build) is left out
+ * first; then each build is given an even share of the blocks, the sections
+ * past its share gathered into one last block of its own, so no build and no
+ * item is lost.
+ */
+export function guideItemSetBlocks(builds: GuideBuild[], index: GuideIndex, titles: GuideSetTitles): NamedItemBlock[] {
+  if (builds.length <= 1) return builds[0] ? guideItemBlocks(builds[0], index, titles) : []
+  let groups = builds.map((build, at) => ({ prefix: `${titles.build(at + 1)} — `, blocks: buildBlocks(build, index, titles, `${titles.build(at + 1)} — `) }))
+    .filter(group => group.blocks.length > 0)
+  const total = () => groups.reduce((sum, group) => sum + group.blocks.length, 0)
+  if (total() > MAX_BLOCKS) {
+    const seen = new Set<string>()
+    const key = (block: NamedItemBlock) => [...block.items].sort((a, b) => a - b).join(',')
+    groups = groups.map(group => ({
+      ...group,
+      blocks: group.blocks.filter((block, at) => {
+        const known = seen.has(key(block))
+        seen.add(key(block))
+        // A build keeps its first block whatever it repeats: its name stays in the shop.
+        return at === 0 || !known
+      }),
+    }))
+  }
+  if (total() > MAX_BLOCKS) {
+    // Each build's share, one block at a time round the builds, as long as it has blocks to fill it.
+    const shares = groups.map(() => 0)
+    for (let left = MAX_BLOCKS; left > 0;) {
+      const before = left
+      groups.forEach((group, at) => {
+        if (left > 0 && shares[at]! < group.blocks.length) {
+          shares[at]!++
+          left--
+        }
+      })
+      if (left === before) break
+    }
+    groups = groups.map((group, at) => {
+      const share = shares[at]!
+      if (group.blocks.length <= share || share === 0) return { ...group, blocks: group.blocks.slice(0, share) }
+      const rest = group.blocks.slice(share - 1)
+      return {
+        ...group,
+        blocks: [...group.blocks.slice(0, share - 1), { title: shopText(`${group.prefix}${titles.more}`, BLOCK_TITLE), items: [...new Set(rest.flatMap(block => block.items))] }],
+      }
+    })
+  }
+  return groups.flatMap(group => group.blocks).slice(0, MAX_BLOCKS)
 }
 
 const BASIC: SkillKey[] = ['Q', 'W', 'E']

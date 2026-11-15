@@ -485,7 +485,7 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   banner (`GuidesHero`, `PageHero`'s frame) on Riot's full splash of the skin MOBAFire's banner names
   (`utils/guide-art.ts`, `useGuideSkin`: the picture's word matched to the champion's `en_US` skins), the author's
   picture the skin's tile too, its figures in one strip, and the imports in its corner — the rune page on show (or why
-  it cannot be), and the whole itemization as one item set; then a bar of the page's parts that stays as it scrolls,
+  it cannot be), and the whole itemization as one item set, every build of the guide in it under its name; then a bar of the page's parts that stays as it scrolls,
   the build at a glance (`GuidesBuildPanel`: the rune pages and spell sets switched as the author offers them, the
   recommended items, the ability order on the app's skill grid), the author's item sections as a numbered buying
   progression with their notes beside them (`GuidesItemPath`), the threats and synergies by level, and the chapters with

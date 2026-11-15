@@ -13,8 +13,9 @@ import { guideRoleIcon } from '~/utils/guide-roles'
  * splash where the skin's fails, MOBAFire's own banner where the guide names
  * no champion —; the skin's tile beside the title; who wrote it and when; the
  * imports in the corner, the point of the page — the rune page on show, and
- * the build's items as one set —; and the guide's figures in one strip under
- * it all: its rating and votes, the author's rank, its views and comments.
+ * the guide's items as one set, every build's —; and the guide's figures in
+ * one strip under it all: its rating and votes, the author's rank, its views
+ * and comments.
  */
 const props = defineProps<{
   guide: Guide
@@ -85,7 +86,7 @@ const initial = computed(() => props.guide.author.name.trim().charAt(0).toUpperC
           </div>
         </div>
 
-        <!-- The imports: the rune page on show and the whole itemization, the guide's point. -->
+        <!-- The imports: the rune page on show and the whole itemization, every build's, the guide's point. -->
         <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
           <BuildRuneImport
             v-if="runePage && championName"
@@ -112,6 +113,11 @@ const initial = computed(() => props.guide.author.name.trim().charAt(0).toUpperC
             color="primary"
             variant="solid"
           />
+          <p v-if="itemSet && guide.builds.length > 1" class="flex w-full justify-end">
+            <span class="flex items-center gap-1.5 rounded-md bg-ink-950/70 px-2 py-0.5 text-[11px] text-toned ring-1 ring-white/10 backdrop-blur-md">
+              <UIcon name="i-lucide-layers" class="size-3 text-primary" />{{ t('guides.allBuildsOneSet', { count: guide.builds.length }) }}
+            </span>
+          </p>
         </div>
       </div>
 

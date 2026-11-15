@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ItemSetNamedBlocks } from '~/composables/useItemSetImport'
 import { nameKey, runePageOf } from '~/utils/guide-entities'
-import { guideItemBlocks, guideSetTitle, unresolvedRunes } from '~/utils/guide-build'
+import { guideItemSetBlocks, guideSetTitle, unresolvedRunes } from '~/utils/guide-build'
 
 /**
  * One MOBAFire guide, read top-down as the app's build pages read: the
@@ -50,11 +50,20 @@ const runeProblem = computed(() => {
   return missing.length ? t('guides.runesUnresolved', { runes: missing.join(', ') }) : t('guides.runesIncomplete')
 })
 
-/** The build's whole itemization as one item set (`guideItemBlocks`): its recommended items, then each of the author's sections. */
+/**
+ * The guide's whole itemization as one item set (`guideItemSetBlocks`): each
+ * build's recommended items and the author's sections — every build of the
+ * guide in the one set, under its name, whichever is on show.
+ */
 const itemSet = computed<ItemSetNamedBlocks | null>(() => {
   const value = guide.value
-  if (!value || !build.value || !entities.value || !championId.value) return null
-  const named = guideItemBlocks(build.value, entities.value, { recommended: t('guides.recommended'), untitled: t('guides.items') })
+  if (!value || !entities.value || !championId.value) return null
+  const named = guideItemSetBlocks(value.builds, entities.value, {
+    recommended: t('guides.recommended'),
+    untitled: t('guides.items'),
+    build: number => t('guides.build', { number }),
+    more: t('guides.moreItems'),
+  })
   if (!named.length) return null
   const champion = championName.value ?? value.champion ?? ''
   return { championId: championId.value, champion, title: guideSetTitle(champion, value.title), named }

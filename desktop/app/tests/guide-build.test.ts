@@ -3,7 +3,7 @@ import type { StaticItemData } from '#shared/types/static-data'
 import type { GuideIndex } from '~/utils/guide-entities'
 import type { GuideAbility, GuideBuild, GuideRunePage } from '~/utils/mobafire'
 import { championOfWord, skinNumOf, skinWord, tileOfSkin } from '~/utils/guide-art'
-import { abilityPoints, guideItemBlocks, guideSetTitle, maxOrder, shopText, unresolvedRunes } from '~/utils/guide-build'
+import { abilityPoints, guideItemBlocks, guideItemSetBlocks, guideSetTitle, maxOrder, shopText, unresolvedRunes } from '~/utils/guide-build'
 import { namedItemSet } from '~/utils/recommended-item-set'
 
 const BRIAR_SKINS = [
@@ -93,6 +93,58 @@ describe('a guide\'s itemization as one item set', () => {
     expect(set.title).toBe('TrueMain Briar · A guide')
     expect(set.championKey).toBe('Briar')
     expect(set.blocks.map(block => [block.type, block.items.map(entry => entry.id)])).toEqual([['Recommended items', ['3748', '3071']], ['Start', ['2003']]])
+  })
+})
+
+describe('a guide of several builds as one item set', () => {
+  const titles = { recommended: 'Recommended items', untitled: 'Items', build: (number: number) => `Build ${number}`, more: 'More items' }
+  const tank: GuideBuild = {
+    recommended: [item('Titanic Hydra'), item('Black Cleaver')],
+    runes: [],
+    spells: [],
+    items: [
+      { title: 'Starter', notes: null, items: [item('Gustwalker Hatchling'), item('Health Potion')] },
+      { title: 'Boots', notes: null, items: [item('Plated Steelcaps')] },
+    ],
+    abilities: null,
+  }
+  const lethality: GuideBuild = { ...tank, recommended: [item('Black Cleaver')], items: [{ title: 'Starter', notes: null, items: [item('Gustwalker Hatchling'), item('Health Potion')] }, { title: 'Core: a title long enough to be cut by the shop', notes: null, items: [item('Titanic Hydra')] }] }
+
+  it('writes every build\'s blocks into the one set, each build in turn under its name', () => {
+    const blocks = guideItemSetBlocks([tank, lethality], index, titles)
+    expect(blocks).toEqual([
+      { title: 'Build 1 — Recommended items', items: [3748, 3071] },
+      { title: 'Build 1 — Starter', items: [1102, 2003] },
+      { title: 'Build 1 — Boots', items: [3047] },
+      { title: 'Build 2 — Recommended items', items: [3071] },
+      { title: 'Build 2 — Starter', items: [1102, 2003] },
+      { title: 'Build 2 — Core: a title long enough to…', items: [3748] },
+    ])
+    for (const block of blocks) expect([...block.title].length).toBeLessThanOrEqual(40)
+    // One set for the shop, holding both builds.
+    const items = { 3748: {}, 3071: {}, 3047: {}, 2003: {}, 1102: {} } as unknown as Record<number, StaticItemData>
+    const set = namedItemSet('Briar · A guide', 'Briar', blocks, items)
+    expect(set.blocks.map(block => block.type)).toEqual(blocks.map(block => block.title))
+  })
+
+  it('keeps a guide of one build as it was, its titles unprefixed', () => {
+    expect(guideItemSetBlocks([tank], index, titles)).toEqual(guideItemBlocks(tank, index, titles))
+  })
+
+  it('fits many builds in the shop\'s sixteen blocks, no build and no item lost', () => {
+    // Three builds of ten blocks each, every item its own.
+    const many: GuideIndex = { ...index, items: new Map(Array.from({ length: 30 }, (_, at) => [`item${at}`, 1000 + at])) }
+    const buildOf = (first: number): GuideBuild => ({ ...tank, recommended: [item(`Item${first}`)], items: Array.from({ length: 9 }, (_, at) => ({ title: `Section ${at}`, notes: null, items: [item(`Item${first + 1 + at}`)] })) })
+    const blocks = guideItemSetBlocks([buildOf(0), buildOf(10), buildOf(20)], many, titles)
+    expect(blocks).toHaveLength(16)
+    expect(blocks.map(block => block.title).filter(title => title.endsWith('More items'))).toEqual(['Build 1 — More items', 'Build 2 — More items', 'Build 3 — More items'])
+    expect(new Set(blocks.flatMap(block => block.items)).size).toBe(30)
+  })
+
+  it('leaves out a block that only repeats an earlier build\'s before gathering any', () => {
+    const repeated: GuideBuild = { ...tank, items: Array.from({ length: 8 }, () => ({ title: 'Starter', notes: null, items: [item('Gustwalker Hatchling'), item('Health Potion')] })) }
+    const blocks = guideItemSetBlocks([repeated, repeated, repeated], index, titles)
+    expect(blocks.map(block => block.title)).toEqual(['Build 1 — Recommended items', 'Build 1 — Starter', 'Build 2 — Recommended items', 'Build 3 — Recommended items'])
   })
 })
 
