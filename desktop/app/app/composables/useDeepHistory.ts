@@ -1,12 +1,12 @@
 import type { PlayerGame } from '~/types/record'
 import type { BlitzHistorySource, GameSource } from '~/utils/deep-history'
-import type { RiotTimeline } from '~/utils/blitz/player'
+import type { MatchAnswer, RiotTimeline } from '~/utils/blitz/player'
 import { HISTORY_DEEP_CEILING } from '~/composables/usePlayerRecord'
 import { blitzGet } from '~/utils/blitz/client'
 import { withMarks } from '~/utils/blitz/marks'
-import { homeRegionOf, readMatch, readPlayerAccount, readPlayerMatchIds, regionOfPlatform, splitRiotId } from '~/utils/blitz/player'
+import { homeRegionOf, readPlayerAccount, readPlayerMatchIds, regionOfPlatform, splitRiotId } from '~/utils/blitz/player'
 import { gameOf } from '~/utils/blitz/profile'
-import { idsToRead, mapLimit, mergeHistory, sourceCounts } from '~/utils/deep-history'
+import { gameIdOfMatch, idsToRead, mapLimit, mergeHistory, sourceCounts } from '~/utils/deep-history'
 import { historyStore } from '~/utils/history-store'
 
 /** Matches read from Blitz at once. */
@@ -18,6 +18,9 @@ const STEP = 8
 /** Games read from Blitz between two saves to this machine. */
 const SAVE_EVERY = 24
 
+/** Steps in a row that read no game before Blitz is left for the session: its answers are failing (offline, down), not a few old games. */
+const MISSES_BEFORE_STOP = 2
+
 const SUMMONERS_RIFT = 11
 
 /**
@@ -25,7 +28,7 @@ const SUMMONERS_RIFT = 11
  * list, the ids that failed — kept across the page's visits like the games
  * themselves (`useState`), so coming back to the page goes on where it was.
  */
-let session: { riotId: string, source: Promise<BlitzHistorySource | null> | null, ids: string[] | null, failed: Set<string>, sinceSave: number, puuid: string | null } | null = null
+let session: { riotId: string, source: Promise<BlitzHistorySource | null> | null, ids: string[] | null, failed: Set<string>, misses: number, sinceSave: number, puuid: string | null } | null = null
 
 /**
  * The player's history as far back as it can be read, for a page that reads
@@ -75,10 +78,10 @@ export function useDeepHistory() {
     phase.value = 'idle'
     blitzMissing.value = false
     queued.value = 0
-    session = { riotId, source: null, ids: null, failed: new Set(), sinceSave: 0, puuid: null }
+    session = { riotId, source: null, ids: null, failed: new Set(), misses: 0, sinceSave: 0, puuid: null }
     const stored = await historyStore().load(riotId)
     let games = stored.games
-    if (!games.length && !insideTauri() && import.meta.dev) games = await useDevScenarios().savedHistory()
+    if (import.meta.dev && !games.length && !insideTauri()) games = await useDevScenarios().savedHistory()
     if (state.value.riotId !== riotId || session?.riotId !== riotId) return
     saved.value = games
     session.puuid = stored.puuid
@@ -97,8 +100,8 @@ export function useDeepHistory() {
     return {
       puuid,
       matchIds: () => readPlayerMatchIds(region, parts.gameName, parts.tagLine),
-      match: readMatch,
-      // Not `readTimeline`: its session cache would keep forty of these heavy answers for a page that reads each once.
+      // Not `readMatch` nor `readTimeline`: their session caches would keep a hundred heavy answers for a page that reads each once and keeps the game it makes.
+      match: id => blitzGet<MatchAnswer>('lol', `lol/match/${id}`),
       timeline: id => blitzGet<RiotTimeline>('lol', `lol/timeline/${id}`),
     }
   }
@@ -106,8 +109,10 @@ export function useDeepHistory() {
   /** One match as one of the player's games, with its marks on Summoner's Rift (the lane leads); null when it cannot be read. */
   async function readGame(source: BlitzHistorySource, id: string): Promise<PlayerGame | null> {
     try {
-      const game = gameOf(await source.match(id), source.puuid)
-      if (!game) return null
+      const read = gameOf(await source.match(id), source.puuid)
+      if (!read) return null
+      // The game is the one the id names, even when the answer carries no match id of its own: else it would never count as read.
+      const game = { ...read, gameId: gameIdOfMatch(id) ?? read.gameId }
       if (game.mapId !== SUMMONERS_RIFT || game.remake) return game
       return withMarks(game, await source.timeline(id).catch(() => null))
     }
@@ -145,6 +150,13 @@ export function useDeepHistory() {
     })
     const landed = read.filter((game): game is PlayerGame => game !== null)
     fetched.value = [...fetched.value, ...landed]
+    current.misses = landed.length ? 0 : current.misses + 1
+    if (current.misses >= MISSES_BEFORE_STOP) {
+      // Blitz stopped answering: what it gave stays, the rest waits for the next session.
+      if (!fetched.value.length) blitzMissing.value = true
+      queued.value = 0
+      return false
+    }
     queued.value = Math.max(0, todo.length - step.length)
     current.sinceSave += landed.length
     if (current.sinceSave >= SAVE_EVERY) void persist(riotId)
