@@ -43,7 +43,12 @@ async function inBatches<T>(list: T[], limit: number, work: (entry: T) => Promis
   }
 }
 
-export async function directoryFromBlitz(query: Record<string, unknown>): Promise<ChampionDirectoryResponse> {
+/**
+ * Blitz's rows of the champions list, the champion's lane by lane, without
+ * the builds: what the merged list pools (`utils/sources` `pooledRows`) —
+ * reading every row's build there would be a request per row, ~870 of them.
+ */
+export async function blitzDirectoryRows(query: Record<string, unknown>): Promise<ChampionSummaryResponse[]> {
   const rows = await blitzRows<BlitzDirectoryRow>('champion_postmatch_stats', {
     queue_id: SOLO_QUEUE,
     region: 'WORLD',
@@ -53,9 +58,9 @@ export async function directoryFromBlitz(query: Record<string, unknown>): Promis
   const now = new Date().toISOString()
   const position = typeof query.position === 'string' && query.position ? query.position : null
   const championId = Number(query.championId) || null
-  const all: ChampionSummaryResponse[] = rows
+  return rows
     .filter(row => row.individual_position !== 'ALL')
-    .map((row) => {
+    .map((row): ChampionSummaryResponse => {
       const grade = row.champion_role_tier ?? 5
       return {
         championId: row.champion_id,
@@ -76,7 +81,10 @@ export async function directoryFromBlitz(query: Record<string, unknown>): Promis
       }
     })
     .filter(row => (position === null || row.position === position) && (championId === null || row.championId === championId))
+}
 
+export async function directoryFromBlitz(query: Record<string, unknown>): Promise<ChampionDirectoryResponse> {
+  const all = await blitzDirectoryRows(query)
   const sort: SortKey = typeof query.sort === 'string' && query.sort in SORTS ? query.sort as SortKey : 'pickRate'
   const direction = query.order === 'asc' ? 1 : -1
   all.sort((a, b) => direction * (SORTS[sort](a) - SORTS[sort](b)) || b.games - a.games)
@@ -101,5 +109,5 @@ export async function directoryFromBlitz(query: Record<string, unknown>): Promis
     }
   })
 
-  return { rows: shown, page, pageSize, total: all.length, patchVersion: rows[0]?.patch ?? '' }
+  return { rows: shown, page, pageSize, total: all.length, patchVersion: all[0]?.patchVersion ?? '' }
 }

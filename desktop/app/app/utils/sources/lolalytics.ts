@@ -177,6 +177,20 @@ const rate = (percent: number) => percent / 100
 export const lowered = (winRate: number, lift: number) => Math.min(Math.max(winRate - lift, 0), 1)
 
 const lifts = new Map<string, Promise<number>>()
+const tierLists = new Map<string, Promise<TierAnswer>>()
+
+/** One `tier` list, kept for the session: the champions list's rows and the bracket's lift read the same one. */
+function readTierList(query: Record<string, string>): Promise<TierAnswer> {
+  const full = { lane: 'all', region: 'all', ...query, ep: 'tier' }
+  const key = JSON.stringify(Object.entries(full).sort(([a], [b]) => a.localeCompare(b)))
+  let answer = tierLists.get(key)
+  if (!answer) {
+    answer = read<TierAnswer>(full)
+    answer.catch(() => tierLists.delete(key))
+    keepBounded(tierLists, key, answer)
+  }
+  return answer
+}
 
 /**
  * How far a bracket's games, as lolalytics counts them, are won above half of
@@ -200,7 +214,7 @@ export function bracketLift(eloBracket?: unknown, region = 'all', patch?: string
   const key = `${tier}:${region}:${patch ?? ''}`
   let answer = lifts.get(key)
   if (!answer) {
-    answer = read<TierAnswer>({ ep: 'tier', lane: 'all', tier, region, ...(patch ? { patch } : {}) }).then((list) => {
+    answer = readTierList({ tier, region, ...(patch ? { patch } : {}) }).then((list) => {
       const entries = Object.values(list.tier ?? {}).flatMap(group => Object.values(group.lane ?? {}).flatMap(({ cid }) => Object.values(cid ?? {})))
       const games = entries.reduce((sum, entry) => sum + entry.games, 0)
       return games > 0 ? entries.reduce((sum, entry) => sum + entry.games * rate(entry.wr), 0) / games - 0.5 : 0
@@ -427,7 +441,7 @@ export async function lolalyticsRows(query: Record<string, unknown>): Promise<Ch
   // The patch picked on the page wins over the window; the list says which patch it is.
   const picked = pickedPatch(query.patch)
   const [answer, patch, lift] = await Promise.all([
-    read<TierAnswer>({ ep: 'tier', lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
+    readTierList({ lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
     picked ?? patchRead(),
     bracketLift(query.eloBracket, 'all', picked ?? undefined),
   ])
