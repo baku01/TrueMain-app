@@ -129,7 +129,7 @@ useHead({
         <template v-if="playing">
           <OverlayNextItem v-if="panel === 'next-item'" :game="playing" />
           <OverlayWinProbability v-else-if="panel === 'win-probability'" :game="playing" :sync="sync" />
-          <OverlayStats v-else-if="panel === 'stats'" :game="playing" :reference="paceReference" />
+          <OverlayStats v-else-if="panel === 'stats'" :game="playing" :reference="paceReference" :sync="sync" />
           <OverlayObjectives v-else-if="panel === 'objectives'" :game="playing" :sync="sync" />
           <OverlayTips v-else-if="panel === 'tips'" :game="playing" :sync="sync" />
           <OverlayItemValue v-else :game="playing" :lanes="!settings?.laneGold.enabled" />

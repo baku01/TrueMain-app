@@ -7,7 +7,8 @@
 //! change, which is exactly what the frontend is not to receive. A panel that
 //! needs one of them adds it here with the pace it actually needs — our gold,
 //! for the next-item panel (#1751), moves in steps of [`GOLD_STEP`]; every
-//! player's creep score, for the win probability, in steps of [`CS_STEP`];
+//! other player's creep score, for the win probability, in steps of
+//! [`CS_STEP`], ours at each last hit, for the stats panel's live CS a minute;
 //! our health and resource, for the in-game tips, in steps of [`VITAL_STEP`];
 //! every player's ward score in whole points.
 
@@ -125,8 +126,9 @@ pub struct GamePlayer {
     pub kills: i64,
     pub deaths: i64,
     pub assists: i64,
-    /// Minions and monsters killed, as the scoreboard counts them, floored
-    /// to [`CS_STEP`].
+    /// Minions and monsters killed, as the scoreboard counts them: ours
+    /// exact, a change a last hit, for the stats panel's live CS a minute;
+    /// everyone else's floored to [`CS_STEP`].
     pub creep_score: i64,
     /// Vision placed and cleared, in whole points.
     #[serde(default)]
@@ -437,8 +439,10 @@ impl GamePlayer {
         })
         .collect();
 
+        let is_me = is_active_player(player, me);
+        let creep_score = player.scores.creep_score.max(0);
         Some(Self {
-            is_me: is_active_player(player, me),
+            is_me,
             riot_id,
             champion,
             champion_name: player.champion_name.clone(),
@@ -451,7 +455,11 @@ impl GamePlayer {
             kills: player.scores.kills,
             deaths: player.scores.deaths,
             assists: player.scores.assists,
-            creep_score: player.scores.creep_score.max(0) / CS_STEP * CS_STEP,
+            creep_score: if is_me {
+                creep_score
+            } else {
+                creep_score / CS_STEP * CS_STEP
+            },
             ward_score: whole(player.scores.ward_score),
             dead: player.is_dead,
             respawn_at: player
@@ -631,20 +639,39 @@ mod tests {
     fn creep_score_is_a_change_only_when_it_crosses_a_step() {
         let before = state(duo(), 100.0);
         let mut players = duo();
-        players[0]["scores"]["creepScore"] = serde_json::json!(9);
+        players[1]["scores"]["creepScore"] = serde_json::json!(9);
         let within = state(players.clone(), 102.0);
         assert_eq!(before.diff(&within), Some(vec![]));
 
-        players[0]["scores"]["creepScore"] = serde_json::json!(14);
+        players[1]["scores"]["creepScore"] = serde_json::json!(14);
         let crossed = state(players, 104.0);
         assert_eq!(
             before.diff(&crossed),
+            Some(vec![GameChange::Score {
+                player: 1,
+                kills: 0,
+                deaths: 0,
+                assists: 0,
+                creep_score: 10,
+                ward_score: 0
+            }])
+        );
+    }
+
+    #[test]
+    fn our_creep_score_is_a_change_at_each_last_hit() {
+        let before = state(duo(), 100.0);
+        let mut players = duo();
+        players[0]["scores"]["creepScore"] = serde_json::json!(3);
+        let after = state(players, 102.0);
+        assert_eq!(
+            before.diff(&after),
             Some(vec![GameChange::Score {
                 player: 0,
                 kills: 0,
                 deaths: 0,
                 assists: 0,
-                creep_score: 10,
+                creep_score: 3,
                 ward_score: 0
             }])
         );

@@ -105,7 +105,7 @@ export interface GamePlayer {
   kills: number
   deaths: number
   assists: number
-  /** Minions and monsters killed, floored to 10 (`CS_STEP`). */
+  /** Minions and monsters killed: ours exact, at each last hit; everyone else's floored to 10 (`CS_STEP`). */
   creepScore: number
   /** Vision placed and cleared, in whole points. */
   wardScore: number
