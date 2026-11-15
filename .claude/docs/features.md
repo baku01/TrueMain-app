@@ -489,9 +489,13 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   are machine-translated into the app's language by Google Translate's public endpoint (`utils/translate.ts`,
   `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), with a switch to
   the original. The site has no API and sits
-  behind Cloudflare, which refuses any plain HTTP client: the shell reads its pages in a hidden window of its own on
-  mobafire.com (the system's webview) and takes their HTML back (`eval_with_callback`); when Cloudflare asks to confirm
-  a person is there, the window is shown for the player to tick it — never answered for them — and the page says so.
+  behind Cloudflare, which refuses any plain HTTP client: the shell keeps a hidden window of its own on mobafire.com
+  (the system's webview), resting on its `robots.txt` (nothing to run), and has it `fetch` each page from the site's
+  origin, stripped of scripts, styles and drawings before it crosses (`eval_with_callback`; ~0.4 s, a guide ~260 KB);
+  the window closes after 3 minutes unused, its cookies kept. Only when Cloudflare stands in front is the page opened
+  there for its check; when it asks to confirm a person is there, the window is shown for the player to tick it — never
+  answered for them (on macOS WebKit may pass it with Apple's Private Access Tokens, for a signed app) — and the page
+  says so.
   The window has no IPC, and only the guide list and guides are ever opened (never the `/ajax/` or `/json/` its
   robots.txt keeps from robots). `npm run dev` reads them through `/__mobafire` (`MOBAFIRE_DEV_ORIGIN`).
 - **Item set import** (#1908) — the rune button's twin, in the build tree's top-right corner, on every build the
