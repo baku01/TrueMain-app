@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GuideMatchup } from '~/utils/mobafire'
+import { nameKey } from '~/utils/guide-entities'
 
 /**
  * A guide's threats and synergies, as MOBAFire splits them: the champions on
@@ -9,6 +10,10 @@ import type { GuideMatchup } from '~/utils/mobafire'
  */
 const props = defineProps<{ threats: GuideMatchup[], synergies: GuideMatchup[] }>()
 const { t } = useT()
+const index = useGuideIndex()
+const { nameOf } = useChampionStatics()
+/** The champion's id in the app's data, for its portrait and its name in the player's language. */
+const championOf = (matchup: GuideMatchup) => index.value?.champions.get(nameKey(matchup.champion)) ?? null
 
 const side = ref<'threats' | 'synergies'>(props.threats.length ? 'threats' : 'synergies')
 const sideList = (name: 'threats' | 'synergies') => (name === 'threats' ? props.threats : props.synergies)
@@ -56,11 +61,12 @@ const LEVEL_COLOR: Record<number, string> = { 1: 'text-error', 2: 'text-warning'
     </header>
     <ul class="flex flex-col gap-2">
       <li v-for="matchup in shown" :key="matchup.champion" class="flex gap-3 rounded-lg bg-elevated/40 p-3">
-        <img v-if="matchup.image" :src="matchup.image" :alt="matchup.champion" class="img-skeleton size-10 shrink-0 rounded-md" loading="lazy">
+        <ChampionPortrait v-if="championOf(matchup)" :champion-id="championOf(matchup)!" size="sm" class="size-10! shrink-0 rounded-md!" />
+        <img v-else-if="matchup.image" :src="matchup.image" :alt="matchup.champion" class="img-skeleton size-10 shrink-0 rounded-md" loading="lazy">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-highlighted">{{ matchup.champion }}</span>
-            <span class="text-[11px] font-bold uppercase tracking-wider" :class="LEVEL_COLOR[matchup.level] ?? 'text-muted'">{{ matchup.label || t(`guides.level.${matchup.level}`) }}</span>
+            <span class="text-sm font-semibold text-highlighted">{{ championOf(matchup) ? nameOf(championOf(matchup)!) : matchup.champion }}</span>
+            <span class="text-[11px] font-bold uppercase tracking-wider" :class="LEVEL_COLOR[matchup.level] ?? 'text-muted'">{{ t(`guides.level.${matchup.level}`) }}</span>
           </div>
           <p v-if="matchup.note" class="mt-1 whitespace-pre-line text-xs leading-relaxed text-toned">{{ matchup.note }}</p>
         </div>

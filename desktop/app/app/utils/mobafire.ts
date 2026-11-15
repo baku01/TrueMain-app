@@ -431,6 +431,26 @@ export function parseGuide(html: string, slug: string): Guide {
   }
 }
 
+/**
+ * The hosts a chapter's pictures may come from — the ones the app's CSP lets
+ * load (`tauri.conf.json`): the site's own, imgur, YouTube's thumbnails and
+ * the game's art. A picture from anywhere else is left out rather than drawn
+ * broken.
+ */
+const IMAGE_HOSTS = new Set(['www.mobafire.com', 'i.imgur.com', 'img.youtube.com', 'ddragon.leagueoflegends.com', 'raw.communitydragon.org'])
+
+const allowedImage = (src: string | null) => {
+  try {
+    return !!src && src.startsWith('https://') && IMAGE_HOSTS.has(new URL(src).hostname)
+  }
+  catch {
+    return false
+  }
+}
+
+/** A YouTube video's id, as MOBAFire embeds it (`<lite-youtube videoid="…">`). */
+const VIDEO_ID = /^[\w-]{11}$/
+
 /** What an author's chapter keeps: its writing and its pictures, nothing that runs, loads a frame or styles the page. */
 const KEPT_TAGS = new Set(['p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'h2', 'h3', 'h4', 'h5', 'ul', 'ol', 'li', 'blockquote', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'center'])
 const DROPPED_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'select', 'textarea', 'link', 'meta', 'noscript', 'svg', 'video', 'audio'])
@@ -447,9 +467,23 @@ function clean(node: Node, into: Node, doc: Document) {
     const element = child as Element
     const tag = element.tagName.toLowerCase()
     if (DROPPED_TAGS.has(tag)) continue
+    // A video: its thumbnail, opened in the player's browser on a click (`GuidesChapter`).
+    const video = tag === 'lite-youtube' ? element.getAttribute('videoid') : element.getAttribute('data-video')
+    if ((tag === 'lite-youtube' || (tag === 'div' && element.hasAttribute('data-video'))) && video && VIDEO_ID.test(video)) {
+      const box = doc.createElement('div')
+      box.setAttribute('class', 'guide-video')
+      box.setAttribute('data-video', video)
+      const thumbnail = doc.createElement('img')
+      thumbnail.setAttribute('src', `https://img.youtube.com/vi/${video}/hqdefault.jpg`)
+      thumbnail.setAttribute('alt', '')
+      thumbnail.setAttribute('loading', 'lazy')
+      box.appendChild(thumbnail)
+      into.appendChild(box)
+      continue
+    }
     if (tag === 'img') {
       const src = imageOf(element)
-      if (src?.startsWith('https://')) {
+      if (src && allowedImage(src)) {
         const image = doc.createElement('img')
         image.setAttribute('src', src)
         image.setAttribute('alt', element.getAttribute('alt') ?? '')
@@ -465,7 +499,8 @@ function clean(node: Node, into: Node, doc: Document) {
       continue
     }
     const copy = doc.createElement(tag === 'center' ? 'div' : tag)
-    if (tag === 'center' || (element.getAttribute('class') ?? '').includes('bbcode_center')) copy.setAttribute('class', 'guide-center')
+    // The site's centred block, or one this sanitizer made (a translation comes back through it).
+    if (tag === 'center' || /\b(?:bbcode_center|guide-center)\b/.test(element.getAttribute('class') ?? '')) copy.setAttribute('class', 'guide-center')
     const color = element.getAttribute('style')?.match(COLOR)?.[1]
     if (color && (tag === 'span' || tag === 'div')) copy.setAttribute('style', `color:${color}`)
     if ((tag === 'td' || tag === 'th') && element.getAttribute('colspan')) copy.setAttribute('colspan', String(Number(element.getAttribute('colspan')) || 1))

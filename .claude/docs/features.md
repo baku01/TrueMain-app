@@ -482,10 +482,20 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   ranked authors, the guides under the site's dividers with their rating ring, votes, the author's rank, tags, its pages,
   and the trending guides beside them; a guide opens on its banner, each build (recommended items, the rune pages and
   spell sets switched as the author offers them, the items by section, the ability order), its threats and synergies by
-  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`). The site has no API and sits
-  behind Cloudflare, which refuses any plain HTTP client: the shell reads its pages in a hidden window of its own on
-  mobafire.com (the system's webview) and takes their HTML back (`eval_with_callback`); when Cloudflare asks to confirm
-  a person is there, the window is shown for the player to tick it — never answered for them — and the page says so.
+  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`; a YouTube video is its
+  thumbnail, opened in the browser, `open_guide_video`). What the game names is drawn from the app's own data
+  (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's `en_US` ids) — icons, tooltips and names
+  in the player's language, a rune page as every one in the app, ready to import; the rest of the words, the author's,
+  are machine-translated into the app's language by Google Translate's public endpoint (`utils/translate.ts`,
+  `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), with a switch to
+  the original. The site has no API and sits
+  behind Cloudflare, which refuses any plain HTTP client: the shell keeps a hidden window of its own on mobafire.com
+  (the system's webview), resting on its `robots.txt` (nothing to run), and has it `fetch` each page from the site's
+  origin, stripped of scripts, styles and drawings before it crosses (`eval_with_callback`; ~0.4 s, a guide ~260 KB);
+  the window closes after 3 minutes unused, its cookies kept. Only when Cloudflare stands in front is the page opened
+  there for its check; when it asks to confirm a person is there, the window is shown for the player to tick it — never
+  answered for them (on macOS WebKit may pass it with Apple's Private Access Tokens, for a signed app) — and the page
+  says so.
   The window has no IPC, and only the guide list and guides are ever opened (never the `/ajax/` or `/json/` its
   robots.txt keeps from robots). `npm run dev` reads them through `/__mobafire` (`MOBAFIRE_DEV_ORIGIN`).
 - **Item set import** (#1908) — the rune button's twin, in the build tree's top-right corner, on every build the

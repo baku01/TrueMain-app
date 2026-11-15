@@ -2,6 +2,7 @@
 import { getActiveLocale } from '#common/utils/i18n'
 import { formatTierName, tierColor } from '#common/utils/tiers'
 import { guideRoleIcon } from '~/utils/guide-roles'
+import { nameKey } from '~/utils/guide-entities'
 
 /**
  * One MOBAFire guide, as the site lays it: the banner — the author's splash,
@@ -13,7 +14,12 @@ const { t } = useT()
 const route = useRoute()
 const checking = useMobafireCheck()
 const slug = computed(() => String(route.params.slug ?? ''))
-const { guide, status, reload } = useGuide(slug)
+const { guide, status, translating, translatable, reload } = useGuide(slug)
+const entities = useGuideIndex()
+const { nameOf } = useChampionStatics()
+/** The guide's champion in the app's data: its abilities, and its name in the player's language. */
+const championId = computed(() => (guide.value?.champion && entities.value ? entities.value.champions.get(nameKey(guide.value.champion)) ?? null : null))
+const championName = computed(() => (championId.value ? nameOf(championId.value) : guide.value?.champion ?? null))
 
 const buildIndex = ref(0)
 watch(slug, () => (buildIndex.value = 0))
@@ -36,7 +42,8 @@ const championList = computed(() => {
   <div class="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-6 *:shrink-0">
     <div class="flex shrink-0 items-center gap-2">
       <UButton to="/guides" icon="i-lucide-arrow-left" :label="t('guides.back')" color="neutral" variant="ghost" size="sm" />
-      <UButton v-if="championList && guide" :to="championList" icon="i-lucide-list" :label="t('guides.moreFor', { champion: guide.champion ?? '' })" color="neutral" variant="ghost" size="sm" />
+      <UButton v-if="championList && guide" :to="championList" icon="i-lucide-list" :label="t('guides.moreFor', { champion: championName ?? '' })" color="neutral" variant="ghost" size="sm" />
+      <GuidesTranslationToggle v-if="translatable && guide" class="ml-auto" :translating="translating" />
     </div>
 
     <p v-if="checking" class="flex shrink-0 items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-default">
@@ -91,7 +98,7 @@ const championList = computed(() => {
           @click="buildIndex = index"
         />
       </div>
-      <GuidesBuildPanel v-if="build" :build="build" />
+      <GuidesBuildPanel v-if="build" :build="build" :champion-id="championId" :champion-name="championName" />
 
       <GuidesMatchups v-if="guide.threats.length || guide.synergies.length" :threats="guide.threats" :synergies="guide.synergies" />
 
