@@ -256,6 +256,40 @@ mounted components (`ProcessSummaryView`, `PanelTitle`). No page-level tests.
 Reads the local League client (LCU) in Rust; the webview renders the state. Details and dev workflow in
 `desktop/README.md`; decisions in [`decisions/desktop.md`](decisions/desktop.md).
 
+- **Data sources, merged** (`utils/data-source.ts`, `utils/sources/index.ts` `activeProvider`, `utils/sources/combined.ts`,
+  Settings' "Fontes de dados" card) — no source to pick any more (the launch picker and Settings' radio cards are gone):
+  every read asks lolalytics, Mobalytics, Blitz and op.gg at once (an 8 s budget per source) and averages their
+  answers, because they count the same ranked games (Ahri's mid lane on 16.22, Emerald+: 262,160 / 263,049 / 244,970 /
+  240,148 games) — never adds them. Each rate (win, pick, ban, an option's share, a matchup) is the mean weighed by
+  w = 1/(0.25/n + τ²), τ = 0.3 points of win rate for the sources' processing spread (fitted over 20 lanes' matchups,
+  every pair of sources: Δ² = φ·(v₁ + v₂) + 2τ², φ ≈ 0.07 — the same games — and τ 0.2–0.4 pt) — near-equal for
+  large samples, a thin one counting little (multiple-frame
+  estimator for units every frame holds: the frames' mean, Mecatti 2007; BLUE with a source bias, Lyons 1988). The games
+  shown are the largest source's (the nested samples' effective size, a lower bound on distinct games); a matchup's
+  Wilson interval reads the games it is as sure as, n* = p(1−p)/(p(1−p)/n + τ²/k) (`effectiveGames`). lolalytics'
+  bracket win rates sit above everyone's — its Emerald+ list is won 51.74 %, Master+ 52.40 %, op.gg's 50.02 % (it counts
+  the bracket's players as they rank now, climbers' wins included): `bracketLift` takes that off its options, rows,
+  matchups, trend, counters and synergies (Ahri 53.02 % → 51.28 %; Mobalytics 51.30, Blitz 51.33), its analytics page
+  keeping its own scale. A source whose games, cell by cell, sit outside 0.6–1/0.6 of the first source's counted
+  another population — a bracket it does not keep (Mobalytics' and Blitz's Gold for Gold+, 0.31; op.gg's lists, no
+  bracket) — and is left out (`sameGames`). An option a
+  source left out is below its threshold there, not 0; cores are compared without their boots (lolalytics' hold them,
+  Mobalytics' do not), a source's own cores that then read alike added up (other games). Blitz's lane builds count every
+  rank (309,020 games for Ahri against ~264,000 Emerald+) and are not averaged in: they stay its own rows (playstyles,
+  one-tricks, the matchup's builds, which only Blitz measures and which come first against a lane opponent). Tencent
+  (China's servers, another population and meta: win-rate rank correlation 0.27–0.83 with lolalytics by lane) is never
+  averaged in; it answers only when the others answer nothing. Reads only some sources measure ask the lead source
+  (lolalytics) first, then Blitz, then the others (`standInOrder`). TrueMain's own API is never asked — not even to
+  stand in: the shell refuses it from launch (`api.rs`), and what only it had (true mains' scores, its item context,
+  its composition model) is shown as unavailable.
+- **Mobalytics** (`utils/sources/mobalytics.ts`, shell source `mobalytics`, dev proxy `/__mobalytics`) — the GraphQL
+  endpoint its own pages ask (`app.mobalytics.gg/api/lol/graphql/v1/query`, a plain GET with the query in the address,
+  no key): a lane's builds by kind (the most popular, alternatives, off-meta), each with its games and wins, rune page,
+  spells, skill order and items by stage; the lane's figures by patch; its counters (counted from the opponent's side:
+  the champion's wins are the opponent's losses, the gold lead at 15 changes sign). Slugs are the sources' names
+  (`championSlug`), ranks `EmeraldPlus`/`MasterPlus`/…, a "+" it does not pool read as the tier alone. A build's later
+  items and situational lists carry the whole build's games, so they are left to the sources that count items.
+
 - **ProBuild** — `/probuild` replaces Truemains in the sidebar (the leaderboard stays at `/truemains`; the champion page still lists a champion's truemains). It reads truemain.lol, not the player's own Riot key: the champion page's endpoint (`champion_build`, `composables/useProBuilds.ts`) for the five lanes of a picked champion, laid out by `utils/site-build.ts` — keystones, rune pages, items and spell pairs with their games and wins. The page opens on the lane most played; fewer than 30 games is flagged as noise. The local high-elo collector's shell code (`src-tauri/src/highelo.rs`) is still in the repo but nothing in the app starts or reads it.
 - **Riot API key** (`/settings`, gear in the top bar) — the player's own key, typed once, kept by the shell in the system credential store (Keychain / Credential Manager; never in the webview) and verified with one `lol/status/v4/platform-data` call (`src-tauri/src/riot.rs`). Riot's `X-App-Rate-Limit` headers give the key's windows (a personal key is 20/s and 100/2 min), shown with what is spent and the sustained budget per minute. The dashboard's purchase/skill order (`riot_match_events`) spends it.
 - **Hardware acceleration** (`/settings`, "Performance" card, `src-tauri/src/graphics.rs`, `useGraphics`) — on by default, kept in `graphics.json` in the app's config folder. Off: on Windows, WebView2 starts with `--disable-gpu --disable-gpu-compositing` (through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, set at the top of `run()` before any webview, so the overlay's windows get the same switches) from the next launch, with a "Restart now" button; on both systems a `reduce-effects` class on `<html>` drops every `backdrop-filter` and every animation but spinners at once. macOS' WKWebView has no GPU switch — on a Mac the toggle only does the second part, and says so.
@@ -477,18 +511,31 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   never one per game; with every slot taken and none of them ours, a toast asks the player to free one — no page of
   theirs is ever deleted. An incomplete page (an empty slot) is refused. Every outcome is a toast. Nothing is written
   without the click.
-- **Guides** (`/guides`, `pages/guides/`, `utils/mobafire.ts`, `src-tauri/src/mobafire.rs`) — MOBAFire's build guides laid
-  out as its browse page: a champion (the site's own list, its aliases searched), a lane, a category, the order and
-  ranked authors, the guides under the site's dividers with their rating ring, votes, the author's rank, tags, its pages,
-  and the trending guides beside them; a guide opens on its banner, each build (recommended items, the rune pages and
-  spell sets switched as the author offers them, the items by section, the ability order), its threats and synergies by
-  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`; a YouTube video is its
-  thumbnail, opened in the browser, `open_guide_video`). What the game names is drawn from the app's own data
-  (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's `en_US` ids) — icons, tooltips and names
-  in the player's language, a rune page as every one in the app, ready to import; the rest of the words, the author's,
-  are machine-translated into the app's language by Google Translate's public endpoint (`utils/translate.ts`,
-  `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), with a switch to
-  the original. The site has no API and sits
+- **Guides** (`/guides`, `pages/guides/`, `utils/mobafire.ts`, `src-tauri/src/mobafire.rs`) — MOBAFire's build guides as
+  a table to read down: one bar of filters (a champion — the site's own list, its aliases searched —, the lanes on the
+  app's `RolePicker`, a category, the order, ranked authors only), the guides under the site's dividers, a row each with
+  the skin the author chose as the game's tile of it, the title, champion, author, update and tags, the author's rank and
+  the rating ring and votes, its pages, and the trending guides beside them. A guide reads top-down as a build page: its
+  banner (`GuidesHero`, `PageHero`'s frame) on Riot's full splash of the skin MOBAFire's banner names
+  (`utils/guide-art.ts`, `useGuideSkin`: the picture's word matched to the champion's `en_US` skins), the author's
+  picture the skin's tile too, its figures in one strip, and the imports in its corner — the rune page on show (or why
+  it cannot be), and the whole itemization as one item set, every build of the guide in it under its name; then a bar of the page's parts that stays as it scrolls,
+  the build at a glance (`GuidesBuildPanel`: the rune pages and spell sets switched as the author offers them, the
+  recommended items, the ability order on the app's skill grid), the author's item sections as a numbered buying
+  progression with their notes beside them (`GuidesItemPath`), the threats and synergies by level, and the chapters with
+  their contents beside them, the author's writing kept to an allow-list (`sanitizeGuideHtml`; a YouTube video is its
+  thumbnail, opened in the browser, `open_guide_video`) and drawn from its tree (`utils/guide-prose.ts`). What the game
+  names is drawn from the app's own data (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's
+  `en_US` ids, the Rift's own items and spells) — icons, tooltips and names in the player's language, a rune page as
+  every one in the app, ready to import — and so is each of the author's inline references to it in their writing
+  (`span.guide-ref`, `GuidesRef`). The rest of the words, the author's, are machine-translated into the app's language
+  by Google Translate's public endpoint (`utils/translate.ts`, `utils/guide-translate.ts`: free, no key, the language
+  detected, chapters as HTML, sanitized again), always and without a word on screen about it — the app's language is
+  the switch —, the page shown as written until each part's translation comes. The game's words never go to the
+  translator as words (`utils/guide-terms.ts`): every item, rune, tree, spell and champion name and the champion's
+  abilities are kept in `notranslate` marks and given back under the app's names in the player's language, the ability
+  keys (`W1`, `E-Q`) and the players' jargon (build, gank, trade, lane…) as written, a run of capitals sent in small
+  letters and given back shouting; an inline reference is never sent at all. The site has no API and sits
   behind Cloudflare, which refuses any plain HTTP client: the shell keeps a hidden window of its own on mobafire.com
   (the system's webview), resting on its `robots.txt` (nothing to run), and has it `fetch` each page from the site's
   origin, stripped of scripts, styles and drawings before it crosses (`eval_with_callback`; ~0.4 s, a guide ~260 KB);

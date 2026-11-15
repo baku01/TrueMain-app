@@ -107,9 +107,9 @@ describe('standInOrder', () => {
     expect(standInOrder('opgg', ['blitz', 'lolalytics'])).toEqual(['blitz', 'lolalytics'])
   })
 
-  it('asks TrueMain only when it is the pick', () => {
-    expect(standInOrder('truemain', carriers)).toEqual(['truemain', 'blitz', 'lolalytics', 'opgg'])
-    expect(standInOrder('truemain', ['blitz', 'lolalytics'])).toEqual(['blitz', 'lolalytics'])
+  it('never asks TrueMain, even when it carries the figures', () => {
+    expect(standInOrder('truemain', carriers)).toEqual(['blitz', 'lolalytics', 'opgg'])
+    expect(standInOrder('lolalytics', carriers)).toEqual(['lolalytics', 'blitz', 'opgg'])
   })
 })
 

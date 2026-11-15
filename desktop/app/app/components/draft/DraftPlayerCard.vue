@@ -4,7 +4,7 @@ import { formatCount } from '#shared/utils/counts'
 import { formatPercentage, getPositionIconUrl } from '#shared/utils/ddragon'
 import { positionLabel } from '#common/utils/positions'
 import { formatRank } from '#common/utils/tiers'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { regionOfPlatform } from '~/utils/blitz/player'
 import { roleFit } from '~/utils/player-intel'
 import { platformFor, queuedWith, readCardPart } from '~/utils/sources/draft-player'
@@ -49,9 +49,9 @@ watch(() => `${props.riotId}:${props.championId}`, async () => {
   const client = props.me ? { ranked: record.value?.ranked ?? [], games: games.value, mastery: lcu.value.championMastery ?? [] } : null
   const subject = { riotId: props.riotId, platformId: platformId ?? '', championId: props.championId }
   const [r, h, m] = await Promise.all([
-    readCardPart<CardRank>('rank', subject, dataSource.value, client),
-    readCardPart<CardHistory>('history', subject, dataSource.value, client),
-    props.championId !== null ? readCardPart<CardMastery>('mastery', subject, dataSource.value, client) : Promise.resolve(null),
+    readCardPart<CardRank>('rank', subject, leadSource.value, client),
+    readCardPart<CardHistory>('history', subject, leadSource.value, client),
+    props.championId !== null ? readCardPart<CardMastery>('mastery', subject, leadSource.value, client) : Promise.resolve(null),
   ])
   if (read !== latest) return
   rank.value = r

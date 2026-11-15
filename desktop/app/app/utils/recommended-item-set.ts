@@ -1,5 +1,5 @@
 import type { StaticItemData } from '#shared/types/static-data'
-import type { DraftItemBlock, PlaceItemBlock, PlaceMeasures } from '~/utils/item-set'
+import type { DraftItemBlock, NamedItemBlock, PlaceItemBlock, PlaceMeasures } from '~/utils/item-set'
 import { tr } from '#common/utils/i18n'
 import { isBoots } from '~/utils/blitz/builds'
 import { measuredPlaces } from '~/utils/item-set'
@@ -207,6 +207,20 @@ export function recommendedSet(build: ImportBuild, championKey: string, titles: 
     ...choices,
   ].filter(entry => entry.items.length > 0).slice(0, MAX_BLOCKS)
   return { title: `TrueMain ${build.title}`, championKey, map: 'any', mode: 'any', type: 'custom', blocks }
+}
+
+/**
+ * A set whose blocks were titled by whoever wrote the build (a MOBAFire
+ * guide's sections, `utils/guide-build`): written as they come, in their
+ * order, each title within the shop's `TITLE` characters, an id the patch
+ * does not know left out and an empty block with it.
+ */
+export function namedItemSet(title: string, championKey: string, named: NamedItemBlock[], items: Record<number, StaticItemData>): RecommendedSet {
+  const blocks = named
+    .map(entry => block([...entry.title.trim()].slice(0, TITLE).join('') || 'Items', [...new Set(entry.items.filter(id => id in items))]))
+    .filter(entry => entry.items.length > 0)
+    .slice(0, MAX_BLOCKS)
+  return { title: `TrueMain ${title}`, championKey, map: 'any', mode: 'any', type: 'custom', blocks }
 }
 
 /** Every build's set, the selected first; two builds whose blocks read the same are written once. */

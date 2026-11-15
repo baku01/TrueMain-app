@@ -1,10 +1,11 @@
 import type { ChampionItemContextResponse } from '#shared/types/item-context'
 import type { BuildOption } from '~/types/build'
 import { tr } from '#common/utils/i18n'
-import type { DraftItemBlock, ItemSetBuild } from '~/utils/item-set'
+import type { DraftItemBlock, ItemSetBuild, NamedItemBlock } from '~/utils/item-set'
 import { hasItems, itemSetBuild, situationalFromContext, situationalFromTree } from '~/utils/item-set'
 import { readBlitzBuildDoc } from '~/utils/blitz/builds'
-import { blockTitles, recommendedSet, withMeasuredPlaces } from '~/utils/recommended-item-set'
+import type { RecommendedSet } from '~/utils/recommended-item-set'
+import { blockTitles, namedItemSet, recommendedSet, withMeasuredPlaces } from '~/utils/recommended-item-set'
 import { lanePlaces } from '~/utils/jev-bases'
 
 /** What the shell answers when it could not read the client's list (`itemsets.rs`). */
@@ -31,6 +32,18 @@ export interface ItemSetBlocks {
   /** The lane, for Blitz's measured buying order of each item; none reads the recipe. */
   position?: string
   blocks: ItemSetBuild
+}
+
+/**
+ * A set already titled block by block by whoever wrote the build (a MOBAFire
+ * guide's sections, `utils/guide-build`), written as it comes, and whose it is.
+ */
+export interface ItemSetNamedBlocks {
+  championId: number
+  champion: string
+  /** What the set is called in the shop, after "TrueMain " (`Briar · {26.22} Rank 1 Briar…`). */
+  title: string
+  named: NamedItemBlock[]
 }
 
 /**
@@ -73,19 +86,33 @@ export function useItemSetImport() {
   const known = (itemId: number) => itemId in items.value
 
   /** The one write path: the blocks made on the click, laid out as Blitz's, written, and every outcome told. */
-  async function write(championId: number, champion: string, position: string | undefined, blocks: () => Promise<ItemSetBuild>) {
-    if (pending.value) return
-    pending.value = true
-    try {
+  function write(championId: number, champion: string, position: string | undefined, blocks: () => Promise<ItemSetBuild>) {
+    return send(championId, champion, async () => {
       const build = await blocks()
       if (!hasItems(build)) throw new Error(EMPTY_BUILD)
-      if (insideTauri()) {
-        const championKey = champions.value.get(championId)?.alias
-        if (!championKey) throw new Error(EMPTY_BUILD)
+      return async (championKey: string) => {
         const orders = position ? await readBlitzBuildDoc(championId, position).then(doc => doc?.itemOrders ?? null).catch(() => null) : null
         // A Jev build brings its places from its slots, a playstyle's from its own games; any other, the lane's measures at each place of its path.
         const measures = !build.places && position ? await lanePlaces(championId, position).catch(() => null) : null
-        const set = recommendedSet(withMeasuredPlaces({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft, places: build.places, questReward: build.questReward }, measures), championKey, blockTitles(), items.value, orders)
+        return recommendedSet(withMeasuredPlaces({ key: 'import', title: champion, starter: build.starter, path: build.core, boots: build.boots, situational: build.situational, bootsAt: build.bootsAt, draft: build.draft, places: build.places, questReward: build.questReward }, measures), championKey, blockTitles(), items.value, orders)
+      }
+    })
+  }
+
+  /**
+   * The set made and sent: `prepare` checks the build on the click and says
+   * how its set is laid out for the champion's key, which only the shell's
+   * write needs; outside the shell nothing is sent and the toast says so.
+   */
+  async function send(championId: number, champion: string, prepare: () => Promise<(championKey: string) => Promise<RecommendedSet>>) {
+    if (pending.value) return
+    pending.value = true
+    try {
+      const setFor = await prepare()
+      if (insideTauri()) {
+        const championKey = champions.value.get(championId)?.alias
+        if (!championKey) throw new Error(EMPTY_BUILD)
+        const set = await setFor(championKey)
         const { invoke } = await import('@tauri-apps/api/core')
         await invoke('write_recommended_item_sets', { sets: [set] })
       }
@@ -108,7 +135,14 @@ export function useItemSetImport() {
   }
 
   /** A build view's build: its core blocks, and the situational items the item context or the tree gives. */
-  async function importItemSet(subject: ItemSetSubject | ItemSetBlocks) {
+  async function importItemSet(subject: ItemSetSubject | ItemSetBlocks | ItemSetNamedBlocks) {
+    if ('named' in subject) {
+      const named = subject.named.map(entry => ({ ...entry, items: entry.items.filter(known) })).filter(entry => entry.items.length > 0)
+      return send(subject.championId, subject.champion, async () => {
+        if (named.length === 0) throw new Error(EMPTY_BUILD)
+        return async (championKey: string) => namedItemSet(subject.title, championKey, named, items.value)
+      })
+    }
     if ('blocks' in subject) {
       const keep = (ids: number[]) => ids.filter(known)
       const { starter, boots, core, situational: rest, bootsAt, draft, places, questReward } = subject.blocks

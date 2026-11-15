@@ -53,7 +53,7 @@ watch(() => [`${props.championId}:${props.position}`, props.preset] as const, as
   }
   options.value = null
   try {
-    const answer = await activeProvider()?.options(props.championId, props.position)
+    const answer = await activeProvider().options(props.championId, props.position)
     if (read === latest) options.value = answer ?? null
     if (read === latest && !answer) failed.value = true
   }

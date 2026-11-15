@@ -3,16 +3,14 @@ import type { TeamRow } from '~/types/draft'
 import type { DraftState } from '~/types/lcu'
 import type { EnemyCounter } from '~/utils/draft-counters'
 import { enemyCounters } from '~/utils/draft-counters'
-import { combineMatchups } from '~/utils/sources/combined'
-import { lolalyticsMatchups } from '~/utils/sources/lolalytics'
-import { matchupsFromBlitz } from '~/utils/blitz/stats'
+import { activeProvider } from '~/utils/sources'
 
 /**
  * Each enemy's counters on the lane it holds, keyed by the enemy's champion id:
- * its matchups read from lolalytics and Blitz pooled (`combineMatchups`),
- * whatever source Settings picked — not TrueMain's — once per champion, lane
- * and bracket and kept for the session, and the counters re-read from them as
- * champions are picked and banned. An enemy with no lane yet has none.
+ * its matchups read from every source as one (`activeProvider`, averaged
+ * without counting a game twice) once per champion, lane and bracket and
+ * kept for the session, and the counters re-read from them as champions are
+ * picked and banned. An enemy with no lane yet has none.
  */
 /** How often, and how long apart (growing), an enemy's matchups are asked again when no source answered. */
 const RETRIES = 3
@@ -38,9 +36,9 @@ export function useEnemyCounters(
    */
   function request(championId: number, key: string, lane: string, attempt = 0) {
     const query = { position: lane, eloBracket: eloBracket.value ?? undefined }
-    void Promise.all([lolalyticsMatchups(championId, query).catch(() => null), matchupsFromBlitz(championId, query).catch(() => null)])
-      .then(([lolalytics, blitz]) => {
-        if (lolalytics || blitz) answers.value = { ...answers.value, [key]: combineMatchups(championId, lane, [lolalytics, blitz]) }
+    void activeProvider().matchups(championId, query).catch(() => null)
+      .then((answer) => {
+        if (answer?.matchups.length) answers.value = { ...answers.value, [key]: answer }
         else if (attempt < RETRIES) setTimeout(() => request(championId, key, lane, attempt + 1), RETRY_MS * (attempt + 1))
       })
   }

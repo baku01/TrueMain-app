@@ -2,10 +2,10 @@ import type { ChampionSynergies } from '#shared/types/champions'
 import type { DataSource } from '~/utils/data-source'
 import type { SynergyRow } from '~/utils/synergies'
 import { apiGet } from '~/composables/useApi'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { synergyTier, withEnoughGames } from '~/utils/synergies'
 import { duosFromBlitz, synergiesFromBlitz } from '~/utils/blitz/synergies'
-import { lolalyticsLane, readLolalyticsTeam } from '~/utils/sources/lolalytics'
+import { lolalyticsLane, lowered, readLolalyticsTeam } from '~/utils/sources/lolalytics'
 import { POSITION as OPGG_POSITION, analysis, asList, num } from '~/utils/sources/opgg'
 import { readFirst, standInOrder } from '~/utils/sources/stand-in'
 
@@ -41,8 +41,9 @@ const READERS: Partial<Record<DataSource, (championId: number, position: string,
   },
   lolalytics: async (championId, position, ally) => {
     const team = await readLolalyticsTeam(championId, position)
-    // `[id, win rate, delta 1, delta 2, pick rate, games]`, the rates in percent, the deltas in points.
-    return { patch: null, rows: (team?.team?.[lolalyticsLane(ally)] ?? []).map(([id, wr, , delta2, , games]) => row(championId, position, id, ally, games, wr / 100, delta2 / 100)) }
+    // `[id, win rate, delta 1, delta 2, pick rate, games]`, the rates in percent, the deltas in points; the win
+    // rate as the other sources count the same games (`bracketLift`).
+    return { patch: null, rows: (team?.team?.[lolalyticsLane(ally)] ?? []).map(([id, wr, , delta2, , games]) => row(championId, position, id, ally, games, lowered(wr / 100, team?.lift ?? 0), delta2 / 100)) }
   },
   opgg: async (championId, position, ally) => {
     const data = await analysis(championId, position)
@@ -61,11 +62,11 @@ export async function readSynergies(championId: number, position: string, ally: 
     const answer = await READERS[source]!(championId, position, ally)
     return { ...answer, rows: withEnoughGames(answer.rows) }
   }
-  const { source, answer } = await readFirst(standInOrder(dataSource.value, SYNERGY_SOURCES), read, blank)
+  const { source, answer } = await readFirst(standInOrder(leadSource.value, SYNERGY_SOURCES), read, blank)
   return { source, ...answer }
 }
 
 export async function readDuos(position: string, ally: string): Promise<SynergySourceRead> {
-  const { source, answer } = await readFirst(standInOrder(dataSource.value, DUO_SOURCES), () => duosFromBlitz(position, ally), blank)
+  const { source, answer } = await readFirst(standInOrder(leadSource.value, DUO_SOURCES), () => duosFromBlitz(position, ally), blank)
   return { source, ...answer }
 }

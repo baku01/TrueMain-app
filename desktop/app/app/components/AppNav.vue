@@ -32,6 +32,7 @@ const live = computed(() => ({ dot: 'bg-primary', label: t('badge.live') }))
 const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
   { label: null, tabs: [
     { label: t('nav.dashboard'), icon: 'i-tabler-home', to: '/', active: route.path === '/' },
+    { label: t('nav.nerdStats'), icon: 'i-tabler-math-function', to: '/nerd-stats', active: isActive('/nerd-stats') },
   ] },
   { label: t('nav.group.champions'), tabs: [
     { label: t('nav.champions'), icon: 'i-tabler-swords', to: '/champions', active: isActive('/champions') },

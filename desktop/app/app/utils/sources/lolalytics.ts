@@ -59,6 +59,8 @@ export interface LolalyticsBuild {
   skill15?: [number, number, number, number][]
   skillEarly?: [number, number, number][][]
   enemy?: Record<string, [number, number, number, number, number, number][]>
+  /** How far the read's bracket wins above half its games, as a fraction (`bracketLift`): set by the reads, not lolalytics. */
+  lift?: number
   graph?: { dates: string[], wr: Record<string, number[]>, pr: Record<string, number[]>, br: Record<string, number[]>, n: Record<string, number[]> }
   nav?: { lanes: Record<string, number> }
   summary?: Record<'pick' | 'win', LolalyticsSummary>
@@ -156,8 +158,11 @@ export function readLolalyticsBuild(championId: number, position: string, eloBra
   if (!answer) {
     answer = championSlug(championId).then(async (slug) => {
       if (!slug) return null
-      const read_ = await read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region, ...(patch ? { patch } : {}) })
-      return read_.header ? read_ : null
+      const [read_, lift] = await Promise.all([
+        read<LolalyticsBuild & { status?: number }>({ ep: 'build-full', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region, ...(patch ? { patch } : {}) }),
+        bracketLift(eloBracket, region, patch),
+      ])
+      return read_.header ? { ...read_, lift } : null
     })
     answer.catch(() => builds.delete(key))
     keepBounded(builds, key, answer)
@@ -167,6 +172,71 @@ export function readLolalyticsBuild(championId: number, position: string, eloBra
 
 /** lolalytics writes rates as percentages: 53.2 is 0.532. */
 const rate = (percent: number) => percent / 100
+
+/** A win rate `lift` lower (`bracketLift`), still a rate. */
+export const lowered = (winRate: number, lift: number) => Math.min(Math.max(winRate - lift, 0), 1)
+
+const lifts = new Map<string, Promise<number>>()
+
+/**
+ * How far a bracket's games, as lolalytics counts them, are won above half of
+ * them, as a fraction: every game has a winner and a loser, so a source
+ * counting both sides of every game reads half — op.gg's Emerald+ list is
+ * 50.02 % over its 19.9 million games — and lolalytics' all-ranks list
+ * does (50.07 %), but its Emerald+ list is won 51.74 % of the time and its
+ * Master+ 52.40 %: it counts the bracket's players as they rank now, those who
+ * climbed into it with the games that got them there. Every lolalytics win
+ * rate in a bracket is that much above the others' over the same games —
+ * Ahri's mid lane on 16.22, Emerald+: 53.02 % on lolalytics, 51.30 % on
+ * Mobalytics, 51.33 % on Blitz; across 20 lanes' 841 matchups lolalytics sat
+ * 1.4 to 2.0 points over Mobalytics on every one —, so the reads that answer
+ * for the merged figures (`lolalyticsOptions`, `lolalyticsRows`,
+ * `lolalyticsMatchups`, `lolalyticsTrend`, the counters, the synergies) take
+ * it off: the same games then part by 0.2 to 0.4 points (`SOURCE_SPREAD`).
+ * The analytics page keeps lolalytics' own figures, read against its own
+ * `avgWr`. 0 when the list cannot be read.
+ */
+export function bracketLift(eloBracket?: unknown, region = 'all', patch?: string): Promise<number> {
+  const tier = lolalyticsTier(eloBracket)
+  const key = `${tier}:${region}:${patch ?? ''}`
+  let answer = lifts.get(key)
+  if (!answer) {
+    answer = read<TierAnswer>({ ep: 'tier', lane: 'all', tier, region, ...(patch ? { patch } : {}) }).then((list) => {
+      const entries = Object.values(list.tier ?? {}).flatMap(group => Object.values(group.lane ?? {}).flatMap(({ cid }) => Object.values(cid ?? {})))
+      const games = entries.reduce((sum, entry) => sum + entry.games, 0)
+      return games > 0 ? entries.reduce((sum, entry) => sum + entry.games * rate(entry.wr), 0) / games - 0.5 : 0
+    })
+    answer.catch(() => lifts.delete(key))
+    keepBounded(lifts, key, answer)
+  }
+  return answer.catch(() => 0)
+}
+
+/** `options` with every win rate `lift` lower (`bracketLift`). */
+function recentred(options: BuildOptions, lift: number): BuildOptions {
+  if (!lift) return options
+  const lower = <T extends Measure>(list: T[]) => list.map(entry => ({ ...entry, winRate: lowered(entry.winRate, lift) }))
+  const lowerMap = (measures: Map<number, Measure>) => new Map([...measures].map(([id, entry]) => [id, { ...entry, winRate: lowered(entry.winRate, lift) }]))
+  const shares = options.shares
+  return {
+    ...options,
+    pages: lower(options.pages),
+    shares: shares && ((style) => {
+      const own = shares(style)
+      return { primary: lowerMap(own.primary), secondary: lowerMap(own.secondary), shards: [lowerMap(own.shards[0]), lowerMap(own.shards[1]), lowerMap(own.shards[2])] }
+    }),
+    spells: lower(options.spells),
+    starters: lower(options.starters),
+    boots: lower(options.boots),
+    cores: lower(options.cores),
+    followUps: core => options.followUps(core).map(group => ({ ...group, options: lower(group.options) })),
+    skills: lower(options.skills),
+    priorities: options.priorities && lower(options.priorities),
+    situational: options.situational && lower(options.situational),
+    places: options.places?.map(lower),
+    questRewards: options.questRewards && lower(options.questRewards),
+  }
+}
 const option = (wr: number, pr: number, n: number): Measure => measure(n, rate(wr), rate(pr))
 
 const OFFENSE = new Set([5005, 5007, 5008])
@@ -282,7 +352,11 @@ export function readLolalyticsMatchup(championId: number, position: string, oppo
     answer = Promise.all([championSlug(championId), championSlug(opponentId), lolalyticsWindow().catch(() => null)]).then(async ([slug, versus, patch]) => {
       if (!slug || !versus) return null
       const lane = lolalyticsLane(position)
-      return qwikBuild(await readPage<{ _objs?: unknown[] }>(`${slug}/vs/${versus}/build/q-data.json`, { lane, vslane: lane, tier: lolalyticsTier(eloBracket), ...(patch ? { patch } : {}) }))
+      const [build, lift] = await Promise.all([
+        readPage<{ _objs?: unknown[] }>(`${slug}/vs/${versus}/build/q-data.json`, { lane, vslane: lane, tier: lolalyticsTier(eloBracket), ...(patch ? { patch } : {}) }).then(qwikBuild),
+        bracketLift(eloBracket),
+      ])
+      return build ? { ...build, lift } : null
     })
     answer.catch(() => matchups.delete(key))
     keepBounded(matchups, key, answer)
@@ -334,7 +408,7 @@ export async function lolalyticsOptionsOf(build: LolalyticsBuild): Promise<Build
 
 export async function lolalyticsOptions(championId: number, position: string): Promise<BuildOptions | null> {
   const build = await readLolalyticsBuild(championId, position)
-  return build ? await lolalyticsOptionsOf(build) : null
+  return build ? recentred(await lolalyticsOptionsOf(build), build.lift ?? 0) : null
 }
 
 export async function lolalyticsBuilds(championId: number, position: string): Promise<ChampionBuildResponse> {
@@ -353,9 +427,10 @@ export async function lolalyticsRows(query: Record<string, unknown>): Promise<Ch
   const position = typeof query.position === 'string' && query.position ? query.position : null
   // The patch picked on the page wins over the window; the list says which patch it is.
   const picked = pickedPatch(query.patch)
-  const [answer, patch] = await Promise.all([
+  const [answer, patch, lift] = await Promise.all([
     read<TierAnswer>({ ep: 'tier', lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
     picked ?? patchRead(),
+    bracketLift(query.eloBracket, 'all', picked ?? undefined),
   ])
   const now = new Date().toISOString()
   return Object.entries(answer.tier ?? {}).flatMap(([grade, group]) => {
@@ -364,8 +439,8 @@ export async function lolalyticsRows(query: Record<string, unknown>): Promise<Ch
     return Object.entries(group.lane ?? {}).flatMap(([lane, { cid }]) => Object.entries(cid ?? {}).map(([id, entry]) => ({
       championId: Number(id),
       games: entry.games,
-      wins: Math.round(entry.games * rate(entry.wr)),
-      winRate: rate(entry.wr),
+      wins: Math.round(entry.games * lowered(rate(entry.wr), lift)),
+      winRate: lowered(rate(entry.wr), lift),
       pickRate: rate(entry.pr),
       lanePlayRate: rate(entry.pctLane),
       trueMainCount: 0,
@@ -403,8 +478,8 @@ export async function lolalyticsMatchups(championId: number, query: Record<strin
     .map(([id, wr, , , pr, n]) => ({
       opponentChampionId: id,
       games: n,
-      wins: Math.round(n * rate(wr)),
-      winRate: rate(wr),
+      wins: Math.round(n * lowered(rate(wr), build?.lift ?? 0)),
+      winRate: lowered(rate(wr), build?.lift ?? 0),
       playRate: rate(pr),
       winRateLowerBound: 0,
       winRateUpperBound: 1,
@@ -429,15 +504,19 @@ export async function lolalyticsTrend(championId: number, query: Record<string, 
   const position = typeof query.position === 'string' && query.position ? query.position : 'MIDDLE'
   const build = await readLolalyticsBuild(championId, position, query.eloBracket)
   const header = build?.header
-  if (!header) return { championId, position, points: [] }
-  const point = (from: LolalyticsBuild['header']) => ({ patch: from.patch, winRate: rate(from.wr), pickRate: rate(from.pr), banRate: rate(from.br), games: from.n })
+  if (!build || !header) return { championId, position, points: [] }
+  const point = (from: LolalyticsBuild) => ({ patch: from.header.patch, winRate: lowered(rate(from.header.wr), from.lift ?? 0), pickRate: rate(from.header.pr), banRate: rate(from.header.br), games: from.header.n })
   const before = String(header.patch).includes('.') ? previousPatch(`${header.patch}.1`) : null
   const earlier = before ? await readLolalyticsBuild(championId, position, query.eloBracket, 'all', before).catch(() => null) : null
-  return { championId, position, points: [...(earlier?.header ? [point(earlier.header)] : []), point(header)] }
+  return { championId, position, points: [...(earlier?.header ? [point(earlier)] : []), point(build)] }
 }
 
 /** The allies on every lane (`build-team`): `[id, win rate, delta 1, delta 2, pick rate, games]` per lane. */
-export interface LolalyticsTeam { team?: Record<string, [number, number, number, number, number, number][]> }
+export interface LolalyticsTeam {
+  team?: Record<string, [number, number, number, number, number, number][]>
+  /** As the build's (`LolalyticsBuild.lift`). */
+  lift?: number
+}
 
 const teams = new Map<string, Promise<LolalyticsTeam | null>>()
 
@@ -445,7 +524,11 @@ export function readLolalyticsTeam(championId: number, position: string, eloBrac
   const key = `${championId}:${position}:${lolalyticsTier(eloBracket)}:${region}`
   let answer = teams.get(key)
   if (!answer) {
-    answer = championSlug(championId).then(slug => (slug ? read<LolalyticsTeam>({ ep: 'build-team', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region }) : null))
+    answer = championSlug(championId).then(async (slug) => {
+      if (!slug) return null
+      const [team, lift] = await Promise.all([read<LolalyticsTeam>({ ep: 'build-team', c: slug, lane: lolalyticsLane(position), tier: lolalyticsTier(eloBracket), region }), bracketLift(eloBracket, region)])
+      return { ...team, lift }
+    })
     answer.catch(() => teams.delete(key))
     keepBounded(teams, key, answer)
   }

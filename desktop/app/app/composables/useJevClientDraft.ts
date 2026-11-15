@@ -1,6 +1,6 @@
 import type { ChampionPosition } from '#common/utils/positions'
 import { POSITION_OPTIONS } from '#common/utils/positions'
-import { lolalyticsThenBlitz } from '~/utils/sources'
+import { activeProvider } from '~/utils/sources'
 import { enemyLanesFromSource } from '~/utils/sources/draft'
 
 /** The Jev matchup page's board as champion select fills it. */
@@ -46,7 +46,7 @@ export function useJevClientDraft() {
     for (const slot of current.myTeam) {
       if (!slot.isMe && slot.championId && isLane(slot.position)) allies[slot.position] = slot.championId
     }
-    const lanes = await enemyLanesFromSource(lolalyticsThenBlitz(), current.enemyChampions).catch(() => [])
+    const lanes = await enemyLanesFromSource(activeProvider(), current.enemyChampions).catch(() => [])
     if (mine !== generation) return
     const enemies = empty()
     let opponentId: number | null = null

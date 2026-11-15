@@ -1,7 +1,7 @@
 import type { TopPlayer } from '~/utils/sources/analytics'
 import type { DataSource } from '~/utils/data-source'
 import type { Obj } from '~/utils/sources/opgg'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { readPlayerAccount, splitRiotId } from '~/utils/blitz/player'
 import { championSlug, liveVersion } from '~/utils/sources/champions'
 import { readLolalyticsBuild } from '~/utils/sources/lolalytics'
@@ -80,7 +80,7 @@ const READERS: Partial<Record<DataSource, (championId: number, position: string)
   lolalytics: lolalyticsPlayers,
 }
 
-/** The picked source's best players on the champion; null for Blitz, whose pros are read with their games. */
+/** The lead source's best players on the champion (lolalytics' ladder; op.gg's leaderboard as its reader); Blitz's pros are read with their games apart. */
 export function readTopPlayers(championId: number, position: string): Promise<TopPlayer[]> | null {
-  return READERS[dataSource.value]?.(championId, position) ?? null
+  return READERS[leadSource.value]?.(championId, position) ?? null
 }

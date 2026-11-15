@@ -62,6 +62,9 @@ fn base(source: &str) -> Option<&'static str> {
         // op.gg's own champion pages, for what its API does not carry (a
         // jungler's paths): the page itself, handed over as text.
         "opggweb" => Some("https://op.gg/"),
+        // Mobalytics' GraphQL endpoint, the one its own pages ask: `query` with
+        // the query in the address (`?query={…}`), answered as JSON.
+        "mobalytics" => Some("https://app.mobalytics.gg/api/lol/graphql/v1/"),
         _ => None,
     }
 }
@@ -275,6 +278,8 @@ mod tests {
         assert!(url("lolalyticsweb", "").is_err());
         assert!(url("lolalyticsweb", "ashe/../x").is_err());
         assert!(url("tencent", "champDetail/champDetail_103.js").is_ok());
+        assert!(url("mobalytics", "query").is_ok());
+        assert!(url("mobalytics", "../query").is_err());
         assert!(url("other", "x").is_err());
         assert!(url("data", "../secret").is_err());
         assert!(url("data", "a//b").is_err());

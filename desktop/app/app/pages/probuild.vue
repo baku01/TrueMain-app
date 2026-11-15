@@ -18,7 +18,6 @@ const { t } = useT()
 const { champions, nameOf, portraitOf } = useChampionStatics()
 const { items, summoners, runeTree } = useStaticData()
 const { lanes: readLanes } = useProBuilds()
-const blitz = fromBlitz()
 
 const query = ref('')
 const championId = ref<number | null>(null)
@@ -192,9 +191,9 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
         <div v-else-if="reading" aria-busy="true" class="space-y-3"><USkeleton class="h-24 w-full" /><USkeleton class="h-40 w-full" /></div>
       </section>
 
-      <!-- The best players on the champion: Blitz's pros with their games, every other source's ranked players. -->
-      <ProbuildProMatches v-if="blitz && championId !== null" :champion-id="championId" :position="position" />
-      <ProbuildTopPlayers v-else-if="championId !== null" :champion-id="championId" :position="position" />
+      <!-- The best players on the champion: Blitz's pros with their games, and the lead source's ranked players beside them. -->
+      <ProbuildProMatches v-if="championId !== null" :champion-id="championId" :position="position" />
+      <ProbuildTopPlayers v-if="championId !== null" :champion-id="championId" :position="position" />
       <!-- Its one-tricks, from whichever source has them (TrueMain's true mains, Blitz's). -->
       <ProbuildOneTricks v-if="championId !== null" :champion-id="championId" :position="position" />
     </div>

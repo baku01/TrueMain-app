@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DATA_WINDOWS, dataWindow, recentPatches, setDataWindow } from '~/utils/data-window'
 import { currentPatch } from '~/utils/sources/champions'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 
 /**
  * Which games the numbers come from (`utils/data-window.ts`): the current
@@ -10,7 +10,7 @@ import { dataSource } from '~/utils/data-source'
  * the panel says the source answers its own latest patch.
  */
 const { t } = useT()
-const takesWindow = computed(() => dataSource.value === 'lolalytics')
+const takesWindow = computed(() => leadSource.value === 'lolalytics')
 
 /** The patches a specific one is picked from: the live one and the ten before it. */
 const patches = ref<string[]>([])

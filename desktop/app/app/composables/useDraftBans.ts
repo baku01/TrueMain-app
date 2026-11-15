@@ -34,15 +34,8 @@ export function useDraftBans(
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function ask(request: object): Promise<DraftBans> {
-    // Another source picked in Settings: its matchups and ban rates, never TrueMain's model.
-    const provider = activeProvider()
-    if (provider) return await draftBansFromSource(provider, request as Parameters<typeof draftBansFromSource>[1])
-    if (insideTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return await invoke<DraftBans>('draft_bans', { request })
-    }
-    // `npm run dev` in a browser: the dev server proxies `/api` (nuxt.config).
-    return await $fetch<DraftBans>('/api/champions/draft/bans', { method: 'POST', body: request })
+    // The sources' matchups and ban rates (`utils/sources`); TrueMain's model is never asked.
+    return await draftBansFromSource(activeProvider(), request as Parameters<typeof draftBansFromSource>[1])
   }
 
   /** Our hover, not yet locked: the pick the bans protect. */

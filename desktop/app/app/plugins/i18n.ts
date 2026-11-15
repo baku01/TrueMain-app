@@ -7,8 +7,8 @@ export default defineNuxtPlugin({
   enforce: 'pre',
   setup() {
     registerMessages(import.meta.glob('../i18n/*.ts', { eager: true }))
-    // Another source picked: the matchup tool's words for numbers that are not TrueMain's model.
-    if (externalSource()) registerMessages(import.meta.glob('../i18n-sources/*.ts', { eager: true }))
+    // The matchup tool's words for the sources' numbers, which are not TrueMain's model.
+    registerMessages(import.meta.glob('../i18n-sources/*.ts', { eager: true }))
     let stored: string | null = null
     try {
       stored = localStorage.getItem(LOCALE_STORAGE_KEY)

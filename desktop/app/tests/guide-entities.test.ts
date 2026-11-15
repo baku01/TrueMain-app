@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GuideIndex } from '~/utils/guide-entities'
-import { idOf, nameKey, runePageOf } from '~/utils/guide-entities'
+import { buildGuideIndex, idOf, nameKey, runePageOf } from '~/utils/guide-entities'
 import { htmlPieces } from '~/utils/guide-translate'
 import { sanitizeGuideHtml } from '~/utils/mobafire'
 import { batches, translationTarget } from '~/utils/translate'
@@ -42,6 +42,23 @@ describe('a guide\'s names as the game\'s ids', () => {
       secondaryStyleId: 8100, secondaryPerk1Id: 8143, secondaryPerk2Id: 8135, statOffense: 5008, statFlex: 5008, statDefense: 5001,
     })
     expect(runePageOf({ ...page, secondary: { tree: 'Domination', runes: [icon('Sudden Impact')] } }, index)).toBeNull()
+  })
+
+  it('keeps the Rift\'s own summoner spells and champions where Data Dragon lists a name twice', () => {
+    const summoners = {
+      data: {
+        SummonerCherryFlash: { key: '2202', name: 'Flash', modes: ['CHERRY'] },
+        SummonerFlash: { key: '4', name: 'Flash', modes: ['ARAM', 'CLASSIC'] },
+        SummonerFlash_Jade: { key: '74', name: 'Flash', modes: ['JADE'] },
+        SummonerSmite: { key: '11', name: 'Smite', modes: ['CLASSIC'] },
+        SummonerSmite_Jade: { key: '711', name: 'Smite', modes: ['JADE'] },
+      },
+    }
+    const champions = { data: { Ahri: { key: '103', name: 'Ahri' }, Jade_Ahri: { key: '60103', name: 'Ahri' } } }
+    const built = buildGuideIndex({ data: {} }, summoners, [], champions)
+    expect(built.spells.get('flash')).toBe(4)
+    expect(built.spells.get('smite')).toBe(11)
+    expect(built.champions.get('ahri')).toBe(103)
   })
 })
 

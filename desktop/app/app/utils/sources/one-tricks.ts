@@ -1,5 +1,5 @@
 import type { DataSource } from '~/utils/data-source'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { blitzRole, blitzRows } from '~/utils/blitz/client'
 import { apiGet } from '~/composables/useApi'
 
@@ -118,7 +118,7 @@ const truemainOneTricks: Reader = async (championId, position, platformId) => {
 
 const READERS: Record<OneTrickSource, Reader> = { truemain: truemainOneTricks, blitz: blitzOneTricks }
 
-/** The sources asked, in turn, with `picked` in Settings: TrueMain only when it is the pick, Blitz always. */
+/** The sources asked, in turn: Blitz — TrueMain only for a `picked` TrueMain, which the app no longer picks. */
 export function oneTrickOrder(picked: DataSource): OneTrickSource[] {
   return picked === 'truemain' ? ['truemain', 'blitz'] : ['blitz']
 }
@@ -153,5 +153,5 @@ export async function firstOneTricks(
 
 /** The champion's one-tricks on the lane, from the first source that has them; `platformId` (`EUW1`) narrows them to one server. */
 export function readOneTricks(championId: number, position: string, platformId: string | null = null): Promise<OneTricks> {
-  return firstOneTricks(oneTrickOrder(dataSource.value), READERS, championId, position, platformId)
+  return firstOneTricks(oneTrickOrder(leadSource.value), READERS, championId, position, platformId)
 }

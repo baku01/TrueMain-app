@@ -24,7 +24,7 @@ import { localizedAxisPhrase } from '#common/utils/item-context-phrases'
 const props = defineProps<{ pushes: DraftItemPush[], build?: DraftBuildStep[], pending?: boolean }>()
 const { items } = useStaticData()
 const SOURCE_NAME: Record<string, string> = { truemain: 'TrueMain', blitz: 'Blitz', opgg: 'op.gg', lolalytics: 'lolalytics', tencent: 'Tencent' }
-const sourceName = computed(() => SOURCE_NAME[dataSource.value] ?? dataSource.value)
+const sourceName = computed(() => SOURCE_NAME[leadSource.value] ?? leadSource.value)
 const { t } = useT()
 
 const name = (itemId: number) => items.value[itemId]?.name ?? t('draft.advice.item', { id: itemId })

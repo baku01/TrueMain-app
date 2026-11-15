@@ -6,7 +6,7 @@ import type { ProfilePlayer } from '~/utils/sources/rank-history'
 import { blitzGet } from '~/utils/blitz/client'
 import { platformOf, splitRiotId } from '~/utils/blitz/player'
 import { keepBounded } from '~/utils/bounded'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { rowsIn } from '~/utils/champion-pool'
 import { asList, callOpgg, num } from '~/utils/sources/opgg'
 import { opggRegion } from '~/utils/sources/opgg-profile'
@@ -142,7 +142,7 @@ export async function readChampionPool(
   options: { picked?: DataSource, carriers?: Partial<Record<DataSource, Carrier>> } = {},
 ): Promise<{ source: DataSource, rows: PoolRow[] } | null> {
   const carriers = options.carriers ?? CHAMPION_POOL_CARRIERS
-  for (const source of championPoolOrder(options.picked ?? dataSource.value, filter, carriers)) {
+  for (const source of championPoolOrder(options.picked ?? leadSource.value, filter, carriers)) {
     const rows = rowsIn(await carriers[source]!.read(player).catch(() => []), filter)
     if (rows.some(row => row.games > 0)) return { source, rows }
   }

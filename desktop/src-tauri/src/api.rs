@@ -27,11 +27,11 @@ use serde::Serialize;
 /// proxy's `/api` prefix, so it is a different base, not a different site.
 const API_BASE_VAR: &str = "TRUEMAIN_API_BASE";
 
-/// Another data source is picked in Settings (`utils/data-source.ts`): the
-/// app then asks TrueMain nothing at all — not a read, not the usage counts.
-/// Set from the saved choice before any window opens, and by the webview when
-/// the player changes it.
-static EXTERNAL_SOURCE: AtomicBool = AtomicBool::new(false);
+/// The app reads every number from the other sources (`utils/data-source.ts`)
+/// and asks TrueMain nothing at all — not a read, not the usage counts. True
+/// from launch, whatever an older version saved; the webview's
+/// `set_data_source` is still heard.
+static EXTERNAL_SOURCE: AtomicBool = AtomicBool::new(true);
 const DATA_SOURCE_FILE: &str = "data-source.json";
 
 fn refuse_when_external(path: &str) -> Result<(), String> {
@@ -48,16 +48,16 @@ fn data_source_path(identifier: &str) -> std::path::PathBuf {
         .join(DATA_SOURCE_FILE)
 }
 
-/// The saved choice, read once at launch: a launch on another source never
-/// sends TrueMain the requests made before the webview says so.
+/// At launch: TrueMain is never the source any more, whatever an older
+/// version saved (`data-source.json` held the player's pick) — no request
+/// reaches it before the webview says so either.
 pub fn load_data_source(identifier: &str) {
-    let external = std::fs::read_to_string(data_source_path(identifier))
-        .ok()
-        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .and_then(|value| value.get("external").and_then(serde_json::Value::as_bool))
-        .unwrap_or(false);
-    EXTERNAL_SOURCE.store(external, Ordering::SeqCst);
-    tracing::info!(external, "data source");
+    let saved = std::fs::read_to_string(data_source_path(identifier)).ok();
+    EXTERNAL_SOURCE.store(true, Ordering::SeqCst);
+    tracing::info!(
+        saved_pick = saved.is_some(),
+        "data source: the other sources only"
+    );
 }
 
 /// The webview's choice of data source, kept for the next launch.

@@ -6,7 +6,7 @@ import { apiGet } from '~/composables/useApi'
 import { blitzGet } from '~/utils/blitz/client'
 import { platformOf, splitRiotId } from '~/utils/blitz/player'
 import { keepBounded } from '~/utils/bounded'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { sidesOfGames, sortTeammates, teammatesOf } from '~/utils/played-with'
 
 /**
@@ -117,7 +117,7 @@ export async function readPlayedWith(
   options: { picked?: DataSource, carriers?: Partial<Record<DataSource, Carrier>> } = {},
 ): Promise<PlayedWith | null> {
   const carriers = options.carriers ?? PLAYED_WITH_CARRIERS
-  for (const source of playedWithOrder(options.picked ?? dataSource.value, carriers)) {
+  for (const source of playedWithOrder(options.picked ?? leadSource.value, carriers)) {
     const answer = await carriers[source]!(player, context).catch(() => null)
     if (answer && answer.games > 0) return answer
   }

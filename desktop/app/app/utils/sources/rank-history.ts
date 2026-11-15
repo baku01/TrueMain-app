@@ -5,7 +5,7 @@ import { apiGet } from '~/composables/useApi'
 import { blitzGet } from '~/utils/blitz/client'
 import { platformOf, splitRiotId } from '~/utils/blitz/player'
 import { keepBounded } from '~/utils/bounded'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { leagueSnapshots } from '~/utils/league-history'
 import { readOpggProfile } from '~/utils/sources/opgg-profile'
 
@@ -81,7 +81,7 @@ export const RANK_HISTORY_CARRIERS: Partial<Record<DataSource, Carrier>> = {
   },
 }
 
-/** After the pick, the sources asked in turn. Not TrueMain: with another source picked the shell refuses its API. */
+/** After the lead source, the sources asked in turn. Never TrueMain, which the app does not ask. */
 const FALLBACK: DataSource[] = ['blitz', 'opgg']
 
 /** The sources asked for a queue's history, in turn: the pick when it carries the queue, then the others that do. */
@@ -106,7 +106,7 @@ export async function readLeagueHistory(
 ): Promise<LeagueHistory | null> {
   const carriers = options.carriers ?? RANK_HISTORY_CARRIERS
   let lone: LeagueHistory | null = null
-  for (const source of rankHistoryOrder(options.picked ?? dataSource.value, queue, carriers)) {
+  for (const source of rankHistoryOrder(options.picked ?? leadSource.value, queue, carriers)) {
     const entries = await carriers[source]!.read(player, queue).catch(() => [])
     if (entries.length >= MIN_SNAPSHOTS) return { source, entries }
     if (entries.length) lone ??= { source, entries }

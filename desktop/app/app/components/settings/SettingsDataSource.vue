@@ -1,37 +1,13 @@
 <script setup lang="ts">
-import DataSourceOptions from '~/components/settings/DataSourceOptions.vue'
+import { DATA_SOURCES } from '~/utils/data-source'
 
 /**
- * Where builds, the tier list, the champions list and matchups are read from:
- * TrueMain, Blitz, op.gg (its official API), lolalytics or Tencent, the last
- * two marked experimental — their endpoints are not ones they document, and may change without notice
- * (`utils/data-source.ts`). The choice reloads the window, so no page keeps
- * numbers read from another source.
+ * Where builds, the tier list, the champions list and matchups come from:
+ * every source at once, nothing to choose (`utils/data-source.ts`) — each
+ * listed with what it brings, the merge's rule said once: no game counted
+ * twice. TrueMain's own API is not among them.
  */
 const { t } = useT()
-const source = dataSource
-
-// Asked at launch (`DataSourcePicker`) unless "remember my choice" was ticked there.
-const REMEMBER_KEY = 'truemain-data-source-remembered'
-const askAtLaunch = ref(true)
-onMounted(() => {
-  try {
-    askAtLaunch.value = localStorage.getItem(REMEMBER_KEY) !== '1'
-  }
-  catch {
-    // Storage unavailable: asked every launch.
-  }
-})
-watch(askAtLaunch, (ask) => {
-  try {
-    if (ask) localStorage.removeItem(REMEMBER_KEY)
-    else localStorage.setItem(REMEMBER_KEY, '1')
-  }
-  catch {
-    // Storage unavailable: nothing to keep.
-  }
-})
-
 </script>
 
 <template>
@@ -44,7 +20,14 @@ watch(askAtLaunch, (ask) => {
       <p class="text-xs text-muted">{{ t('source.description') }}</p>
     </header>
 
-    <DataSourceOptions :model-value="source" @update:model-value="setDataSource" />
-    <USwitch v-model="askAtLaunch" :label="t('source.askAtLaunch')" size="sm" />
+    <ul class="grid gap-2 sm:grid-cols-2">
+      <li v-for="source in DATA_SOURCES" :key="source" class="flex items-start gap-3 rounded-lg bg-accented/30 px-3 py-2.5">
+        <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-primary" />
+        <span class="min-w-0">
+          <span class="block text-sm font-semibold text-highlighted">{{ t(`source.name.${source}`) }}</span>
+          <span class="block text-xs text-muted">{{ t(`source.hint.${source}`) }}</span>
+        </span>
+      </li>
+    </ul>
   </section>
 </template>

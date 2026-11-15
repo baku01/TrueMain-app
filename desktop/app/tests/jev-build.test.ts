@@ -272,13 +272,17 @@ describe('placeShare', () => {
   const fourth = [m(9158, [3036]), m(822, [3026]), m(58086, [3031])]
   const blitz = new Map([[3036, { games: 900, winRate: 0.52, wpa: 0 }], [3026, { games: 60, winRate: 0.5, wpa: 0 }], [6333, { games: 6, winRate: 0.4, wpa: 0 }]])
 
-  it('adds lolalytics and Blitz games at the place', () => {
+  it('reads lolalytics\' games at the place, never added to Blitz\'s — they count the same games', () => {
     const share = placeShare(fourth, blitz)!
-    const total = 9158 + 822 + 58086 + 900 + 60 + 6
-    expect(share(3036)).toBeCloseTo((9158 + 900) / total)
+    const total = 9158 + 822 + 58086
+    expect(share(3036)).toBeCloseTo(9158 / total)
     expect(share(3026)).toBeGreaterThanOrEqual(PLACE_SHARE)
-    expect(share(6333)).toBeLessThan(PLACE_SHARE)
+    expect(share(6333)).toBe(0)
     expect(share(3143)).toBe(0)
+  })
+
+  it('reads Blitz\'s item slot where lolalytics measured the place not at all', () => {
+    expect(placeShare(undefined, blitz)!(3036)).toBeCloseTo(900 / 966)
   })
 
   it('sets no bar where neither source measured the place', () => {

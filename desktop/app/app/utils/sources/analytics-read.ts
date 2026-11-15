@@ -5,10 +5,12 @@ import { lolalyticsAnalytics } from '~/utils/sources/analytics-lolalytics'
 import { tencentAnalytics } from '~/utils/sources/analytics-tencent'
 import { opggAnalytics } from '~/utils/sources/analytics-opgg'
 import { truemainAnalytics } from '~/utils/sources/analytics-truemain'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 
-/** One champion's analytics on a lane, from the source Settings picked. */
-const READERS: Record<DataSource, (championId: number, position: string, eloBracket: unknown, region?: string, opponentId?: number | null) => Promise<ChampionAnalytics>> = {
+type Reader = (championId: number, position: string, eloBracket: unknown, region?: string, opponentId?: number | null) => Promise<ChampionAnalytics>
+
+/** One champion's analytics on a lane, by source: Mobalytics measures none of its own. */
+const READERS: Partial<Record<DataSource, Reader>> = {
   truemain: truemainAnalytics,
   blitz: blitzAnalytics,
   opgg: opggAnalytics,
@@ -24,6 +26,19 @@ export const MATCHUP_SOURCES: readonly DataSource[] = ['lolalytics', 'blitz']
  * (lolalytics); `all` is every server. `opponentId` reads the lane against
  * that champion where the source measures it (`MATCHUP_SOURCES`).
  */
-export function readAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all', opponentId: number | null = null): Promise<ChampionAnalytics> {
-  return READERS[dataSource.value](championId, position, eloBracket, region, opponentId)
+export async function readAnalytics(championId: number, position: string, eloBracket: unknown, region = 'all', opponentId: number | null = null): Promise<ChampionAnalytics> {
+  // The lead source (the most detailed), then the others in turn when it fails — never TrueMain.
+  const order = [leadSource.value, 'blitz', 'opgg', 'tencent'] as const
+  let failure: unknown = new Error('No source measures these analytics')
+  for (const source of [...new Set(order)]) {
+    const read = READERS[source]
+    if (!read || source === 'truemain') continue
+    try {
+      return await read(championId, position, eloBracket, region, opponentId)
+    }
+    catch (error) {
+      failure = error
+    }
+  }
+  throw failure
 }

@@ -5,7 +5,7 @@ import type { FormBenchmarkResponse } from '~/utils/form-benchmark'
 import type { PostMatchBenchmark } from '~/utils/post-match'
 import type { BlitzDurationRow, BlitzMinuteRow } from '~/utils/post-match-benchmark'
 import { SOLO_QUEUE, blitzGet, blitzRole } from '~/utils/blitz/client'
-import { dataSource } from '~/utils/data-source'
+import { leadSource } from '~/utils/data-source'
 import { deathTimes, ownAverage, postMatchInsights } from '~/utils/post-match'
 import { benchmarkOrder, firstBenchmark, fromBlitzRows, fromTruemainForm } from '~/utils/post-match-benchmark'
 
@@ -47,7 +47,7 @@ export async function readPostMatchBenchmark(subject: BenchmarkSubject): Promise
   const { position, tier } = subject
   if (!position || !tier) return null
   const upper = tier.toUpperCase()
-  return firstBenchmark(benchmarkOrder(dataSource.value), {
+  return firstBenchmark(benchmarkOrder(leadSource.value), {
     truemain: async () => fromTruemainForm(await apiGet<FormBenchmarkResponse>('/benchmarks/form', { position }, { background: true }), upper),
     blitz: async () => {
       const query = { champion_id: subject.championId, queue_id: SOLO_QUEUE, tier: upper, individual_position: blitzRole(position) }

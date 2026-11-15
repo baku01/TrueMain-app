@@ -4,7 +4,6 @@ import type { WinProbabilityTimeline } from '#shared/types/win-probability'
 import { gradeDetail } from '~/utils/match-summary'
 import { matchEvents } from '~/utils/blitz/player'
 import { blitzMatchDetail, withRanks } from '~/utils/blitz/match-detail'
-import { externalSource } from '~/utils/data-source'
 
 /**
  * The app's side of the composables the twinned site components call, so the
@@ -48,25 +47,6 @@ export function useStaticChampionsById() {
       iconUrl: portraitOf(champion.id) ?? '',
     }]),
   ))
-}
-
-/** TrueMain's copies already read: an ingested game never changes. */
-const matchDetails = new Map<string, MatchDetailResponse>()
-
-async function readTruemainDetail(nameTag: string, platformId: string | null, matchId: string): Promise<MatchDetailResponse | null> {
-  if (!nameTag || !platformId) return null
-  try {
-    // In the background: an opened row shows its own skeleton, and the window's
-    // loading bar is for a page's load, not for a panel opening in place.
-    return await apiGet<MatchDetailResponse>(
-      `/truemains/${encodeURIComponent(nameTag)}/matches/${platformId}_${matchId}`,
-      {},
-      { background: true },
-    )
-  }
-  catch {
-    return null
-  }
 }
 
 /**
@@ -154,7 +134,7 @@ export function fillGaps(detail: MatchDetailResponse, extra: MatchDetailResponse
   }
 }
 
-export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: MaybeRefOrGetter<string>) {
+export function usePlayerGameDetail(_nameTag: MaybeRefOrGetter<string>, matchId: MaybeRefOrGetter<string>) {
   const { record } = usePlayerRecord()
   const data = ref<MatchDetailResponse | null>(null)
   const isLoading = ref(true)
@@ -163,13 +143,8 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
   watch(() => toValue(matchId), async (id) => {
     isLoading.value = true
     try {
-      const known = matchDetails.get(id)
-      // TrueMain's copy only where TrueMain is the source Settings picked.
-      const truemain = known ?? (externalSource() ? null : await readTruemainDetail(toValue(nameTag), record.value?.platformId ?? null, id))
-      if (truemain) matchDetails.set(id, truemain)
-      // The client's fallback is cached by the shell; TrueMain is asked again
-      // next time, since it may have ingested the game since.
-      const read = truemain ?? await readClientDetail(id)
+      // The client's copy (cached by the shell); TrueMain's is not asked (`utils/data-source.ts`).
+      const read = await readClientDetail(id)
       data.value = read ? await withRiotEvents(read, record.value?.platformId ?? null, id) : null
     }
     catch {
@@ -177,10 +152,10 @@ export function usePlayerGameDetail(nameTag: MaybeRefOrGetter<string>, matchId: 
     }
     notFound.value = !data.value
     isLoading.value = false
-    // What the source read lacks — the curve and the timeline's events, the
-    // teams' bans and objectives, the runes' stats (TrueMain's API keeps none),
-    // and a player's rank where the other copy has it — is filled from the others, whichever Settings picked:
-    // the client's copy first, then Blitz's (Riot's match-v5 and timeline).
+    // What the copy read lacks — the curve and the timeline's events, the
+    // teams' bans and objectives, the runes' stats, and a player's rank where
+    // the other copy has it — is filled from the others: the client's copy
+    // first, then Blitz's (Riot's match-v5 and timeline).
     const platformId = record.value?.platformId ?? null
     for (const other of [() => (insideTauri() ? readClientDetail(id) : null), () => (platformId ? blitzMatchDetail(`${platformId}_${id}`) : null)]) {
       if (!data.value || !gapsOf(data.value)) break

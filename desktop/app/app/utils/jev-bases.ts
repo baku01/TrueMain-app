@@ -10,16 +10,15 @@ import { INVENTORY, placeGames } from '~/utils/jev-build'
 import { readItemStats } from '~/utils/blitz/item-stats'
 import { most, readBlitzBuildDoc, readBlitzBuildRows } from '~/utils/blitz/builds'
 import { playstyleName, playstyleOptions } from '~/utils/blitz/playstyles'
-import { MIN_MATCHUP_GAMES, blitzOptions, blitzOptionsOf } from '~/utils/sources/blitz'
-import { combineOptions } from '~/utils/sources/combined'
-import { lolalyticsOptions } from '~/utils/sources/lolalytics'
+import { MIN_MATCHUP_GAMES, blitzOptionsOf } from '~/utils/sources/blitz'
+import { activeProvider } from '~/utils/sources'
 
 /**
  * The family of builds Jev ranks within — its base. Jev's measured pool is
  * the base's options, and the "most played" it is compared with is that
  * family's most played:
  *
- * - the lane, every game (lolalytics' and Blitz's options pooled), as always;
+ * - the lane, every game (every source's options averaged, `activeProvider`);
  * - the lane matchup: Blitz's builds in the games against the lane opponent,
  *   once it measured enough of them to stand on their own;
  * - one of Blitz's playstyles (Bruiser, Lethality…), each its own document;
@@ -58,13 +57,9 @@ export async function resolveBases(candidates: BaseCandidate[]): Promise<LoadedB
   return candidates.flatMap((candidate, index) => (usable(read[index]) ? [{ base: candidate.base, options: read[index]! }] : []))
 }
 
-/** The lane, every game: lolalytics' and Blitz's options pooled, as Jev always read it. */
+/** The lane, every game: every source's options as one, averaged without counting a game twice (`activeProvider`). */
 export async function laneOptions(championId: number, position: string): Promise<BuildOptions | null> {
-  const [lolalytics, blitz] = await Promise.all([
-    lolalyticsOptions(championId, position).catch(() => null),
-    blitzOptions(championId, position).catch(() => null),
-  ])
-  return combineOptions(lolalytics, blitz)
+  return await activeProvider().options(championId, position)
 }
 
 /**

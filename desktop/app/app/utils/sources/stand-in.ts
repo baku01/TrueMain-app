@@ -3,14 +3,13 @@ import type { DataSource } from '~/utils/data-source'
 /**
  * Which source answers a read only some sources measure (the counters'
  * scores, the synergies, the duos, win rate by mastery, the patch's change):
- * the picked source when it measures it; else the ones that do, Blitz first,
- * then the others in the order the reader lists them — each asked in turn
- * when the one before fails or answers nothing. TrueMain is asked only when
- * it is the pick: with another source picked, the app asks TrueMain nothing
- * (Settings' promise, which `apiGet` and the shell keep).
+ * the lead source when it measures it (`LEAD_SOURCE`); else the ones that do,
+ * Blitz first, then the others in the order the reader lists them — each
+ * asked in turn when the one before fails or answers nothing. Never TrueMain:
+ * the app does not ask it (`utils/data-source.ts`).
  */
 export function standInOrder(picked: DataSource, carriers: readonly DataSource[]): DataSource[] {
-  const asked = carriers.filter(source => source !== 'truemain' || picked === 'truemain')
+  const asked: DataSource[] = carriers.filter(source => source !== 'truemain')
   const order: DataSource[] = asked.includes(picked) ? [picked] : []
   for (const source of ['blitz' as const, ...asked]) {
     if (asked.includes(source) && !order.includes(source)) order.push(source)

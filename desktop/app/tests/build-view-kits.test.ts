@@ -16,6 +16,9 @@ const global = {
     KitList: { props: ['kits', 'modelValue'], emits: ['update:modelValue'], template: '<div class="kits" :data-selected="modelValue"><button v-for="k in kits" :key="k.id" class="kit" @click="$emit(\'update:modelValue\', k.id)">{{ k.name }}</button></div>' },
     KitBuild: { props: ['kit'], template: '<div class="kit-build">{{ kit.name }}</div>' },
     BuildCore: { template: '<div class="core" />' },
+    // A lane build opens on the sources' whole panel (every source read as one, `utils/sources`).
+    BuildSourcePanel: { template: '<div class="core" />' },
+    BuildPros: true,
     BuildTreeBlock: { template: '<div class="tree" />' },
     UIcon: true,
   },

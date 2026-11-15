@@ -12,6 +12,12 @@ const HISTORY_PAGE = 20
 const HISTORY_CEILING = 100
 
 /**
+ * How far back a page that reads the whole history may page (the nerd
+ * statistics): past the match history's ceiling, as far as the client goes.
+ */
+export const HISTORY_DEEP_CEILING = 200
+
+/**
  * The logged-in player's own record — standing, profile background, latest
  * games — read from their client by the shell (`player_record`). It works for
  * any player, tracked by TrueMain or not.
@@ -33,6 +39,10 @@ export function usePlayerRecord() {
   const rankHistory = useState<RankHistoryEntry[]>('player-rank-history', () => [])
   const older = useState<PlayerGame[]>('player-record-older', () => [])
   const hasOlder = useState<boolean>('player-record-has-older', () => false)
+  // The client had no older page to give: kept apart from `hasOlder`, which
+  // also stops at the match history's ceiling, so a page reading further back
+  // (`loadOlder(HISTORY_DEEP_CEILING)`) can tell the two apart.
+  const ended = useState<boolean>('player-record-history-ended', () => true)
   // The client's own index of the next older page. Kept apart from the number of
   // games held, which the shell trims (a game without the player's line is
   // dropped) and the dedup below shortens: counting those would re-read pages.
@@ -68,7 +78,8 @@ export function usePlayerRecord() {
       // A new game shifts every older page by one: they are read again from here.
       older.value = []
       nextBegin.value = HISTORY_PAGE
-      hasOlder.value = (answer?.games.length ?? 0) >= HISTORY_PAGE - 1
+      ended.value = (answer?.games.length ?? 0) < HISTORY_PAGE - 1
+      hasOlder.value = !ended.value
       rankHistory.value = noteStanding(riotId, answer)
       owner.value = riotId
       readAt.value = Date.now()
@@ -97,10 +108,13 @@ export function usePlayerRecord() {
    * client has no more: it keeps a bounded history and, past its end, can answer
    * with games it already gave rather than with nothing — taking that for more
    * left the history reading the same page forever.
+   *
+   * The match history stops at its ceiling; `ceiling` lets a page that reads
+   * the whole record go further (`HISTORY_DEEP_CEILING`).
    */
-  async function loadOlder() {
+  async function loadOlder(ceiling = HISTORY_CEILING) {
     const riotId = state.value.riotId
-    if (loadingOlder.value || !hasOlder.value || !riotId) return
+    if (loadingOlder.value || !canReadOlder(ceiling) || !riotId) return
     loadingOlder.value = true
     try {
       const begin = nextBegin.value
@@ -110,9 +124,11 @@ export function usePlayerRecord() {
       const fresh = page.filter(game => !known.has(game.gameId))
       older.value = [...older.value, ...fresh]
       nextBegin.value = begin + HISTORY_PAGE
-      hasOlder.value = fresh.length > 0 && nextBegin.value < HISTORY_CEILING
+      ended.value = fresh.length === 0
+      hasOlder.value = !ended.value && nextBegin.value < HISTORY_CEILING
     }
     catch {
+      ended.value = true
       hasOlder.value = false
     }
     finally {
@@ -120,8 +136,14 @@ export function usePlayerRecord() {
     }
   }
 
+  /** Whether an older page may still be read without passing `ceiling`. */
+  function canReadOlder(ceiling = HISTORY_CEILING) {
+    return !ended.value && nextBegin.value < ceiling
+  }
+
   async function readOlder(begin: number): Promise<PlayerGame[]> {
-    if (!insideTauri()) return []
+    // In `npm run dev` a scenario may page back through a made-up history.
+    if (!insideTauri()) return import.meta.dev ? useDevScenarios().olderPage(begin, HISTORY_PAGE) : []
     const { invoke } = await import('@tauri-apps/api/core')
     return await trackLoad(invoke<PlayerGame[]>('player_history', { begin }))
   }
@@ -129,5 +151,5 @@ export function usePlayerRecord() {
   const current = computed(() => (owner.value === state.value.riotId ? record.value : null))
   const history = computed(() => (owner.value === state.value.riotId ? rankHistory.value : []))
 
-  return { record: current, games, rankHistory: history, status, refresh, hasOlder, loadingOlder, loadOlder }
+  return { record: current, games, rankHistory: history, status, refresh, hasOlder, loadingOlder, loadOlder, canReadOlder }
 }
