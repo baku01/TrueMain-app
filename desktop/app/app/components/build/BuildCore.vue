@@ -67,7 +67,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div v-if="compact" class="@container flex h-full min-h-0 flex-col">
+  <div v-if="compact" class="@container flex flex-1 flex-col">
     <div class="grid flex-1 gap-4 @3xl:grid-cols-2">
       <!-- The runes, whole. -->
       <div class="surface flex flex-col rounded-xl p-4">

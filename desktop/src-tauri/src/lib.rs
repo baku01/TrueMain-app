@@ -17,6 +17,7 @@ mod kits;
 mod loading;
 mod lobby;
 mod menu;
+mod mobafire;
 mod news;
 mod overlay;
 mod ready_check;
@@ -410,6 +411,7 @@ pub fn run() {
             autostart::set_autostart,
             news::riot_patch_notes_page,
             news::open_patch_note,
+            mobafire::mobafire_page,
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.

@@ -477,6 +477,17 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   never one per game; with every slot taken and none of them ours, a toast asks the player to free one — no page of
   theirs is ever deleted. An incomplete page (an empty slot) is refused. Every outcome is a toast. Nothing is written
   without the click.
+- **Guides** (`/guides`, `pages/guides/`, `utils/mobafire.ts`, `src-tauri/src/mobafire.rs`) — MOBAFire's build guides laid
+  out as its browse page: a champion (the site's own list, its aliases searched), a lane, a category, the order and
+  ranked authors, the guides under the site's dividers with their rating ring, votes, the author's rank, tags, its pages,
+  and the trending guides beside them; a guide opens on its banner, each build (recommended items, the rune pages and
+  spell sets switched as the author offers them, the items by section, the ability order), its threats and synergies by
+  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`). The site has no API and sits
+  behind Cloudflare, which refuses any plain HTTP client: the shell reads its pages in a hidden window of its own on
+  mobafire.com (the system's webview) and takes their HTML back (`eval_with_callback`); when Cloudflare asks to confirm
+  a person is there, the window is shown for the player to tick it — never answered for them — and the page says so.
+  The window has no IPC, and only the guide list and guides are ever opened (never the `/ajax/` or `/json/` its
+  robots.txt keeps from robots). `npm run dev` reads them through `/__mobafire` (`MOBAFIRE_DEV_ORIGIN`).
 - **Item set import** (#1908) — the rune button's twin, in the build tree's top-right corner, on every build the
   build view shows. A click writes the build on screen into the client as one item set `TrueMain: <champion>`
   (Starter, Boots, Core, Situational — the item context's situational verdicts, else the tree's other branches),
