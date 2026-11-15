@@ -1,10 +1,12 @@
 import type { GameParticipant, PlayerGame, TimelineMark } from '~/types/record'
 
 /**
- * A made-up match history for `npm run dev`: the games a scenario's client
- * would page back through after its record (`olderGames` in a scenario), so
- * the history can be paged and the nerd statistics have a sample of a couple
- * of hundred games to read.
+ * A made-up match history for `npm run dev`: the games older than a
+ * scenario's record — those its client would page back through
+ * (`olderGames`), those Blitz's match list would hold past them (`blitzGames`,
+ * served in Riot's shape by `synthetic-blitz`) and those this machine would
+ * have saved before (`savedGames`) — so the history can be paged and the nerd
+ * statistics have a sample of a couple of hundred games to read.
  *
  * Dev-only, like every fixture: nothing here is a measurement. The games are
  * drawn from a seeded generator so a scenario always gives the same ones, and

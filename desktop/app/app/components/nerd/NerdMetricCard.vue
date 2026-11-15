@@ -1,19 +1,40 @@
 <script setup lang="ts">
 import type { MetricAssociation } from '~/utils/nerd-stats/analysis'
+import { confidenceOf, metricSplit } from '~/utils/nerd-stats/insights'
 import { ascending, quantile } from '~/utils/nerd-stats/stats'
 
 /**
- * One metric, wins against losses: every game a dot on its row (jittered, so
- * equal values do not hide each other), each row's mean a bar across it; under
- * them the win rate in the metric's terciles or quartiles, each with its
- * Wilson interval against a 50% rule. A yes/no metric (first blood, the side)
- * has no spread to strip: it shows its two bins alone, larger.
+ * One metric, wins against losses, said plainly first: the win rate with more
+ * of it against with less (`metricSplit`) and how far that can be trusted.
+ * Then every game a dot on its row (jittered, so equal values do not hide
+ * each other), each row's mean a bar across it; under them the win rate in
+ * the metric's terciles or quartiles, each bar coloured by whether it sits
+ * above or below the player's own rate, with its Wilson interval, a coin flip
+ * and that rate ruled across. A yes/no metric (first blood, the side) has no
+ * spread to strip: it shows its two bins alone, larger. Its d, r, p and q are
+ * behind "show the maths", each in a line.
  */
-const props = defineProps<{ entry: MetricAssociation }>()
+const props = defineProps<{
+  entry: MetricAssociation
+  /** The player's overall win rate: each bin's par. */
+  rate: number
+}>()
 
 const { t } = useT()
 const f = useNerdFormat()
+const say = useNerdSay()
 const tip = useChartTip()
+
+const split = computed(() => metricSplit(props.entry))
+const sentence = computed(() => say.split(props.entry, split.value))
+const confidence = computed(() => confidenceOf(props.entry.correlation ? props.entry.q : null))
+const symbols = computed(() => [
+  { symbol: 'd', value: effect.value ? f.signed(effect.value.d, 2) : '—', meaning: t('nerd.sym.d') },
+  { symbol: 'r_{pb}', value: props.entry.correlation ? f.signed(props.entry.correlation.r, 2) : '—', meaning: t('nerd.sym.r') },
+  { symbol: 'p', value: props.entry.correlation ? f.pValue(props.entry.correlation.p) : '—', meaning: t('nerd.sym.p') },
+  { symbol: 'q', value: props.entry.correlation ? f.pValue(props.entry.q) : '—', meaning: t('nerd.sym.q') },
+  { symbol: 'n', value: String(props.entry.games), meaning: t('nerd.sym.n') },
+])
 
 const binary = computed(() => props.entry.definition.format === 'binary')
 const W = 300
@@ -39,7 +60,6 @@ const dots = computed(() => [
 ])
 
 const effect = computed(() => props.entry.effect)
-const tone = computed(() => (!effect.value ? 'var(--ui-text-dimmed)' : effect.value.low > 0 ? 'var(--nerd-win)' : effect.value.high < 0 ? 'var(--nerd-loss)' : 'var(--ui-text-dimmed)'))
 
 const binLabel = (from: number, to: number) => {
   if (binary.value) return from === 1 ? t('nerd.yes') : t('nerd.no')
@@ -63,15 +83,11 @@ function showBin(event: MouseEvent | FocusEvent, index: number) {
     <header class="flex items-start gap-2">
       <div class="min-w-0 flex-1">
         <h3 class="truncate text-sm font-semibold text-highlighted">{{ t(`nerd.metric.${entry.definition.key}`) }}</h3>
-        <p class="text-[11px] text-dimmed">{{ t(`nerd.timing.${entry.definition.timing}`) }} · n = {{ entry.games }}</p>
+        <p class="text-[11px] text-dimmed">{{ t(`nerd.timing.${entry.definition.timing}`) }} · {{ t('nerd.distributions.games', { count: entry.games }) }}</p>
       </div>
-      <div class="text-right">
-        <p class="text-sm font-semibold tabular-nums text-highlighted">
-          <span class="mr-1 inline-block size-1.5 rounded-full align-middle" :style="{ background: tone }" />d {{ effect ? f.signed(effect.d, 2) : '—' }}
-        </p>
-        <p class="text-[10px] tabular-nums text-dimmed">r {{ entry.correlation ? f.signed(entry.correlation.r, 2) : '—' }} · p {{ entry.correlation ? f.pValue(entry.correlation.p) : '—' }}</p>
-      </div>
+      <NerdConfidence :level="confidence" :detail="say.metricDetail(entry)" class="shrink-0" />
     </header>
+    <p v-if="sentence" class="mt-2 text-[11.5px] leading-snug text-muted"><NerdRich :text="sentence" /></p>
 
     <template v-if="!binary">
       <svg :viewBox="`0 0 ${W} 52`" class="mt-2 w-full" role="img" :aria-label="t('nerd.distributions.stripLabel', { win: effect ? f.metric(entry.definition, effect.meanA) : '—', loss: effect ? f.metric(entry.definition, effect.meanB) : '—' })">
@@ -93,6 +109,7 @@ function showBin(event: MouseEvent | FocusEvent, index: number) {
     <div class="mt-auto pt-5">
     <div class="relative grid items-end gap-1.5" :class="binary ? 'h-24' : 'h-16'" :style="{ gridTemplateColumns: `repeat(${entry.bins.length}, minmax(0, 1fr))` }">
       <span class="pointer-events-none absolute inset-x-0 h-px bg-(--ui-border-accented)" style="bottom: 50%" />
+      <span class="nerd-dash pointer-events-none absolute inset-x-0 z-10" :style="{ bottom: `${rate * 100}%` }" />
       <button
         v-for="(bin, index) in entry.bins"
         :key="index"
@@ -104,7 +121,7 @@ function showBin(event: MouseEvent | FocusEvent, index: number) {
         @pointerleave="tip.hide"
         @blur="tip.hide"
       >
-        <span class="nerd-column absolute inset-x-[18%] bottom-0 rounded-t-[4px] bg-primary/70" :style="{ height: `${bin.rate * 100}%`, animationDelay: `${index * 50}ms` }" />
+        <span class="nerd-column absolute inset-x-[18%] bottom-0 rounded-t-[4px]" :class="bin.rate >= rate ? 'bg-(--nerd-win)/75' : 'bg-(--nerd-loss)/70'" :style="{ height: `${bin.rate * 100}%`, animationDelay: `${index * 50}ms` }" />
         <span class="absolute left-1/2 w-px -translate-x-1/2 bg-(--ui-text-muted)" :style="{ bottom: `${bin.low * 100}%`, height: `${(bin.high - bin.low) * 100}%` }" />
         <span class="absolute left-1/2 -translate-x-1/2 text-[10px] font-semibold tabular-nums text-highlighted" :style="{ bottom: `calc(${Math.max(bin.rate, bin.high) * 100}% + 1px)` }">{{ f.percent(bin.rate, 0) }}</span>
       </button>
@@ -113,6 +130,7 @@ function showBin(event: MouseEvent | FocusEvent, index: number) {
     <div class="mt-1 grid gap-1.5 text-center text-[10px] tabular-nums text-dimmed" :style="{ gridTemplateColumns: `repeat(${entry.bins.length}, minmax(0, 1fr))` }">
       <span v-for="(bin, index) in entry.bins" :key="index" class="truncate">{{ binLabel(bin.from, bin.to) }}<br>{{ t('nerd.distributions.games', { count: bin.games }) }}</span>
     </div>
+    <NerdDetails class="mt-3" :symbols="symbols" />
     <NerdTip :tip="tip.tip.value" />
   </article>
 </template>

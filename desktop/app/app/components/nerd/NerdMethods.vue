@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { NerdReport } from '~/utils/nerd-stats/analysis'
 import { MODEL_COVERAGE } from '~/utils/nerd-stats/analysis'
+import { FEW_GAMES } from '~/utils/nerd-stats/insights'
 
 /**
  * Every method on the page, named, written out and explained in plain words —
  * with the figures this sample gave it — and, first, what none of them can
- * say: that a metric which comes with winning makes the player win.
+ * say: that a metric which comes with winning makes the player win. Each card
+ * leads with the plain name the rest of the page uses, the statistics' own
+ * name under it; the first explains the four confidence words.
  */
 const props = defineProps<{ report: NerdReport }>()
 
@@ -27,10 +30,24 @@ const symbols = computed<Record<string, string>>(() => ({
   SE: t('nerd.symbol.se'),
   z: f.number(1.96, 2),
   silverman: f.number(1.06, 2),
+  p01: f.number(0.01, 2),
+  p05: f.number(0.05, 2),
+  p20: f.number(0.2, 2),
+  few: String(FEW_GAMES),
+  strong: t('nerd.confidence.strong'),
+  moderate: t('nerd.confidence.moderate'),
+  weak: t('nerd.confidence.weak'),
+  uncertain: t('nerd.confidence.uncertain'),
 }))
 const written = (line: string) => line.replace(/\$(\w+)/g, (_, name: string) => symbols.value[name] ?? name)
 
 const METHODS = computed(() => [
+  {
+    key: 'confidence',
+    icon: 'i-tabler-antenna-bars-5',
+    formula: ['p < $p01  →  $strong', '$p01 ≤ p < $p05  →  $moderate', '$p05 ≤ p < $p20  →  $weak', 'p ≥ $p20  →  $uncertain'],
+    figure: t('nerd.methods.figure.confidence', { few: FEW_GAMES }),
+  },
   {
     key: 'wilson',
     icon: 'i-tabler-target-arrow',
@@ -134,7 +151,10 @@ const METHODS = computed(() => [
           <span class="tm-emblem grid size-8 shrink-0 place-items-center rounded-lg text-primary">
             <UIcon :name="method.icon" class="size-4" />
           </span>
-          <h3 class="text-sm font-semibold text-highlighted">{{ t(`nerd.methods.${method.key}.title`) }}</h3>
+          <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-highlighted">{{ t(`nerd.methods.${method.key}.title`) }}</h3>
+            <p class="text-[11px] text-dimmed">{{ t(`nerd.methods.${method.key}.technical`) }}</p>
+          </div>
         </header>
         <div class="mt-3 space-y-1.5 rounded-md bg-(--tm-pane-2) px-3 py-2.5 text-[13px] leading-relaxed text-highlighted ring-1 ring-default">
           <p v-for="line in method.formula" :key="line"><NerdMath :text="written(line)" /></p>

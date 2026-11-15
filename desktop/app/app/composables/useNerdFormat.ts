@@ -1,4 +1,4 @@
-import type { MetricDefinition } from '~/utils/nerd-stats/features'
+import type { MetricDefinition, MetricFormat } from '~/utils/nerd-stats/features'
 import { getActiveLocale } from '#common/utils/i18n'
 
 /**
@@ -38,8 +38,11 @@ export function useNerdFormat() {
   const compact = (value: number) => (Math.abs(value) >= 1000 ? `${number(value / 1000, 1)}k` : number(value, 0))
 
   /** One metric's value in its own unit. */
-  function metric(definition: MetricDefinition, value: number): string {
-    switch (definition.format) {
+  const metric = (definition: Pick<MetricDefinition, 'format'>, value: number): string => unit(definition.format, value)
+
+  /** A value in a unit (`MetricFormat`): a lead signed, a share as a percentage, a length as minutes:seconds. */
+  function unit(format: MetricFormat, value: number): string {
+    switch (format) {
       case 'percent': return percent(value, 1)
       case 'binary': return percent(value, 0)
       // Hundreds of gold a minute need no decimals; a fraction of a death does.
@@ -55,5 +58,11 @@ export function useNerdFormat() {
     }
   }
 
-  return { number, percent, signed, pValue, minutes, compact, metric }
+  /** A round figure with only the decimals it has: `1`, `2,5`, `0,25`. */
+  const nice = (value: number) => number(value, Number.isInteger(value) ? 0 : Number.isInteger(Math.round(value * 1e6) / 1e5) ? 1 : 2)
+
+  /** The gap between two win rates, in rate points: `+23`, `−8`. */
+  const points = (difference: number) => signed(difference * 100, 0)
+
+  return { number, percent, signed, pValue, minutes, compact, metric, unit, points, nice }
 }
