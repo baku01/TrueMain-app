@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions } from '~/utils/sources/model'
-import { SOURCE_SPREAD, combineOptions, poolLists, poolMeasure, weightOf } from '~/utils/sources/combined'
+import { SOURCE_SPREAD, combineOptions, combineRows, effectiveGames, poolLists, poolMeasure, sameGames, weightOf } from '~/utils/sources/combined'
 
 const m = (games: number, winRate: number, pickRate = 0) => ({ games, winRate, pickRate })
 /** The pooled rate the rule gives: each source's weighed by `weightOf` its games. */
@@ -17,7 +17,7 @@ describe('poolMeasure', () => {
 
   it('weighs large samples near-equally and a thin one little', () => {
     // The processing spread caps a large sample's weight; chance swamps a thin one's.
-    expect(weightOf(250000) / weightOf(100000)).toBeLessThan(1.1)
+    expect(weightOf(250000) / weightOf(100000)).toBeLessThan(1.2)
     expect(weightOf(30) / weightOf(100000)).toBeLessThan(0.02)
     expect(weightOf(0)).toBe(0)
     expect(1 / weightOf(Number.POSITIVE_INFINITY)).toBeCloseTo(SOURCE_SPREAD ** 2)
@@ -40,7 +40,7 @@ describe('combineOptions', () => {
 
   it('pools two sources\' cores and the items each measured after the same core, the games never added', () => {
     const lolalytics = options(1000, [{ ...m(600, 0.52, 0.6), itemIds: [3118, 4645] }], [{ ...m(200, 0.55), itemIds: [3089] }])
-    const blitz = options(500, [{ ...m(300, 0.5, 0.6), itemIds: [3118, 4645] }], [{ ...m(100, 0.4), itemIds: [3089] }, { ...m(80, 0.6), itemIds: [3135] }])
+    const blitz = options(900, [{ ...m(300, 0.5, 0.6), itemIds: [3118, 4645] }], [{ ...m(100, 0.4), itemIds: [3089] }, { ...m(80, 0.6), itemIds: [3135] }])
     const pooled = combineOptions(lolalytics, blitz)!
     expect(pooled.games).toBe(1000)
     expect(pooled.cores[0]).toMatchObject({ games: 600 })
@@ -51,7 +51,7 @@ describe('combineOptions', () => {
 
   it('pools the items each source measured bought on the lane, whatever their place', () => {
     const lolalytics = { ...options(1000, [], []), situational: [{ ...m(40, 0.5), itemIds: [3156] }] }
-    const blitz = { ...options(500, [], []), situational: [{ ...m(60, 0.55), itemIds: [3156] }, { ...m(10, 0.4), itemIds: [3139] }] }
+    const blitz = { ...options(900, [], []), situational: [{ ...m(60, 0.55), itemIds: [3156] }, { ...m(10, 0.4), itemIds: [3139] }] }
     const pooled = combineOptions(lolalytics, blitz)!.situational!
     expect(pooled.find(option => option.itemIds[0] === 3156)).toMatchObject({ games: 60 })
     expect(pooled.find(option => option.itemIds[0] === 3156)!.winRate).toBeCloseTo(pooledRate([40, 0.5], [60, 0.55]))
@@ -63,5 +63,47 @@ describe('combineOptions', () => {
     const only = options(10, [], [])
     expect(combineOptions(only, null)).toBe(only)
     expect(combineOptions(null, only)).toBe(only)
+  })
+
+  it('leaves out a source that counted another bracket\'s games', () => {
+    // Gold+ on lolalytics; Gold alone on a source that pools no Gold+, a third of the games.
+    const lolalytics = options(1000, [{ ...m(600, 0.52, 0.6), itemIds: [3118, 4645] }], [])
+    const goldOnly = options(320, [{ ...m(200, 0.4, 0.6), itemIds: [3118, 4645] }], [])
+    expect(combineOptions(lolalytics, goldOnly)).toBe(lolalytics)
+  })
+})
+
+describe('sameGames', () => {
+  const cells = (entries: [string, number][]) => new Map(entries)
+
+  it('keeps the sources counting the first one\'s games, a subset of them included', () => {
+    const lolalytics = cells([['122', 3829], ['86', 2000]])
+    const mobalytics = cells([['122', 3825], ['86', 2010]])
+    const opgg = cells([['122', 2680]])
+    expect(sameGames([lolalytics, mobalytics, opgg], answer => answer)).toEqual([lolalytics, mobalytics, opgg])
+  })
+
+  it('leaves out another bracket, either way, and keeps a source it cannot tell', () => {
+    const emerald = cells([['122', 3829], ['86', 2000]])
+    const everyRank = cells([['122', 19000], ['86', 9500]])
+    const goldAlone = cells([['122', 1200], ['86', 640]])
+    const elsewhere = cells([['14', 300]])
+    expect(sameGames([emerald, everyRank, goldAlone, elsewhere], answer => answer)).toEqual([emerald, elsewhere])
+    expect(sameGames([cells([]), emerald], answer => answer)).toEqual([cells([]), emerald])
+  })
+
+  it('pools the tier list rows only of sources keeping the bracket', () => {
+    const row = (games: number, winRate: number) => ({ championId: 103, position: 'MIDDLE', games, wins: Math.round(games * winRate), winRate, pickRate: 0.1, lanePlayRate: 0.9, banRate: 0, trueMainCount: 0, tier: 'A', tierScore: 10, patchVersion: '16.22', lastUpdatedAtUtc: '', topBuild: null })
+    const [ahri] = combineRows([[row(42339, 0.51)], [row(5 * 42339, 0.49)]])
+    expect(ahri).toMatchObject({ games: 42339, winRate: 0.51 })
+  })
+})
+
+describe('effectiveGames', () => {
+  it('is the games for a thin cell and caps at what the sources\' spread leaves for a large one', () => {
+    expect(effectiveGames(0.5, 100, 3)).toBeGreaterThan(99)
+    expect(effectiveGames(0.5, 260000, 1)).toBeCloseTo(0.25 / (0.25 / 260000 + SOURCE_SPREAD ** 2))
+    expect(effectiveGames(0.5, 260000, 3)).toBeGreaterThan(effectiveGames(0.5, 260000, 1))
+    expect(effectiveGames(1, 50, 1)).toBeGreaterThan(0)
   })
 })

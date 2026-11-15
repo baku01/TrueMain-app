@@ -261,10 +261,18 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   every read asks lolalytics, Mobalytics, Blitz and op.gg at once (an 8 s budget per source) and averages their
   answers, because they count the same ranked games (Ahri's mid lane on 16.22, Emerald+: 262,160 / 263,049 / 244,970 /
   240,148 games) — never adds them. Each rate (win, pick, ban, an option's share, a matchup) is the mean weighed by
-  w = 1/(0.25/n + τ²), τ = one point of win rate for the sources' processing spread (Briar against Viego: 52.5 % and
-  50.4 % over the same ~3,800 games) — near-equal for large samples, a thin one counting little (multiple-frame
+  w = 1/(0.25/n + τ²), τ = 0.3 points of win rate for the sources' processing spread (fitted over 20 lanes' matchups,
+  every pair of sources: Δ² = φ·(v₁ + v₂) + 2τ², φ ≈ 0.07 — the same games — and τ 0.2–0.4 pt) — near-equal for
+  large samples, a thin one counting little (multiple-frame
   estimator for units every frame holds: the frames' mean, Mecatti 2007; BLUE with a source bias, Lyons 1988). The games
-  shown are the largest source's (the nested samples' effective size, a lower bound on distinct games). An option a
+  shown are the largest source's (the nested samples' effective size, a lower bound on distinct games); a matchup's
+  Wilson interval reads the games it is as sure as, n* = p(1−p)/(p(1−p)/n + τ²/k) (`effectiveGames`). lolalytics'
+  bracket win rates sit above everyone's — its Emerald+ list is won 51.74 %, Master+ 52.40 %, op.gg's 50.02 % (it counts
+  the bracket's players as they rank now, climbers' wins included): `bracketLift` takes that off its options, rows,
+  matchups, trend, counters and synergies (Ahri 53.02 % → 51.28 %; Mobalytics 51.30, Blitz 51.33), its analytics page
+  keeping its own scale. A source whose games, cell by cell, sit outside 0.6–1/0.6 of the first source's counted
+  another population — a bracket it does not keep (Mobalytics' and Blitz's Gold for Gold+, 0.31; op.gg's lists, no
+  bracket) — and is left out (`sameGames`). An option a
   source left out is below its threshold there, not 0; cores are compared without their boots (lolalytics' hold them,
   Mobalytics' do not), a source's own cores that then read alike added up (other games). Blitz's lane builds count every
   rank (309,020 games for Ahri against ~264,000 Emerald+) and are not averaged in: they stay its own rows (playstyles,

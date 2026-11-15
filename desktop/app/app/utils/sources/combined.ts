@@ -25,10 +25,54 @@ import { isQuestReward } from '~/utils/support-quest'
  * Tencent, China's servers, is another population — another meta — and is
  * never averaged in (`utils/sources/index.ts` keeps it apart). Counts may be
  * added only across populations proven disjoint, which these are not.
+ *
+ * Measured, 20 lanes' matchups on 16.22, Emerald+, every pair of sources over
+ * the cells both count: the squared gap between their win rates, fitted
+ * against the two samples' variances (Δ² = φ·(v₁ + v₂) + 2τ²), is flat — φ
+ * 0.07 for lolalytics and Mobalytics over 841 cells, the two counting
+ * 1.003 times each other's games: the same games, their chance shared, not
+ * two samples (that would be φ = 1) — and τ, what is left once
+ * lolalytics' bracket lift is taken off (`bracketLift`), is 0.2 to 0.4 points
+ * for every pair.
  */
 
-/** How far two sources' processing of the same games can part, beyond chance: a point of win rate. */
-export const SOURCE_SPREAD = 0.01
+/** How far two sources' processing of the same games parts, beyond chance: 0.3 points of win rate (measured above). */
+export const SOURCE_SPREAD = 0.003
+
+/**
+ * How far a source's games may sit from the first source's, cell by cell, and
+ * still be the same games: op.gg's matchups count seven tenths of
+ * lolalytics' (0.66 to 0.73 of them) and Blitz's 1.03 (0.99 to 1.11), their
+ * win rates within 0.4 points. A bracket a source does not keep, read as
+ * another, is outside: on lolalytics, Platinum+ is 0.47 of every rank's
+ * games, Gold alone 0.32 of Gold+'s, Master+ 13.7 times Grandmaster+'s, and
+ * op.gg's lists, which keep no bracket, are five times Master+'s.
+ */
+const SAME_GAMES = [0.6, 1 / 0.6] as const
+
+/**
+ * The answers that count the games the first one does — the first that
+ * counts any, the order given, most complete first: an answer is kept when
+ * the median, over the cells both count, of its games over the first's is
+ * inside `SAME_GAMES`, or when they share no cell to tell. Another bracket,
+ * another patch or another queue is another population (Mecatti 2007's
+ * frames must cover the same one): averaged in, its rates would pull every
+ * figure toward its own.
+ */
+export function sameGames<T>(answers: T[], cells: (answer: T) => Map<string, number>): T[] {
+  const counted = answers.map(answer => ({ answer, cells: cells(answer) }))
+  const first = counted.find(entry => [...entry.cells.values()].some(games => games > 0))
+  if (!first) return answers
+  return counted.filter((entry) => {
+    if (entry === first) return true
+    const ratios = [...entry.cells].flatMap(([key, games]) => {
+      const base = first.cells.get(key)
+      return base && games > 0 ? [games / base] : []
+    }).sort((a, b) => a - b)
+    const median = ratios[Math.floor(ratios.length / 2)]
+    return median === undefined || (median >= SAME_GAMES[0] && median <= SAME_GAMES[1])
+  }).map(entry => entry.answer)
+}
 
 /** A source's weight for a rate measured on `games` games: the inverse of its variance with the sources' spread added. */
 export function weightOf(games: number): number {
@@ -97,7 +141,8 @@ function coresOf(options: BuildOptions): ItemOption[] {
 
 /** The sources' options on one lane as one (`poolLists`, list by list); null when none answered. */
 export function combineOptions(...answers: (BuildOptions | null)[]): BuildOptions | null {
-  const present = answers.filter((options): options is BuildOptions => !!options && (options.games > 0 || options.cores.length > 0 || options.boots.length > 0))
+  const answered = answers.filter((options): options is BuildOptions => !!options && (options.games > 0 || options.cores.length > 0 || options.boots.length > 0))
+  const present = sameGames(answered, options => new Map([['lane', options.games]]))
   if (!present.length) return answers.find(options => !!options) ?? null
   if (present.length === 1) return present[0]!
   const pool = <T extends Measure>(pick: (options: BuildOptions) => T[] | undefined, key: (option: T) => string) => poolLists(present.map(options => pick(options) ?? []), key)
@@ -134,13 +179,26 @@ export function combineOptions(...answers: (BuildOptions | null)[]): BuildOption
 }
 
 /**
+ * The games a pooled win rate is as sure as: the largest source's, less what
+ * the sources' processing adds — the variance p(1−p)/n + τ²/k of a mean of
+ * k sources over the same n games (`SOURCE_SPREAD`), as the games a single
+ * count that sure would take (the effective sample, n* = p(1−p) / variance).
+ */
+export function effectiveGames(winRate: number, games: number, sources: number): number {
+  const spread = SOURCE_SPREAD ** 2 / Math.max(sources, 1)
+  return games / (1 + games * spread / (winRate * (1 - winRate) || 0.25))
+}
+
+/**
  * The sources' matchups of one champion on one lane as one: each opponent's
  * figures pooled over the sources that met it, its games the largest
- * source's, the wins and the Wilson interval read from those.
+ * source's, its wins read from those, its Wilson interval from the games it
+ * is as sure as (`effectiveGames`).
  */
 export function combineMatchups(championId: number, position: string, answers: (ChampionMatchups | null)[]): ChampionMatchups {
+  const counted = sameGames(answers.filter((answer): answer is ChampionMatchups => !!answer), answer => new Map(answer.matchups.map(entry => [String(entry.opponentChampionId), entry.games])))
   const byOpponent = new Map<number, ChampionMatchupEntry[]>()
-  for (const entry of answers.flatMap(answer => answer?.matchups ?? [])) {
+  for (const entry of counted.flatMap(answer => answer.matchups)) {
     if (entry.games > 0) byOpponent.set(entry.opponentChampionId, [...(byOpponent.get(entry.opponentChampionId) ?? []), entry])
   }
   const matchups = [...byOpponent.values()].map((entries) => {
@@ -148,7 +206,8 @@ export function combineMatchups(championId: number, position: string, answers: (
     const gold = entries.filter(entry => entry.averageGoldDiffAt15 !== null)
     const goldDiff = mean(gold.map(entry => ({ value: entry.averageGoldDiffAt15!, games: entry.goldDiffLaneGames || entry.games })))
     const wins = Math.round(pooled.winRate * pooled.games)
-    const [low, high] = wilson(wins, pooled.games)
+    const sure = effectiveGames(pooled.winRate, pooled.games, entries.length)
+    const [low, high] = wilson(pooled.winRate * sure, sure)
     const { pickRate, ...entry } = pooled
     return {
       ...entry,
@@ -170,7 +229,7 @@ export function combineMatchups(championId: number, position: string, answers: (
  */
 export function combineRows(answers: ChampionSummaryResponse[][]): ChampionSummaryResponse[] {
   const byKey = new Map<string, ChampionSummaryResponse[]>()
-  for (const row of answers.flat()) {
+  for (const row of sameGames(answers, rows => new Map(rows.map(row => [`${row.championId}:${row.position}`, row.games]))).flat()) {
     const key = `${row.championId}:${row.position}`
     byKey.set(key, [...(byKey.get(key) ?? []), row])
   }
@@ -196,7 +255,7 @@ export function combineRows(answers: ChampionSummaryResponse[][]): ChampionSumma
 /** The sources' trends of one lane as one, patch by patch (`poolMeasure`'s rule). */
 export function combineTrends(championId: number, position: string, answers: ChampionTrendResponse[]): ChampionTrendResponse {
   const byPatch = new Map<string, ChampionTrendResponse['points']>()
-  for (const point of answers.flatMap(answer => answer.points)) byPatch.set(point.patch, [...(byPatch.get(point.patch) ?? []), point])
+  for (const point of sameGames(answers, answer => new Map(answer.points.map(point => [point.patch, point.games]))).flatMap(answer => answer.points)) byPatch.set(point.patch, [...(byPatch.get(point.patch) ?? []), point])
   const points = [...byPatch.entries()].map(([patch, points]) => {
     const counted = points.filter(point => point.games > 0)
     const measured = counted.length ? counted : points

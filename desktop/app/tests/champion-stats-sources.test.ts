@@ -38,6 +38,7 @@ vi.mock('~/utils/blitz/client', async importOriginal => ({
 }))
 vi.mock('~/utils/sources/lolalytics', () => ({
   lolalyticsLane: (position: string) => ({ TOP: 'top', BOTTOM: 'bottom', UTILITY: 'support' } as Record<string, string>)[position] ?? 'middle',
+  lowered: (winRate: number, lift: number) => winRate - lift,
   readLolalyticsBuild: vi.fn(async () => answer('lolalytics', { header: { patch: '16.22' }, enemy: { top: [[86, 52, 1.2, 2.5, 4, 900]] } }, { header: { patch: '16.22' }, enemy: {} })),
   readLolalyticsTeam: vi.fn(async () => answer('lolalytics', { team: { support: [[412, 54, 1, 1.5, 6, 800]] } }, { team: {} })),
   lolalyticsRows: vi.fn(async (query: Record<string, unknown>) => answer('lolalytics', [{ championId: 1, position: 'TOP', winRate: query.patch ? 0.49 : 0.5, patchVersion: '16.22' }], [])),

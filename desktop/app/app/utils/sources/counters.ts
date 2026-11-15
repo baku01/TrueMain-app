@@ -2,7 +2,7 @@ import type { DataSource } from '~/utils/data-source'
 import type { CounterRow } from '~/utils/counters'
 import { leadSource } from '~/utils/data-source'
 import { matchupsFromBlitz } from '~/utils/blitz/stats'
-import { lolalyticsLane, readLolalyticsBuild } from '~/utils/sources/lolalytics'
+import { lolalyticsLane, lowered, readLolalyticsBuild } from '~/utils/sources/lolalytics'
 import { readFirst, standInOrder } from '~/utils/sources/stand-in'
 
 /**
@@ -41,11 +41,12 @@ const READERS: Partial<Record<DataSource, (championId: number, position: string)
     const build = await readLolalyticsBuild(championId, position)
     return {
       patch: build?.header.patch ?? null,
-      // `[id, win rate, delta 1, delta 2, pick rate, games]`, the rates in percent, the deltas in points.
+      // `[id, win rate, delta 1, delta 2, pick rate, games]`, the rates in percent, the deltas in points; the win
+      // rate as the other sources count the same games (`bracketLift`).
       rows: (build?.enemy?.[lolalyticsLane(position)] ?? []).map(([id, wr, , delta2, , games]) => ({
         championId: id,
         games,
-        winRate: wr / 100,
+        winRate: lowered(wr / 100, build?.lift ?? 0),
         score: delta2 / 100,
         laneWinRate: null,
         laneScore: null,
