@@ -2,7 +2,7 @@ import type { ClockSync } from '~/composables/useGameClock'
 import type { DraftRecommendation } from '~/types/draft'
 import type { GameState } from '~/types/game'
 import type { AppState } from '~/types/lcu'
-import type { PlayerRecord } from '~/types/record'
+import type { PlayerGame, PlayerRecord } from '~/types/record'
 import type { RankHistoryEntry } from '#shared/types/rank-history'
 import type { NextItemResponse } from '~/utils/next-item'
 import { EMPTY_STATE } from '~/types/lcu'
@@ -29,7 +29,18 @@ export interface Scenario {
    * the rest: its figures are not measurements.
    */
   nextItem?: NextItemResponse
+  /**
+   * How many games older than the record's the client's history would page
+   * back through. Made up from the record's own games, seeded by the
+   * scenario's id (`fixtures/synthetic-history`), so the history can be
+   * paged and the nerd statistics have a sample to read: their figures are
+   * not measurements.
+   */
+  olderGames?: number
 }
+
+/** Each scenario's made-up older history, built the first time it is paged into. */
+const synthetic = new Map<string, PlayerGame[]>()
 
 /**
  * Stand-ins for states the client would push, for `npm run dev` in a browser.
@@ -92,5 +103,24 @@ export function useDevScenarios() {
     }
   }
 
-  return { scenarios, current, recommendation, record, rankHistory, nextItem, load, select }
+  /**
+   * The page of older games the client would answer `player_history` with at
+   * `begin` (the record is the first page), after a moment's wait as a real
+   * read takes; none when the scenario has no older history.
+   */
+  async function olderPage(begin: number, size: number): Promise<PlayerGame[]> {
+    const found = scenarios.value.find(scenario => scenario.id === current.value)
+    if (!found?.olderGames || !found.record) return []
+    let games = synthetic.get(found.id)
+    if (!games) {
+      const { syntheticHistory } = await import('~/fixtures/synthetic-history')
+      games = syntheticHistory(found.record.games, found.olderGames, found.id)
+      synthetic.set(found.id, games)
+    }
+    await new Promise(resolve => setTimeout(resolve, 350))
+    const offset = begin - found.record.games.length
+    return offset < 0 ? [] : JSON.parse(JSON.stringify(games.slice(offset, offset + size)))
+  }
+
+  return { scenarios, current, recommendation, record, rankHistory, nextItem, load, select, olderPage }
 }

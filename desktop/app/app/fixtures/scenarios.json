@@ -15,6 +15,7 @@
   {
     "id": "lobby",
     "label": "Lobby",
+    "olderGames": 180,
     "state": {
       "connected": true,
       "phase": "Lobby",
