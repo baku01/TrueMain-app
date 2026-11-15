@@ -31,7 +31,7 @@ const PAGES: [string, string, string | null][] = [
   ['/kits', 'i-tabler-backpack', 'nav.group.builds'], ['/items', 'i-tabler-flask', 'nav.group.builds'],
   ['/patchnotes', 'i-tabler-news', 'nav.group.builds'], ['/draft', 'i-tabler-users-group', 'nav.inGame'],
   ['/game', 'i-tabler-crosshair', 'nav.inGame'], ['/overlay', 'i-tabler-eye', 'nav.inGame'],
-  ['/favorites', 'i-tabler-star', null], ['/settings', 'i-tabler-settings', null],
+  ['/favorites', 'i-tabler-star', null], ['/settings', 'i-tabler-settings', null], ['/nerd-stats', 'i-tabler-math-function', null],
 ]
 const page = computed(() => PAGES.find(([path]) => route.path.startsWith(path)) ?? (route.path === '/' ? ['/', 'i-tabler-home', null] : null))
 const section = computed(() => (page.value?.[2] ? t(page.value[2]) : null))
