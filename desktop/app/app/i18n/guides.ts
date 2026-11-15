@@ -67,11 +67,6 @@ export default {
     'guides.allLevels': 'All',
     'guides.chapters': 'Champion build guide',
     'guides.guideError': 'This guide could not be read.',
-    'guides.translated': 'Translated automatically (Google)',
-    'guides.translating': 'Translating…',
-    'guides.original': 'As the author wrote it',
-    'guides.showOriginal': 'Show original',
-    'guides.showTranslation': 'Show translation',
     'guides.watchVideo': 'Watch on YouTube',
   },
   'pt-BR': {
@@ -139,11 +134,6 @@ export default {
     'guides.allLevels': 'Todas',
     'guides.chapters': 'Guia de build do campeão',
     'guides.guideError': 'Não foi possível ler este guia.',
-    'guides.translated': 'Traduzido automaticamente (Google)',
-    'guides.translating': 'Traduzindo…',
-    'guides.original': 'Como o autor escreveu',
-    'guides.showOriginal': 'Ver original',
-    'guides.showTranslation': 'Ver tradução',
     'guides.watchVideo': 'Assistir no YouTube',
   },
 } satisfies MessageDictionary

@@ -14,7 +14,7 @@ const { t } = useT()
 const route = useRoute()
 const checking = useMobafireCheck()
 const slug = computed(() => String(route.params.slug ?? ''))
-const { guide, status, translating, translatable, reload } = useGuide(slug)
+const { guide, status, reload } = useGuide(slug)
 const entities = useGuideIndex()
 const { nameOf } = useChampionStatics()
 /** The guide's champion in the app's data: its abilities, and its name in the player's language. */
@@ -43,7 +43,6 @@ const championList = computed(() => {
     <div class="flex shrink-0 items-center gap-2">
       <UButton to="/guides" icon="i-lucide-arrow-left" :label="t('guides.back')" color="neutral" variant="ghost" size="sm" />
       <UButton v-if="championList && guide" :to="championList" icon="i-lucide-list" :label="t('guides.moreFor', { champion: championName ?? '' })" color="neutral" variant="ghost" size="sm" />
-      <GuidesTranslationToggle v-if="translatable && guide" class="ml-auto" :translating="translating" />
     </div>
 
     <p v-if="checking" class="flex shrink-0 items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-default">

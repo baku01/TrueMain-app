@@ -1,10 +1,14 @@
 import type { ShallowRef } from 'vue'
 import type { Guide, GuideChampion, GuideFilters, GuideList } from '~/utils/mobafire'
-import { getActiveLocale } from '#common/utils/i18n'
+import { ddragonLocale, getActiveLocale } from '#common/utils/i18n'
 import { guidePath, isBlockedPage, listPath, parseGuide, parseGuideList } from '~/utils/mobafire'
 import type { GuideIndex } from '~/utils/guide-entities'
-import { guideIndex } from '~/utils/guide-entities'
-import { translateGuide, translateList } from '~/utils/guide-translate'
+import { guideIndex, localRuneNames, nameKey } from '~/utils/guide-entities'
+import type { TermProtection } from '~/utils/guide-translate'
+import { NO_PROTECTION, translateGuide, translateList } from '~/utils/guide-translate'
+import type { LexiconAbility, LexiconEntry } from '~/utils/guide-terms'
+import { guideLexicon } from '~/utils/guide-terms'
+import { englishChampion } from '~/utils/guide-art'
 import { translationTarget } from '~/utils/translate'
 
 /** How long a read page is kept: a list moves with every guide updated, a guide only when its author edits it. */
@@ -67,22 +71,94 @@ export function useMobafireCheck() {
 
 /**
  * What people wrote on MOBAFire, in the app's language (`utils/guide-translate`):
- * whether it shows translated — the player can read the original instead,
- * for every page at once — and whether a translation is on its way.
+ * the language the service is asked for, null when the app's is English and
+ * the guides show as written.
  */
 export function useGuideTranslation() {
-  const original = useState('mobafire-original', () => false)
   const target = computed(() => translationTarget(getActiveLocale()))
-  return { original, target }
+  return { target }
+}
+
+/** How long a translation waits for the app's data before it goes with what has come. */
+const DATA_WAIT_MS = 8000
+
+/** `read`'s value once it has one, or null after `ms`. */
+function settled<T>(read: () => T | null | undefined | false, ms: number): Promise<T | null> {
+  const now = read()
+  if (now) return Promise.resolve(now)
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      stop()
+      resolve(null)
+    }, ms)
+    const stop = watch(read, (value) => {
+      if (!value) return
+      clearTimeout(timer)
+      stop()
+      resolve(value)
+    })
+  })
+}
+
+/**
+ * What a translation keeps from the translator (`utils/guide-terms`): the
+ * game's words the index knows in English and the guide champion's
+ * abilities, with each thing's name in the player's language from the app's
+ * own data — its items, summoner spells and champions, Data Dragon's rune
+ * names, the champion's file. It waits a while for that data (a guide is
+ * read in about as long); whatever has not come by then keeps its English
+ * name, and without the index the translation protects the ability keys alone.
+ */
+function useTermProtection(lite = false) {
+  const { patch, aliasOf, champions } = useChampionStatics()
+  // The list's titles name champions and little else: its translation leaves the
+  // app's items and spells unread, rather than read them for a list.
+  const data = lite ? null : useStaticData()
+  return async (championName: string | null): Promise<TermProtection> => {
+    try {
+      const version = await settled(() => patch.value, DATA_WAIT_MS)
+      if (!version) return NO_PROTECTION
+      const index = await guideIndex(version)
+      const championId = championName ? index.champions.get(nameKey(championName)) ?? null : null
+      const alias = championId ? aliasOf(championId) : null
+      const [english, runes] = await Promise.all([
+        alias ? englishChampion(version, alias).catch(() => null) : null,
+        localRuneNames(version, ddragonLocale(getActiveLocale())).catch(() => new Map<number, string>()),
+        championId ? data?.loadChampion(championId) : null,
+        data ? settled(() => !data.pending.value, DATA_WAIT_MS) : null,
+      ])
+      const abilities: LexiconAbility[] = english
+        ? [...(english.passive ? [{ name: english.passive.name, key: 'P' }] : []), ...english.spells.slice(0, 4).map((spell, at) => ({ name: spell.name, key: 'QWER'[at]! }))]
+        : []
+      const local = (entry: LexiconEntry): string | null => {
+        const id = entry.id ?? -1
+        switch (entry.kind) {
+          case 'item': return data?.items.value[id]?.name ?? null
+          case 'spell': return data?.summoners.value[id]?.name ?? null
+          case 'rune':
+          case 'style': return runes.get(id) ?? null
+          case 'champion': return champions.value.get(id)?.name ?? null
+          case 'ability': return championId && entry.key ? data?.championStatic(championId)?.championSpells[entry.key]?.name ?? null : null
+          default: return null
+        }
+      }
+      return { lexicon: guideLexicon(index.terms ?? [], abilities), local }
+    }
+    catch {
+      return NO_PROTECTION
+    }
+  }
 }
 
 /**
  * A page's content as read, then — when the app's language is not English —
  * as translated: the original shows at once, the translation replaces it as
- * it comes, and a failed translation leaves the original.
+ * it comes, and a failed translation leaves the original. There is no going
+ * back to the original: a player who reads the app in their language reads
+ * the guides in it too.
  */
 function useTranslated<T>(translate: (value: T, target: string) => Promise<T>) {
-  const { original, target } = useGuideTranslation()
+  const { target } = useGuideTranslation()
   const read: ShallowRef<T | null> = shallowRef(null)
   const translated: ShallowRef<T | null> = shallowRef(null)
   const translating = ref(false)
@@ -92,7 +168,10 @@ function useTranslated<T>(translate: (value: T, target: string) => Promise<T>) {
     const value = read.value
     const language = target.value
     translated.value = null
-    if (!value || !language) return
+    if (!value || !language) {
+      translating.value = false
+      return
+    }
     translating.value = true
     try {
       const answer = await translate(value, language)
@@ -105,13 +184,14 @@ function useTranslated<T>(translate: (value: T, target: string) => Promise<T>) {
       if (turn === latest) translating.value = false
     }
   })
-  const shown = computed<T | null>(() => (original.value ? read.value : translated.value ?? read.value))
-  return { read, shown, translating: computed(() => translating.value && !original.value), translatable: computed(() => !!target.value) }
+  const shown = computed<T | null>(() => translated.value ?? read.value)
+  return { read, shown, translating: computed(() => translating.value) }
 }
 
 /** The guide list for `filters`, read again as they change; the site's champions kept from the first list read. */
 export function useGuideList(filters: Ref<GuideFilters>) {
-  const { read: list, shown, translating, translatable } = useTranslated<GuideList>(translateList)
+  const protection = useTermProtection(true)
+  const { read: list, shown, translating } = useTranslated<GuideList>(async (value, target) => translateList(value, target, await protection(null)))
   const status = ref<Status>('idle')
   const champions = useState<GuideChampion[]>('mobafire-champions', () => [])
   let latest = 0
@@ -132,12 +212,13 @@ export function useGuideList(filters: Ref<GuideFilters>) {
   }
 
   watch(() => listPath(filters.value), () => load(), { immediate: true })
-  return { list: shown, status, champions, translating, translatable, reload: () => load(true) }
+  return { list: shown, status, champions, translating, reload: () => load(true) }
 }
 
 /** One guide, by its slug; null for a slug that is no guide's. */
 export function useGuide(slug: Ref<string>) {
-  const { read: guide, shown, translating, translatable } = useTranslated<Guide>(translateGuide)
+  const protection = useTermProtection()
+  const { read: guide, shown, translating } = useTranslated<Guide>(async (value, target) => translateGuide(value, target, await protection(value.champion)))
   const status = ref<Status>('idle')
   let latest = 0
 
@@ -162,7 +243,7 @@ export function useGuide(slug: Ref<string>) {
   }
 
   watch(slug, () => load(), { immediate: true })
-  return { guide: shown, status, translating, translatable, reload: () => load(true) }
+  return { guide: shown, status, translating, reload: () => load(true) }
 }
 
 /** The game's ids for what guides name in English (`utils/guide-entities`), for the patch the app reads; null until read. */

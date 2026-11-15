@@ -1,4 +1,6 @@
 import type { Guide, GuideList } from '~/utils/mobafire'
+import type { GuideLexicon, LexiconEntry } from '~/utils/guide-terms'
+import { htmlToText, NO_LEXICON, protectTerms, restoreTerms, textToHtml } from '~/utils/guide-terms'
 import { sanitizeGuideHtml } from '~/utils/mobafire'
 import { translateTexts } from '~/utils/translate'
 
@@ -28,15 +30,43 @@ export function htmlPieces(html: string, limit = PIECE_CHARS): string[] {
   return pieces
 }
 
+/** How a translation keeps the game's words: what to protect, and each thing's name in the player's language. */
+export interface TermProtection {
+  lexicon: GuideLexicon
+  local: (entry: LexiconEntry) => string | null
+}
+
+/** No protection beyond the ability keys and abbreviations, every name left in English: before the app's data is read. */
+export const NO_PROTECTION: TermProtection = { lexicon: NO_LEXICON, local: () => null }
+
+/**
+ * `texts` — HTML, or plain texts when `plain` — in `target`, each protected
+ * word kept out of the translator's hands and put back after
+ * (`utils/guide-terms`). Plain texts go as HTML too, so their words can be
+ * marked: escaped on the way, read back as text after.
+ */
+async function translateProtected(texts: string[], target: string, protection: TermProtection, plain: boolean): Promise<string[]> {
+  const sent = texts.map(text => (text.trim() ? protectTerms(plain ? textToHtml(text) : text, protection.lexicon) : null))
+  const answers = await translateTexts(sent.map(piece => piece?.html ?? ''), target, true)
+  return texts.map((text, index) => {
+    const piece = sent[index]
+    if (!piece) return text
+    const restored = restoreTerms(answers[index] ?? piece.html, piece.kept, protection.local)
+    return plain ? htmlToText(restored) : restored
+  })
+}
+
 /**
  * Every word of a guide its author wrote, in `target`: the title, each
  * build's titles and notes, the matchups' notes, the chapters' titles and
  * writing — the last translated as HTML and sanitized again, as anything
  * shown with `v-html` is. What the game names (items, runes, spells,
  * abilities, champions) is not here: the app draws those from its own data,
- * already in the player's language.
+ * already in the player's language; and where the author names them in their
+ * writing, `protection` keeps the names from the translator and gives the
+ * player's own (`utils/guide-terms`).
  */
-export async function translateGuide(guide: Guide, target: string): Promise<Guide> {
+export async function translateGuide(guide: Guide, target: string, protection: TermProtection = NO_PROTECTION): Promise<Guide> {
   const texts: string[] = [guide.title]
   for (const build of guide.builds) {
     for (const page of build.runes) texts.push(page.title, page.notes ?? '')
@@ -48,7 +78,10 @@ export async function translateGuide(guide: Guide, target: string): Promise<Guid
   for (const chapter of guide.chapters) texts.push(chapter.title)
   const pieces = guide.chapters.map(chapter => htmlPieces(chapter.html))
 
-  const [plain, html] = await Promise.all([translateTexts(texts, target), translateTexts(pieces.flat(), target, true)])
+  const [plain, html] = await Promise.all([
+    translateProtected(texts, target, protection, true),
+    translateProtected(pieces.flat(), target, protection, false),
+  ])
   let at = 0
   const next = () => plain[at++] ?? ''
   const orNull = (value: string) => value || null
@@ -71,14 +104,14 @@ export async function translateGuide(guide: Guide, target: string): Promise<Guid
 }
 
 /** The list's words in `target`: the guides' titles and tags, the dividers, the trending guides' titles. */
-export async function translateList(list: GuideList, target: string): Promise<GuideList> {
+export async function translateList(list: GuideList, target: string, protection: TermProtection = NO_PROTECTION): Promise<GuideList> {
   const guides = list.sections.flatMap(section => section.guides)
   const texts = [
     ...list.sections.map(section => section.label ?? ''),
     ...guides.flatMap(guide => [guide.title, ...guide.tags]),
     ...list.trending.map(guide => guide.title),
   ]
-  const translated = await translateTexts(texts, target)
+  const translated = await translateProtected(texts, target, protection, true)
   let at = 0
   const next = () => translated[at++] ?? ''
   const labels = list.sections.map(() => next())

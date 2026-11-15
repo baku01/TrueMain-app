@@ -487,8 +487,14 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's `en_US` ids) — icons, tooltips and names
   in the player's language, a rune page as every one in the app, ready to import; the rest of the words, the author's,
   are machine-translated into the app's language by Google Translate's public endpoint (`utils/translate.ts`,
-  `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), with a switch to
-  the original. The site has no API and sits
+  `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), always and
+  without a word on screen about it — the app's language is the switch —, the page shown as written until each part's
+  translation comes. The game's words never go to the translator as words (`utils/guide-terms.ts`): every item, rune,
+  tree, spell and champion name and the champion's abilities are kept in `notranslate` marks and given back under the
+  app's names in the player's language, the ability keys (`W1`, `E-Q`) and the players' jargon (build, gank, trade,
+  lane…) as written, a run of capitals sent in small letters and given back shouting; each of the author's inline
+  references to the game in their writing (`span.guide-ref`, `GuidesRef`) is never sent at all, and is drawn as the app
+  draws the thing. The site has no API and sits
   behind Cloudflare, which refuses any plain HTTP client: the shell keeps a hidden window of its own on mobafire.com
   (the system's webview), resting on its `robots.txt` (nothing to run), and has it `fetch` each page from the site's
   origin, stripped of scripts, styles and drawings before it crosses (`eval_with_callback`; ~0.4 s, a guide ~260 KB);

@@ -43,7 +43,7 @@ function set(change: Partial<GuideFilters>) {
   void router.replace({ query })
 }
 
-const { list, status, champions, translating, translatable, reload } = useGuideList(filters)
+const { list, status, champions, reload } = useGuideList(filters)
 
 const championItems = computed(() => champions.value.map(champion => ({
   label: champion.name,
@@ -64,7 +64,6 @@ const empty = computed(() => status.value === 'ready' && !!list.value && list.va
   <div class="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-6 *:shrink-0">
     <PageHeader class="shrink-0" :title="t('guides.title')" :description="t('guides.description')">
       <template #actions>
-        <GuidesTranslationToggle v-if="translatable && list" :translating="translating" />
         <UBadge :label="t('guides.source')" color="neutral" variant="subtle" size="sm" />
         <UButton icon="i-lucide-refresh-cw" color="neutral" variant="ghost" size="sm" :loading="status === 'loading'" :aria-label="t('guides.retry')" @click="reload()" />
       </template>

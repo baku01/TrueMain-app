@@ -16,6 +16,20 @@ export interface GuideIndex {
   runes: Map<string, number>
   styles: Map<string, number>
   champions: Map<string, number>
+  /**
+   * Each of those by its English display name, as an author writes it: what
+   * the translation keeps out of the translator's hands and then gives in the
+   * player's language (`utils/guide-terms`). The Rift's own items and summoner
+   * spells only, so another mode's odd names never stand in for words.
+   */
+  terms?: GuideTerm[]
+}
+
+/** One thing of the game by the name a guide writes it in. */
+export interface GuideTerm {
+  name: string
+  kind: 'item' | 'spell' | 'rune' | 'style' | 'champion'
+  id: number
 }
 
 /** A name as the index keys it: lowercase letters and digits only (`Kha'Zix` → `khazix`, `Legend: Haste` → `legendhaste`). */
@@ -58,31 +72,42 @@ const onTheRift = (spell: SummonerFile['data'][string]) => !spell.modes || spell
  * old art a guide drew when the last of a name won.
  */
 export function buildGuideIndex(items: ItemFile, summoners: SummonerFile, runes: RuneFile, champions: ChampionFile): GuideIndex {
-  const index: GuideIndex = { items: new Map(), spells: new Map(), runes: new Map(), styles: new Map(), champions: new Map() }
+  const index: GuideIndex = { items: new Map(), spells: new Map(), runes: new Map(), styles: new Map(), champions: new Map(), terms: [] }
+  const term = (name: string, kind: GuideTerm['kind'], id: number) => index.terms!.push({ name, kind, id })
   // Summoner's Rift's purchasable item first: a name can be another map's or mode's item too.
   const itemRows = Object.entries(items.data)
     .map(([id, item]) => ({ id: Number(id), name: item.name, rift: !!item.maps?.['11'] && item.gold?.purchasable !== false }))
     .sort((a, b) => Number(b.rift) - Number(a.rift) || a.id - b.id)
   for (const item of itemRows) {
-    if (!index.items.has(nameKey(item.name))) index.items.set(nameKey(item.name), item.id)
+    if (index.items.has(nameKey(item.name))) continue
+    index.items.set(nameKey(item.name), item.id)
+    if (item.rift) term(item.name, 'item', item.id)
   }
   const spellRows = Object.values(summoners.data)
     .map(spell => ({ id: Number(spell.key), name: spell.name, rift: onTheRift(spell) }))
     .sort((a, b) => Number(b.rift) - Number(a.rift) || a.id - b.id)
   for (const spell of spellRows) {
-    if (!index.spells.has(nameKey(spell.name))) index.spells.set(nameKey(spell.name), spell.id)
+    if (index.spells.has(nameKey(spell.name))) continue
+    index.spells.set(nameKey(spell.name), spell.id)
+    if (spell.rift) term(spell.name, 'spell', spell.id)
   }
   for (const style of runes) {
     index.styles.set(nameKey(style.name), style.id)
+    term(style.name, 'style', style.id)
     for (const slot of style.slots) {
-      for (const rune of slot.runes) index.runes.set(nameKey(rune.name), rune.id)
+      for (const rune of slot.runes) {
+        index.runes.set(nameKey(rune.name), rune.id)
+        term(rune.name, 'rune', rune.id)
+      }
     }
   }
   for (const [word, id] of Object.entries(SHARDS)) index.runes.set(word, id)
   // The live champions only: a mode's kit of a champion (`Jade_Ahri`, 60103) shares its name.
   for (const champion of Object.values(champions.data)) {
     const id = Number(champion.key)
-    if (isLiveChampionId(id)) index.champions.set(nameKey(champion.name), id)
+    if (!isLiveChampionId(id)) continue
+    index.champions.set(nameKey(champion.name), id)
+    term(champion.name, 'champion', id)
   }
   return index
 }
@@ -103,6 +128,34 @@ export function guideIndex(patch: string): Promise<GuideIndex> {
     })()
     indexes.set(patch, read)
     read.catch(() => indexes.delete(patch))
+  }
+  return read
+}
+
+const runeNames = new Map<string, Promise<Map<number, string>>>()
+
+/**
+ * The runes' and rune trees' names in `locale` (Data Dragon's), by id: what a
+ * translated guide calls them. Data Dragon's small rune file rather than the
+ * app's rune tree, which comes from Community Dragon and can take a long while
+ * — a translation waits for its names. Read once per patch and language.
+ */
+export function localRuneNames(patch: string, locale: string): Promise<Map<number, string>> {
+  const key = `${patch}:${locale}`
+  let read = runeNames.get(key)
+  if (!read) {
+    read = $fetch<RuneFile>(`${DDRAGON}/${patch}/data/${locale}/runesReforged.json`).then((styles) => {
+      const names = new Map<number, string>()
+      for (const style of styles) {
+        names.set(style.id, style.name)
+        for (const slot of style.slots) {
+          for (const rune of slot.runes) names.set(rune.id, rune.name)
+        }
+      }
+      return names
+    })
+    runeNames.set(key, read)
+    read.catch(() => runeNames.delete(key))
   }
   return read
 }
