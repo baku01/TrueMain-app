@@ -12,10 +12,12 @@ const HISTORY_PAGE = 20
 const HISTORY_CEILING = 100
 
 /**
- * How far back a page that reads the whole history may page (the nerd
- * statistics): past the match history's ceiling, as far as the client goes.
+ * How far back a page that reads the whole history may go (the nerd
+ * statistics): past the match history's ceiling, as far as the client goes —
+ * about twenty games, after which `useDeepHistory` reads on from Blitz and
+ * from what this machine saved — up to this many games in all.
  */
-export const HISTORY_DEEP_CEILING = 200
+export const HISTORY_DEEP_CEILING = 300
 
 /**
  * The logged-in player's own record — standing, profile background, latest

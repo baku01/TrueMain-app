@@ -13,9 +13,10 @@ import { HISTORY_DEEP_CEILING } from '~/composables/usePlayerRecord'
  * metrics move together, and every game in a sortable table — each method
  * named and explained in a tab of its own.
  *
- * The games are the client's (`usePlayerRecord`): the page reads the history
- * back page by page as far as the client keeps it (`HISTORY_DEEP_CEILING`),
- * recomputing as each page lands. Summoner's Rift is the default sample —
+ * The games are the client's (`usePlayerRecord`) and, past the twenty or so
+ * it keeps, the player's games on Blitz and those this machine saved before
+ * (`useDeepHistory`), up to `HISTORY_DEEP_CEILING` — recomputing as each
+ * step lands. Summoner's Rift is the default sample —
  * ARAM's and Arena's numbers mean other things — and every figure says how
  * many games it rests on.
  */
@@ -24,23 +25,17 @@ const { state } = useLcuState()
 const route = useRoute()
 const router = useRouter()
 const own = usePlayerRecord()
+// The history read back to its end while the page is open: the client's pages, then Blitz, with what this machine saved.
+const deep = useDeepHistory()
 const { items } = useStaticData()
 
 onMounted(() => own.refresh())
 watch(() => state.value.riotId, () => own.refresh())
 
-// The history read back to its end, a page at a time, while the page is open.
-const paused = ref(false)
-watch([() => own.status.value, () => own.games.value.length, () => own.loadingOlder.value, paused], () => {
-  if (own.status.value === 'ready' && !own.loadingOlder.value && !paused.value && own.canReadOlder(HISTORY_DEEP_CEILING))
-    void own.loadOlder(HISTORY_DEEP_CEILING)
-}, { immediate: true })
-const reading = computed(() => own.loadingOlder.value || (!paused.value && own.status.value === 'ready' && own.canReadOlder(HISTORY_DEEP_CEILING)))
-
 const filter = ref<NerdQueueFilter>('rift')
 const filters = computed(() => (['rift', 'ranked', 'solo', 'flex', 'normal', 'aram', 'all'] as const).map(value => ({ value, label: t(`nerd.queue.${value}`) })))
 
-const allRows = computed(() => gameRows(own.games.value, own.rankHistory.value))
+const allRows = computed(() => gameRows(deep.games.value, own.rankHistory.value))
 const rows = computed(() => filterRows(allRows.value, filter.value))
 const report = computed(() => (rows.value.length >= MIN_GAMES ? analyse(rows.value, id => items.value[id]?.totalGold) : null))
 
@@ -76,7 +71,7 @@ const tab = computed<Tab>({
         class="py-20"
       />
 
-      <div v-else-if="own.status.value === 'pending' && !own.games.value.length" class="space-y-4" aria-busy="true">
+      <div v-else-if="own.status.value === 'pending' && !deep.games.value.length" class="space-y-4" aria-busy="true">
         <USkeleton class="h-56 w-full rounded-lg" />
         <div class="grid grid-cols-3 gap-4">
           <USkeleton v-for="index in 3" :key="index" class="h-64 rounded-lg" />
@@ -96,11 +91,15 @@ const tab = computed<Tab>({
         <NerdHero
           :report="report"
           :rows="rows"
-          :total="own.games.value.length"
+          :total="deep.games.value.length"
           :ceiling="HISTORY_DEEP_CEILING"
-          :reading="reading"
-          :paused="paused"
-          @toggle-reading="paused = !paused"
+          :reading="deep.reading.value"
+          :paused="deep.paused.value"
+          :sources="deep.sources.value"
+          :phase="deep.phase.value"
+          :queued="deep.queued.value"
+          :blitz-missing="deep.blitzMissing.value"
+          @toggle-reading="deep.toggle()"
         />
 
         <EmptyState

@@ -15,7 +15,8 @@
   {
     "id": "lobby",
     "label": "Lobby",
-    "olderGames": 180,
+    "blitzGames": 100,
+    "savedGames": 120,
     "state": {
       "connected": true,
       "phase": "Lobby",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NerdReport, MetricAssociation } from '~/utils/nerd-stats/analysis'
 import type { GameRow } from '~/utils/nerd-stats/features'
+import type { GameSource } from '~/utils/deep-history'
 
 /**
  * The page's headline: the win rate with its 95% interval drawn on a 0–100%
@@ -19,6 +20,12 @@ const props = defineProps<{
   ceiling: number
   reading: boolean
   paused: boolean
+  /** How many of the games each source gave (`useDeepHistory`). */
+  sources: Record<GameSource, number>
+  phase: 'idle' | 'client' | 'blitz' | 'done'
+  /** Blitz match ids still to read. */
+  queued: number
+  blitzMissing: boolean
 }>()
 defineEmits<{ toggleReading: [] }>()
 
@@ -41,6 +48,10 @@ const factorLine = (entry: MetricAssociation) => t('nerd.hero.factorMeans', {
   win: f.metric(entry.definition, entry.effect!.meanA),
   loss: f.metric(entry.definition, entry.effect!.meanB),
 })
+
+/** The sources that gave any game, in reading order. */
+const sourceParts = computed(() => (['client', 'blitz', 'saved'] as const).filter(source => props.sources[source] > 0).map(source => ({ source, count: props.sources[source] })))
+const SOURCE_ICONS: Record<GameSource, string> = { client: 'i-tabler-device-desktop', blitz: 'i-tabler-cloud-download', saved: 'i-tabler-database' }
 
 const lp = computed(() => props.report?.lp ?? null)
 const streak = computed(() => props.report?.sequence.streaks ?? null)
@@ -181,14 +192,23 @@ function showGame(event: MouseEvent | FocusEvent, row: GameRow) {
       <NerdTip :tip="ribbonTip.tip.value" />
     </div>
 
-    <!-- The history still being read back. -->
-    <div v-if="reading || total < ceiling" class="flex items-center gap-3 border-t border-default px-5 py-2.5 text-xs text-muted">
-      <UIcon :name="reading ? 'i-lucide-loader-circle' : 'i-tabler-database'" class="size-4 shrink-0" :class="reading ? 'animate-spin text-primary' : ''" />
-      <span class="shrink-0">{{ reading ? t('nerd.hero.reading', { count: total, ceiling }) : t('nerd.hero.read', { count: total }) }}</span>
-      <div class="h-1 min-w-24 flex-1 overflow-hidden rounded-full bg-accented">
-        <div class="nerd-progress h-full rounded-full bg-primary" :style="{ width: `${Math.min(total / ceiling, 1) * 100}%` }" />
+    <!-- The history still being read back, and where its games came from. -->
+    <div class="border-t border-default px-5 py-2.5 text-xs text-muted">
+      <div v-if="reading || paused || total < ceiling" class="flex items-center gap-3">
+        <UIcon :name="reading ? 'i-lucide-loader-circle' : 'i-tabler-database'" class="size-4 shrink-0" :class="reading ? 'animate-spin text-primary' : ''" />
+        <span class="shrink-0">{{ reading ? (phase === 'blitz' ? t('nerd.hero.readingBlitz', { count: total, left: queued }) : t('nerd.hero.reading', { count: total, ceiling })) : t('nerd.hero.read', { count: total }) }}</span>
+        <div class="h-1 min-w-24 flex-1 overflow-hidden rounded-full bg-accented">
+          <div class="nerd-progress h-full rounded-full bg-primary" :style="{ width: `${Math.min(total / ceiling, 1) * 100}%` }" />
+        </div>
+        <UButton v-if="reading || paused" size="xs" color="neutral" variant="ghost" :icon="paused ? 'i-lucide-play' : 'i-lucide-pause'" :label="paused ? t('nerd.hero.resume') : t('nerd.hero.pause')" @click="$emit('toggleReading')" />
       </div>
-      <UButton v-if="reading || paused" size="xs" color="neutral" variant="ghost" :icon="paused ? 'i-lucide-play' : 'i-lucide-pause'" :label="paused ? t('nerd.hero.resume') : t('nerd.hero.pause')" @click="$emit('toggleReading')" />
+      <p v-if="sourceParts.length" class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-dimmed" :title="t('nerd.source.hint')">
+        <span>{{ t('nerd.source.title') }}:</span>
+        <span v-for="part in sourceParts" :key="part.source" class="flex items-center gap-1">
+          <UIcon :name="SOURCE_ICONS[part.source]" class="size-3.5" />{{ t(`nerd.source.${part.source}`, { count: part.count }) }}
+        </span>
+        <span v-if="blitzMissing" class="flex items-center gap-1 text-warning"><UIcon name="i-lucide-cloud-off" class="size-3.5" />{{ t('nerd.hero.blitzMissing') }}</span>
+      </p>
     </div>
   </section>
 </template>
