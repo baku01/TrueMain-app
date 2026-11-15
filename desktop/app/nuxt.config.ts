@@ -76,6 +76,9 @@ export default defineNuxtConfig({
       '/__championmastery': { target: 'https://championmastery.gg', changeOrigin: true },
       // op.gg's own pages, asked as the shell asks them: by the app's name, not the browser's (`sources.rs`).
       // Not `/__opggweb`: a prefix matches a longer path, so `/__opgg` (its API) would take it.
+      // MOBAFire answers no proxy (Cloudflare refuses a plain HTTP client, `src-tauri/src/mobafire.rs`):
+      // `MOBAFIRE_DEV_ORIGIN` points the dev server at a browser of your own that relays the pages.
+      '/__mobafire': { target: process.env.MOBAFIRE_DEV_ORIGIN || 'https://www.mobafire.com', changeOrigin: true },
       '/__op-gg': { target: 'https://op.gg', changeOrigin: true, followRedirects: true, headers: { 'user-agent': 'TrueMain-Desktop (dev)' } },
       '/__jev': { target: 'https://api.typesafe.ai', changeOrigin: true },
       '/__blitz/data': { target: 'https://data.v2.iesdev.com/api/v1/query_objects/prod/lol', changeOrigin: true },

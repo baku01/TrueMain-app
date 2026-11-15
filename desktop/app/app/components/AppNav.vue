@@ -44,6 +44,7 @@ const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
   ] },
   { label: t('nav.group.builds'), tabs: [
     { label: t('nav.probuild'), icon: 'i-tabler-trophy', to: '/probuild', active: isActive('/probuild') },
+    { label: t('nav.guides'), icon: 'i-tabler-book', to: '/guides', active: isActive('/guides') },
     { label: t('nav.kits'), icon: 'i-tabler-backpack', to: '/kits', active: isActive('/kits') },
     { label: t('nav.items'), icon: 'i-tabler-flask', to: '/items', active: isActive('/items') },
     { label: t('nav.patchnotes'), icon: 'i-tabler-news', to: '/patchnotes', active: isActive('/patchnotes') },
