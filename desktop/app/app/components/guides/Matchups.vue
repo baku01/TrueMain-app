@@ -33,7 +33,7 @@ const LEVEL_COLOR: Record<number, string> = { 1: 'text-error', 2: 'text-warning'
 </script>
 
 <template>
-  <section class="surface flex flex-col gap-3 rounded-xl p-4">
+  <section class="@container surface flex flex-col gap-3 rounded-xl p-4">
     <header class="flex flex-wrap items-center gap-2">
       <UButton
         v-for="name in (['threats', 'synergies'] as const)"
@@ -59,7 +59,8 @@ const LEVEL_COLOR: Record<number, string> = { 1: 'text-error', 2: 'text-warning'
         />
       </div>
     </header>
-    <ul class="flex flex-col gap-2">
+    <!-- Two columns on a wide pane: a note reads at a line's length, not the page's. -->
+    <ul class="grid items-start gap-2 @5xl:grid-cols-2">
       <li v-for="matchup in shown" :key="matchup.champion" class="flex gap-3 rounded-lg bg-elevated/40 p-3">
         <ChampionPortrait v-if="championOf(matchup)" :champion-id="championOf(matchup)!" size="sm" class="size-10! shrink-0 rounded-md!" />
         <img v-else-if="matchup.image" :src="matchup.image" :alt="matchup.champion" class="img-skeleton size-10 shrink-0 rounded-md" loading="lazy">

@@ -477,24 +477,31 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   never one per game; with every slot taken and none of them ours, a toast asks the player to free one — no page of
   theirs is ever deleted. An incomplete page (an empty slot) is refused. Every outcome is a toast. Nothing is written
   without the click.
-- **Guides** (`/guides`, `pages/guides/`, `utils/mobafire.ts`, `src-tauri/src/mobafire.rs`) — MOBAFire's build guides laid
-  out as its browse page: a champion (the site's own list, its aliases searched), a lane, a category, the order and
-  ranked authors, the guides under the site's dividers with their rating ring, votes, the author's rank, tags, its pages,
-  and the trending guides beside them; a guide opens on its banner, each build (recommended items, the rune pages and
-  spell sets switched as the author offers them, the items by section, the ability order), its threats and synergies by
-  level, and its chapters, the author's writing kept to an allow-list (`sanitizeGuideHtml`; a YouTube video is its
-  thumbnail, opened in the browser, `open_guide_video`). What the game names is drawn from the app's own data
-  (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's `en_US` ids) — icons, tooltips and names
-  in the player's language, a rune page as every one in the app, ready to import; the rest of the words, the author's,
-  are machine-translated into the app's language by Google Translate's public endpoint (`utils/translate.ts`,
-  `utils/guide-translate.ts`: free, no key, the language detected, chapters as HTML, sanitized again), always and
-  without a word on screen about it — the app's language is the switch —, the page shown as written until each part's
-  translation comes. The game's words never go to the translator as words (`utils/guide-terms.ts`): every item, rune,
-  tree, spell and champion name and the champion's abilities are kept in `notranslate` marks and given back under the
-  app's names in the player's language, the ability keys (`W1`, `E-Q`) and the players' jargon (build, gank, trade,
-  lane…) as written, a run of capitals sent in small letters and given back shouting; each of the author's inline
-  references to the game in their writing (`span.guide-ref`, `GuidesRef`) is never sent at all, and is drawn as the app
-  draws the thing. The site has no API and sits
+- **Guides** (`/guides`, `pages/guides/`, `utils/mobafire.ts`, `src-tauri/src/mobafire.rs`) — MOBAFire's build guides as
+  a table to read down: one bar of filters (a champion — the site's own list, its aliases searched —, the lanes on the
+  app's `RolePicker`, a category, the order, ranked authors only), the guides under the site's dividers, a row each with
+  the skin the author chose as the game's tile of it, the title, champion, author, update and tags, the author's rank and
+  the rating ring and votes, its pages, and the trending guides beside them. A guide reads top-down as a build page: its
+  banner (`GuidesHero`, `PageHero`'s frame) on Riot's full splash of the skin MOBAFire's banner names
+  (`utils/guide-art.ts`, `useGuideSkin`: the picture's word matched to the champion's `en_US` skins), the author's
+  picture the skin's tile too, its figures in one strip, and the imports in its corner — the rune page on show (or why
+  it cannot be), and the whole itemization as one item set; then a bar of the page's parts that stays as it scrolls,
+  the build at a glance (`GuidesBuildPanel`: the rune pages and spell sets switched as the author offers them, the
+  recommended items, the ability order on the app's skill grid), the author's item sections as a numbered buying
+  progression with their notes beside them (`GuidesItemPath`), the threats and synergies by level, and the chapters with
+  their contents beside them, the author's writing kept to an allow-list (`sanitizeGuideHtml`; a YouTube video is its
+  thumbnail, opened in the browser, `open_guide_video`) and drawn from its tree (`utils/guide-prose.ts`). What the game
+  names is drawn from the app's own data (`utils/guide-entities.ts`: the guide's English names matched to Data Dragon's
+  `en_US` ids, the Rift's own items and spells) — icons, tooltips and names in the player's language, a rune page as
+  every one in the app, ready to import — and so is each of the author's inline references to it in their writing
+  (`span.guide-ref`, `GuidesRef`). The rest of the words, the author's, are machine-translated into the app's language
+  by Google Translate's public endpoint (`utils/translate.ts`, `utils/guide-translate.ts`: free, no key, the language
+  detected, chapters as HTML, sanitized again), always and without a word on screen about it — the app's language is
+  the switch —, the page shown as written until each part's translation comes. The game's words never go to the
+  translator as words (`utils/guide-terms.ts`): every item, rune, tree, spell and champion name and the champion's
+  abilities are kept in `notranslate` marks and given back under the app's names in the player's language, the ability
+  keys (`W1`, `E-Q`) and the players' jargon (build, gank, trade, lane…) as written, a run of capitals sent in small
+  letters and given back shouting; an inline reference is never sent at all. The site has no API and sits
   behind Cloudflare, which refuses any plain HTTP client: the shell keeps a hidden window of its own on mobafire.com
   (the system's webview), resting on its `robots.txt` (nothing to run), and has it `fetch` each page from the site's
   origin, stripped of scripts, styles and drawings before it crosses (`eval_with_callback`; ~0.4 s, a guide ~260 KB);

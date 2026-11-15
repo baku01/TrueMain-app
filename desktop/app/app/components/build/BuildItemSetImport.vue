@@ -20,6 +20,8 @@ const props = defineProps<{
   /** The button's own size and look, where it stands out of a corner (a guide's banner). */
   size?: 'xs' | 'sm' | 'md'
   color?: 'neutral' | 'primary'
+  /** Solid where the button stands over art (a guide's banner); soft beside its label, ghost in a corner otherwise. */
+  variant?: 'soft' | 'solid'
 }>()
 
 const { t } = useT()
@@ -37,7 +39,7 @@ function run() {
     <UButton
       :size="size ?? 'xs'"
       :color="color ?? 'neutral'"
-      :variant="labeled ? 'soft' : 'ghost'"
+      :variant="variant ?? (labeled ? 'soft' : 'ghost')"
       :square="!labeled"
       :label="labeled ? (done ? t('build.imported') : t('build.importItems')) : undefined"
       :icon="done ? 'i-lucide-check' : 'i-lucide-download'"
@@ -53,7 +55,7 @@ function run() {
       <UButton
         :size="size ?? 'xs'"
         :color="color ?? 'neutral'"
-        :variant="labeled ? 'soft' : 'ghost'"
+        :variant="variant ?? (labeled ? 'soft' : 'ghost')"
         :square="!labeled"
         :label="labeled ? t('build.importItems') : undefined"
         icon="i-lucide-download"
