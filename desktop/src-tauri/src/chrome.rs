@@ -35,11 +35,12 @@ fn parse_hex(text: &str) -> Option<(u8, u8, u8)> {
     Some((channel(0)?, channel(2)?, channel(4)?))
 }
 
-/// The app icon in the theme's colours (`useAppTheme`): `png` for the Dock on
-/// macOS, `rgba` (`size` by `size` pixels) for the window and the taskbar —
-/// on Windows its small icon and its large one (`set_taskbar_icon`).
-/// Neither puts the bundle's own icon back (TrueMain's theme). The Dock's
-/// holds while the app runs: Finder keeps the bundle's.
+/// The app icon in the theme's colours (`useAppTheme`): `png` for the Dock and
+/// `.app` bundle on macOS, `rgba` (`size` by `size` pixels) for the window,
+/// taskbar and shortcuts on Windows (`set_taskbar_icon`, `shortcut_icon`).
+/// Neither puts the bundle's own icon back (TrueMain's theme). On both
+/// platforms the themed icon persists on disk so it stays even after the app
+/// closes.
 #[tauri::command]
 pub fn set_app_icon(
     app: AppHandle,
@@ -76,12 +77,15 @@ pub fn set_app_icon(
     Ok(())
 }
 
-/// The Dock's icon: `png` decoded by AppKit, or the bundle's own when None.
+/// The Dock's and `.app` bundle's icon: `png` decoded by AppKit, or the
+/// bundle's own when None. Persisting the custom icon onto the `.app` bundle
+/// via `NSWorkspace` keeps the themed icon in Finder, Launchpad and the Dock
+/// even after the app closes.
 #[cfg(target_os = "macos")]
 fn dock_icon(png: Option<&[u8]>) {
     use objc2::{AnyThread, MainThreadMarker};
-    use objc2_app_kit::{NSApplication, NSImage};
-    use objc2_foundation::NSData;
+    use objc2_app_kit::{NSApplication, NSImage, NSWorkspace, NSWorkspaceIconCreationOptions};
+    use objc2_foundation::{NSBundle, NSData};
 
     let Some(mtm) = MainThreadMarker::new() else {
         return;
@@ -90,6 +94,22 @@ fn dock_icon(png: Option<&[u8]>) {
         png.and_then(|bytes| NSImage::initWithData(NSImage::alloc(), &NSData::with_bytes(bytes)));
     // SAFETY: on the main thread (`mtm`); a nil image is AppKit's own way back to the bundle's icon.
     unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(image.as_deref()) };
+
+    // Persist on the `.app` bundle itself so Finder and a pinned Dock tile keep
+    // the themed icon after the app exits. Guard on `.app` so dev builds
+    // running from `target/debug` never stamp a custom icon onto that directory.
+    let bundle_path = NSBundle::mainBundle().bundlePath();
+    if bundle_path.to_string().ends_with(".app") {
+        let workspace = NSWorkspace::sharedWorkspace();
+        let ok = workspace.setIcon_forFile_options(
+            image.as_deref(),
+            &bundle_path,
+            NSWorkspaceIconCreationOptions::empty(),
+        );
+        if !ok {
+            tracing::debug!(path = %bundle_path, "could not persist custom icon on app bundle");
+        }
+    }
 }
 
 /// The taskbar's icon on Windows: the window's large icon (`ICON_BIG`). Tauri's

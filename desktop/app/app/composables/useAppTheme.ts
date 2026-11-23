@@ -39,9 +39,8 @@ export function paintTheme(choice: ThemeChoice) {
 /**
  * The app icon in the theme's colours — the dock, the taskbar and the tray
  * (`set_app_icon`); TrueMain's puts the bundle's own back. The main window
- * alone asks, once per change. On macOS it holds while the app runs: Finder
- * and the Dock's icon at rest stay the bundle's, which a running app cannot
- * rewrite.
+ * alone asks, once per change. Both Windows (shortcuts) and macOS (`.app`
+ * bundle custom icon) persist the themed icon so it remains even when closed.
  */
 export async function paintAppIcon(choice: ThemeChoice) {
   if (!insideTauri() || location.hash.startsWith('#/overlay/')) return

@@ -14,8 +14,8 @@ android {
         applicationId = "lol.truemain.mobile"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.2.3"
         // The site whose API the builds and the tier list are read from.
         buildConfigField("String", "SITE_URL", "\"${providers.gradleProperty("truemainSiteUrl").getOrElse("https://truemain.lol")}\"")
     }
