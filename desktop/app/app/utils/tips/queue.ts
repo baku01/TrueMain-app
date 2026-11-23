@@ -2,10 +2,13 @@ import type { Tip, TipKey } from './catalogue'
 import { CATEGORY_COOLDOWNS, FILLER_PRIORITY, URGENT_PRIORITY } from './catalogue'
 
 /** Seconds a tip stays on screen when nothing says otherwise (`TipQueue`'s default). */
-export const SHOW_SECONDS = 6
+export const SHOW_SECONDS = 5
 
-/** What a tip's words take to read mid-game: a glance to find it, then a word every 0.45 s, kept between 4 and 9 s. */
-const READ = { glance: 2, perWord: 0.45, min: 4, max: 9 } as const
+/** What a tip's words take to read mid-game: a glance to find it, then a word every 0.35 s, kept between 3.5 and 6.5 s. */
+const READ = { glance: 1.5, perWord: 0.35, min: 3.5, max: 6.5 } as const
+
+/** Maximum tips kept waiting at once so bursts never spill stale lines seconds later. */
+const MAX_WAITING = 3
 
 /** Seconds a tip with this `text` stays on screen: a short line goes sooner, a long one is read to its end. */
 export function readingSeconds(text: string) {
@@ -21,11 +24,9 @@ const MIN_SHOWN = 2
 
 /**
  * Seconds a tip keeps the screen at least once others are waiting for it:
- * its words without the glance to find it (`READ.perWord` a word), never
- * under the shortest read — a burst goes by as fast as it can be read, and a
- * long tip is never cut before its end.
+ * its words without the glance to find it, floored at 3 s so bursts stay snappy.
  */
-const busyShown = (seconds: number) => Math.max(READ.min, seconds - READ.glance)
+const busyShown = (seconds: number) => Math.max(3, seconds - READ.glance)
 
 /**
  * A tip's place in line: its priority, a tip said now or not at all
@@ -78,6 +79,16 @@ export class TipQueue {
   push(tip: Tip, now: number) {
     if (this.shown?.tip.key === tip.key || this.waiting.some(queued => queued.key === tip.key)) return
     this.waiting.push({ ...tip, id: ++this.count, expiresAt: now + tip.ttl * 1000 })
+    if (this.waiting.length > MAX_WAITING) {
+      // Drop the lowest-priority (and oldest within that priority) tip so bursts never lag behind the game.
+      let drop = 0
+      for (let i = 1; i < this.waiting.length; i++) {
+        const a = this.waiting[i]!
+        const b = this.waiting[drop]!
+        if (rank(a) < rank(b) || (rank(a) === rank(b) && a.id < b.id)) drop = i
+      }
+      this.waiting.splice(drop, 1)
+    }
   }
 
   /** The tip on screen at `now`: the one showing until its time is up, then the next one due. */
@@ -85,20 +96,15 @@ export class TipQueue {
     this.waiting = this.waiting.filter(tip => tip.expiresAt > now)
     if (this.shown && now < this.leavesAt(now) && !this.crowdedOut(now)) return this.shown
     if (this.shown) {
+      // Once a tip has been shown — even if crowded out by a more urgent one — never replay it out of order later.
       const { tip } = this.shown
-      if (now < this.shown.until && this.crowdedOut(now)) {
-        // Put aside for a more urgent one: back in line while it is fresh.
-        if (tip.priority > FILLER_PRIORITY && tip.expiresAt > now) this.waiting.push(tip)
-      }
-      else {
-        this.readyAt[tip.key] = now + CATEGORY_COOLDOWNS[tip.category] * 1000
-      }
+      this.readyAt[tip.key] = now + CATEGORY_COOLDOWNS[tip.category] * 1000
       this.shown = null
     }
     let next: QueuedTip | null = null
     for (const tip of this.waiting) {
       if (!this.ready(tip, now)) continue
-      if (!next || rank(tip) > rank(next)) next = tip
+      if (!next || rank(tip) > rank(next) || (rank(tip) === rank(next) && tip.id < next.id)) next = tip
     }
     if (!next) return null
     this.waiting = this.waiting.filter(tip => tip !== next)

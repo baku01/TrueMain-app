@@ -6,6 +6,7 @@ import type { ShownTip } from '~/utils/tips/queue'
 import type { TipRole } from '~/utils/tips/settings'
 import { tipText } from '~/utils/tips/display'
 import { emptyMemory, evaluate } from '~/utils/tips/engine'
+import { sameRoster } from '~/utils/tips/reading'
 import { TipQueue, readingSeconds } from '~/utils/tips/queue'
 import { speaks, tipsRunning } from '~/utils/tips/settings'
 
@@ -39,7 +40,12 @@ export function useTipFeed(game: () => GameState | null, sync: () => ClockSync, 
     const running = tipsRunning(settings.value, role())
     const current = game()
     if (current && running) {
-      const read = evaluate(memory, current, clockAt(sync(), now), items.value)
+      const rawClock = clockAt(sync(), now)
+      // Keep the game clock monotonic within one match so snapshot jitter never skips or delays crossed() marks.
+      const clock = memory.last && sameRoster(memory.last, current) && memory.clock !== null
+        ? Math.max(memory.clock, rawClock)
+        : rawClock
+      const read = evaluate(memory, current, clock, items.value)
       memory = read.memory
       for (const tip of read.tips) {
         if (settings.value.categories[tip.category]) queue.push(tip, now)
