@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">TrueMain</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_play">Play</string>
+    <string name="tab_draft">Draft</string>
+    <string name="tab_game">Game</string>
+    <string name="tab_builds">Builds</string>
+
+    <!-- Pairing -->
+    <string name="connect_title">Control League from your phone</string>
+    <string name="connect_body">Queue, accept the match, pick, ban and set your runes while away from the keyboard. Your phone talks to the TrueMain app on your computer, over your Wi-Fi only.</string>
+    <string name="connect_step1">On your computer, open TrueMain → Settings → Phone and turn it on.</string>
+    <string name="connect_step2">Click “Pair a phone” to show a QR code.</string>
+    <string name="connect_step3">Scan it here, with your phone on the same Wi-Fi.</string>
+    <string name="connect_scan">Scan the QR code</string>
+    <string name="connect_paste">Or paste the pairing link</string>
+    <string name="connect_paste_action">Pair</string>
+    <string name="connect_bad_link">That is not a TrueMain pairing code.</string>
+    <string name="connect_scanner_unavailable">The scanner is unavailable on this phone. Paste the link instead.</string>
+    <string name="connect_revoked">Your computer no longer knows this phone. Pair it again.</string>
+
+    <!-- Link status -->
+    <string name="link_connecting">Connecting…</string>
+    <string name="link_connecting_to">Connecting to %1$s…</string>
+    <string name="link_searching">Looking for your computer on this network…</string>
+    <string name="link_open">Connected to %1$s</string>
+    <string name="link_offline">Computer unreachable</string>
+    <string name="link_retry">Retry</string>
+    <string name="link_forget">Unpair this computer</string>
+    <string name="link_error_bad_token">This code expired or was already used. Show a new one on your computer.</string>
+    <string name="link_error_unreachable">Could not reach your computer. Is it on the same Wi-Fi, with the phone link on?</string>
+    <string name="link_error_link_off">The phone link is turned off on your computer.</string>
+    <string name="link_error_other">The computer refused the connection (%1$s).</string>
+    <string name="link_no_client">League is not running on your computer.</string>
+
+    <!-- Ready check -->
+    <string name="ready_title">Match found!</string>
+    <string name="ready_accept">Accept</string>
+    <string name="ready_decline">Decline</string>
+    <string name="ready_accepted">Accepted, waiting for the others…</string>
+    <string name="ready_declined">Declined</string>
+    <string name="ready_seconds">%1$d s</string>
+
+    <!-- Home -->
+    <string name="home_level">Level %1$d</string>
+    <string name="home_solo">Ranked Solo/Duo</string>
+    <string name="home_flex">Ranked Flex</string>
+    <string name="home_unranked">Unranked</string>
+    <string name="home_record">%1$dW %2$dL</string>
+    <string name="home_lp">%1$d LP</string>
+    <string name="home_not_logged">Log in to League on your computer.</string>
+
+    <!-- Phases -->
+    <string name="phase_none">In the client</string>
+    <string name="phase_lobby">In lobby</string>
+    <string name="phase_matchmaking">In queue</string>
+    <string name="phase_ready_check">Match found</string>
+    <string name="phase_champ_select">Champion select</string>
+    <string name="phase_in_progress">In game</string>
+    <string name="phase_end">Post-game</string>
+    <string name="phase_reconnect">Reconnect</string>
+
+    <string name="error_generic">Something went wrong. Try again.</string>
+</resources>

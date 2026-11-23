@@ -13,6 +13,10 @@ const open = ref(false)
 const { t } = useLocale()
 // A downloaded update stays one click away after its toast is gone.
 const { readyVersion: updateVersion, installing: updating, stalled: updateStalled, restart: restartToUpdate } = useAppUpdate()
+const { status: phoneStatus, load: loadPhoneLink, follow: followPhoneLink } = usePhoneLink()
+const onlinePhone = computed(() => phoneStatus.value?.phones.find(phone => phone.online) ?? null)
+followPhoneLink()
+onMounted(loadPhoneLink)
 
 defineShortcuts({
   meta_k: () => (open.value = !open.value),
@@ -53,6 +57,16 @@ defineShortcuts({
     </button>
 
     <div class="flex min-w-0 items-center justify-end gap-1">
+      <NuxtLink
+        v-if="onlinePhone"
+        to="/settings"
+        :title="`${onlinePhone.name} · ${t('phoneLink.connected')}`"
+        class="mr-1 inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-muted px-2 text-xs font-medium text-muted ring-1 ring-inset ring-(--ui-border) transition-colors hover:text-highlighted hover:ring-(--ui-border-accented)"
+      >
+        <span class="size-1.5 rounded-full bg-success" aria-hidden="true" />
+        <UIcon name="i-lucide-smartphone" class="size-3.5 text-primary" />
+        <span class="max-w-24 truncate @max-lg:hidden">{{ onlinePhone.name }}</span>
+      </NuxtLink>
       <ThemeToggle class="app-btn shrink-0" />
       <LanguageSwitcher class="app-btn shrink-0" />
       <span class="mx-1.5 h-5 w-px shrink-0 bg-(--ui-border-accented)" aria-hidden="true" />

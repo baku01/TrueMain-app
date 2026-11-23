@@ -34,7 +34,7 @@ pub use client::LcuClient;
 pub use credentials::Credentials;
 pub use detail::GameDetail;
 pub use error::{Error, Result};
-pub use events::{stream_events, LcuEvent};
+pub use events::{stream_endpoints, stream_events, LcuEvent};
 pub use form::{PlayerForm, PositionGames, RecentGame, FORM_GAMES, RECENT_GAMES};
 pub use item_sets::{plan_item_set_import, BuildItems, ItemSetDraft, NamedBlock};
 pub use laning::{

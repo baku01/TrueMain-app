@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Play tab: state of the link -->
+    <string name="play_no_link">Aguardando o seu computador para entrar na fila daqui.</string>
+    <string name="play_retry">Tentar de novo</string>
+    <string name="play_close">Fechar</string>
+
+    <!-- Queue picker -->
+    <string name="play_pick_title">Escolha um modo de jogo</string>
+    <string name="play_category_pvp">Jogador contra jogador</string>
+    <string name="play_category_ai">Cooperativo contra IA</string>
+    <string name="play_map_rift">Summoner’s Rift</string>
+    <string name="play_map_aram">Abismo Uivante</string>
+    <string name="play_map_arena">Arena</string>
+    <string name="play_queues_failed">Não foi possível ler os modos de jogo.</string>
+    <string name="play_queues_empty">Nenhum modo de jogo está aberto agora.</string>
+
+    <!-- Lobby -->
+    <string name="play_lobby">Sala</string>
+    <string name="play_queue_unknown">Fila personalizada</string>
+    <string name="play_members_count">%1$d / %2$d jogadores</string>
+    <string name="play_leave">Sair da sala</string>
+    <string name="play_leader">Líder do grupo</string>
+    <string name="play_kick">Expulsar</string>
+    <string name="play_invite_pending">Convidado</string>
+    <string name="play_invite_unknown">Jogador convidado</string>
+    <string name="play_invite_friends">Convidar amigos</string>
+
+    <!-- Lanes -->
+    <string name="play_lanes">Rotas</string>
+    <string name="play_lane_primary">Principal</string>
+    <string name="play_lane_secondary">Secundária</string>
+    <string name="play_lane_none">Não escolhida</string>
+    <string name="play_lanes_pair">%1$s · %2$s</string>
+
+    <!-- Queue -->
+    <string name="play_find_match">Encontrar partida</string>
+    <string name="play_cancel_queue">Sair da fila</string>
+    <string name="play_waiting_leader">Aguardando o líder do grupo iniciar a fila.</string>
+    <string name="play_cannot_start">A fila ainda não pode começar: todos precisam escolher suas rotas.</string>
+    <string name="play_in_queue">Na fila</string>
+    <string name="play_estimated">Estimado</string>
+    <string name="play_penalty">Atraso na fila: %1$s</string>
+    <string name="play_clock">%1$d:%2$02d</string>
+
+    <!-- Inviting friends -->
+    <string name="play_invite_title">Convidar amigos</string>
+    <string name="play_invite_search">Buscar um amigo</string>
+    <string name="play_invite">Convidar</string>
+    <string name="play_invited">Convidado</string>
+    <string name="play_friends_failed">Não foi possível ler seus amigos.</string>
+    <string name="play_friends_none">Nenhum amigo está online.</string>
+    <string name="play_friends_no_match">Nenhum amigo online com esse nome.</string>
+    <string name="play_friend_online">Online</string>
+    <string name="play_friend_away">Ausente</string>
+    <string name="play_friend_busy">Ocupado</string>
+    <string name="play_friend_in_game">Em partida</string>
+    <string name="play_friend_champ_select">Na seleção de campeões</string>
+    <string name="play_friend_in_queue">Na fila</string>
+    <string name="play_friend_in_lobby">Em uma sala</string>
+
+    <!-- Invitations received -->
+    <string name="play_invites_received">Convites</string>
+    <string name="play_invite_someone">Um amigo</string>
+    <string name="play_accept">Aceitar</string>
+    <string name="play_decline">Recusar</string>
+</resources>

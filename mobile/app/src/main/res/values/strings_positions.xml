@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="position_top">Top</string>
+    <string name="position_jungle">Jungle</string>
+    <string name="position_middle">Mid</string>
+    <string name="position_bottom">Bot</string>
+    <string name="position_support">Support</string>
+    <string name="position_fill">Fill</string>
+</resources>

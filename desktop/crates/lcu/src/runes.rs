@@ -62,7 +62,7 @@ impl RunePage {
 }
 
 /// The page to send to the client.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunePageDraft {
     pub name: String,

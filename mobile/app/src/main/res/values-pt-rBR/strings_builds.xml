@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="builds_search">Buscar um campeão</string>
+    <string name="builds_all_lanes">Todas as rotas</string>
+    <string name="builds_patch">Patch %1$s</string>
+    <string name="builds_patch_label">Patch</string>
+    <string name="builds_games">%1$d partidas</string>
+    <string name="builds_win">Vitória</string>
+    <string name="builds_pick">Escolha</string>
+    <string name="builds_ban">Ban</string>
+    <string name="builds_win_rate">%1$s de vitórias</string>
+    <string name="builds_pick_rate">%1$s de escolha</string>
+    <string name="builds_error">Não foi possível acessar o TrueMain</string>
+    <string name="builds_error_body">As builds vêm do truemain.lol pela internet do seu celular.</string>
+    <string name="builds_retry">Tentar de novo</string>
+    <string name="builds_empty">Ainda não há campeões nesta tier list.</string>
+    <string name="builds_no_match">Nenhum campeão corresponde à sua busca.</string>
+    <string name="builds_back">Voltar</string>
+    <string name="builds_total_games">Partidas analisadas</string>
+    <string name="builds_overall_win_rate">Taxa de vitória nesta rota</string>
+    <string name="builds_small_sample">Ainda há poucas partidas nesta rota: leia estes números com cautela.</string>
+    <string name="builds_no_data">Nenhuma build nesta rota</string>
+    <string name="builds_no_data_body">Ainda não há partidas suficientes deste campeão aqui. Tente outra rota.</string>
+    <string name="builds_this_build">Esta build</string>
+    <string name="builds_runes">Runas</string>
+    <string name="builds_spells">Feitiços de invocador</string>
+    <string name="builds_starter">Itens iniciais</string>
+    <string name="builds_boots">Botas</string>
+    <string name="builds_core">Build principal</string>
+    <string name="builds_skills">Ordem de habilidades</string>
+    <string name="builds_runes_apply">Aplicar runas no cliente</string>
+    <string name="builds_runes_applying">Aplicando…</string>
+    <string name="builds_runes_done">Página de runas definida no cliente.</string>
+    <string name="builds_runes_no_slot">Nenhuma página de runas livre: apague uma no cliente e tente de novo.</string>
+    <string name="builds_runes_failed">O cliente recusou a página de runas. O League está aberto?</string>
+    <string name="builds_runes_need_link">Conecte ao seu computador para enviar runas ao League.</string>
+</resources>

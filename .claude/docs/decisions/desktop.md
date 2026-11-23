@@ -1015,3 +1015,15 @@ scores an off-class item low; the item reads' cache key carries the questions' v
   base 36. The page takes no region, so a matchup is every server's. Blitz reads the matchup's own build document,
   never the lane's in its place, its header from the lane's matchups; the win rate is set against the champion's
   usual one. op.gg, Tencent and TrueMain measure none: the page says so and shows the lane (2026-11-10) — no issue yet
+
+**The phone companion is a native Android app driving the client through the desktop, over the local network only,
+on TrueMain's own protocol.** Modelled on Lexu (an Electron connector + an Expo app over Socket.IO on the LAN), but
+written natively — Kotlin + Jetpack Compose in `mobile/`, sharing no code with the Nuxt apps, at the product owner's
+request — with the connector inside the desktop app rather than a second program. Pairing is a QR code carrying the
+desktop's static X25519 key and a single-use, five-minute token: the phone pins the key, so a later connection to
+anything else fails the handshake, and the token proves the phone saw the screen. The channel (four exchanges,
+HKDF over the transcript, ChaCha20-Poly1305 with counter nonces) is ours rather than TLS because the desktop's address
+is a LAN IP no certificate names. A phone may ask only what its screens use (`phone_link::allow`): whoever holds a
+paired phone reaches the client, so chat, the account and every other endpoint stay out. Off until the player turns
+it on — listening on the network makes the system ask, which nobody without a phone should see. No cloud relay and
+no push notifications in v1: both need a TrueMain service the backend does not have (2026-11-23) — no issue yet

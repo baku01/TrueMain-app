@@ -47,6 +47,17 @@ fn subscription(uri: &str) -> String {
 /// Returns once the socket closes, which is the normal end of a client session:
 /// the caller reconnects rather than treating it as an error.
 pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEvent>) -> Result<()> {
+    stream_endpoints(credentials, &crate::uri::FOLLOWED, sender).await
+}
+
+/// `stream_events` for another set of endpoints: the phone link follows the
+/// ones its phones show (`phone-link`'s allow-list) on a socket of its own,
+/// open only while a phone is connected.
+pub async fn stream_endpoints(
+    credentials: Credentials,
+    uris: &[&str],
+    sender: mpsc::Sender<LcuEvent>,
+) -> Result<()> {
     let mut request = format!("wss://127.0.0.1:{}/", credentials.port)
         .into_client_request()
         .map_err(|e| Error::Transport(e.to_string()))?;
@@ -64,7 +75,7 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
             .await
             .map_err(|e| Error::Transport(e.to_string()))?;
 
-    for uri in crate::uri::FOLLOWED {
+    for uri in uris {
         socket
             .send(Message::Text(subscription(uri)))
             .await
@@ -84,7 +95,7 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
         };
         // Only the followed endpoints are subscribed to; anything else the
         // client sends is still dropped before it is parsed.
-        if !followed(&payload) {
+        if !followed(&payload, uris) {
             continue;
         }
         let Some(event) = parse_event(&payload) else {
@@ -103,9 +114,8 @@ pub async fn stream_events(credentials: Credentials, sender: mpsc::Sender<LcuEve
 /// Whether a frame may be about an endpoint the app follows: its path, quoted,
 /// appears in it. A cheap look at the text, whatever its spacing; the parse
 /// that follows reads the `uri` itself.
-fn followed(payload: &str) -> bool {
-    crate::uri::FOLLOWED
-        .iter()
+fn followed(payload: &str, uris: &[&str]) -> bool {
+    uris.iter()
         .any(|uri| payload.contains(&format!("\"{uri}\"")))
 }
 
@@ -140,13 +150,16 @@ mod tests {
     #[test]
     fn drops_what_the_app_does_not_follow_before_parsing() {
         assert!(followed(
-            r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-champ-select/v1/session"}]"#
+            r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-champ-select/v1/session"}]"#,
+            &crate::uri::FOLLOWED
         ));
         assert!(followed(
-            r#"[8,"OnJsonApiEvent",{"uri": "/lol-gameflow/v1/gameflow-phase"}]"#
+            r#"[8,"OnJsonApiEvent",{"uri": "/lol-gameflow/v1/gameflow-phase"}]"#,
+            &crate::uri::FOLLOWED
         ));
         assert!(!followed(
-            r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-chat/v1/conversations"}]"#
+            r#"[8,"OnJsonApiEvent",{"data":{},"eventType":"Update","uri":"/lol-chat/v1/conversations"}]"#,
+            &crate::uri::FOLLOWED
         ));
     }
 
@@ -165,7 +178,7 @@ mod tests {
     #[test]
     fn reads_an_update_sent_under_an_endpoints_own_event() {
         let frame = r#"[8,"OnJsonApiEvent_lol-lobby_v2_lobby",{"data":{},"eventType":"Update","uri":"/lol-lobby/v2/lobby"}]"#;
-        assert!(followed(frame));
+        assert!(followed(frame, &crate::uri::FOLLOWED));
         assert_eq!(parse_event(frame).unwrap().uri, "/lol-lobby/v2/lobby");
     }
 

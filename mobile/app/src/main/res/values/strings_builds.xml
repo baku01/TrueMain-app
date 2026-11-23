@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="builds_search">Search a champion</string>
+    <string name="builds_all_lanes">All lanes</string>
+    <string name="builds_patch">Patch %1$s</string>
+    <string name="builds_patch_label">Patch</string>
+    <string name="builds_games">%1$d games</string>
+    <string name="builds_win">Win</string>
+    <string name="builds_pick">Pick</string>
+    <string name="builds_ban">Ban</string>
+    <string name="builds_win_rate">%1$s win rate</string>
+    <string name="builds_pick_rate">%1$s pick rate</string>
+    <string name="builds_error">Could not reach TrueMain</string>
+    <string name="builds_error_body">Builds come from truemain.lol over your phone\'s internet connection.</string>
+    <string name="builds_retry">Retry</string>
+    <string name="builds_empty">No champions in this tier list yet.</string>
+    <string name="builds_no_match">No champion matches your search.</string>
+    <string name="builds_back">Back</string>
+    <string name="builds_total_games">Games analysed</string>
+    <string name="builds_overall_win_rate">Win rate on this lane</string>
+    <string name="builds_small_sample">Few games on this lane yet: treat these numbers with care.</string>
+    <string name="builds_no_data">No build on this lane</string>
+    <string name="builds_no_data_body">Not enough games of this champion here yet. Try another lane.</string>
+    <string name="builds_this_build">This build</string>
+    <string name="builds_runes">Runes</string>
+    <string name="builds_spells">Summoner spells</string>
+    <string name="builds_starter">Starting items</string>
+    <string name="builds_boots">Boots</string>
+    <string name="builds_core">Core build</string>
+    <string name="builds_skills">Skill order</string>
+    <string name="builds_runes_apply">Apply runes to the client</string>
+    <string name="builds_runes_applying">Applying…</string>
+    <string name="builds_runes_done">Rune page set in the client.</string>
+    <string name="builds_runes_no_slot">No free rune page: delete one in the client and try again.</string>
+    <string name="builds_runes_failed">The client refused the rune page. Is League running?</string>
+    <string name="builds_runes_need_link">Connect to your computer to send runes to League.</string>
+</resources>

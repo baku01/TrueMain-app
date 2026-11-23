@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Empty state -->
+    <string name="draft_empty_title">Fora da seleção de campeões</string>
+    <string name="draft_empty_body">Picks, bans, feitiços, skins e runas aparecem aqui assim que a sua seleção começar.</string>
+
+    <!-- Header -->
+    <string name="draft_phase_planning">Planejamento</string>
+    <string name="draft_phase_ban_pick">Bans e picks</string>
+    <string name="draft_phase_finalization">Finalização</string>
+    <string name="draft_phase_starting">Partida começando</string>
+    <string name="draft_phase_other">Seleção de campeões</string>
+    <string name="draft_turn_pick">Sua vez de escolher!</string>
+    <string name="draft_turn_ban">Sua vez de banir!</string>
+    <string name="draft_turn_planning">Declare o campeão que você quer jogar</string>
+    <plurals name="draft_next_pick">
+        <item quantity="one">Sua escolha vem em %1$d turno</item>
+        <item quantity="many">Sua escolha vem em %1$d turnos</item>
+        <item quantity="other">Sua escolha vem em %1$d turnos</item>
+    </plurals>
+    <plurals name="draft_next_ban">
+        <item quantity="one">Seu ban vem em %1$d turno</item>
+        <item quantity="many">Seu ban vem em %1$d turnos</item>
+        <item quantity="other">Seu ban vem em %1$d turnos</item>
+    </plurals>
+    <string name="draft_next_soon">Sua vez é a próxima</string>
+    <string name="draft_waiting">Aguardando os outros jogadores…</string>
+    <string name="draft_locked_waiting">Campeão confirmado. Aguardando os outros…</string>
+    <string name="draft_seconds">%1$d s</string>
+
+    <!-- Teams -->
+    <string name="draft_my_team">Seu time</string>
+    <string name="draft_their_team">Time inimigo</string>
+    <string name="draft_you">Você</string>
+    <string name="draft_ally">Aliado</string>
+    <string name="draft_enemy">Inimigo</string>
+    <string name="draft_bans">Bans</string>
+
+    <!-- Champion grid -->
+    <string name="draft_choose_pick">Escolha seu campeão</string>
+    <string name="draft_choose_ban">Escolha um campeão para banir</string>
+    <string name="draft_choose_intent">Intenção de escolha</string>
+    <string name="draft_intent_note">Seus aliados veem este campeão como a sua intenção. Você confirma quando chegar a sua vez.</string>
+    <string name="draft_search">Buscar campeão</string>
+    <string name="draft_no_match">Nenhum campeão encontrado.</string>
+    <string name="draft_tag_all">Todos</string>
+    <string name="draft_tag_fighter">Lutador</string>
+    <string name="draft_tag_tank">Tanque</string>
+    <string name="draft_tag_mage">Mago</string>
+    <string name="draft_tag_assassin">Assassino</string>
+    <string name="draft_tag_marksman">Atirador</string>
+    <string name="draft_tag_support">Suporte</string>
+    <string name="draft_hover_first">Toque em um campeão primeiro</string>
+    <string name="draft_lock_named">Confirmar %1$s</string>
+    <string name="draft_ban_named">Banir %1$s</string>
+    <string name="draft_lock">Confirmar</string>
+    <string name="draft_ban">Banir</string>
+    <string name="draft_cancel">Cancelar</string>
+    <string name="draft_confirm_lock_title">Confirmar %1$s?</string>
+    <string name="draft_confirm_lock_body">Depois de confirmado, seu campeão só muda por uma troca.</string>
+    <string name="draft_confirm_ban_title">Banir %1$s?</string>
+    <string name="draft_confirm_ban_body">Ninguém poderá jogar com este campeão nesta partida.</string>
+
+    <!-- Loadout -->
+    <string name="draft_loadout">Seu loadout</string>
+    <string name="draft_spells_change">Trocar feitiços</string>
+    <string name="draft_spells_swap">Inverter D/F</string>
+    <string name="draft_spells_title">Feitiços de invocador</string>
+    <string name="draft_spell_d">D</string>
+    <string name="draft_spell_f">F</string>
+    <string name="draft_skins">Escolher skin</string>
+    <string name="draft_skins_after_lock">Skins depois de confirmar</string>
+    <string name="draft_reroll">Rerrolar (%1$d)</string>
+
+    <!-- Skins -->
+    <string name="draft_skins_title">Skins</string>
+    <string name="draft_skins_failed">Não foi possível carregar suas skins.</string>
+    <string name="draft_skins_none">Nenhuma skin para este campeão.</string>
+    <string name="draft_skin_locked">Não adquirida</string>
+    <string name="draft_skin_selected">Selecionada</string>
+    <string name="draft_chromas">Cromas</string>
+    <string name="draft_chroma_unnamed">Croma</string>
+
+    <!-- Runes -->
+    <string name="draft_runes">Runas</string>
+    <string name="draft_runes_pages">Páginas</string>
+    <string name="draft_runes_edit">Editar</string>
+    <string name="draft_runes_none">Nenhuma página de runas selecionada.</string>
+    <string name="draft_runes_pages_title">Suas páginas de runas</string>
+    <string name="draft_runes_applied">Página de runas aplicada.</string>
+    <string name="draft_runes_no_slot">Nenhum espaço livre para páginas de runas. Apague uma página no cliente para liberar.</string>
+    <string name="draft_runes_failed">Não foi possível aplicar a página de runas.</string>
+    <string name="draft_editor_primary">Caminho primário</string>
+    <string name="draft_editor_secondary">Caminho secundário (duas runas)</string>
+    <string name="draft_editor_shards">Fragmentos</string>
+    <string name="draft_editor_name">Nome da página</string>
+    <string name="draft_editor_save">Salvar e usar esta página</string>
+    <string name="draft_editor_incomplete">Escolha todas as runas</string>
+    <string name="draft_perk_line">%1$s — %2$s</string>
+
+    <!-- Recommended -->
+    <string name="draft_recommended">Recomendado pelo TrueMain</string>
+    <string name="draft_recommended_failed">Não foi possível carregar a build do TrueMain.</string>
+    <string name="draft_recommended_none">Ainda não há partidas suficientes com este campeão.</string>
+    <plurals name="draft_recommended_stats">
+        <item quantity="one">%1$s de vitórias em %2$d partida</item>
+        <item quantity="many">%1$s de vitórias em %2$d partidas</item>
+        <item quantity="other">%1$s de vitórias em %2$d partidas</item>
+    </plurals>
+    <plurals name="draft_recommended_stats_vs">
+        <item quantity="one">%1$s de vitórias em %2$d partida contra o seu oponente de rota</item>
+        <item quantity="many">%1$s de vitórias em %2$d partidas contra o seu oponente de rota</item>
+        <item quantity="other">%1$s de vitórias em %2$d partidas contra o seu oponente de rota</item>
+    </plurals>
+    <string name="draft_recommended_apply_runes">Aplicar estas runas</string>
+    <string name="draft_recommended_use_spells">Usar estes feitiços</string>
+    <string name="draft_recommended_spells_set">Já definidos</string>
+    <string name="draft_retry">Tentar de novo</string>
+
+    <!-- Trades and swaps -->
+    <string name="draft_swaps_incoming">Pedidos para você</string>
+    <string name="draft_swap_incoming_trade">%1$s quer trocar de campeão com você</string>
+    <string name="draft_swap_incoming_pick_order">%1$s quer trocar a ordem de escolha com você</string>
+    <string name="draft_swap_incoming_position">%1$s quer trocar de posição com você</string>
+    <string name="draft_accept">Aceitar</string>
+    <string name="draft_decline">Recusar</string>
+    <string name="draft_swaps">Trocas</string>
+    <string name="draft_swap_trade">Trocar campeões</string>
+    <string name="draft_swap_pick_order">Trocar ordem de escolha</string>
+    <string name="draft_swap_position">Trocar posições</string>
+    <string name="draft_swap_request">Pedir</string>
+    <string name="draft_swap_waiting">Aguardando…</string>
+
+    <!-- ARAM bench -->
+    <string name="draft_bench">Banco</string>
+    <string name="draft_bench_empty">O banco está vazio.</string>
+    <string name="draft_bench_hint">Toque em um campeão para trocar o seu por ele.</string>
+
+    <!-- Errors -->
+    <string name="draft_error_request">O cliente recusou. Tente de novo.</string>
+    <string name="draft_error_lock">Não foi possível confirmar. Ainda é a sua vez?</string>
+</resources>

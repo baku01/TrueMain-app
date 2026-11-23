@@ -1,136 +1,171 @@
-# TrueMain App
+# TrueMain App (Desktop + Mobile)
 
 > **Este projeto é um fork de [ilyanfraimbault/TrueMain](https://github.com/ilyanfraimbault/TrueMain)**, criado por Ilyan Fraimbault.
-> O código-base, a ideia original (estatísticas feitas a partir de *true mains*) e a licença vêm de lá. Este fork é mantido por [baku01](https://github.com/baku01) e se concentra no **aplicativo desktop**: interface, idioma, identidade visual e algumas funções novas. Veja [o que este fork muda](#o-que-este-fork-muda) e a seção de [licença e créditos](#licença-e-créditos).
+> O código-base, a ideia original (estatísticas feitas a partir de *true mains*) e a licença vêm de lá. Este fork é mantido por [baku01](https://github.com/baku01) e se concentra no **ecossistema do aplicativo** — **app desktop** (macOS e Windows), **overlay em partida** e **app companheiro para Android** — com interface em português do Brasil, múltiplas fontes de dados, identidade visual própria e recursos novos. Veja [o que este fork muda](#o-que-este-fork-muda) e [licença e créditos](#licença-e-créditos).
 
-Um **companheiro para League of Legends**, em português do Brasil: lê o cliente do jogo no seu computador, acompanha a seleção de campeões e a partida, e mostra builds, runas, ordem de habilidades, confrontos e notas de atualização, tudo num app leve (Tauri + Nuxt), com tema escuro e claro.
+Um **companheiro completo para League of Legends**, em português do Brasil:
+- **No computador (Desktop — Tauri + Rust + Nuxt):** conecta-se ao cliente do League of Legends, acompanha automaticamente lobby, seleção de campeões, partida e pós-partida, exibe estatísticas avançadas (*Stats for Nerds*), builds de múltiplas fontes, overlay sobre o jogo e dicas por voz.
+- **No celular (Android — Kotlin + Jetpack Compose):** pareia com o app desktop na mesma rede Wi-Fi por QR Code (com criptografia ponta a ponta) para entrar na fila, aceitar partida longe do PC, escolher/banir campeões, ajustar runas/feitiços/skins, acompanhar o jogo ao vivo e consultar builds e tier list com a mesma identidade visual e tema do desktop.
 
-![Painel do app com o perfil de um jogador, as estatísticas e o histórico](docs/screenshots/dashboard.png)
+![Painel do app desktop com perfil, estatísticas e histórico](docs/screenshots/dashboard.png)
+
+---
+
+## Como a aplicação funciona
+
+O ecossistema roda localmente na sua máquina, sem exigir chave da API da Riot nem servidor intermediário para controlar o cliente:
+
+```text
+┌───────────────────────────┐        LCU API (local) + Live Client Data
+│  Cliente do League (PC)   │ ◄──────────────────────────────────────────┐
+└───────────────────────────┘                                            │
+                                                                         ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                   TrueMain Desktop (Tauri: Rust + Nuxt)                    │
+│  • Lê estado do cliente (lobby, draft, partida, perfil, histórico)         │
+│  • Importa runas, feitiços e conjuntos de itens direto no cliente          │
+│  • Desenha janelas transparentes de Overlay sobre o jogo + Dicas por voz   │
+│  • Consulta builds/stats em fontes externas (TrueMain, Blitz, op.gg, etc.) │
+│  • Servidor local "Phone Link" (Wi-Fi, porta 42719, X25519 + ChaCha20)     │
+└───────────────────────────────────────▲────────────────────────────────────┘
+                                        │ WebSocket cifrado na rede local
+                                        ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                TrueMain Mobile (Android — Kotlin + Compose)                │
+│  • Pareamento único por QR Code (ou link), reconexão e descoberta no /24   │
+│  • Controla fila, lobby, ready-check, draft (pick/ban/runas/skins/trades)  │
+│  • Acompanha partida ao vivo, histórico, tier list e builds no celular     │
+│  • Recebe automaticamente o tema e paleta escolhidos no app desktop        │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Integração com o cliente do League (Rust — `desktop/crates/lcu`):** o processo nativo detecta o cliente aberto (macOS e Windows), assina os eventos do LCU em tempo real e lê a Live Client Data API durante a partida. A interface troca de tela sozinha conforme a fase do jogo (`Lobby` → `Seleção de campeões` → `Partida` → `Pós-partida`).
+2. **Camada de dados multi-fonte (`desktop/app`):** builds, runas, confrontos, histórico de LP e estatísticas são lidos da fonte escolhida em Configurações (TrueMain, Blitz, op.gg, lolalytics ou Tencent), sempre com selo indicando a origem dos números.
+3. **Overlay independente (`desktop/src-tauri/src/overlay`):** cada painel sobre o jogo roda numa janela leve dedicada que só atualiza durante a partida, evitando consumo de CPU/GPU fora do jogo.
+4. **Phone Link seguro (`desktop/crates/phone-link` ↔ `mobile/`):** o desktop expõe um canal local opcional na porta `42719` (ligado manualmente em *Configurações → Celular*). O pareamento usa QR Code de uso único; toda comunicação trafega cifrada com **X25519 + HKDF-SHA256 + ChaCha20-Poly1305** e passa por uma *allow-list* estrita de endpoints no desktop.
+
+---
+
+## Principais funcionalidades
+
+### App Desktop (`desktop/`)
+
+- **Painel de jogador e pós-partida:** seu perfil (lido do cliente) ou de **qualquer jogador** buscado via `⌘K` (`Nome#TAG`) ou clicado em uma partida. Inclui:
+  - **Abas no estilo Blitz:** *Visão geral*, *Pool de campeões* (rota por rota na temporada) e *Histórico de LP* (Solo/Duo e Flex, com início da temporada, pico, mínimo e saldo).
+  - **Histórico com badges** (MVP, multiabates, mais dano, mestre do CS, imortal, primeiro abate, jogo perfeito…) e **painel completo da partida** (objetivos, ouro, dano, gráficos, probabilidade de vitória, linha do tempo e dano das runas).
+  - **Estatísticas detalhadas** (~25 métricas das últimas partidas comparadas aos oponentes diretos de rota e numa régua com a mediana de cada elo, do Ferro ao Desafiante), ranking e temporadas (op.gg), maestria exata (`championmastery.gg`) e card **Jogou com**.
+  - **Pós-partida automático:** abre sozinho ao fim da partida com "Como foi" (CS e visão/min contra o seu elo e onde ocorreram as mortes).
+- **Stats for Nerds (`/nerd-stats`):** análise estatística aprofundada que vai além das últimas 20 partidas do cliente (combinando histórico local + Blitz), mostrando em linguagem direta o que realmente aumenta ou reduz sua taxa de vitória, com nível de confiança, distribuições, sequências, mapa de calor de horários, drivers de desempenho e a matemática completa a um clique.
+- **Seleção de campeões e Swiftplay:**
+  - Tela única de draft sem rolagem, com os dois times nas laterais, counters na própria rota, medidor de dano (físico/mágico/verdadeiro), card de aliado ao passar o mouse (elo, autofill, maestria, duo) e seus favoritos.
+  - **Sugestões ponderadas** (presets como *Equilibrado*, *One Trick*, *Segue o meta*, *Counter puro*, *Dono da rota*, *Subir de elo*) e builds completas com importação manual ou automática de runas e item sets (respeitando apenas páginas criadas pelo TrueMain).
+  - **Lobby do Swiftplay:** configura e importa builds/runas para os dois campeões escolhidos direto no lobby.
+- **Confronto · Jev (`/jev` e modo Jev no draft):** usa o [Jev](https://typesafe.ai) para ler os kits inimigos e cada item/runa/feitiço e ranquear a melhor build para o draft específico (com nota de 0 a 100 e escolha por família: rota, confronto, estilo do Blitz ou one-tricks). Requer chave própria em Configurações e só dispara sob clique.
+- **Campeões, Tier List, Analytics, ProBuild e Catálogos:**
+  - **Página do campeão:** builds por estilo (*Bruiser*, *Lethality*…), one-tricks, sua build anterior, árvore de itens, ordem de habilidades com vídeo e valores nível a nível, **Counters** (ordenados por *pp*, com opção "só fase de rotas"), **Sinergias** e **Rotas da selva** (op.gg).
+  - **Estatísticas:** *Duplas*, *Maestria* (taxa de vitória de 5+ a 100+) e variação **Δ WR** por patch na lista de campeões.
+  - **Meus kits:** crie e salve suas próprias árvores de itens, runas e feitiços por campeão/rota — integradas ao draft e ao overlay.
+  - **Catálogos offline-friendly:** Itens (com receita em árvore), Runas, Classes/Subclasses e Notas da atualização.
+- **Partida ao vivo, Overlay e Dicas por voz:**
+  - Tela da partida com divisão de dano, próximo item e receita, ordem de habilidades e ficha de cada jogador (elo, duo/trio, maestria).
+  - **Overlay sobre o jogo (`/overlay`):** painéis configuráveis de próximo item, CS/min ao vivo a cada *last hit*, vantagem de ouro na rota, timers de objetivos, probabilidade de vitória, valor dos itens e **dicas em tempo real** com suporte a pacotes de voz (`voice-packs/`).
+- **16 temas + Claro/Escuro + Zoom:** TrueMain (escuro e claro), 4 sabores do Catppuccin (Latte, Frappé, Macchiato, Mocha), Dracula, Nord, Gruvbox, Tokyo Night, Rosé Pine, Solarized, One Dark e União Soviética — com 14 cores de destaque aplicadas no app, no overlay, no ícone e **sincronizadas automaticamente com o celular**.
+
+### App Mobile — Android (`mobile/`)
+
+- **Identidade visual alinhada ao Desktop:** construído em Kotlin + Jetpack Compose com as mesmas fontes (**Sora** + **Figtree** + **Geist Mono**), marca M-check e wordmark **TrueMain**, superfícies em *tone ladder*, brasões metálicos de Tier (`TmTierBadge`), *splash arts* de campeões e sincronização ao vivo do tema ativo no PC.
+- **Pareamento simples e seguro:** escaneie o QR Code exibido em *Configurações → Celular* no desktop (ou cole o link de pareamento). Depois de pareado, reconecta sozinho e encontra o PC na rede local (`/24`) mesmo que o IP mude.
+- **Jogar longe do teclado:**
+  - **Home:** banner do jogador com *splash art*, elos Solo/Duo e Flex (com win rate) e histórico recente de partidas.
+  - **Play:** escolha de fila, gestão de lobby, seleção de rotas, convites de amigos e tempo de fila.
+  - **Ready Check:** alerta em tela cheia com vibração para aceitar ou recusar partida de qualquer cômodo.
+  - **Draft:** faixas de time no estilo broadcast, busca e filtro por classe, hover/lock/ban com confirmação, troca de posição/campeão, banco do ARAM, escolha de skins, feitiços e editor/aplicação de runas.
+  - **Game:** placar ao vivo, relógio sincronizado, barras de vida/mana, objetivos, próximos spawns (Dragão, Vastilarvas, Arauto, Barão) e scoreboard completo.
+  - **Builds & Tier List:** consulta direta à API do TrueMain com brasões de tier, builds completas por rota e botão para enviar a página de runas direto para o cliente no PC.
+
+---
 
 ## Capturas de tela
 
-As imagens abaixo foram feitas no navegador, no modo de desenvolvimento, com dados reais das fontes (Blitz, lolalytics, op.gg e Data Dragon). As telas de seleção de campeões, lobby do Swiftplay, pós-partida e partida usam *cenários de simulação* do próprio projeto, com contas e partidas fictícias, porque o League não estava aberto.
+### App Desktop
 
 | | |
 |---|---|
-| ![Painel de um jogador](docs/screenshots/dashboard.png)<br>**Painel:** o perfil de qualquer jogador — o seu (lido do cliente) ou o de quem você buscar ou clicar numa partida —, em abas como no Blitz: Visão geral, Pool de campeões e Histórico de LP | ![Estatísticas detalhadas](docs/screenshots/stats.png)<br>**Estatísticas detalhadas:** por elo (régua com a mediana de cada elo) e contra os oponentes de rota; ranking e temporadas do op.gg |
-| ![Histórico de LP](docs/screenshots/profile-lp.png)<br>**Histórico de LP:** Solo/Duo e Flex de qualquer jogador, a temporada inteira, com o início da temporada, o pico, o mínimo e o saldo | ![Pool de campeões da temporada](docs/screenshots/profile-pool.png)<br>**Pool de campeões:** a temporada rota por rota — partidas, campanha, taxa de vitória, KDA e LP de cada campeão |
-| ![Pós-partida](docs/screenshots/postmatch.png)<br>**Pós-partida:** quando a partida acaba, ela abre sozinha com "Como foi" — CS e visão por minuto contra o seu elo, as mortes e quando aconteceram — e o painel da partida aberto | ![Página de um campeão](docs/screenshots/champion.png)<br>**Campeão:** a divisão de dano, as opções medidas pela fonte e as builds por estilo (Bruiser, Lethality…), as de one-tricks e a sua anterior |
-| ![Counters de um campeão](docs/screenshots/counters.png)<br>**Counters:** contra quem o campeão é forte e fraco, pelo **pp** (o quanto o confronto foge do esperado), com a opção "só a fase de rotas" | ![Sinergias de um campeão](docs/screenshots/synergies.png)<br>**Sinergias:** os melhores aliados por rota, com tier, taxa de vitória e o ganho sobre o normal |
-| ![Rotas da selva](docs/screenshots/jungle.png)<br>**Rotas da selva** (op.gg): a limpeza completa mais jogada desenhada no mapa, por lado, e o acampamento inicial | ![Analytics com as rotas da selva](docs/screenshots/analytics-jungle.png)<br>**Analytics:** tudo o que a fonte mede sobre um campeão, por rota e elo — com as rotas da selva para quem joga na selva |
-| ![Estatísticas · Duplas](docs/screenshots/champion-stats.png)<br>**Estatísticas · Duplas:** as duplas que mais vencem juntas em duas rotas (atirador + suporte por padrão) | ![Estatísticas · Maestria](docs/screenshots/mastery.png)<br>**Estatísticas · Maestria:** a taxa de vitória por nível de maestria (5+ a 100+) e o quanto cada campeão melhora com experiência |
-| ![Lista de campeões](docs/screenshots/champions-list.png)<br>**Campeões:** a lista com runas, build principal e a coluna **Δ WR** — a variação da taxa de vitória desde o patch anterior | ![One-tricks no ProBuild](docs/screenshots/probuild-onetricks.png)<br>**ProBuild · One-tricks:** os jogadores que jogam o campeão em quase toda partida — elo, nota OTP, fatia do campeão e taxa de vitória |
-| ![Confronto](docs/screenshots/matchup.png)<br>**Confronto:** a build para o draft e as partidas reais do confronto | ![Busca](docs/screenshots/search.png)<br>**Busca (⌘K):** campeões e jogadores (`Nome#TAG`), com a região e o elo |
-| ![Seleção de campeões](docs/screenshots/draft.png)<br>**Seleção de campeões:** os times nas laterais com counters, seus favoritos e a tier list da rota, e as sugestões em pôsteres com os **pesos das sugestões** (os presets do Blitz) | ![Card do jogador na seleção](docs/screenshots/player-card.png)<br>**Card do jogador:** passe o mouse num aliado — elo, rota principal ou autofill, maestria no campeão, duo e mais jogados |
-| ![Builds na seleção de campeões](docs/screenshots/draft-builds.png)<br>**Builds na seleção:** runas, feitiços, iniciais, ordem de itens e evolução num card só, com importação e as builds de pros | ![Jev na seleção de campeões](docs/screenshots/draft-jev.png)<br>**Jev:** escolha em qual família ele monta a build — a rota, o confronto, um estilo do Blitz ou os one-tricks |
-| ![Swiftplay](docs/screenshots/lobby.png)<br>**Swiftplay:** no lobby, os dois campeões escolhidos, cada um com a sua build, importação de runas, feitiços e itens | ![Partida](docs/screenshots/ingame.png)<br>**Partida:** o dano de cada time, o próximo item, a ordem de habilidades e, por jogador, elo, duo, maestria e mais jogados |
-| ![Fontes de dados](docs/screenshots/sources.png)<br>**Configurações:** a fonte de dados — TrueMain, Blitz, op.gg, lolalytics ou Tencent | ![Tier list](docs/screenshots/tierlist.png)<br>**Tier list:** os campeões por tier, em medalhas |
-| ![Classes](docs/screenshots/classes.png)<br>**Classes:** campeões por classe e subclasse, com o papel de cada uma | ![Itens](docs/screenshots/items.png)<br>**Itens:** descrição e receita em árvore |
-| ![Runas](docs/screenshots/runes.png)<br>**Runas:** as árvores e a descrição colorida | ![Notas da atualização](docs/screenshots/patchnotes.png)<br>**Notas da atualização:** patch a patch, atualizadas sozinhas |
-| ![Overlay de próximo item](docs/screenshots/overlay-next-item.png)<br>**Overlay:** o próximo item sobre o jogo, com a receita e a ordem da build |  |
+| ![Painel de um jogador](docs/screenshots/dashboard.png)<br>**Painel:** perfil do jogador com Visão geral, Pool de campeões e Histórico de LP | ![Estatísticas detalhadas](docs/screenshots/stats.png)<br>**Estatísticas detalhadas:** comparação por elo e contra oponentes de rota |
+| ![Histórico de LP](docs/screenshots/profile-lp.png)<br>**Histórico de LP:** Solo/Duo e Flex na temporada inteira | ![Pós-partida](docs/screenshots/postmatch.png)<br>**Pós-partida:** resumo automático "Como foi" e painel da partida |
+| ![Seleção de campeões](docs/screenshots/draft.png)<br>**Seleção de campeões:** times nas laterais, counters e sugestões ponderadas | ![Builds na seleção](docs/screenshots/draft-builds.png)<br>**Builds no draft:** runas, feitiços, ordem de itens e importação em um clique |
+| ![Jev na seleção](docs/screenshots/draft-jev.png)<br>**Confronto · Jev:** builds avaliadas pelo Jev conforme o draft inimigo | ![Partida](docs/screenshots/ingame.png)<br>**Partida ao vivo:** dano dos times, próximo item e ficha dos jogadores |
+| ![Página de um campeão](docs/screenshots/champion.png)<br>**Campeão:** builds por estilo, one-tricks, árvore de itens e divisão de dano | ![Counters](docs/screenshots/counters.png)<br>**Counters:** ordenados por *pp*, com filtro de fase de rotas |
+| ![Rotas da selva](docs/screenshots/jungle.png)<br>**Rotas da selva:** limpeza inicial desenhada no mapa (op.gg) | ![Overlay](docs/screenshots/overlay-next-item.png)<br>**Overlay em partida:** próximo item, receita e ordem da build sobre o jogo |
+| ![Tier list](docs/screenshots/tierlist.png)<br>**Tier list:** medalhas metálicas por tier | ![Tema claro](docs/screenshots/light.png)<br>**Tema claro:** painéis brancos de alto contraste (além de 16 temas extras) |
 
-**Tema claro:** o app tem tema escuro (o padrão) e claro, alternados pelo botão da barra superior. No claro, os painéis são brancos sobre um fundo cinza-azulado, com texto e destaque escurecidos para manter o contraste; os banners sobre arte de campeão continuam escuros.
+### App Mobile (Android)
 
-![Counters de um campeão no tema claro](docs/screenshots/light.png)
+| | | |
+|---|---|---|
+| ![Connect](docs/screenshots/mobile/01-connect.png)<br>**Pareamento:** QR Code ou link | ![Home Dark](docs/screenshots/mobile/02-home.png)<br>**Home (Dark):** perfil, elos com WR e histórico | ![Home Latte](docs/screenshots/mobile/02b-home-latte.png)<br>**Home (Tema claro):** sincronizado com o PC |
+| ![Lobby](docs/screenshots/mobile/04-play-lobby.png)<br>**Play / Lobby:** fila, rotas e amigos | ![Ready Check](docs/screenshots/mobile/06-ready-check.png)<br>**Ready Check:** aceite com vibração | ![Draft Pick](docs/screenshots/mobile/07-draft-pick.png)<br>**Draft:** escolha e banimento |
+| ![Draft Locked](docs/screenshots/mobile/09-draft-locked.png)<br>**Draft (Times):** faixas broadcast, feitiços, skins e runas | ![Live Game](docs/screenshots/mobile/11-game.png)<br>**Partida ao vivo:** placar, objetivos e timers | ![Tier List](docs/screenshots/mobile/13-builds-tier-list.png)<br>**Builds / Tier List:** brasões metálicos e builds com envio de runas |
 
-## O que o app faz
-
-- **Acompanha o cliente do League** no macOS e no Windows e abre a tela certa em cada fase: a seleção de campeões abre o draft, e a partida abre a página do jogo.
-- **Painel de jogador:** o seu perfil (lido do cliente) ou o de **qualquer jogador** — buscado por `Nome#TAG` na busca do topo (⌘K) ou clicado numa partida. Mostra elo, campeões, funções, atividade, **maestria** (o top 5 com o nível, o emblema e os pontos exatos do championmastery.gg), e:
-  - **histórico no estilo Blitz:** cada partida com seus **badges** (MVP, multiabates, mais dano, mestre do CS, imortal, primeiro abate, jogo perfeito…), e o mouse sobre um badge diz a medida e o corte que ele passou;
-  - **painel da partida** com abas: os bans e os objetivos de cada time, ouro e dano, o elo de cada jogador, a tabela de **Estatísticas**, **Gráficos**, **Probabilidade de vitória**, a **Linha do tempo** de abates e objetivos e o dano das runas por jogador; o que faltar na fonte vem do cliente e depois do Blitz;
-  - **análise do jogador:** estilo de jogo, pontos fortes, o que melhorar (com dicas), melhores campeões e melhores parceiros;
-  - **estatísticas detalhadas** das últimas 20 partidas (≈25 métricas: dano, parcela do dano do time, CS aos 10, visão, objetivos, abates solo, skillshots…), cada uma **comparada aos oponentes de rota** nas mesmas partidas, com barras e veredito por grupo;
-  - **comparação por elo:** KDA, participação, CS/min, visão/min e mortes numa régua com a mediana de cada elo (Ferro a Desafiante), com qualquer elo escolhido como referência;
-  - **ranking e temporadas** (op.gg): posição na ladder, pico da temporada e elos das temporadas anteriores;
-  - **abas como no Blitz:** **Histórico de LP** de Solo/Duo e Flex (a temporada inteira, com pico, mínimo e saldo), **Pool de campeões** da temporada rota por rota (campanha, taxa de vitória, KDA e LP de cada campeão) e o card **Jogou com** (quem esteve no seu time em duas partidas ou mais);
-  - **pós-partida:** quando a partida acaba, o app abre nela — o resultado, o painel da partida aberto e "Como foi": CS e visão por minuto contra a mediana do seu elo e as mortes, com quando aconteceram.
-- **Campeões, tier list e Analytics:** builds com todas as opções medidas (runas, feitiços, iniciais, botas, núcleos e 4º/5º item com taxa de vitória), a sequência de itens em árvore, a ordem de habilidades com o vídeo, a descrição e os valores de cada uma ao passar o mouse, melhores jogadores e builds de pros, e uma página de **Analytics** com tudo o que a fonte mede sobre o campeão. A página do campeão tem ainda:
-  - **Counters:** contra quem ele é forte e fraco, ordenado pelo **pp** (o quanto o confronto foge do que as taxas dos dois campeões preveem), com a opção "só a fase de rotas";
-  - **Sinergias:** os melhores aliados por rota, com tier e o ganho de vitória sobre o normal;
-  - **Rotas da selva** (op.gg): a limpeza completa mais jogada no mapa, por lado, as mais jogadas e o acampamento inicial — também no Analytics e na seleção de campeões;
-  - **builds por estilo** (Bruiser, Lethality, AD… no Blitz), as dos **one-tricks** e a sua **build anterior** no campeão e rota.
-- **Estatísticas:** **Duplas** (as duplas que mais vencem em duas rotas) e **Maestria** (a taxa de vitória de 5+ a 100+ de maestria e o quanto cada campeão melhora com experiência). Na lista de campeões, a coluna **Δ WR** mostra a variação da taxa de vitória desde o patch anterior.
-- **ProBuild · One-tricks:** os jogadores que jogam o campeão em quase toda partida, com elo, nota OTP, partidas, fatia do campeão e taxa de vitória; o nome abre o perfil no app.
-- **Habilidades:** cada habilidade com o vídeo da Riot e a descrição do próprio jogo, com os valores resolvidos nível a nível.
-- **Meus kits:** builds suas (árvore de itens, página de runas e feitiços) para um campeão e as rotas escolhidas, oferecidas na seleção de campeões ao lado das do TrueMain; escolhido um kit, o overlay segue os itens dele.
-- **Confronto:** a build para o draft e as partidas reais do confronto, com o **medidor de dano** de cada time (físico, mágico e verdadeiro, medido pelo Blitz) e um aviso quando um time é de um tipo só.
-- **Confronto · Jev:** a build inteira (runas, feitiços, inicial, ordem de habilidades, botas e quando comprá-las, núcleo item a item e itens tardios) escolhida pelo [Jev](https://typesafe.ai) entre as opções medidas, ao lado da mais jogada. O Jev só lê textos — os kits inimigos e cada item, runa e feitiço, em inglês — e responde perguntas; o app faz as contas com as estatísticas do lolalytics e do Blitz somadas partida a partida. Cada opção mostra a taxa de escolha, a de vitória e as checagens que pesaram; itens situacionais respondem ao draft (penetração contra linha de frente, resistência mágica, antecura). Importa runas e item set para o cliente e segue a seleção de campeões sozinha. Na seleção de campeões, você escolhe a **família** em que o Jev monta a build — a rota toda, o confronto contra o oponente, um estilo do Blitz (Bruiser, Lethality…) ou os one-tricks — e o nome do conjunto importado acompanha (`Aatrox vs Akali · Jev Lethality`). Depois que ele responde, cada build da lista ganha uma nota de 0 a 100 do quanto responde ao draft, e a melhor fica marcada como a escolha do Jev, sem nova chamada. Precisa de uma chave do Jev em Configurações (guardada pelo app, nunca exposta à interface); cada pedido é pago, por isso o Jev só é chamado num clique.
-- **Seleção de campeões:** tudo numa tela, sem rolar, como numa transmissão. Os dois times ficam nas laterais, com os counters de cada inimigo na própria rota, o medidor de dano, a tier list da rota e os counters do oponente. No centro, um card com as abas **Sugestões** (pôsteres de todas as sugestões, com a nota e o motivo) e **Builds** (runas, feitiços, iniciais, ordem de itens, botas, situacionais e ordem de evolução, as builds contra o oponente de rota e as de pros num menu). A build pesa a vitória de cada item pela amostra, responde a curas com antecura e segue o time inimigo para botas e itens (ex.: um atirador contra três magos leva Mercúrio e resistência mágica), mostrando o motivo sempre que foge da mais jogada. O seletor **Fonte | Jev** faz o Jev reordenar as sugestões (com o detalhamento da nota) e montar a build do draft. Os **pesos das sugestões** seguem os presets do Blitz (Equilibrado, One Trick, Segue o meta, Counter puro, Dono da rota, Jogador de equipe, Subir de elo) ou os seus, com uma maestria mínima; passar o mouse num aliado mostra o **card do jogador** (elo, rota principal ou autofill, maestria, duo e mais jogados); os seus **favoritos** ficam numa lista ao lado, com escolher e banir num clique. Por padrão, runas e conjuntos de itens só vão para o cliente **quando você clica**; com a **importação automática** ligada (Configurações), a build vai sozinha ao travar o campeão, como no Blitz. Só a página de runas e os conjuntos do próprio TrueMain são substituídos; com a lista de páginas cheia, o app libera a página menos usada (uma inválida primeiro), como o Blitz.
-- **Swiftplay:** no lobby, os dois campeões escolhidos, cada um com a sua build; dá para trocar campeão e rota e importar runas (na página de cada campeão, como o Blitz faz), feitiços e itens.
-- **Partida e overlay:** o dano de cada time, o próximo item com a receita e a ordem da build, a ordem de habilidades com o próximo ponto, e por jogador o elo, duo ou trio, maestria e mais jogados; timers de objetivos e painéis sobre o jogo.
-- **Zoom:** ⌘/Ctrl + `+`, `−` e `0` ampliam o app como no navegador.
-- **Temas:** além do TrueMain (escuro e claro), 16 temas em Configurações: os quatro sabores do [Catppuccin](https://catppuccin.com) (Latte, Frappé, Macchiato, Mocha), Dracula, Nord, Gruvbox (escuro e claro), Tokyo Night, Rosé Pine (e Dawn), Solarized (escuro e claro), One Dark e União Soviética (vermelho e dourado, com a estrela no ícone), cada um com 14 cores de destaque. O app inteiro muda de cor, o overlay e o ícone também (no Dock e na barra de tarefas enquanto o app está aberto).
-- **Português do Brasil** em todo o app, inclusive nos nomes de itens, campeões e runas.
+---
 
 ## Fontes de dados (Configurações)
 
-Em **Configurações → Fonte de dados**, todas as telas de estatísticas passam a vir da fonte escolhida (a troca recarrega a janela):
+Em **Configurações → Fonte de dados**, todas as telas de estatísticas passam a usar a fonte escolhida:
 
 | Fonte | O que traz |
 |---|---|
-| **TrueMain** | As estatísticas do projeto original, a partir dos *true mains* |
-| **Blitz** | Builds, tier list, matchups, builds contra um oponente e as partidas recentes de pros |
-| **op.gg** | A API oficial (servidor MCP) do op.gg: builds, runas, counters, ranking por campeão |
-| **lolalytics** *(experimental)* | A mais detalhada: cada runa, item por slot, matchups, objetivos, duração de partida |
-| **Tencent** *(experimental)* | Os guias do lol.qq.com (servidores chineses, atualizados diariamente): páginas de runa completas, núcleos, ordem de habilidades e matchups |
+| **TrueMain** | Estatísticas do projeto original, calculadas a partir dos *true mains* |
+| **Blitz** | Builds, tier list, matchups, builds contra oponente e partidas recentes de pros |
+| **op.gg** | API oficial (MCP): builds, runas, counters, rotas da selva e ranking por campeão |
+| **lolalytics** *(experimental)* | Detalhamento fino: cada runa, item por slot, matchups, objetivos e duração de partida |
+| **Tencent** *(experimental)* | Guias do `lol.qq.com` (servidores chineses, atualizados diariamente) |
 
-Builds e runas vêm **sempre da fonte escolhida**, sem misturar. O que a fonte escolhida não mede (counters com pp, sinergias, duplas, maestria, histórico de LP, pool da temporada, one-tricks, a referência do pós-partida) vem de outra que mede — o Blitz primeiro —, e um selo diz de onde vieram os números. O que ela não tiver vem do lolalytics e, depois, do Blitz, cada resposta inteira de uma fonte só; a única soma é a classificação do Confronto · Jev (lolalytics + Blitz). Os dados do TrueMain só são usados com o TrueMain escolhido.
+Builds e runas vêm sempre da fonte escolhida, sem misturar. O que ela não mede (como histórico de LP, maestria ou one-tricks) é preenchido por outra fonte que mede, sempre identificado com um selo. Em **Configurações → Patch dos dados**, é possível escolher o patch atual, o anterior, modo automático ou um patch específico (para o lolalytics).
 
-As fontes marcadas como experimentais usam endpoints públicos que os sites não documentam e podem mudar sem aviso. Nenhuma fonte é lida contornando proteções: sites que exigem burlar anti-bot ficaram de fora.
+---
 
-Em **Configurações → Patch dos dados**, escolha de quais partidas as builds, a tier list, os confrontos e o Analytics são lidos: o **patch atual** (o padrão), o **anterior**, o **automático** (o atual quando já tem partidas suficientes) ou um **patch específico** entre os dez últimos. Blitz, op.gg e Tencent sempre respondem com o próprio patch mais recente; a escolha vale quando a fonte é o lolalytics.
+## Baixar e instalar
 
-## O que este fork muda
+### Builds automáticos (Desktop — CI `latest`)
 
-Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
+Gerados automaticamente pelo GitHub Actions (`.github/workflows/desktop-build.yml`) na branch `main`, com suporte a atualização automática dentro do app:
 
-- **Idioma:** o app desktop inteiro fala **português do Brasil** (e inglês), escolhido na barra superior. Os textos de itens, campeões, runas e feitiços acompanham o idioma. O site continua em inglês.
-- **16 temas:** Catppuccin, Dracula, Nord, Gruvbox, Tokyo Night, Rosé Pine, Solarized, One Dark e União Soviética, com cor de destaque, no app, no overlay e no ícone.
-- **Identidade visual:** layout inspirado no Blitz nas cores do TrueMain — azul-marinho com um azul de destaque, **tema escuro e claro**, Sora nos títulos e Figtree no texto, ícones em traço fino (Tabler) e medalhas para os tiers.
-- **Navegação:** menu lateral agrupado (Campeões, Builds, Em partida), recolhível, só com ícones em janelas estreitas; busca única de campeão e jogador (⌘K).
-- **Abas novas:** **Analytics**, **Habilidades**, **Meus kits**, **Itens e runas**, **Classes**, **Notas da atualização** e **ProBuild** (por fonte).
-- **Atualização automática:** o app se atualiza pelas releases deste fork, mostrando o progresso do download num aviso no canto.
-- **Confronto · Jev:** build e runas classificadas com o [Jev](https://typesafe.ai) — ele lê os kits inimigos e cada item, o app junta isso às estatísticas do lolalytics e do Blitz — com importação de runas e item set para o cliente.
-- **Medidor de dano dos times:** físico, mágico e verdadeiro de cada time, medido pelo Blitz, na seleção de campeões, no Confronto e no Confronto · Jev.
-- **Do Blitz para o TrueMain:** counters com pp, sinergias, duplas, maestria, Δ WR por patch, rotas da selva (op.gg), histórico de LP e pool da temporada de qualquer jogador, pós-partida, pesos das sugestões, card do jogador, favoritos, one-tricks, builds por estilo e a anterior, e o Swiftplay.
-- **Seleção de campeões nova:** tudo numa tela — times nas laterais com counters, sugestões em pôsteres, a build num card só (com a de pros a um clique) e um seletor **Fonte | Jev** para o Jev reordenar as sugestões e montar a build do draft.
-- **Perfil e partidas no estilo Blitz:** badges com o motivo, painel da partida com abas e linha do tempo, maestria com os pontos exatos e análise do jogador.
-- **Simulador sem compilar:** `./sim-lcu.sh` abre uma seleção de campeões simulada e o app no navegador, lado a lado.
-- **Várias fontes de dados** (acima) e o **painel para qualquer jogador**, lido do Blitz e do op.gg — sem chave da API da Riot.
-- **Cara de app nativo:** barra de título no tema do app (no macOS, integrada à barra superior), uma única instância, ⌘, abre Configurações, fechar a janela no macOS só a esconde, e na versão final sem menu de clique direito nem atalhos de navegador.
-- **Desempenho:** o app só processa os eventos do cliente que usa, o overlay fica parado fora da partida, a busca pelo cliente desacelera quando ele está fechado, e os caches têm limite.
-- **Removido:** a chave da API da Riot, o ranking de Truemains, as gravações de partidas (e o helper de captura), a aba Jogador e a aba Matchups.
-- **Infraestrutura:** os workflows do projeto original (deploy, SonarQube, etc.) foram removidos. Resta só o **build do app para macOS e Windows** (`.github/workflows/desktop-build.yml`).
-
-## Baixar
-
-Os instaladores mais recentes, gerados pelo GitHub Actions a partir da branch `main`:
-
-| Sistema | Download |
+| Plataforma | Download |
 |---|---|
-| **macOS** (Apple Silicon: M1, M2, M3…) | [TrueMain-macOS-AppleSilicon.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS-AppleSilicon.dmg) |
+| **macOS** (Apple Silicon: M1, M2, M3, M4…) | [TrueMain-macOS-AppleSilicon.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS-AppleSilicon.dmg) |
 | **macOS** (Intel) | [TrueMain-macOS-Intel.dmg](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-macOS-Intel.dmg) |
 | **Windows** (64 bits) | [TrueMain-Windows-setup.exe](https://github.com/baku01/TrueMain-app/releases/latest/download/TrueMain-Windows-setup.exe) |
 
-Todas as versões: [Releases](https://github.com/baku01/TrueMain-app/releases). Os instaladores **não são assinados**: no **macOS**, depois de copiar o app para Aplicativos, rode `xattr -cr /Applications/TrueMain.app`; no **Windows**, o SmartScreen avisa de "editor desconhecido" (clique em *Mais informações* e *Executar assim mesmo*).
+### Pre-releases (Desktop + Android / Phone Companion)
 
-## Como rodar
+Os builds do app Android (`.apk`) e pré-lançamentos com recursos em desenvolvimento ficam em **[Releases](https://github.com/baku01/TrueMain-app/releases)**.
 
-Requisitos: Node 24 e npm, Rust (estável) e, para o app nativo, o toolchain do Tauri. Para o macOS, o Xcode Command Line Tools.
+> **Observações de instalação (builds não assinados):**
+> - **macOS:** após copiar `TrueMain.app` para `/Applications`, rode `xattr -cr /Applications/TrueMain.app`.
+> - **Windows:** no aviso do SmartScreen, clique em *Mais informações* → *Executar assim mesmo*.
+> - **Android:** instale `TrueMain-Android-release.apk` (permitindo instalação de fontes desconhecidas no aparelho).
+
+---
+
+## Como rodar e compilar localmente
+
+### Desktop (`desktop/`)
+
+Requisitos: **Node 24 + npm**, **Rust (stable)** e toolchain do **Tauri** (no macOS, Xcode Command Line Tools).
 
 ```bash
 cd desktop/app
 npm ci
 
-# Só a interface, no navegador (sem cliente do League; usa cenários de simulação):
+# Interface no navegador com cenários de simulação (sem precisar abrir o League):
 npm run dev            # http://localhost:3003
 
-# O app de verdade, com o cliente do League aberto:
+# App nativo completo conectado ao cliente do League:
 npm run tauri dev
 
-# Uma seleção de campeões simulada e o app no navegador, sem compilar (na raiz):
-../../sim-lcu.sh
+# Simulador de seleção de campeões + app no navegador, sem compilar Rust (na raiz):
+./sim-lcu.sh
 
 # Testes e verificações:
 npm run test
@@ -139,46 +174,87 @@ npm run typecheck
 cd .. && cargo test --workspace
 ```
 
-O app lê as estatísticas de campeões da **API do TrueMain** (`https://truemain.lol`, o servidor do projeto original). Para apontar para outro servidor, defina `TRUEMAIN_SITE_URL` (veja [`desktop/README.md`](desktop/README.md)).
+Para compilar o instalador local (`.app` / `.dmg` / `.exe`):
 
-Para gerar o instalador: `npm run tauri build` dentro de `desktop/app`. O GitHub Actions gera os instaladores (`.github/workflows/desktop-build.yml`) a cada push que mexa no app.
+```bash
+cd desktop/app
+npm run tauri -- build --config flavor.json
+```
+
+> **CI/CD e auto-update:** a CI gera versões `0.5.<run_number>` assinadas e publica o feed `latest.json` na tag `latest`. Ao gerar um build manual local, defina em `desktop/flavor.json` uma versão acima da que está em `latest.json` (com `"createUpdaterArtifacts": false`) para que o updater do Tauri não faça downgrade automático para a versão da CI ao abrir o app.
+
+### Mobile — Android (`mobile/`)
+
+Requisitos: **JDK 21** (`JAVA_HOME`) e **Android SDK** (`ANDROID_HOME`, platform `android-37.2`, build-tools `36`).
+
+```bash
+cd mobile
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export ANDROID_HOME=~/Library/Android/sdk
+
+# Testes de protocolo (vetores X25519 / ChaCha20 contra a crate Rust):
+./gradlew :app:testDebugUnitTest --tests "lol.truemain.mobile.link.VectorsTest"
+
+# Regerar todos os screenshots (Roborazzi):
+./gradlew :app:testDebugUnitTest --tests "lol.truemain.mobile.screens.ScreenshotTest"
+
+# Gerar APKs (saída em mobile/app/build/outputs/apk/):
+./gradlew :app:assembleDebug
+./gradlew :app:assembleRelease
+```
+
+---
+
+## O que este fork muda
+
+Em relação ao [projeto original](https://github.com/ilyanfraimbault/TrueMain):
+
+- **App Android companheiro (`mobile/`) + Phone Link (`desktop/crates/phone-link`):** controle do cliente do League pelo celular via Wi-Fi com criptografia ponta a ponta, descoberta automática, sincronização de tema e visual alinhado ao desktop.
+- **Stats for Nerds (`/nerd-stats`):** análise profunda do histórico expandido com leitura em texto simples, nível de confiança e matemática detalhada.
+- **Overlay evoluído + Pacotes de voz (`voice-packs/`):** CS/min ao vivo, ouro da rota, objetivos, próximo item e dicas faladas.
+- **Idioma:** app desktop e mobile em **português do Brasil** (e inglês), incluindo nomes e descrições de itens, campeões, runas e feitiços.
+- **16 temas + Claro/Escuro:** com 14 cores de destaque no app, overlay, ícone e celular.
+- **Identidade visual:** layout inspirado no Blitz nas cores do TrueMain — Sora nos títulos, Figtree no texto, ícones Tabler e brasões metálicos para tiers.
+- **Múltiplas fontes de dados:** TrueMain, Blitz, op.gg, lolalytics e Tencent, sem exigir chave da API da Riot.
+- **Confronto · Jev, Meus kits, Analytics, ProBuild, Habilidades, Classes, Itens/Runas, Notas da atualização e Swiftplay.**
+- **Simulador local (`./sim-lcu.sh`)** e **atualização automática** via GitHub Releases (`.github/workflows/desktop-build.yml`).
+
+---
+
+## Estrutura do repositório
+
+```text
+desktop/       App desktop em Tauri (src-tauri + crates/{lcu,phone-link} em Rust, app/ em Nuxt)
+mobile/        App companheiro Android (Kotlin + Jetpack Compose + testes Roborazzi)
+voice-packs/   Pacotes de voz para dicas em partida no overlay
+web/           Site público herdado do original; web/layers/common é compartilhado com o desktop
+backend/       Solução .NET herdada do original (Api, Ingestor, Core, Data) — não implantada neste fork
+admin/         Portal administrativo herdado do original — não implantado neste fork
+docs/          Documentação, RFCs e capturas de tela do desktop
+```
+
+---
 
 ## De onde vêm os dados
 
-| Fonte | Para quê |
+| Fonte | Uso |
 |---|---|
-| API do TrueMain (`truemain.lol`) | Estatísticas na fonte TrueMain, recomendações de draft e de próximo item, referências por elo |
-| Blitz (`iesdev.com`) | Perfis e partidas de qualquer jogador, o elo de cada jogador da partida, builds, pros e a divisão de dano dos campeões; na fonte Blitz, as estatísticas |
-| op.gg (API oficial) | Ranking e temporadas dos jogadores; na fonte op.gg, as estatísticas |
-| lolalytics e Tencent | As estatísticas nessas fontes (experimental); o lolalytics também cobre o que faltar na fonte escolhida |
-| [championmastery.gg](https://championmastery.gg) | Os pontos exatos de maestria no painel |
-| [Jev](https://typesafe.ai) (TypeSafe, `api.typesafe.ai`) | As escolhas do Confronto · Jev e da seleção de campeões no modo Jev — só com a sua chave e só num clique |
-| [Data Dragon](https://developer.riotgames.com/docs/lol) e [Community Dragon](https://www.communitydragon.org/) | Nomes, textos e imagens de itens, campeões, feitiços e runas, no idioma escolhido |
-| Cliente do League (local) | Seleção de campeões, perfil, histórico, maestria e a partida ao vivo |
-| [Wiki do League](https://wiki.leagueoflegends.com/) | Subclasses dos campeões (um retrato guardado no app) |
-| leagueoflegends.com | Notas da atualização |
-| CDNs da Riot e do Blitz | Vídeos das habilidades e suas miniaturas |
+| API do TrueMain (`truemain.lol`) | Estatísticas na fonte TrueMain, recomendações de draft/próximo item e referências por elo |
+| Blitz (`iesdev.com`) | Perfis, partidas de qualquer jogador, elos da partida, builds, pros e divisão de dano |
+| op.gg (API oficial) | Ranking, temporadas, rotas da selva e estatísticas na fonte op.gg |
+| lolalytics e Tencent | Estatísticas nessas fontes *(experimental)* |
+| [championmastery.gg](https://championmastery.gg) | Pontos exatos de maestria no painel |
+| [Jev](https://typesafe.ai) | Avaliação de builds e sugestões no modo Jev (com chave própria do usuário) |
+| [Data Dragon](https://developer.riotgames.com/docs/lol) e [Community Dragon](https://www.communitydragon.org/) | Nomes, textos, ícones e *splash arts* de campeões, itens, feitiços e runas |
+| Cliente do League (local) | Lobby, seleção de campeões, perfil, histórico, maestria e partida ao vivo |
+| [Wiki do League](https://wiki.leagueoflegends.com/) e `leagueoflegends.com` | Subclasses de campeões e notas de atualização |
 
-> **Dependências:** as estatísticas vêm de servidores que não são deste fork. Com a fonte TrueMain, se `truemain.lol` sair do ar as telas de campeões e tier list ficam vazias — basta escolher outra fonte em Configurações. Itens, runas, classes, notas da atualização e a partida ao vivo não dependem de nenhuma.
-
-## Sobre o projeto original
-
-O TrueMain original é um site de análise de League of Legends, e este repositório ainda traz o código dele: um backend em .NET (`backend/`: `Api`, `Ingestor`, `Core`, `Data`), o site em Nuxt (`web/`) e o portal administrativo (`admin/`). A ideia central é identificar os *true mains* de cada campeão (jogadores com uma relação sustentada entre partidas jogadas e maestria) e calcular as estatísticas só a partir das partidas deles. A descrição completa da arquitetura está no [repositório original](https://github.com/ilyanfraimbault/TrueMain).
-
-```
-backend/   solução .NET: Api, Ingestor, Core, Data e testes
-web/       site público (Nuxt); web/layers/common é a camada que o site e o app desktop compartilham
-admin/     portal administrativo (Nuxt)
-desktop/   o app desktop (Tauri: src-tauri em Rust, app em Nuxt)
-docs/      documentação, RFCs e as capturas de tela deste README
-```
-
-Este fork **não faz deploy** do backend, do site nem do portal: os arquivos de `compose*.yaml` e `docs/` de infraestrutura são herdados do original e estão aí só como referência.
+---
 
 ## Licença e créditos
 
-- **Licença:** [PolyForm Noncommercial 1.0.0](LICENSE), a mesma do projeto original. Pode ler, rodar, modificar e compartilhar o código para fins **não comerciais**; uso comercial exige outra licença do detentor dos direitos. O aviso do arquivo `LICENSE` (*Required Notice: Copyright 2026 Ilyan Fraimbault*) deve ser mantido em qualquer cópia.
-- **Projeto original e autoria:** [ilyanfraimbault/TrueMain](https://github.com/ilyanfraimbault/TrueMain), de Ilyan Fraimbault. Este repositório é um fork e não tem relação oficial com o projeto de origem.
+- **Licença:** [PolyForm Noncommercial 1.0.0](LICENSE), a mesma do projeto original. Uso permitido para fins **não comerciais**, mantendo o aviso de `LICENSE` (*Required Notice: Copyright 2026 Ilyan Fraimbault*).
+- **Projeto original:** [ilyanfraimbault/TrueMain](https://github.com/ilyanfraimbault/TrueMain), de Ilyan Fraimbault. Este repositório é um fork independente.
 - **Ícones:** [Tabler](https://tabler.io/icons) (MIT), [Phosphor](https://phosphoricons.com) (MIT) e [Lucide](https://lucide.dev) (ISC).
-- **Fontes:** [Sora](https://fonts.google.com/specimen/Sora) e [Figtree](https://fonts.google.com/specimen/Figtree) (SIL OFL), incluídas no app.
-- **Dados do jogo e arte:** Riot Games. O TrueMain **não é endossado pela Riot Games** e não reflete as opiniões da Riot Games nem de quem esteja envolvido na produção ou no gerenciamento das propriedades da Riot Games. League of Legends e Riot Games são marcas ou marcas registradas da Riot Games, Inc.
+- **Fontes:** [Sora](https://fonts.google.com/specimen/Sora), [Figtree](https://fonts.google.com/specimen/Figtree) e [Geist Mono](https://vercel.com/font) (SIL OFL).
+- **Dados do jogo e arte:** Riot Games. O TrueMain **não é endossado pela Riot Games** e não reflete as opiniões da Riot Games nem de quem esteja envolvido na produção ou gerenciamento das propriedades da Riot Games. League of Legends e Riot Games são marcas registradas da Riot Games, Inc.

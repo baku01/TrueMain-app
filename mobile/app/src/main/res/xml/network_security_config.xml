@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The desktop is reached over plain ws:// on the local network: its address is
+  a LAN IP, which no certificate can name. The link seals every frame itself
+  (phone-link: X25519 + ChaCha20-Poly1305, the desktop's key pinned at pairing),
+  so the transport's own encryption would add nothing. Everything else the app
+  reads (Data Dragon, TrueMain) is HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

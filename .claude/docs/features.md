@@ -969,7 +969,8 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
 - **Feels like an app** (`plugins/native.client.ts`, `main.css`, `tauri*.conf.json`): the top bar drags the window from
   anywhere (`data-tauri-drag-region="deep"`), a file or link dropped from outside is refused, controls keep the arrow
   cursor, inner panes do not chain their scroll; WebView2's autofill suggestions and
-  macOS's link previews are off, and the macOS window restates the base one (`tests/tauri-window-config.test.ts`: the
+  macOS's link previews are off, the macOS window takes the click that brings it forward (`acceptFirstMouse`: a lock
+  clicked straight after hovering in the client went nowhere), and the macOS window restates the base one (`tests/tauri-window-config.test.ts`: the
   zoom shortcuts went missing there once).
   Unsigned by Apple and Microsoft for the beta.
 - **Footprint** (#1916): identical API reads asked at once by two webviews (the next item, from the game page and
@@ -991,6 +992,20 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   failed send keeps its counts for the next. Nothing read from the League client is sent. "Share Anonymous Usage
   Data", checked by default, in the macOS app menu / Windows tray menu turns it off for good; a debug build never
   sends (`TRUEMAIN_TELEMETRY_DEV` overrides). Read back on the admin's `/desktop`.
+- **Phone link** (`src-tauri/src/phone_link/`, protocol in `crates/phone-link`, Android app in `mobile/`): Settings →
+  Phone, off by default. Turned on, the app listens on `0.0.0.0:42719` (private networks only, browsers refused by
+  `Origin`/`Sec-Fetch-*`): `GET /truemain-link` says who is there (a phone that lost the address scans its /24),
+  `GET /link/v1` is the WebSocket. "Pair a phone" shows a QR code (`truemain://link?v=1&k=…&t=…&a=…&n=…`: the
+  desktop's X25519 key, a single-use token alive 5 min, its LAN addresses); the phone pins the key, spends the token,
+  and later resumes with its own key. Handshake: four X25519 exchanges (ee, ss, se, es) into HKDF-SHA256 salted by a
+  hash of the transcript, one key per direction; every frame after it ChaCha20-Poly1305 under a counter nonce, so a
+  replayed, dropped or reordered frame ends the link. A phone reaches only `phone_link::allow`: queue/lobby/invites,
+  ready check, champion select (hover, lock, ban, spells, skin, trades, bench, reroll), runes (`POST /truemain/runes`
+  imports as the app imports its own page), match history, the game's Live Client Data, the app's own state and game
+  feed — never chat, the account or anything else. Events of the same list are forwarded on a client socket of the
+  link's own, open only while a phone is. Paired phones listed (connected or last seen), each forgettable;
+  "forget every phone" also rotates the desktop's key. `phone-link.json` (0600) in the app's config folder.
+  `crates/phone-link/vectors.json` pins the protocol's bytes, tested by both the crate and the Android app.
 - **Not present**: win probability in the draft (by design), summoner spell import of a build (a kit's spells are
   written, #2185), sharing a kit, the
   gold standing in the companion window (it is in the overlay, on TAB), a loading-screen panel in the overlay (dropped

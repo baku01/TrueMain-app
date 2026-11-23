@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Live game -->
+    <string name="game_loading">The game is loading on your computer…</string>
+    <string name="game_none_title">No game running</string>
+    <string name="game_none_body">Your scoreboard shows up here as soon as a game starts on your computer.</string>
+    <string name="game_side_blue">Blue side</string>
+    <string name="game_side_red">Red side</string>
+    <string name="game_your_team">%1$s · Your team</string>
+    <string name="game_team_kills">%1$d kills</string>
+    <string name="game_cs">%1$d CS</string>
+    <string name="game_gold">%1$d gold to spend</string>
+    <string name="game_spectating">Spectating</string>
+    <string name="game_objectives">Objectives</string>
+    <string name="game_turrets">Turrets</string>
+    <string name="game_inhibitors">Inhibitors down</string>
+    <string name="game_dragons">Drakes</string>
+    <string name="game_baron_buff">Baron buff</string>
+    <string name="game_elder_buff">Elder buff</string>
+    <string name="game_timers">Next spawns</string>
+    <string name="game_dragon">Drake</string>
+    <string name="game_elder">Elder Dragon</string>
+    <string name="game_grubs">Voidgrubs</string>
+    <string name="game_herald">Rift Herald</string>
+    <string name="game_baron">Baron Nashor</string>
+    <string name="game_timer_up">Up</string>
+    <string name="game_timer_gone">Gone</string>
+    <string name="game_health">Health</string>
+    <string name="game_mana">Mana</string>
+    <string name="game_energy">Energy</string>
+    <string name="game_resource">Resource</string>
+    <string name="game_mode_classic">Summoner\'s Rift</string>
+    <string name="game_mode_aram">ARAM</string>
+    <string name="game_mode_practice">Practice Tool</string>
+    <string name="game_mode_arena">Arena</string>
+    <string name="game_mode_urf">URF</string>
+
+    <!-- Match history -->
+    <string name="history_title">Recent games</string>
+    <string name="history_unavailable">Connect to your computer with League open to see your games.</string>
+    <string name="history_empty">No games in your history yet.</string>
+    <string name="history_error">Could not read your match history.</string>
+    <string name="history_error_more">Could not load more. Tap to retry.</string>
+    <string name="history_retry">Retry</string>
+    <string name="history_more">Show more</string>
+    <string name="history_victory">Victory</string>
+    <string name="history_defeat">Defeat</string>
+    <string name="history_remake">Remake</string>
+    <string name="history_kda">%1$s KDA</string>
+    <string name="history_perfect">Perfect KDA</string>
+    <string name="history_cs">%1$d CS</string>
+    <string name="history_cs_duration">%1$d CS · %2$s</string>
+    <string name="history_damage">%1$s dmg</string>
+    <string name="history_close">Close</string>
+    <string name="history_detail_error">Could not read this game.</string>
+    <string name="history_side_blue">Blue side</string>
+    <string name="history_side_red">Red side</string>
+    <string name="history_team_totals">%1$d / %2$d / %3$d · %4$s gold</string>
+    <string name="history_towers">Towers %1$d</string>
+    <string name="history_dragons">Drakes %1$d</string>
+    <string name="history_barons">Barons %1$d</string>
+    <string name="history_heralds">Heralds %1$d</string>
+    <string name="history_grubs">Grubs %1$d</string>
+    <string name="history_bans">Bans</string>
+    <string name="history_queue_solo">Ranked Solo/Duo</string>
+    <string name="history_queue_flex">Ranked Flex</string>
+    <string name="history_queue_draft">Normal Draft</string>
+    <string name="history_queue_blind">Blind Pick</string>
+    <string name="history_queue_aram">ARAM</string>
+    <string name="history_queue_swiftplay">Swiftplay</string>
+    <string name="history_queue_quickplay">Quickplay</string>
+    <string name="history_queue_clash">Clash</string>
+    <string name="history_queue_urf">URF</string>
+    <string name="history_queue_arena">Arena</string>
+    <string name="history_queue_custom">Custom</string>
+    <string name="history_queue_bots">Co-op vs. AI</string>
+</resources>

@@ -20,6 +20,7 @@ mod menu;
 mod mobafire;
 mod news;
 mod overlay;
+mod phone_link;
 mod ready_check;
 mod record;
 mod runes;
@@ -413,6 +414,12 @@ pub fn run() {
             news::open_patch_note,
             mobafire::mobafire_page,
             mobafire::open_guide_video,
+            phone_link::phone_link_status,
+            phone_link::phone_link_set_enabled,
+            phone_link::phone_link_invite,
+            phone_link::phone_link_forget,
+            phone_link::phone_link_reset,
+            phone_link::phone_link_set_theme,
         ])
         // The overlay's panel is a window too: without this, closing the
         // app's window would leave the app running with no window to show.
@@ -450,6 +457,7 @@ pub fn run() {
             menu::install(app)?;
             app.manage(kits::Kits::new(&handle));
             app.manage(ready_check::ReadyCheck::load(&handle));
+            phone_link::setup(&handle);
             overlay::setup(&handle)?;
             // Started at login (`autostart`): placed but not shown, in the tray until opened.
             window_state::restore(&handle, !autostart::launched_at_login());
