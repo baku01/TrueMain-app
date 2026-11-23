@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The design system's TrueMain dark page background (desktop main.css, ui-bg). -->
+    <color name="background">#FF080C14</color>
+</resources>

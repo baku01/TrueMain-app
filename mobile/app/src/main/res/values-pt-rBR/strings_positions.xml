@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="position_top">Topo</string>
+    <string name="position_jungle">Selva</string>
+    <string name="position_middle">Meio</string>
+    <string name="position_bottom">Atirador</string>
+    <string name="position_support">Suporte</string>
+    <string name="position_fill">Preencher</string>
+</resources>

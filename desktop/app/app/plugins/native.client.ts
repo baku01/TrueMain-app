@@ -1,5 +1,6 @@
 import { syncDataSourceWithShell } from '~/utils/data-source'
 import { captionColor } from '~/utils/app-theme'
+import { readPhoneTheme } from '~/utils/phone-theme'
 /**
  * What makes the window read as an app rather than a page:
  *
@@ -7,7 +8,8 @@ import { captionColor } from '~/utils/app-theme'
  *   CSS that differs — the scrollbars;
  * - the native title bar dark or light as the page is (`set_window_theme`,
  *   which on Windows 11 also paints the caption the top bar's colour, a
- *   Catppuccin flavour's own);
+ *   Catppuccin flavour's own), and the theme's colours to the paired phones
+ *   (`utils/phone-theme`);
  * - on macOS the title bar is drawn over by the top bar (`tauri.macos.conf.json`):
  *   `in-tauri` and `fullscreen` say when the traffic lights sit in it;
  * - the routes the shell asks for (`app://navigate`: ⌘, opens Settings, the
@@ -52,6 +54,15 @@ export default defineNuxtPlugin(() => {
     // A Catppuccin flavour's caption is its own top bar's colour; TrueMain's, the shell's.
     watch(() => [colorMode.value, choice.value.theme, choice.value.accent] as const, ([value]) =>
       void invoke('set_window_theme', { dark: value !== 'light', caption: captionColor(choice.value) }).catch(() => {}), { immediate: true })
+    // The paired phones draw in the same theme (`utils/phone-theme`): read once the page has
+    // painted it. The main window alone speaks for the app; an overlay's page is the same theme.
+    if (location.hash.startsWith('#/overlay/')) return
+    watch(() => [colorMode.value, choice.value.theme, choice.value.accent] as const, ([value, theme]) => {
+      void nextTick(() => requestAnimationFrame(() => {
+        const read = readPhoneTheme(theme, value === 'light')
+        if (read) void invoke('phone_link_set_theme', { theme: read }).catch(() => {})
+      }))
+    }, { immediate: true })
   })
   void import('@tauri-apps/api/event').then(({ listen }) => listen<string>('app://navigate', event => void router.push(event.payload)))
   // The menu bar's Go › Back and Forward (⌘[ and ⌘]).

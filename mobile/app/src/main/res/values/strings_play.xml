@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Play tab: state of the link -->
+    <string name="play_no_link">Waiting for your computer to queue from here.</string>
+    <string name="play_retry">Retry</string>
+    <string name="play_close">Close</string>
+
+    <!-- Queue picker -->
+    <string name="play_pick_title">Pick a game mode</string>
+    <string name="play_category_pvp">Player vs player</string>
+    <string name="play_category_ai">Co-op vs AI</string>
+    <string name="play_map_rift">Summoner’s Rift</string>
+    <string name="play_map_aram">Howling Abyss</string>
+    <string name="play_map_arena">Arena</string>
+    <string name="play_queues_failed">Could not read the game modes.</string>
+    <string name="play_queues_empty">No game mode is open right now.</string>
+
+    <!-- Lobby -->
+    <string name="play_lobby">Lobby</string>
+    <string name="play_queue_unknown">Custom queue</string>
+    <string name="play_members_count">%1$d / %2$d players</string>
+    <string name="play_leave">Leave the lobby</string>
+    <string name="play_leader">Party leader</string>
+    <string name="play_kick">Kick</string>
+    <string name="play_invite_pending">Invited</string>
+    <string name="play_invite_unknown">Invited player</string>
+    <string name="play_invite_friends">Invite friends</string>
+
+    <!-- Lanes -->
+    <string name="play_lanes">Lanes</string>
+    <string name="play_lane_primary">Primary</string>
+    <string name="play_lane_secondary">Secondary</string>
+    <string name="play_lane_none">Not picked</string>
+    <string name="play_lanes_pair">%1$s · %2$s</string>
+
+    <!-- Queue -->
+    <string name="play_find_match">Find match</string>
+    <string name="play_cancel_queue">Leave the queue</string>
+    <string name="play_waiting_leader">Waiting for the party leader to start the queue.</string>
+    <string name="play_cannot_start">The queue cannot start yet: every player needs their lanes.</string>
+    <string name="play_in_queue">In queue</string>
+    <string name="play_estimated">Estimated</string>
+    <string name="play_penalty">Queue delay: %1$s</string>
+    <string name="play_clock">%1$d:%2$02d</string>
+
+    <!-- Inviting friends -->
+    <string name="play_invite_title">Invite friends</string>
+    <string name="play_invite_search">Search a friend</string>
+    <string name="play_invite">Invite</string>
+    <string name="play_invited">Invited</string>
+    <string name="play_friends_failed">Could not read your friends.</string>
+    <string name="play_friends_none">No friend is online.</string>
+    <string name="play_friends_no_match">No online friend by that name.</string>
+    <string name="play_friend_online">Online</string>
+    <string name="play_friend_away">Away</string>
+    <string name="play_friend_busy">Busy</string>
+    <string name="play_friend_in_game">In game</string>
+    <string name="play_friend_champ_select">In champion select</string>
+    <string name="play_friend_in_queue">In queue</string>
+    <string name="play_friend_in_lobby">In a lobby</string>
+
+    <!-- Invitations received -->
+    <string name="play_invites_received">Invitations</string>
+    <string name="play_invite_someone">A friend</string>
+    <string name="play_accept">Accept</string>
+    <string name="play_decline">Decline</string>
+</resources>

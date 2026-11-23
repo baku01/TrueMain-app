@@ -16,6 +16,7 @@ const { t } = useT()
       <SettingsDataWindow />
       <SettingsAutoImport />
       <SettingsAutoAccept />
+      <SettingsPhoneLink />
       <SettingsStartup />
       <SettingsGraphics />
       <SettingsJev />

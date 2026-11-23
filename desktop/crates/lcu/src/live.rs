@@ -175,6 +175,12 @@ impl LiveClient {
         serde_json::from_str(&body).map_err(|e| Error::Decode(e.to_string()))
     }
 
+    /// One endpoint's body as it came, `path` under `/liveclientdata`
+    /// (`/allgamedata`): relayed to a paired phone (`phone_link`).
+    pub async fn raw(&self, path: &str) -> Result<serde_json::Value> {
+        self.get_json(path).await
+    }
+
     pub async fn game_stats(&self) -> Result<GameStats> {
         self.get_json("/gamestats").await
     }

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_home">Início</string>
+    <string name="tab_play">Jogar</string>
+    <string name="tab_draft">Seleção</string>
+    <string name="tab_game">Partida</string>
+    <string name="tab_builds">Builds</string>
+
+    <string name="connect_title">Controle o League pelo celular</string>
+    <string name="connect_body">Entre na fila, aceite a partida, escolha, bana e monte suas runas longe do teclado. O celular conversa com o app TrueMain do seu computador, só pelo seu Wi-Fi.</string>
+    <string name="connect_step1">No computador, abra o TrueMain → Configurações → Celular e ative.</string>
+    <string name="connect_step2">Clique em “Parear um celular” para mostrar um QR code.</string>
+    <string name="connect_step3">Escaneie aqui, com o celular no mesmo Wi-Fi.</string>
+    <string name="connect_scan">Escanear o QR code</string>
+    <string name="connect_paste">Ou cole o link de pareamento</string>
+    <string name="connect_paste_action">Parear</string>
+    <string name="connect_bad_link">Isso não é um código de pareamento do TrueMain.</string>
+    <string name="connect_scanner_unavailable">O leitor não está disponível neste celular. Cole o link.</string>
+    <string name="connect_revoked">Seu computador não reconhece mais este celular. Pareie de novo.</string>
+
+    <string name="link_connecting">Conectando…</string>
+    <string name="link_connecting_to">Conectando a %1$s…</string>
+    <string name="link_searching">Procurando seu computador nesta rede…</string>
+    <string name="link_open">Conectado a %1$s</string>
+    <string name="link_offline">Computador inacessível</string>
+    <string name="link_retry">Tentar de novo</string>
+    <string name="link_forget">Desparear este computador</string>
+    <string name="link_error_bad_token">Este código expirou ou já foi usado. Mostre um novo no computador.</string>
+    <string name="link_error_unreachable">Não consegui alcançar o computador. Ele está no mesmo Wi-Fi, com o celular ativado?</string>
+    <string name="link_error_link_off">O celular está desativado no seu computador.</string>
+    <string name="link_error_other">O computador recusou a conexão (%1$s).</string>
+    <string name="link_no_client">O League não está aberto no computador.</string>
+
+    <string name="ready_title">Partida encontrada!</string>
+    <string name="ready_accept">Aceitar</string>
+    <string name="ready_decline">Recusar</string>
+    <string name="ready_accepted">Aceita, esperando os outros…</string>
+    <string name="ready_declined">Recusada</string>
+    <string name="ready_seconds">%1$d s</string>
+
+    <string name="home_level">Nível %1$d</string>
+    <string name="home_solo">Ranqueada Solo/Duo</string>
+    <string name="home_flex">Ranqueada Flex</string>
+    <string name="home_unranked">Sem ranque</string>
+    <string name="home_record">%1$dV %2$dD</string>
+    <string name="home_lp">%1$d PDL</string>
+    <string name="home_not_logged">Entre no League no computador.</string>
+
+    <string name="phase_none">No cliente</string>
+    <string name="phase_lobby">No lobby</string>
+    <string name="phase_matchmaking">Na fila</string>
+    <string name="phase_ready_check">Partida encontrada</string>
+    <string name="phase_champ_select">Seleção de campeões</string>
+    <string name="phase_in_progress">Em partida</string>
+    <string name="phase_end">Pós-jogo</string>
+    <string name="phase_reconnect">Reconectar</string>
+
+    <string name="error_generic">Algo deu errado. Tente de novo.</string>
+</resources>

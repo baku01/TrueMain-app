@@ -16,4 +16,11 @@ describe('the macOS window config', () => {
     const mac = read('tauri.macos.conf.json').app.windows[0] as Record<string, unknown>
     for (const [key, value] of Object.entries(base)) expect(mac[key], key).toEqual(value)
   })
+
+  // The player hovers in the client, then clicks "Lock in" here: without it,
+  // macOS spends that click on bringing the window forward and the page never
+  // hears it — the lock did nothing, with no word of why.
+  it('hands the click that brings it forward to the page', () => {
+    expect(read('tauri.macos.conf.json').app.windows[0].acceptFirstMouse).toBe(true)
+  })
 })

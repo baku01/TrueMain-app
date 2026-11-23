@@ -79,6 +79,40 @@ impl LcuClient {
         serde_json::from_str(&body).map_err(|e| Error::Decode(e.to_string()))
     }
 
+    /// Any request, answered as the client answered it: its status and its
+    /// JSON body (`Null` when empty, a string when not JSON). For the phone
+    /// link, which relays what a paired phone asks after checking it against
+    /// its allow-list; everything the app itself does goes through the typed
+    /// methods.
+    pub async fn request(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&serde_json::Value>,
+    ) -> Result<(u16, serde_json::Value)> {
+        let method = reqwest::Method::from_bytes(method.as_bytes())
+            .map_err(|_| Error::Transport(format!("not an HTTP method: {method}")))?;
+        let mut request = self
+            .http
+            .request(method, format!("{}{path}", self.credentials.base_url()))
+            .header(
+                reqwest::header::AUTHORIZATION,
+                self.credentials.authorization_header(),
+            );
+        if let Some(body) = body {
+            request = request.json(body);
+        }
+        let response = request.send().await?;
+        let status = response.status().as_u16();
+        let text = response.text().await?;
+        let body = if text.trim().is_empty() {
+            serde_json::Value::Null
+        } else {
+            serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text))
+        };
+        Ok((status, body))
+    }
+
     /// The client's install directory (`C:/Riot Games/League of Legends`,
     /// `/Applications/League of Legends.app/Contents/LoL`): the game reads its
     /// recommended item sets from the `Config` folder under it.

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Partida ao vivo -->
+    <string name="game_loading">A partida está carregando no seu computador…</string>
+    <string name="game_none_title">Nenhuma partida em andamento</string>
+    <string name="game_none_body">Seu placar aparece aqui assim que uma partida começar no seu computador.</string>
+    <string name="game_side_blue">Lado azul</string>
+    <string name="game_side_red">Lado vermelho</string>
+    <string name="game_your_team">%1$s · Seu time</string>
+    <string name="game_team_kills">%1$d abates</string>
+    <string name="game_cs">%1$d CS</string>
+    <string name="game_gold">%1$d de ouro para gastar</string>
+    <string name="game_spectating">Assistindo</string>
+    <string name="game_objectives">Objetivos</string>
+    <string name="game_turrets">Torres</string>
+    <string name="game_inhibitors">Inibidores destruídos</string>
+    <string name="game_dragons">Dragões</string>
+    <string name="game_baron_buff">Buff do Barão</string>
+    <string name="game_elder_buff">Buff do Ancião</string>
+    <string name="game_timers">Próximos objetivos</string>
+    <string name="game_dragon">Dragão</string>
+    <string name="game_elder">Dragão Ancião</string>
+    <string name="game_grubs">Vastilarvas</string>
+    <string name="game_herald">Arauto do Vale</string>
+    <string name="game_baron">Barão Na\'Shor</string>
+    <string name="game_timer_up">Disponível</string>
+    <string name="game_timer_gone">Encerrado</string>
+    <string name="game_health">Vida</string>
+    <string name="game_mana">Mana</string>
+    <string name="game_energy">Energia</string>
+    <string name="game_resource">Recurso</string>
+    <string name="game_mode_classic">Summoner\'s Rift</string>
+    <string name="game_mode_aram">ARAM</string>
+    <string name="game_mode_practice">Modo Treino</string>
+    <string name="game_mode_arena">Arena</string>
+    <string name="game_mode_urf">URF</string>
+
+    <!-- Histórico de partidas -->
+    <string name="history_title">Partidas recentes</string>
+    <string name="history_unavailable">Conecte ao seu computador com o League aberto para ver suas partidas.</string>
+    <string name="history_empty">Ainda não há partidas no seu histórico.</string>
+    <string name="history_error">Não foi possível ler seu histórico de partidas.</string>
+    <string name="history_error_more">Não foi possível carregar mais. Toque para tentar de novo.</string>
+    <string name="history_retry">Tentar de novo</string>
+    <string name="history_more">Mostrar mais</string>
+    <string name="history_victory">Vitória</string>
+    <string name="history_defeat">Derrota</string>
+    <string name="history_remake">Refeita</string>
+    <string name="history_kda">%1$s KDA</string>
+    <string name="history_perfect">KDA perfeito</string>
+    <string name="history_cs">%1$d CS</string>
+    <string name="history_cs_duration">%1$d CS · %2$s</string>
+    <string name="history_damage">%1$s de dano</string>
+    <string name="history_close">Fechar</string>
+    <string name="history_detail_error">Não foi possível ler esta partida.</string>
+    <string name="history_side_blue">Lado azul</string>
+    <string name="history_side_red">Lado vermelho</string>
+    <string name="history_team_totals">%1$d / %2$d / %3$d · %4$s de ouro</string>
+    <string name="history_towers">Torres %1$d</string>
+    <string name="history_dragons">Dragões %1$d</string>
+    <string name="history_barons">Barões %1$d</string>
+    <string name="history_heralds">Arautos %1$d</string>
+    <string name="history_grubs">Vastilarvas %1$d</string>
+    <string name="history_bans">Banimentos</string>
+    <string name="history_queue_solo">Ranqueada Solo/Duo</string>
+    <string name="history_queue_flex">Ranqueada Flexível</string>
+    <string name="history_queue_draft">Normal Alternada</string>
+    <string name="history_queue_blind">Escolha às Cegas</string>
+    <string name="history_queue_aram">ARAM</string>
+    <string name="history_queue_swiftplay">Partida Rápida</string>
+    <string name="history_queue_quickplay">Jogo Rápido</string>
+    <string name="history_queue_clash">Clash</string>
+    <string name="history_queue_urf">URF</string>
+    <string name="history_queue_arena">Arena</string>
+    <string name="history_queue_custom">Personalizada</string>
+    <string name="history_queue_bots">Cooperativo vs. IA</string>
+</resources>

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Empty state -->
+    <string name="draft_empty_title">Not in champion select</string>
+    <string name="draft_empty_body">Picks, bans, spells, skins and runes show up here as soon as your draft starts.</string>
+
+    <!-- Header -->
+    <string name="draft_phase_planning">Planning</string>
+    <string name="draft_phase_ban_pick">Bans and picks</string>
+    <string name="draft_phase_finalization">Finalization</string>
+    <string name="draft_phase_starting">Game starting</string>
+    <string name="draft_phase_other">Champion select</string>
+    <string name="draft_turn_pick">Your turn to pick!</string>
+    <string name="draft_turn_ban">Your turn to ban!</string>
+    <string name="draft_turn_planning">Declare the champion you want to play</string>
+    <plurals name="draft_next_pick">
+        <item quantity="one">Your pick comes in %1$d turn</item>
+        <item quantity="other">Your pick comes in %1$d turns</item>
+    </plurals>
+    <plurals name="draft_next_ban">
+        <item quantity="one">Your ban comes in %1$d turn</item>
+        <item quantity="other">Your ban comes in %1$d turns</item>
+    </plurals>
+    <string name="draft_next_soon">Your turn is next</string>
+    <string name="draft_waiting">Waiting for the other players…</string>
+    <string name="draft_locked_waiting">Locked in. Waiting for the others…</string>
+    <string name="draft_seconds">%1$d s</string>
+
+    <!-- Teams -->
+    <string name="draft_my_team">Your team</string>
+    <string name="draft_their_team">Enemy team</string>
+    <string name="draft_you">You</string>
+    <string name="draft_ally">Ally</string>
+    <string name="draft_enemy">Enemy</string>
+    <string name="draft_bans">Bans</string>
+
+    <!-- Champion grid -->
+    <string name="draft_choose_pick">Choose your champion</string>
+    <string name="draft_choose_ban">Choose a champion to ban</string>
+    <string name="draft_choose_intent">Pick intent</string>
+    <string name="draft_intent_note">Your allies see this champion as your intent. You lock it in once your turn opens.</string>
+    <string name="draft_search">Search a champion</string>
+    <string name="draft_no_match">No champion matches.</string>
+    <string name="draft_tag_all">All</string>
+    <string name="draft_tag_fighter">Fighter</string>
+    <string name="draft_tag_tank">Tank</string>
+    <string name="draft_tag_mage">Mage</string>
+    <string name="draft_tag_assassin">Assassin</string>
+    <string name="draft_tag_marksman">Marksman</string>
+    <string name="draft_tag_support">Support</string>
+    <string name="draft_hover_first">Tap a champion first</string>
+    <string name="draft_lock_named">Lock in %1$s</string>
+    <string name="draft_ban_named">Ban %1$s</string>
+    <string name="draft_lock">Lock in</string>
+    <string name="draft_ban">Ban</string>
+    <string name="draft_cancel">Cancel</string>
+    <string name="draft_confirm_lock_title">Lock in %1$s?</string>
+    <string name="draft_confirm_lock_body">Once locked, your champion can only change through a trade.</string>
+    <string name="draft_confirm_ban_title">Ban %1$s?</string>
+    <string name="draft_confirm_ban_body">Nobody will be able to play this champion in this game.</string>
+
+    <!-- Loadout -->
+    <string name="draft_loadout">Your loadout</string>
+    <string name="draft_spells_change">Change spells</string>
+    <string name="draft_spells_swap">Swap D/F</string>
+    <string name="draft_spells_title">Summoner spells</string>
+    <string name="draft_spell_d">D</string>
+    <string name="draft_spell_f">F</string>
+    <string name="draft_skins">Choose a skin</string>
+    <string name="draft_skins_after_lock">Skins after locking in</string>
+    <string name="draft_reroll">Reroll (%1$d)</string>
+
+    <!-- Skins -->
+    <string name="draft_skins_title">Skins</string>
+    <string name="draft_skins_failed">Could not load your skins.</string>
+    <string name="draft_skins_none">No skins for this champion.</string>
+    <string name="draft_skin_locked">Not owned</string>
+    <string name="draft_skin_selected">Selected</string>
+    <string name="draft_chromas">Chromas</string>
+    <string name="draft_chroma_unnamed">Chroma</string>
+
+    <!-- Runes -->
+    <string name="draft_runes">Runes</string>
+    <string name="draft_runes_pages">Pages</string>
+    <string name="draft_runes_edit">Edit</string>
+    <string name="draft_runes_none">No rune page selected.</string>
+    <string name="draft_runes_pages_title">Your rune pages</string>
+    <string name="draft_runes_applied">Rune page applied.</string>
+    <string name="draft_runes_no_slot">No free rune page slot. Delete a page in the client to make room.</string>
+    <string name="draft_runes_failed">Could not apply the rune page.</string>
+    <string name="draft_editor_primary">Primary path</string>
+    <string name="draft_editor_secondary">Secondary path (two runes)</string>
+    <string name="draft_editor_shards">Shards</string>
+    <string name="draft_editor_name">Page name</string>
+    <string name="draft_editor_save">Save and use this page</string>
+    <string name="draft_editor_incomplete">Choose every rune</string>
+    <string name="draft_perk_line">%1$s — %2$s</string>
+
+    <!-- Recommended -->
+    <string name="draft_recommended">Recommended by TrueMain</string>
+    <string name="draft_recommended_failed">Could not load TrueMain\'s build.</string>
+    <string name="draft_recommended_none">Not enough games on this champion yet.</string>
+    <plurals name="draft_recommended_stats">
+        <item quantity="one">%1$s win rate over %2$d game</item>
+        <item quantity="other">%1$s win rate over %2$d games</item>
+    </plurals>
+    <plurals name="draft_recommended_stats_vs">
+        <item quantity="one">%1$s win rate over %2$d game against your lane opponent</item>
+        <item quantity="other">%1$s win rate over %2$d games against your lane opponent</item>
+    </plurals>
+    <string name="draft_recommended_apply_runes">Apply these runes</string>
+    <string name="draft_recommended_use_spells">Use these spells</string>
+    <string name="draft_recommended_spells_set">Already set</string>
+    <string name="draft_retry">Retry</string>
+
+    <!-- Trades and swaps -->
+    <string name="draft_swaps_incoming">Requests for you</string>
+    <string name="draft_swap_incoming_trade">%1$s wants to trade champions with you</string>
+    <string name="draft_swap_incoming_pick_order">%1$s wants to swap pick order with you</string>
+    <string name="draft_swap_incoming_position">%1$s wants to swap positions with you</string>
+    <string name="draft_accept">Accept</string>
+    <string name="draft_decline">Decline</string>
+    <string name="draft_swaps">Trades and swaps</string>
+    <string name="draft_swap_trade">Trade champions</string>
+    <string name="draft_swap_pick_order">Swap pick order</string>
+    <string name="draft_swap_position">Swap positions</string>
+    <string name="draft_swap_request">Ask</string>
+    <string name="draft_swap_waiting">Waiting…</string>
+
+    <!-- ARAM bench -->
+    <string name="draft_bench">Bench</string>
+    <string name="draft_bench_empty">The bench is empty.</string>
+    <string name="draft_bench_hint">Tap a champion to swap yours for it.</string>
+
+    <!-- Errors -->
+    <string name="draft_error_request">The client refused that. Try again.</string>
+    <string name="draft_error_lock">Could not lock in. Is it still your turn?</string>
+</resources>
