@@ -102,23 +102,55 @@ pub fn bridge_app_events(app: &AppHandle, inner: Arc<Inner>) {
         }
     });
 
-    let last = Arc::new(std::sync::Mutex::new(Instant::now() - GAME_EVERY));
+    // At most one game state a second, but never the last one dropped: a change
+    // inside the window is sent when it ends, so the phone always ends up with
+    // the game as it stands — its end included.
+    let throttle = Arc::new(std::sync::Mutex::new(GameThrottle {
+        last: Instant::now() - GAME_EVERY,
+        pending: false,
+    }));
     for event in [crate::game::SNAPSHOT_EVENT, crate::game::UPDATE_EVENT] {
-        let (inner, app_handle, last) = (inner.clone(), app.clone(), last.clone());
+        let (inner, app_handle, throttle) = (inner.clone(), app.clone(), throttle.clone());
         app.listen(event, move |_| {
             if inner.open_count() == 0 {
                 return;
             }
-            {
-                let mut last = last.lock().expect("game throttle poisoned");
-                if last.elapsed() < GAME_EVERY {
+            let wait = {
+                let mut throttle = throttle.lock().expect("game throttle poisoned");
+                let elapsed = throttle.last.elapsed();
+                if elapsed >= GAME_EVERY {
+                    throttle.last = Instant::now();
+                    None
+                } else if throttle.pending {
                     return;
+                } else {
+                    throttle.pending = true;
+                    Some(GAME_EVERY - elapsed)
                 }
-                *last = Instant::now();
-            }
-            inner.broadcast("/truemain/game", &game_state(&app_handle));
+            };
+            let Some(wait) = wait else {
+                inner.broadcast("/truemain/game", &game_state(&app_handle));
+                return;
+            };
+            let (inner, app_handle, throttle) =
+                (inner.clone(), app_handle.clone(), throttle.clone());
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(wait).await;
+                {
+                    let mut throttle = throttle.lock().expect("game throttle poisoned");
+                    throttle.pending = false;
+                    throttle.last = Instant::now();
+                }
+                inner.broadcast("/truemain/game", &game_state(&app_handle));
+            });
         });
     }
+}
+
+struct GameThrottle {
+    last: Instant,
+    /// A send is already scheduled for the window's end.
+    pending: bool,
 }
 
 /// Follows the client's events for as long as the app runs, subscribed only
@@ -127,7 +159,12 @@ pub fn bridge_app_events(app: &AppHandle, inner: Arc<Inner>) {
 pub async fn follow_client(app: AppHandle, inner: Arc<Inner>) {
     let uris: Vec<&'static str> = phone_link::allow::client_events().collect();
     loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // A phone opening rings at once; the timeout catches a client that
+        // came up while one was already open.
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(2)) => {}
+            _ = inner.phone_opened.notified() => {}
+        }
         if inner.open_count() == 0 {
             continue;
         }

@@ -54,6 +54,9 @@ pub struct Inner {
     /// The app's theme as the main window resolved it (`utils/phone-theme.ts`):
     /// what phones draw in. `Null` until the window has sent it.
     theme: Mutex<Value>,
+    /// Rung when a phone opens, so the client's events are followed at once
+    /// rather than at the follower's next look (`relay::follow_client`).
+    phone_opened: tokio::sync::Notify,
 }
 
 /// Managed by the app; the commands below are the settings' view of it.
@@ -149,6 +152,7 @@ impl Inner {
             .expect("phone store poisoned")
             .touch(phone_id);
         tracing::info!(paired, "phone link opened");
+        self.phone_opened.notify_one();
         self.changed();
     }
 
@@ -315,6 +319,7 @@ pub fn setup(app: &AppHandle) {
         listening: Mutex::new(Listening::default()),
         version: app.package_info().version.to_string(),
         theme: Mutex::new(Value::Null),
+        phone_opened: tokio::sync::Notify::new(),
     });
     relay::bridge_app_events(app, inner.clone());
     tauri::async_runtime::spawn(relay::follow_client(app.clone(), inner.clone()));
