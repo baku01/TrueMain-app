@@ -100,7 +100,9 @@ class LinkClient(
 
     /** Connect again at once (the player tapped retry, or came back to the app). */
     fun retry() {
-        if (_state.value is LinkState.Open) return
+        // Never cancel an active pairing attempt when MainActivity.onResume() fires
+        // right after the QR scanner activity closes or a truemain:// deep link opens.
+        if (_state.value is LinkState.Open || store.desktop() == null) return
         loop?.cancel()
         loop = null
         start()
@@ -111,15 +113,27 @@ class LinkClient(
         loop?.cancel()
         session?.close()
         loop = scope.launch {
-            val addresses = invite.addresses.ifEmpty { discovery.scan().map { it.address } }
+            _state.value = LinkState.Connecting(invite.addresses.firstOrNull())
+            val addresses = try {
+                invite.addresses.ifEmpty {
+                    _state.value = LinkState.Searching
+                    discovery.scan().map { it.address }
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                emptyList()
+            }
             for (address in addresses) {
                 _state.value = LinkState.Connecting(address)
-                val outcome = attempt(address, Target.Pair(invite))
+                val outcome = try {
+                    attempt(address, Target.Pair(invite))
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    Outcome.Unreachable
+                }
                 if (outcome is Outcome.Opened) {
-                    store.saveDesktop(
-                        PairedDesktop(B64.encode(invite.pcKey), outcome.pc.name.ifEmpty { invite.name }, (listOf(address) + outcome.pc.addresses).distinct()),
-                    )
-                    _paired.value = true
                     awaitClose(outcome)
                     keepConnected()
                     return@launch
@@ -220,7 +234,18 @@ class LinkClient(
         session = attemptSession
         return try {
             val pc = withTimeout(HANDSHAKE_TIMEOUT) { attemptSession.opened.await() }
-            store.rememberAddress(address)
+            if (target is Target.Pair) {
+                store.saveDesktop(
+                    PairedDesktop(
+                        B64.encode(target.invite.pcKey),
+                        pc.name.ifEmpty { target.invite.name },
+                        (listOf(address) + pc.addresses).distinct(),
+                    ),
+                )
+                _paired.value = true
+            } else {
+                store.rememberAddress(address)
+            }
             _state.value = LinkState.Open(pc, address)
             Outcome.Opened(attemptSession, pc)
         } catch (error: LinkException) {

@@ -32,11 +32,11 @@ data class PairedDesktop(
  * by a key that never leaves the Android Keystore) and the desktop it paired
  * with. One desktop at a time, as the player has one computer playing.
  */
-class PairingStore(context: Context) {
+open class PairingStore(context: Context) {
     private val prefs = context.getSharedPreferences("phone-link", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun identity(): PhoneIdentity {
+    open fun identity(): PhoneIdentity {
         val id = prefs.getString(KEY_ID, null)
         val secret = prefs.getString(KEY_SECRET, null)?.let(::unwrap)
         if (id != null && secret != null && secret.size == KEY_LEN) {
@@ -53,21 +53,21 @@ class PairingStore(context: Context) {
         return PhoneIdentity(phoneId, keys, deviceName())
     }
 
-    fun desktop(): PairedDesktop? = prefs.getString(KEY_DESKTOP, null)?.let {
+    open fun desktop(): PairedDesktop? = prefs.getString(KEY_DESKTOP, null)?.let {
         runCatching { json.decodeFromString(PairedDesktop.serializer(), it) }.getOrNull()
     }
 
-    fun saveDesktop(desktop: PairedDesktop) {
+    open fun saveDesktop(desktop: PairedDesktop) {
         prefs.edit().putString(KEY_DESKTOP, json.encodeToString(PairedDesktop.serializer(), desktop)).apply()
     }
 
     /** Remembers where the desktop answered, so the next launch tries it first. */
-    fun rememberAddress(address: String) {
+    open fun rememberAddress(address: String) {
         val desktop = desktop() ?: return
         saveDesktop(desktop.copy(addresses = (listOf(address) + desktop.addresses).distinct().take(6)))
     }
 
-    fun forgetDesktop() {
+    open fun forgetDesktop() {
         prefs.edit().remove(KEY_DESKTOP).apply()
     }
 
