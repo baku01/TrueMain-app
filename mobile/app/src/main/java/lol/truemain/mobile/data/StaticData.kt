@@ -37,7 +37,7 @@ data class Perk(val id: Int, val name: String, val icon: String, val shortDesc: 
 
 data class PerkStyle(val id: Int, val name: String, val icon: String, val slots: List<List<Int>>)
 
-data class Item(val id: Int, val name: String)
+data class Item(val id: Int, val name: String, val iconUrl: String? = null)
 
 /** Everything the screens name and draw: champions, spells, runes, items. */
 class GameData(
@@ -52,7 +52,9 @@ class GameData(
     fun championName(id: Int?): String = champion(id)?.name ?: ""
     fun championSplash(id: Int?): String? = champion(id)?.alias?.takeIf { it.isNotEmpty() }?.let { "$DDRAGON/cdn/img/champion/splash/${it}_0.jpg" }
     fun spellIcon(id: Int?): String? = id?.let(spells::get)?.let { "$DDRAGON/cdn/$version/img/spell/${it.image}" }
-    fun itemIcon(id: Int?): String? = id?.takeIf { it > 0 }?.let { "$DDRAGON/cdn/$version/img/item/$it.png" }
+    fun itemIcon(id: Int?): String? = id?.takeIf { it > 0 }?.let {
+        items[it]?.iconUrl ?: "$DDRAGON/cdn/$version/img/item/$it.png"
+    }
     fun profileIcon(id: Int?): String? = id?.let { "$DDRAGON/cdn/$version/img/profileicon/$it.png" }
     fun perkIcon(id: Int?): String? = id?.let(perks::get)?.icon
     fun styleIcon(id: Int?): String? = styles.firstOrNull { it.id == id }?.icon
@@ -118,6 +120,11 @@ class StaticData(private val http: OkHttpClient, private val cacheDir: File) {
         val perks = runCatching {
             load("perks-$shardsLanguage", "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/$shardsLanguage/v1/perks.json")
         }.getOrNull()
+        // Community Dragon's items.json covers every client item (Arena, ARAM, Ornn, quest/boots upgrades)
+        // that Data Dragon's item.json omits or renames.
+        val cdragonItems = runCatching {
+            load("cdragon-items-$version", "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items.json")
+        }.getOrNull()
 
         val perkMap = HashMap<Int, Perk>()
         for (perk in perks.items) {
@@ -142,6 +149,19 @@ class StaticData(private val http: OkHttpClient, private val cacheDir: File) {
             PerkStyle(id, style.str("name").orEmpty(), "$DDRAGON/cdn/img/${style.str("icon")}", slots)
         }
 
+        val itemMap = HashMap<Int, Item>()
+        for (item in cdragonItems.items) {
+            val id = item.int("id") ?: continue
+            val icon = Art.lcuAsset(item.str("iconPath"))
+            itemMap[id] = Item(id, item.str("name").orEmpty(), icon)
+        }
+        for ((key, item) in (items["data"] as? JsonObject).orEmpty()) {
+            val id = key.toIntOrNull() ?: continue
+            val image = item["image"].str("full")?.takeIf { it.isNotEmpty() }
+            val ddIcon = image?.let { "$DDRAGON/cdn/$version/img/item/$it" } ?: itemMap[id]?.iconUrl
+            itemMap[id] = Item(id, item.str("name").orEmpty(), ddIcon)
+        }
+
         return GameData(
             version = version,
             champions = (champions["data"] as? JsonObject).orEmpty().values.mapNotNull { champion ->
@@ -157,10 +177,7 @@ class StaticData(private val http: OkHttpClient, private val cacheDir: File) {
             }.toMap(),
             perks = perkMap,
             styles = styles,
-            items = (items["data"] as? JsonObject).orEmpty().mapNotNull { (key, item) ->
-                val id = key.toIntOrNull() ?: return@mapNotNull null
-                id to Item(id, item.str("name").orEmpty())
-            }.toMap(),
+            items = itemMap,
         )
     }
 

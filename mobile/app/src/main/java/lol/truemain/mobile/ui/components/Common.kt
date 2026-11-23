@@ -1,5 +1,6 @@
 package lol.truemain.mobile.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import lol.truemain.mobile.data.Art
 import lol.truemain.mobile.data.GameData
+import lol.truemain.mobile.data.Position
 import lol.truemain.mobile.graph
 import lol.truemain.mobile.ui.theme.Tm
 
@@ -82,6 +85,23 @@ fun RemoteImage(
 @Composable
 fun ChampionIcon(championId: Int?, size: Dp, modifier: Modifier = Modifier, grayscale: Boolean = false, circle: Boolean = false) {
     RemoteImage(Art.championIcon(championId), size, modifier, if (circle) CircleShape else RoundedCornerShape(size / 6), grayscale)
+}
+
+/** Official League client role icon (`TOP`, `JUNGLE`, `MIDDLE`, `BOTTOM`, `UTILITY`, `FILL`). */
+@Composable
+fun PositionIcon(
+    position: String?,
+    size: Dp = 18.dp,
+    tint: Color = Tm.colors.primary,
+    modifier: Modifier = Modifier,
+) {
+    val res = Position.iconOf(position) ?: return
+    Image(
+        painter = painterResource(res),
+        contentDescription = null,
+        colorFilter = ColorFilter.tint(tint),
+        modifier = modifier.size(size),
+    )
 }
 
 /**

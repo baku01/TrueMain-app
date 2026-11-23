@@ -49,6 +49,7 @@ import lol.truemain.mobile.data.Position
 import lol.truemain.mobile.ui.components.ChampionIcon
 import lol.truemain.mobile.ui.components.Eyebrow
 import lol.truemain.mobile.ui.components.Panel
+import lol.truemain.mobile.ui.components.PositionIcon
 import lol.truemain.mobile.ui.components.RemoteImage
 import lol.truemain.mobile.ui.theme.Tm
 
@@ -269,13 +270,18 @@ private fun CellRow(cell: Cell, data: GameData?, ally: Boolean, me: Boolean, act
                 )
                 val sub = listOfNotNull(lane, data?.championName(cell.shownChampion)?.takeIf { it.isNotBlank() && it != name }).joinToString(" · ")
                 if (sub.isNotBlank()) {
-                    Text(
-                        sub,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = secondaryText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (ally && cell.position.isNotBlank()) {
+                            PositionIcon(cell.position, size = 12.dp, tint = Tm.Gold.copy(alpha = 0.85f))
+                        }
+                        Text(
+                            sub,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = secondaryText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }

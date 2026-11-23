@@ -1,12 +1,14 @@
 package lol.truemain.mobile.ui.builds
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -68,13 +70,21 @@ internal fun BlockStats(block: JsonElement?) {
     }
 }
 
-/** Items in buying order, an arrow between each when [path]. */
+/** Items in buying order, gold-framed with arrows between each when [path]. */
 @Composable
 internal fun ItemsLine(itemIds: List<Int>, data: GameData?, path: Boolean = false, size: Dp = 36.dp) {
     Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         itemIds.forEachIndexed { index, id ->
-            if (path && index > 0) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Tm.Ink500, modifier = Modifier.size(16.dp))
-            RemoteImage(data?.itemIcon(id), size, contentDescription = data?.items?.get(id)?.name)
+            if (path && index > 0) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Tm.Gold.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+            Box(
+                if (path) {
+                    Modifier.border(1.dp, Tm.Gold.copy(alpha = 0.55f), RoundedCornerShape(7.dp)).padding(1.5.dp)
+                } else {
+                    Modifier
+                },
+            ) {
+                RemoteImage(data?.itemIcon(id), size, contentDescription = data?.items?.get(id)?.name)
+            }
         }
     }
 }
@@ -90,9 +100,17 @@ internal fun SpellsLine(spells: JsonElement?, data: GameData?) {
     }
 }
 
+private fun skillColor(key: String): Color = when (key.uppercase()) {
+    "Q" -> Color(0xFF38BDF8) // Sky blue
+    "W" -> Color(0xFF34D399) // Emerald
+    "E" -> Color(0xFFFBBF24) // Amber
+    "R" -> Color(0xFFF472B6) // Rose
+    else -> Color(0xFF52A8FF)
+}
+
 /**
- * The skill order: the max order (`Q > W > E`) as the API gives it, and the
- * level-by-level grid when the sequence is a full one.
+ * The skill order: the max order (`Q > W > E`) with Lexu-style colour-coded keys,
+ * and the 4x18 level-by-level matrix when the sequence is full.
  */
 @Composable
 internal fun SkillOrder(skillOrder: JsonElement?) {
@@ -109,32 +127,51 @@ internal fun SkillOrder(skillOrder: JsonElement?) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         maxOrder.forEachIndexed { index, key ->
             if (index > 0) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Tm.Ink500, modifier = Modifier.size(16.dp))
-            KeyBadge(key, if (index == 0) Tm.Rose400 else Tm.Ink700)
+            KeyBadge(key, skillColor(key))
         }
     }
     if (sequence.size > 4) SkillGrid(sequence.take(18))
 }
 
 @Composable
-private fun KeyBadge(key: String, background: Color) {
-    Box(Modifier.size(32.dp).background(background, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-        Text(key, color = Tm.Ink100, fontWeight = FontWeight.Bold)
+private fun KeyBadge(key: String, accent: Color) {
+    Box(
+        Modifier
+            .size(32.dp)
+            .background(accent.copy(alpha = 0.18f), RoundedCornerShape(8.dp))
+            .border(1.dp, accent.copy(alpha = 0.65f), RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(key, fontFamily = Tm.DisplayFont, color = accent, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun SkillGrid(sequence: List<String>) {
-    Column(Modifier.horizontalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(Modifier.horizontalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         listOf("Q", "W", "E", "R").forEach { key ->
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(key, Modifier.width(16.dp), color = Tm.Ink400, fontSize = 11.sp)
+            val accent = skillColor(key)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(key, Modifier.width(16.dp), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 sequence.forEachIndexed { level, taken ->
                     val here = taken == key
                     Box(
-                        Modifier.size(16.dp).background(if (here) Tm.Rose700 else Tm.Ink800, RoundedCornerShape(3.dp)),
+                        Modifier
+                            .size(17.dp)
+                            .background(if (here) accent.copy(alpha = 0.24f) else Tm.Ink800, RoundedCornerShape(4.dp))
+                            .then(if (here) Modifier.border(1.dp, accent.copy(alpha = 0.7f), RoundedCornerShape(4.dp)) else Modifier),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (here) Text((level + 1).toString(), fontSize = 9.sp, lineHeight = 10.sp, color = Tm.Ink100, textAlign = TextAlign.Center)
+                        if (here) {
+                            Text(
+                                (level + 1).toString(),
+                                fontSize = 9.sp,
+                                lineHeight = 10.sp,
+                                color = accent,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }

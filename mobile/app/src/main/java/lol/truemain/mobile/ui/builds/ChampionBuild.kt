@@ -124,7 +124,7 @@ internal fun ChampionBuildScreen(championId: Int, position: String?, onPosition:
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(Modifier.border(1.5.dp, Tm.colors.primary.copy(alpha = 0.65f), RoundedCornerShape(10.dp)).padding(2.dp)) {
+                Box(Modifier.border(1.5.dp, Tm.Gold.copy(alpha = 0.75f), RoundedCornerShape(10.dp)).padding(2.dp)) {
                     ChampionIcon(championId, 48.dp)
                 }
                 Column(Modifier.weight(1f)) {

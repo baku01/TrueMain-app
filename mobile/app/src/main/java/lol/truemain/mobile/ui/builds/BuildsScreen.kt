@@ -6,12 +6,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -48,6 +51,7 @@ import lol.truemain.mobile.lcu.str
 import lol.truemain.mobile.ui.components.ChampionIcon
 import lol.truemain.mobile.ui.components.EmptyState
 import lol.truemain.mobile.ui.components.Loading
+import lol.truemain.mobile.ui.components.PositionIcon
 import lol.truemain.mobile.ui.components.TmSearchField
 import lol.truemain.mobile.ui.components.TmTierBadge
 import lol.truemain.mobile.ui.components.rememberGameData
@@ -182,34 +186,49 @@ private fun TierListScreen(
     }
 }
 
-/** "Every lane", then the five lanes. */
+/** "Every lane", then the five lanes with official client role icons. */
 @Composable
 internal fun LaneChips(selected: Position?, onSelect: (Position?) -> Unit, modifier: Modifier = Modifier, allowAll: Boolean = true) {
     Row(modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         if (allowAll) SelectChip(stringResource(R.string.builds_all_lanes), selected == null) { onSelect(null) }
-        Position.entries.forEach { position -> SelectChip(stringResource(position.label), selected == position) { onSelect(position) } }
+        Position.entries.forEach { position ->
+            SelectChip(
+                text = stringResource(position.label),
+                selected = selected == position,
+                roleIcon = position.api,
+                onClick = { onSelect(position) },
+            )
+        }
     }
 }
 
 @Composable
-internal fun SelectChip(text: String, selected: Boolean, onClick: () -> Unit) {
+internal fun SelectChip(text: String, selected: Boolean, roleIcon: String? = null, onClick: () -> Unit) {
     val shape = RoundedCornerShape(6.dp)
-    Text(
-        text,
+    Row(
         Modifier
             .clip(shape)
             .background(if (selected) Tm.Rose950 else Tm.colors.pane)
             .then(
-                if (selected) Modifier.border(1.dp, Tm.colors.primary.copy(alpha = 0.45f), shape)
+                if (selected) Modifier.border(1.dp, Tm.colors.primary.copy(alpha = 0.55f), shape)
                 else if (Tm.colors.light) Modifier.border(1.dp, Tm.colors.border.copy(alpha = 0.7f), shape)
-                else Modifier,
+                else Modifier.border(1.dp, Tm.colors.border.copy(alpha = 0.35f), shape),
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-        color = if (selected) Tm.Rose300 else Tm.Ink300,
-    )
+            .padding(horizontal = 11.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (roleIcon != null) {
+            PositionIcon(roleIcon, size = 14.dp, tint = if (selected) Tm.Rose300 else Tm.Ink400)
+        }
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (selected) Tm.Rose300 else Tm.Ink300,
+        )
+    }
 }
 
 /** The tier letter's colour: the theme's own tier tokens (`--color-tier-*`), as the desktop's tier list. */
@@ -237,7 +256,24 @@ private fun TierRow(entry: TierEntry, data: GameData?, showLane: Boolean, onClic
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         TmTierBadge(entry.tier, size = 26.dp)
-        ChampionIcon(entry.championId, 38.dp)
+        val lane = Position.of(entry.position)
+        Box {
+            ChampionIcon(entry.championId, 38.dp)
+            if (showLane && lane != null) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 3.dp, y = 3.dp)
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Tm.colors.bg)
+                        .border(1.dp, Tm.colors.border, RoundedCornerShape(4.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PositionIcon(lane.api, size = 11.dp, tint = Tm.colors.primary)
+                }
+            }
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 data?.championName(entry.championId).orEmpty(),
@@ -247,7 +283,6 @@ private fun TierRow(entry: TierEntry, data: GameData?, showLane: Boolean, onClic
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val lane = Position.of(entry.position)
             val games = stringResource(R.string.builds_games, entry.games)
             Text(
                 if (showLane && lane != null) stringResource(lane.label) + " · " + games else games,

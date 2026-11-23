@@ -108,7 +108,12 @@ fun ReadyCheckOverlay() {
                     fontWeight = FontWeight.Bold,
                     color = Tm.Ink100,
                 )
-                Box(contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .size(116.dp)
+                        .border(1.dp, Tm.Gold.copy(alpha = 0.4f), androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
                     CircularProgressIndicator(
                         progress = { (1f - (timer / 12.0).toFloat()).coerceIn(0f, 1f) },
                         color = Tm.Rose400,

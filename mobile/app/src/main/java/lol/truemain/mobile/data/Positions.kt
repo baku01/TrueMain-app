@@ -1,5 +1,6 @@
 package lol.truemain.mobile.data
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import lol.truemain.mobile.R
 
@@ -8,12 +9,17 @@ import lol.truemain.mobile.R
  * select (`middle`) and the lobby's position preferences (`MIDDLE`, with
  * `FILL` and `UNSELECTED` besides).
  */
-enum class Position(val api: String, val lcu: String, @StringRes val label: Int) {
-    Top("TOP", "top", R.string.position_top),
-    Jungle("JUNGLE", "jungle", R.string.position_jungle),
-    Middle("MIDDLE", "middle", R.string.position_middle),
-    Bottom("BOTTOM", "bottom", R.string.position_bottom),
-    Support("UTILITY", "utility", R.string.position_support);
+enum class Position(
+    val api: String,
+    val lcu: String,
+    @StringRes val label: Int,
+    @DrawableRes val icon: Int,
+) {
+    Top("TOP", "top", R.string.position_top, R.drawable.ic_pos_top),
+    Jungle("JUNGLE", "jungle", R.string.position_jungle, R.drawable.ic_pos_jungle),
+    Middle("MIDDLE", "middle", R.string.position_middle, R.drawable.ic_pos_middle),
+    Bottom("BOTTOM", "bottom", R.string.position_bottom, R.drawable.ic_pos_bottom),
+    Support("UTILITY", "utility", R.string.position_support, R.drawable.ic_pos_utility);
 
     companion object {
         /** From any of the spellings above, or null for none/fill. */
@@ -25,6 +31,14 @@ enum class Position(val api: String, val lcu: String, @StringRes val label: Int)
                 "support", "sup" -> Support
                 else -> null
             }
+        }
+
+        /** Official client icon drawable for any lane string, including `FILL`. */
+        @DrawableRes
+        fun iconOf(value: String?): Int? {
+            val key = value?.trim()?.uppercase() ?: return null
+            if (key == "FILL") return R.drawable.ic_pos_fill
+            return of(key)?.icon
         }
     }
 }

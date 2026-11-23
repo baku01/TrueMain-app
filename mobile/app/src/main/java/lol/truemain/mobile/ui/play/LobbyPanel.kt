@@ -41,6 +41,7 @@ import lol.truemain.mobile.session.Session
 import lol.truemain.mobile.ui.components.Chip
 import lol.truemain.mobile.ui.components.Eyebrow
 import lol.truemain.mobile.ui.components.Panel
+import lol.truemain.mobile.ui.components.PositionIcon
 import lol.truemain.mobile.ui.components.RemoteImage
 import lol.truemain.mobile.ui.components.rememberGameData
 import lol.truemain.mobile.ui.theme.Tm
@@ -153,7 +154,13 @@ private fun MemberRow(member: JsonElement, isLocal: Boolean, showLanes: Boolean,
                 val first = member.str("firstPositionPreference")
                 val second = member.str("secondPositionPreference")
                 val lanes = if (first == "FILL") laneLabel(first) else stringResource(R.string.play_lanes_pair, laneLabel(first), laneLabel(second))
-                Text(lanes, style = MaterialTheme.typography.bodySmall, color = Tm.Ink400)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    PositionIcon(first, size = 14.dp, tint = Tm.Gold)
+                    if (first != "FILL" && !second.isNullOrEmpty() && second != "UNSELECTED") {
+                        PositionIcon(second, size = 13.dp, tint = Tm.colors.primary)
+                    }
+                    Text(lanes, style = MaterialTheme.typography.bodySmall, color = Tm.Ink400)
+                }
             }
         }
         if (canKick && summonerId != null) {
