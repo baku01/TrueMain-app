@@ -12,6 +12,7 @@ import lol.truemain.mobile.link.LinkClient
 import lol.truemain.mobile.session.Session
 import lol.truemain.mobile.store.PairingStore
 import lol.truemain.mobile.ui.theme.ThemeStore
+import lol.truemain.mobile.update.AppUpdater
 import okhttp3.OkHttpClient
 
 /** The app's long-lived parts, made once with the process (`TrueMainApp`). */
@@ -28,4 +29,5 @@ class AppGraph(context: Context) {
     val theme = ThemeStore(context, session, scope)
     val staticData = StaticData(http, context.cacheDir)
     val api = TrueMainApi(http)
+    val updater = AppUpdater(context, http, scope).apply { check(silent = true) }
 }

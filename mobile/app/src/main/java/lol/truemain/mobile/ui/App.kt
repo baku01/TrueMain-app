@@ -85,7 +85,12 @@ fun TrueMainRoot() {
     val state by graph.link.state.collectAsState()
     val paired by graph.link.paired.collectAsState()
     when {
-        !paired || state is LinkState.NotPaired || state is LinkState.Revoked -> ConnectScreen(state)
+        !paired || state is LinkState.NotPaired || state is LinkState.Revoked -> {
+            Column(Modifier.fillMaxSize().background(Tm.Ink950)) {
+                UpdateBanner(Modifier.statusBarsPadding())
+                Box(Modifier.weight(1f).fillMaxWidth()) { ConnectScreen(state) }
+            }
+        }
         else -> Main(state)
     }
 }
@@ -104,12 +109,17 @@ private fun Main(state: LinkState) {
         bottomBar = { TmBottomBar(current = tab, live = liveTab, onSelect = { tab = it }) },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            when (tab) {
-                Tab.Home -> HomeScreen()
-                Tab.Play -> PlayScreen()
-                Tab.Draft -> DraftScreen()
-                Tab.Game -> GameScreen()
-                Tab.Builds -> BuildsScreen()
+            Column(Modifier.fillMaxSize()) {
+                UpdateBanner()
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    when (tab) {
+                        Tab.Home -> HomeScreen()
+                        Tab.Play -> PlayScreen()
+                        Tab.Draft -> DraftScreen()
+                        Tab.Game -> GameScreen()
+                        Tab.Builds -> BuildsScreen()
+                    }
+                }
             }
             ReadyCheckOverlay()
         }
@@ -251,6 +261,10 @@ private fun LinkMenu() {
         Icon(Icons.Filled.MoreVert, contentDescription = null, tint = Tm.Ink300)
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenuItem(text = { Text(stringResource(R.string.update_check)) }, onClick = {
+            open = false
+            graph.updater.check(silent = false)
+        })
         DropdownMenuItem(text = { Text(stringResource(R.string.link_forget)) }, onClick = {
             open = false
             graph.link.forget()

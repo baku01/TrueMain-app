@@ -14,10 +14,28 @@ android {
         applicationId = "lol.truemain.mobile"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.2.3"
+        versionCode = providers.gradleProperty("truemainVersionCode").map(String::toInt).getOrElse(6)
+        versionName = providers.gradleProperty("truemainVersionName").getOrElse("0.2.4")
         // The site whose API the builds and the tier list are read from.
         buildConfigField("String", "SITE_URL", "\"${providers.gradleProperty("truemainSiteUrl").getOrElse("https://truemain.lol")}\"")
+        // GitHub Releases JSON feed for in-app updates (`android-build.yml`).
+        buildConfigField(
+            "String",
+            "UPDATE_FEED_URL",
+            "\"${providers.gradleProperty("truemainUpdateFeedUrl").getOrElse("https://github.com/baku01/TrueMain-app/releases/download/android-latest/android-latest.json")}\"",
+        )
+    }
+
+    val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE")
+    signingConfigs {
+        if (!releaseKeystorePath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -25,8 +43,12 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // A local release build installs as is; the store build signs with its own key.
-            signingConfig = signingConfigs.getByName("debug")
+            // CI signs with the persistent release keystore so updates install in-place; local builds fall back to debug.
+            signingConfig = if (!releaseKeystorePath.isNullOrBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

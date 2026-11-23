@@ -1,0 +1,106 @@
+name: Android build
+
+on:
+  push:
+    branches: [main]
+    paths: ["mobile/**", ".github/workflows/android-build.yml", "!**/*.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Decode release keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/truemain-release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/truemain-release.jks" >> "$GITHUB_ENV"
+      - name: Run unit tests and build release APK
+        working-directory: mobile
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))
+          VERSION_NAME="0.3.${GITHUB_RUN_NUMBER}"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          ./gradlew \
+            testDebugUnitTest \
+            --tests "lol.truemain.mobile.update.AppUpdaterTest" \
+            --tests "lol.truemain.mobile.ui.theme.AppIconSwitcherTest" \
+            --tests "lol.truemain.mobile.link.VectorsTest" \
+            --tests "lol.truemain.mobile.link.LinkClientPairingTest" \
+            assembleRelease \
+            -PtruemainVersionCode="$VERSION_CODE" \
+            -PtruemainVersionName="$VERSION_NAME"
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp mobile/app/build/outputs/apk/release/app-release.apk dist/TrueMain-Android.apk
+          SHA256=$(sha256sum dist/TrueMain-Android.apk | awk '{print $1}')
+          BASE="https://github.com/${{ github.repository }}/releases/download/android-latest"
+          jq -n \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg url "$BASE/TrueMain-Android.apk" \
+            --arg sha256 "$SHA256" \
+            --arg notes "Build $GITHUB_SHA" \
+            '{versionCode: $versionCode, versionName: $versionName, url: $url, sha256: $sha256, notes: $notes}' \
+            > dist/android-latest.json
+          cat dist/android-latest.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: truemain-android-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish Android APK
+    needs: build
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: truemain-android-${{ github.sha }}
+          path: dist
+      - name: Replace android-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          VERSION_NAME=$(jq -r .versionName dist/android-latest.json)
+          gh release delete android-latest --yes || true
+          git tag -f android-latest "$GITHUB_SHA"
+          git push --force origin refs/tags/android-latest
+          gh release create android-latest dist/TrueMain-Android.apk dist/android-latest.json \
+            --verify-tag \
+            --latest=false \
+            --title "TrueMain Android — build mais recente" \
+            --notes "Build automático Android $VERSION_NAME do commit $GITHUB_SHA na branch main. Instalado uma vez, o app verifica e baixa atualizações automaticamente a partir daqui."

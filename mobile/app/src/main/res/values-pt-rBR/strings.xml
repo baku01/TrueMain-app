@@ -55,5 +55,19 @@
     <string name="phase_end">Pós-jogo</string>
     <string name="phase_reconnect">Reconectar</string>
 
+    <string name="update_check">Procurar atualizações</string>
+    <string name="update_checking">Procurando atualizações…</string>
+    <string name="update_up_to_date">Você já está na versão mais recente.</string>
+    <string name="update_available_title">Atualização %1$s disponível</string>
+    <string name="update_available_body">Baixe e instale a versão mais recente do TrueMain.</string>
+    <string name="update_action">Atualizar</string>
+    <string name="update_later">Depois</string>
+    <string name="update_downloading">Baixando atualização…</string>
+    <string name="update_downloading_pct">Baixando atualização… %1$d%%</string>
+    <string name="update_ready_title">Atualização %1$s pronta para instalar</string>
+    <string name="update_install">Instalar</string>
+    <string name="update_error">Não foi possível baixar a atualização.</string>
+    <string name="update_dismiss">OK</string>
+
     <string name="error_generic">Algo deu errado. Tente de novo.</string>
 </resources>
