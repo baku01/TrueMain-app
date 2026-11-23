@@ -98,6 +98,17 @@ class LinkClient(
         loop = scope.launch { keepConnected() }
     }
 
+    /**
+     * Back in front of the player: a link that still reads as open may have
+     * died while the phone slept (Wi-Fi asleep, the app frozen, the desktop
+     * dropping a phone it stopped hearing). Ask it at once and, with no word
+     * back within [WAKE_MILLIS], reconnect instead of showing a stale client.
+     */
+    fun wake() {
+        val current = session
+        if (_state.value is LinkState.Open && current != null && current.isOpen) current.probe() else retry()
+    }
+
     /** Connect again at once (the player tapped retry, or came back to the app). */
     fun retry() {
         // Never cancel an active pairing attempt when MainActivity.onResume() fires
@@ -264,6 +275,8 @@ class LinkClient(
         private val pending = HashMap<Long, CompletableDeferred<LinkResponse>>()
         private var pinger: Job? = null
         val opened = CompletableDeferred<PcInfo>()
+        /** When the desktop was last heard from, any frame at all: the link's only proof of life. */
+        @Volatile private var lastHeard = System.nanoTime()
         val closed = CompletableDeferred<String>()
         @Volatile var isOpen = false
             private set
@@ -280,10 +293,12 @@ class LinkClient(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            lastHeard = System.nanoTime()
             queue.trySend { receive(Frame.Text(text)) }
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+            lastHeard = System.nanoTime()
             queue.trySend { receive(Frame.Binary(bytes.toByteArray())) }
         }
 
@@ -321,9 +336,16 @@ class LinkClient(
                     is PhoneStep.Opened -> {
                         isOpen = true
                         opened.complete(step.pc)
+                        lastHeard = System.nanoTime()
                         pinger = scope.launch {
                             while (isActive && isOpen) {
                                 delay(PING_EVERY)
+                                // The desktop answers every ping: this long without a frame, the socket is dead
+                                // even if the system has not said so (it can take minutes to).
+                                if (silentFor() > SILENCE_MILLIS) {
+                                    queue.trySend { finish(SILENT) }
+                                    break
+                                }
                                 queue.trySend { if (isOpen) runCatching { send(link.ping()) } }
                             }
                         }
@@ -355,6 +377,18 @@ class LinkClient(
             }
         }
 
+        private fun silentFor(): Long = (System.nanoTime() - lastHeard) / 1_000_000
+
+        /** A ping now, and the link dropped (so reconnected) if the desktop does not answer it soon. */
+        fun probe() {
+            val asked = System.nanoTime()
+            queue.trySend { if (isOpen) runCatching { send(link.ping()) } }
+            scope.launch {
+                delay(WAKE_MILLIS)
+                if (isOpen && lastHeard - asked < 0) queue.trySend { finish(SILENT) }
+            }
+        }
+
         private fun finish(code: String) {
             if (closed.isCompleted) return
             isOpen = false
@@ -373,7 +407,16 @@ class LinkClient(
 
     private companion object {
         const val HANDSHAKE_TIMEOUT = 8_000L
-        const val PING_EVERY = 20_000L
+        const val PING_EVERY = 10_000L
+
+        /** No frame from the desktop for this long, pongs included: the link is dead. */
+        const val SILENCE_MILLIS = 25_000L
+
+        /** How long a ping sent on waking may take to be answered. */
+        const val WAKE_MILLIS = 3_000L
+
+        /** Why a link that went quiet was dropped; a reconnect follows, as for any loss. */
+        const val SILENT = "silent"
 
         /** The desktop dropped this phone for good: retrying cannot help. */
         val REVOKED = setOf("unknown-phone", "forgotten")

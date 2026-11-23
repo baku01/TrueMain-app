@@ -47,8 +47,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Back from the background: the Wi-Fi may have come back while the app slept.
-        graph.link.retry()
+        // Back from the background: the Wi-Fi may have come back while the app slept, and a link
+        // that still reads as open may be dead — `wake` checks it rather than trusting it.
+        graph.link.wake()
     }
 
     override fun onStop() {
