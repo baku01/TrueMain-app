@@ -191,9 +191,9 @@ private fun BuildBody(answer: JsonElement, championId: Int, data: GameData?) {
             SpellsLine(core["summonerSpells"], data)
             BlockStats(core["summonerSpells"])
             alternatives(build, "summonerSpells", core["summonerSpells"]).forEach { alternative ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SpellsLine(alternative, data)
-                    BlockStats(alternative)
+                    BlockStats(alternative, Modifier.weight(1f))
                 }
             }
         }
@@ -205,9 +205,9 @@ private fun BuildBody(answer: JsonElement, championId: Int, data: GameData?) {
             ItemsLine(itemIdsOf(core["boots"]), data)
             BlockStats(core["boots"])
             alternatives(build, "boots", core["boots"]).forEach { alternative ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ItemsLine(itemIdsOf(alternative), data, size = 28.dp)
-                    BlockStats(alternative)
+                    BlockStats(alternative, Modifier.weight(1f))
                 }
             }
             Eyebrow(stringResource(R.string.builds_core))

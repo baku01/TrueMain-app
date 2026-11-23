@@ -6,6 +6,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -59,14 +61,41 @@ internal fun Rate(value: Double?, label: String, color: Color = Tm.Ink200, width
     }
 }
 
-/** A block's win rate, pick rate and games, as one line under its icons. */
+/** A block's win rate, pick rate and games; wraps cleanly onto a second line when beside icons. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun BlockStats(block: JsonElement?) {
+internal fun BlockStats(block: JsonElement?, modifier: Modifier = Modifier) {
     val winRate = block.double("winRate")
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(stringResource(R.string.builds_win_rate, percent(winRate)), color = winRateColor(winRate), style = MaterialTheme.typography.labelMedium)
-        block.double("pickRate")?.let { Text(stringResource(R.string.builds_pick_rate, percent(it)), color = Tm.Ink400, style = MaterialTheme.typography.labelMedium) }
-        block.int("games")?.let { Text(stringResource(R.string.builds_games, it), color = Tm.Ink500, style = MaterialTheme.typography.labelMedium) }
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            stringResource(R.string.builds_win_rate, percent(winRate)),
+            color = winRateColor(winRate),
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            softWrap = false,
+        )
+        block.double("pickRate")?.let {
+            Text(
+                stringResource(R.string.builds_pick_rate, percent(it)),
+                color = Tm.Ink400,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+        block.int("games")?.let {
+            Text(
+                stringResource(R.string.builds_games, it),
+                color = Tm.Ink500,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
     }
 }
 
