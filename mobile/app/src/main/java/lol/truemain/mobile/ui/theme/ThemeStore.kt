@@ -34,7 +34,7 @@ class ThemeStore(context: Context, session: Session, scope: CoroutineScope) {
                 val colors = TmColors.fromJson(json) ?: return@collect
                 _colors.value = colors
                 prefs.edit().putString(KEY, json.toString()).apply()
-                AppIconSwitcher.apply(
+                AppIconSwitcher.schedule(
                     appContext,
                     AppIconSwitcher.variantFor(json["theme"].string, colors),
                 )

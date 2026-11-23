@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import lol.truemain.mobile.link.Invite
 import lol.truemain.mobile.ui.TrueMainRoot
+import lol.truemain.mobile.ui.theme.AppIconSwitcher
 import lol.truemain.mobile.ui.theme.TrueMainTheme
 
 class MainActivity : ComponentActivity() {
@@ -39,10 +40,24 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        AppIconSwitcher.onForeground()
+    }
+
     override fun onResume() {
         super.onResume()
         // Back from the background: the Wi-Fi may have come back while the app slept.
         graph.link.retry()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Apply any queued themed launcher icon only once the app leaves the foreground
+        // so Android never closes the open window mid-session.
+        if (!isChangingConfigurations) {
+            AppIconSwitcher.onBackground(applicationContext)
+        }
     }
 
     /** A `truemain://link?…` opened from the system camera pairs like a scan in the app. */

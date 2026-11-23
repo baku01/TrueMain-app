@@ -12,6 +12,12 @@ import androidx.compose.ui.graphics.toArgb
  * stays themed even when the app is closed or the device restarts.
  */
 object AppIconSwitcher {
+    @Volatile
+    private var pending: Variant? = null
+
+    @Volatile
+    private var inForeground: Boolean = false
+
     enum class Variant(val aliasSuffix: String) {
         Default(".MainActivityDefault"),
         Light(".MainActivityLight"),
@@ -21,6 +27,35 @@ object AppIconSwitcher {
         Red(".MainActivityRed"),
         Amber(".MainActivityAmber"),
         Green(".MainActivityGreen"),
+    }
+
+    /** Called from `MainActivity.onStart` so icon switches are deferred while visible. */
+    fun onForeground() {
+        inForeground = true
+    }
+
+    /**
+     * Called from `MainActivity.onStop` (excluding configuration changes): now that
+     * the app is in the background, apply any queued icon change without closing the UI.
+     */
+    fun onBackground(context: Context) {
+        inForeground = false
+        val target = pending ?: return
+        pending = null
+        apply(context.applicationContext, target)
+    }
+
+    /**
+     * Requests a launcher icon change. While the app is in the foreground, the switch
+     * is deferred until the user leaves the app so Android never kills the active window.
+     */
+    fun schedule(context: Context, variant: Variant) {
+        if (inForeground) {
+            pending = variant
+        } else {
+            pending = null
+            apply(context.applicationContext, variant)
+        }
     }
 
     /** Maps a desktop theme id + resolved colours to the closest launcher icon variant. */
