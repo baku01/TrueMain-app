@@ -67,7 +67,6 @@ const streak = computed(() => props.report?.sequence.streaks ?? null)
 <template>
   <section class="nerd-hero surface relative isolate overflow-hidden rounded-lg">
     <div class="nerd-hero-glow" aria-hidden="true" />
-    <p class="nerd-hero-watermark" aria-hidden="true"><NerdMath :text="`P(${t('nerd.symbol.win')}) = σ(β₀ + Σ βᵢ·zᵢ)`" /></p>
 
     <div class="relative grid gap-6 p-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.05fr)]">
       <!-- The win rate and how sure it is. -->

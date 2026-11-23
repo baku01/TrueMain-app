@@ -43,12 +43,12 @@ const allRows = computed(() => gameRows(deep.games.value, own.rankHistory.value)
 const rows = computed(() => filterRows(allRows.value, filter.value))
 const report = computed(() => (rows.value.length >= MIN_GAMES ? analyse(rows.value, id => items.value[id]?.totalGold) : null))
 
-type Tab = 'overview' | 'metrics' | 'time' | 'picks' | 'games' | 'methods'
+type Tab = 'overview' | 'picks' | 'time' | 'metrics' | 'games' | 'methods'
 const TABS: { value: Tab, icon: string }[] = [
-  { value: 'overview', icon: 'i-tabler-math-function' },
-  { value: 'metrics', icon: 'i-tabler-chart-dots-3' },
-  { value: 'time', icon: 'i-tabler-clock-hour-4' },
+  { value: 'overview', icon: 'i-tabler-bulb' },
   { value: 'picks', icon: 'i-tabler-swords' },
+  { value: 'time', icon: 'i-tabler-clock-hour-4' },
+  { value: 'metrics', icon: 'i-tabler-chart-dots-3' },
   { value: 'games', icon: 'i-tabler-table' },
   { value: 'methods', icon: 'i-tabler-book-2' },
 ]
@@ -132,20 +132,21 @@ const tab = computed<Tab>({
 
           <Transition mode="out-in" enter-active-class="nerd-tab-enter" leave-active-class="nerd-tab-leave">
             <div v-if="tab === 'overview'" key="overview" class="space-y-5">
-              <NerdFormula :model="report.model" :games="report.overview.games" :minutes="report.overview.duration" :metrics="report.metrics" />
+              <NerdCoach :report="report" />
               <NerdDrivers :metrics="report.metrics" :games="report.overview.games" :rate="report.overview.rate" />
             </div>
-            <div v-else-if="tab === 'metrics'" key="metrics" class="space-y-5">
-              <NerdDistributions :metrics="report.metrics" :rate="report.overview.rate" />
-              <NerdHeatmap :matrix="report.correlation" :games="report.overview.games" />
+            <div v-else-if="tab === 'picks'" key="picks">
+              <NerdGroups :report="report" />
             </div>
             <div v-else-if="tab === 'time'" key="time" class="space-y-5">
               <NerdDuration :duration="report.duration" :overview="report.overview" :rows="rows" />
               <NerdClock :hours="report.hours" :weekdays="report.weekdays" :rate="report.overview.rate" :sessions="report.sequence.sessions" />
               <NerdStreaks :sequence="report.sequence" :rate="report.overview.rate" />
             </div>
-            <div v-else-if="tab === 'picks'" key="picks">
-              <NerdGroups :report="report" />
+            <div v-else-if="tab === 'metrics'" key="metrics" class="space-y-5">
+              <NerdFormula :model="report.model" :games="report.overview.games" :minutes="report.overview.duration" :metrics="report.metrics" />
+              <NerdDistributions :metrics="report.metrics" :rate="report.overview.rate" />
+              <NerdHeatmap :matrix="report.correlation" :games="report.overview.games" />
             </div>
             <div v-else-if="tab === 'games'" key="games">
               <NerdGames :rows="rows" :source-of="deep.sourceOf" />
