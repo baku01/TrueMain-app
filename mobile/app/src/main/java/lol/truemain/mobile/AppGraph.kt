@@ -28,6 +28,6 @@ class AppGraph(context: Context) {
     val session = Session(link, scope)
     val theme = ThemeStore(context, session, scope)
     val staticData = StaticData(http, context.cacheDir)
-    val api = TrueMainApi(http)
+    val api = TrueMainApi(http, staticData)
     val updater = AppUpdater(context, http, scope).apply { check(silent = true) }
 }

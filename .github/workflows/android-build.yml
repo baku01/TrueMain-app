@@ -47,6 +47,7 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           ./gradlew \
             testDebugUnitTest \
+            --tests "lol.truemain.mobile.data.TrueMainApiTest" \
             --tests "lol.truemain.mobile.update.AppUpdaterTest" \
             --tests "lol.truemain.mobile.ui.theme.AppIconSwitcherTest" \
             --tests "lol.truemain.mobile.link.VectorsTest" \
