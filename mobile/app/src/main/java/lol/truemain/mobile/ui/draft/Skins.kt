@@ -48,6 +48,7 @@ import lol.truemain.mobile.ui.components.Eyebrow
 import lol.truemain.mobile.ui.components.Loading
 import lol.truemain.mobile.ui.components.RemoteImage
 import lol.truemain.mobile.ui.theme.Tm
+import kotlinx.coroutines.delay
 
 /** A skin or chroma the carousel offers; only an owned one can be chosen. */
 private data class Skin(val id: Int, val name: String, val championId: Int, val owned: Boolean, val tile: String, val chromas: List<Skin>) {
@@ -84,17 +85,27 @@ fun SkinsSheet(me: Cell, actions: DraftActions, onDismiss: () -> Unit) {
     var carousel by remember { mutableStateOf<Carousel>(Carousel.Loading) }
     LaunchedEffect(me.championId) {
         carousel = Carousel.Loading
-        carousel = try {
-            val response = actions.session.get("/lol-champ-select/v1/skin-carousel-skins")
-            if (!response.ok) {
+        // Right after a lock the client may still be filling the carousel: an empty or failed
+        // read is tried again a few times before the sheet says there is nothing.
+        repeat(CAROUSEL_TRIES) { attempt ->
+            val read = try {
+                val response = actions.session.get("/lol-champ-select/v1/skin-carousel-skins")
+                if (!response.ok) {
+                    Carousel.Failed
+                } else {
+                    Carousel.Ready(
+                        response.body.items.map { Skin.of(it, me.championId) }.filter { it.championId == me.championId && it.id > 0 },
+                    )
+                }
+            } catch (_: LinkUnavailable) {
                 Carousel.Failed
-            } else {
-                Carousel.Ready(
-                    response.body.items.map { Skin.of(it, me.championId) }.filter { it.championId == me.championId && it.id > 0 },
-                )
             }
-        } catch (_: LinkUnavailable) {
-            Carousel.Failed
+            val done = read is Carousel.Ready && read.skins.isNotEmpty()
+            if (done || attempt == CAROUSEL_TRIES - 1) {
+                carousel = read
+                return@LaunchedEffect
+            }
+            delay(CAROUSEL_RETRY_MILLIS)
         }
     }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberFullSheetState(), containerColor = Tm.Ink900) {
@@ -159,3 +170,7 @@ private fun SkinPager(skins: List<Skin>, me: Cell, actions: DraftActions) {
         }
     }
 }
+
+/** Tries before an empty carousel is shown, and the pause between them. */
+private const val CAROUSEL_TRIES = 4
+private const val CAROUSEL_RETRY_MILLIS = 1_500L

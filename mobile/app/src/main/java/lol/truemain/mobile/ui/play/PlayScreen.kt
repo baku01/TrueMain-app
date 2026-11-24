@@ -38,6 +38,7 @@ import lol.truemain.mobile.session.Session
 import lol.truemain.mobile.ui.components.EmptyState
 import lol.truemain.mobile.ui.components.Loading
 import lol.truemain.mobile.ui.theme.Tm
+import kotlinx.coroutines.delay
 
 /**
  * Getting into a game from the phone: a queue to open a lobby in, then the
@@ -63,10 +64,15 @@ fun PlayScreen() {
     var catalogFailed by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(open, connected, attempt) {
-        if (!open || !connected || catalog?.groups?.isNotEmpty() == true) return@LaunchedEffect
-        catalogFailed = false
-        val response = runCatching { graph.session.get(QueueCatalog.PATH) }.getOrNull()
-        if (response?.ok == true) catalog = QueueCatalog.of(response.body) else catalogFailed = true
+        // Nothing else asks again: an empty answer is retried here, a few times, before it is shown.
+        repeat(QUEUE_TRIES) {
+            if (!open || !connected || catalog?.groups?.isNotEmpty() == true) return@LaunchedEffect
+            catalogFailed = false
+            val response = runCatching { graph.session.get(QueueCatalog.PATH) }.getOrNull()
+            if (response?.ok == true) catalog = QueueCatalog.of(response.body) else catalogFailed = true
+            if (catalog?.groups?.isNotEmpty() == true) return@LaunchedEffect
+            delay(QUEUE_RETRY_MILLIS)
+        }
     }
 
     when {
@@ -105,3 +111,7 @@ fun FailureBanner(failure: PlayFailure, onDismiss: () -> Unit) {
         IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.play_close), tint = Tm.Rose300) }
     }
 }
+
+/** Tries before an empty queue list is shown, and the pause between them. */
+private const val QUEUE_TRIES = 5
+private const val QUEUE_RETRY_MILLIS = 2_000L
