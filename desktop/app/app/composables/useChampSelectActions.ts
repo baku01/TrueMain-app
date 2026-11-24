@@ -114,8 +114,9 @@ function create(draft: Ref<DraftState>) {
     if (!kind.value) return blocked(turnLabel.value ? tr('draft.avail.notYourTurnThen', { turn: turnLabel.value.toLowerCase() }) : tr('draft.avail.notYourTurn'))
     if (banned.value.has(championId)) return blocked(tr('draft.avail.banned'))
     if (picked.value.has(championId)) return blocked(tr('draft.avail.picked'))
+    // An empty list is no list: the client can answer one as the turn opens.
     const listed = kind.value === 'pick' ? choices.value.pickable : choices.value.bannable
-    if (listed && !listed.includes(championId)) return blocked(tr(kind.value === 'pick' ? 'draft.avail.notOwned' : 'draft.avail.cannotBan'))
+    if (listed?.length && !listed.includes(championId)) return blocked(tr(kind.value === 'pick' ? 'draft.avail.notOwned' : 'draft.avail.cannotBan'))
     if (kind.value === 'pick' && hovered.value === championId) return blocked(tr('draft.avail.hoveredInClient'))
     return { allowed: true, reason: null }
   }
@@ -194,6 +195,14 @@ function create(draft: Ref<DraftState>) {
     draft.value.allyBans.length + draft.value.enemyBans.length,
     picked.value.size,
   ].join(':'), refresh, { immediate: true })
+
+  // Hidden bans move nothing the watch above follows: while our turn is open and the list for it
+  // came back empty, ask again every few seconds rather than wait for a change that will not come.
+  const retry = setInterval(() => {
+    const listed = kind.value === 'pick' ? choices.value.pickable : kind.value === 'ban' ? choices.value.bannable : null
+    if (kind.value && !listed?.length) void refresh()
+  }, 3000)
+  onScopeDispose(() => clearInterval(retry))
 
   /** Champions nobody can pick or ban any more: banned, or locked by either side. */
   const taken = computed(() => new Set([...banned.value, ...picked.value]))

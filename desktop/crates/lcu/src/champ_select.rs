@@ -248,8 +248,11 @@ impl ChampSelectSession {
     }
 }
 
+/// An empty list is no list: the client can answer one as a turn opens, and
+/// reading it as "nothing is allowed" refused every champion for the whole
+/// turn. The client still refuses what it does not allow.
 fn check_allowed(kind: ActionKind, champion: i64, allowed: &[i64]) -> Result<(), Refusal> {
-    if champion > 0 && allowed.contains(&champion) {
+    if champion > 0 && (allowed.is_empty() || allowed.contains(&champion)) {
         return Ok(());
     }
     Err(match kind {
@@ -427,6 +430,16 @@ mod tests {
         assert_eq!(
             planning.plan_hover(ActionKind::Pick, 0, &[0]),
             Err(Refusal::NotPickable)
+        );
+    }
+
+    #[test]
+    fn an_empty_list_from_the_client_refuses_nothing() {
+        let banning = ranked(true, "BAN_PICK");
+        assert_eq!(banning.plan_hover(ActionKind::Ban, 157, &[]), Ok(3));
+        assert_eq!(
+            banning.plan_hover(ActionKind::Ban, 0, &[]),
+            Err(Refusal::NotBannable)
         );
     }
 
