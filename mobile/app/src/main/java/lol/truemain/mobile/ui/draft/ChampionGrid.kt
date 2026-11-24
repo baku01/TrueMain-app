@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.text.Normalizer
+import kotlinx.coroutines.delay
 import lol.truemain.mobile.R
 import lol.truemain.mobile.data.Champion
 import lol.truemain.mobile.data.GameData
@@ -74,11 +75,12 @@ private val TAGS = listOf(
 fun ChampionPicker(draft: Draft, target: Action, data: GameData?, actions: DraftActions) {
     val pickable by actions.session.state(Session.PICKABLE).collectAsState()
     val bannable = rememberBannable(actions.session, target, draft.taken.size)
-    // The client's own list wins; without one, everything not already taken.
+    // The client's own list wins; without one, everything not already taken. An empty list is
+    // no list: no turn leaves nothing to pick or ban, and trusting one locked the whole grid.
     val allowed: Set<Int>? = when (target.kind) {
         ActionKind.Pick -> pickable?.items?.mapNotNull { it.int }?.toSet()
         ActionKind.Ban -> bannable
-    }
+    }?.takeIf { it.isNotEmpty() }
     var query by rememberSaveable { mutableStateOf("") }
     var tag by rememberSaveable { mutableStateOf<String?>(null) }
     var confirming by remember { mutableStateOf(false) }
@@ -187,22 +189,30 @@ fun ChampionPicker(draft: Draft, target: Action, data: GameData?, actions: Draft
 }
 
 /**
- * The client's bannable list, read when a ban turn opens and again whenever a
- * champion is taken; it is not one of the events the desktop forwards.
+ * The client's bannable list, read while a ban turn is open; it is not one of
+ * the events the desktop forwards. Read again every few seconds rather than
+ * once: the client can answer an empty list as the turn opens, and with the
+ * bans hidden until they are revealed nothing else would ask again — the grid
+ * stayed greyed out for the whole turn.
  */
 @Composable
 private fun rememberBannable(session: Session, target: Action, takenCount: Int): Set<Int>? {
     var bannable by remember { mutableStateOf<Set<Int>?>(null) }
     LaunchedEffect(target.kind, target.id, takenCount) {
         if (target.kind != ActionKind.Ban) return@LaunchedEffect
-        bannable = try {
-            session.get("/lol-champ-select/v1/bannable-champion-ids").takeIf { it.ok }?.body?.items?.mapNotNull { it.int }?.toSet()
-        } catch (_: LinkUnavailable) {
-            null
+        while (true) {
+            bannable = try {
+                session.get("/lol-champ-select/v1/bannable-champion-ids").takeIf { it.ok }?.body?.items?.mapNotNull { it.int }?.toSet()
+            } catch (_: LinkUnavailable) {
+                null
+            }
+            delay(BANNABLE_EVERY)
         }
     }
     return bannable
 }
+
+private const val BANNABLE_EVERY = 3_000L
 
 @Composable
 private fun ChampionTile(champion: Champion, selected: Boolean, available: Boolean, clickable: Boolean, onClick: () -> Unit) {
