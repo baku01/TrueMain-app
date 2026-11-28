@@ -3,8 +3,12 @@ name: Desktop build
 on:
   push:
     branches-ignore: [develop, master]
-    paths: ["desktop/**", "web/layers/common/**", "web/shared/**", "!**/*.md"]
+    paths: ["desktop/**", "web/layers/common/**", "web/shared/**", ".github/workflows/desktop-build.yml", "!**/*.md"]
   workflow_dispatch:
+
+env:
+  # Offset past manual local builds (up to 0.5.190) so CI builds are always newer for the in-app updater.
+  VERSION_OFFSET: 10
 
 permissions:
   contents: read
@@ -58,17 +62,17 @@ jobs:
           workspaces: desktop
       - run: npm ci
         working-directory: desktop/app
-      # Every build is a version of its own (0.5.<run>), so an installed app sees
-      # the next one as newer, and its update bundles are signed for the
+      # Every build is a version of its own (0.5.<run + offset>), so an installed app
+      # sees the next one as newer, and its update bundles are signed for the
       # in-app updater (the public key is `plugins.updater.pubkey`).
       - name: Build the app
         shell: bash
         env:
-          FLAVOR: '{"version":"0.5.${{ github.run_number }}","bundle":{"createUpdaterArtifacts":true}}'
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          echo "$FLAVOR" > desktop/flavor.json
+          APP_VERSION="0.5.$((GITHUB_RUN_NUMBER + VERSION_OFFSET))"
+          printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true}}\n' "$APP_VERSION" > desktop/flavor.json
           cd desktop/app
           npm run tauri -- build ${{ matrix.args }} --config flavor.json
       - name: Collect the installer
@@ -143,8 +147,9 @@ jobs:
           arm_sig=$(sig dist/TrueMain-macOS-AppleSilicon.app.tar.gz.sig)
           intel_sig=$(sig dist/TrueMain-macOS-Intel.app.tar.gz.sig)
           win_sig=$(sig dist/TrueMain-Windows-setup.exe.sig)
+          APP_VERSION="0.5.$((GITHUB_RUN_NUMBER + VERSION_OFFSET))"
           jq -n \
-            --arg version "0.5.$GITHUB_RUN_NUMBER" \
+            --arg version "$APP_VERSION" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg notes "Build $GITHUB_SHA" \
             --arg arm_url "$base/TrueMain-macOS-AppleSilicon.app.tar.gz" --arg arm_sig "$arm_sig" \
@@ -162,4 +167,4 @@ jobs:
             --verify-tag \
             --title "TrueMain App — build mais recente" \
             --latest \
-            --notes "Build automático 0.5.$GITHUB_RUN_NUMBER do commit $GITHUB_SHA na branch main. Instalado uma vez, o app se atualiza sozinho a partir daqui. Os instaladores não são assinados: no macOS, rode \`xattr -cr /Applications/TrueMain.app\` depois de copiar o app; no Windows, o SmartScreen pede para confirmar ('Mais informações' → 'Executar assim mesmo')."
+            --notes "Build automático $APP_VERSION do commit $GITHUB_SHA na branch main. Instalado uma vez, o app se atualiza sozinho a partir daqui. Os instaladores não são assinados: no macOS, rode \`xattr -cr /Applications/TrueMain.app\` depois de copiar o app; no Windows, o SmartScreen pede para confirmar ('Mais informações' → 'Executar assim mesmo')."
