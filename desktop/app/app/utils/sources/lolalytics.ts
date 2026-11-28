@@ -438,10 +438,12 @@ interface TierAnswer {
 
 export async function lolalyticsRows(query: Record<string, unknown>): Promise<ChampionSummaryResponse[]> {
   const position = typeof query.position === 'string' && query.position ? query.position : null
-  // The patch picked on the page wins over the window; the list says which patch it is.
+  // The patch picked on the page wins over the window; always read `lane: 'all'`
+  // (shared with `bracketLift`) and narrow in memory so single-lane and all-lane
+  // views never read two different snapshots.
   const picked = pickedPatch(query.patch)
   const [answer, patch, lift] = await Promise.all([
-    readTierList({ lane: position ? lolalyticsLane(position) : 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
+    readTierList({ lane: 'all', tier: lolalyticsTier(query.eloBracket), ...(picked ? { patch: picked } : {}) }),
     picked ?? patchRead(),
     bracketLift(query.eloBracket, 'all', picked ?? undefined),
   ])
@@ -466,7 +468,7 @@ export async function lolalyticsRows(query: Record<string, unknown>): Promise<Ch
       lastUpdatedAtUtc: now,
       topBuild: null,
     })))
-  })
+  }).filter(row => position === null || row.position === position)
 }
 
 export async function lolalyticsTierList(query: Record<string, unknown>): Promise<ChampionTierListResponse> {

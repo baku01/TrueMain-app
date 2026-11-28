@@ -105,13 +105,16 @@ const tierGroups = computed(() =>
 
 const hasRows = computed(() => tierGroups.value.some(group => group.entries.length > 0))
 
-// Each chip links to the champion page, pinned to the current patch + the row's
+// Each chip links to the champion page, pinned to the current patch + elo + the row's
 // own position — same destination shape as the /champions directory rows.
+const route = useRoute()
 function championDestination(entry: { championId: number, position: string }) {
+  const elo = typeof route.query.elo === 'string' && route.query.elo ? route.query.elo : undefined
   return {
     path: pathFor(entry.championId),
     query: {
       ...(selectedPatch.value ? { patch: selectedPatch.value } : {}),
+      ...(elo ? { elo } : {}),
       ...(entry.position ? { position: entry.position } : {}),
     },
   }

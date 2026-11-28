@@ -29,27 +29,33 @@ class TrueMainApi(
     private val http: OkHttpClient,
     private val staticData: StaticData,
 ) {
-    private val tierCache = ConcurrentHashMap<String, Cached>()
+    @Volatile
+    private var tierSnapshotCache: CachedSnapshot? = null
     private val buildCache = ConcurrentHashMap<String, Cached>()
 
     private data class Cached(val atMs: Long, val body: JsonElement)
+    private data class CachedSnapshot(val atMs: Long, val snapshot: TierSnapshot)
 
-    /** `tier` endpoint: Emerald+ tier list, recentered against the bracket's average win rate. */
-    suspend fun tierList(position: String? = null): JsonElement {
-        val lane = position?.let(::toLolalyticsLane) ?: "all"
+    private suspend fun loadTierSnapshot(): TierSnapshot {
         val now = System.currentTimeMillis()
-        tierCache[lane]?.takeIf { now - it.atMs < CACHE_TTL_MS }?.let { return it.body }
+        tierSnapshotCache?.takeIf { now - it.atMs < CACHE_TTL_MS }?.let { return it.snapshot }
 
         val raw = fetchLolalytics(
             mapOf(
                 "ep" to "tier",
-                "lane" to lane,
+                "lane" to "all",
                 "tier" to DEFAULT_TIER,
             ),
         )
-        val parsed = parseTierList(raw, filterByLane = position != null)
-        tierCache[lane] = Cached(now, parsed)
-        return parsed
+        val snapshot = parseTierSnapshot(raw)
+        tierSnapshotCache = CachedSnapshot(now, snapshot)
+        return snapshot
+    }
+
+    /** `tier` endpoint: Emerald+ tier list, always read once from `lane=all` and filtered in memory. */
+    suspend fun tierList(position: String? = null): JsonElement {
+        val snapshot = loadTierSnapshot()
+        return formatTierList(snapshot, position)
     }
 
     /** `build-full` endpoint: runes, spells, starters, boots, core items, and skill order. */
@@ -66,6 +72,7 @@ class TrueMainApi(
         val now = System.currentTimeMillis()
         buildCache[key]?.takeIf { now - it.atMs < CACHE_TTL_MS }?.let { return it.body }
 
+        val snapshot = runCatching { loadTierSnapshot() }.getOrNull()
         val raw = fetchLolalytics(
             mapOf(
                 "ep" to "build-full",
@@ -74,7 +81,10 @@ class TrueMainApi(
                 "tier" to DEFAULT_TIER,
             ),
         )
-        val parsed = parseBuildFull(raw, data)
+        val headerLane = (raw["header"] as? JsonObject)?.get("lane")?.jsonPrimitive?.content
+        val resolvedPos = position?.uppercase() ?: headerLane?.let(::fromLolalyticsLane)
+        val tierRow = resolvedPos?.let { pos -> snapshot?.rows?.firstOrNull { it.championId == championId && it.position == pos } }
+        val parsed = parseBuildFull(raw, data, bracketLift = snapshot?.lift, tierRow = tierRow)
         buildCache[key] = Cached(now, parsed)
         return parsed
     }
@@ -142,21 +152,27 @@ class TrueMainApi(
         private fun lowered(wrPercent: Double, lift: Double): Double =
             ((wrPercent / 100.0) - lift).coerceIn(0.0, 1.0)
 
-        internal fun parseTierList(raw: JsonObject, filterByLane: Boolean): JsonElement {
-            val tierObj = raw["tier"] as? JsonObject ?: return buildJsonObject { put("tiers", JsonArray(emptyList())) }
-            data class Row(
-                val tier: String,
-                val tierScore: Int,
-                val championId: Int,
-                val position: String,
-                val games: Int,
-                val wrPercent: Double,
-                val pickRate: Double,
-                val banRate: Double,
-                val lanePlayRate: Double,
-            )
+        internal data class TierRow(
+            val tier: String,
+            val tierScore: Int,
+            val championId: Int,
+            val position: String,
+            val games: Int,
+            val wrPercent: Double,
+            val winRate: Double,
+            val pickRate: Double,
+            val banRate: Double,
+            val lanePlayRate: Double,
+        )
 
-            val allRows = mutableListOf<Row>()
+        internal data class TierSnapshot(
+            val lift: Double,
+            val rows: List<TierRow>,
+        )
+
+        internal fun parseTierSnapshot(raw: JsonObject): TierSnapshot {
+            val tierObj = raw["tier"] as? JsonObject ?: return TierSnapshot(0.0, emptyList())
+            val rawRows = mutableListOf<TierRow>()
             var totalGames = 0L
             var weightedWr = 0.0
 
@@ -177,13 +193,14 @@ class TrueMainApi(
                         val pctLane = entry["pctLane"]?.jsonPrimitive?.doubleOrNull ?: 100.0
                         totalGames += games
                         weightedWr += games * (wr / 100.0)
-                        allRows += Row(
+                        rawRows += TierRow(
                             tier = letter,
                             tierScore = 16 - step,
                             championId = cid,
                             position = pos,
                             games = games,
                             wrPercent = wr,
+                            winRate = 0.0,
                             pickRate = pr / 100.0,
                             banRate = br / 100.0,
                             lanePlayRate = pctLane / 100.0,
@@ -193,7 +210,19 @@ class TrueMainApi(
             }
 
             val lift = if (totalGames > 0) (weightedWr / totalGames) - 0.5 else 0.0
-            val visible = allRows.filter { filterByLane || it.lanePlayRate >= 0.08 }
+            val rows = rawRows.map { it.copy(winRate = lowered(it.wrPercent, lift)) }
+            return TierSnapshot(lift, rows)
+        }
+
+        internal fun formatTierList(
+            snapshot: TierSnapshot,
+            position: String? = null,
+            minLanePlayRate: Double = if (position == null) 0.08 else 0.02,
+        ): JsonElement {
+            val targetPos = position?.uppercase()
+            val visible = snapshot.rows.filter { row ->
+                (targetPos == null || row.position == targetPos) && row.lanePlayRate >= minLanePlayRate
+            }
 
             return buildJsonObject {
                 put(
@@ -202,7 +231,7 @@ class TrueMainApi(
                         for (tier in listOf("S", "A", "B", "C", "D")) {
                             val entries = visible
                                 .filter { it.tier == tier }
-                                .sortedWith(compareByDescending<Row> { it.tierScore }.thenByDescending { it.wrPercent })
+                                .sortedWith(compareByDescending<TierRow> { it.tierScore }.thenByDescending { it.winRate })
                             if (entries.isEmpty()) continue
                             add(
                                 buildJsonObject {
@@ -216,7 +245,7 @@ class TrueMainApi(
                                                         put("championId", row.championId)
                                                         put("position", row.position)
                                                         put("games", row.games)
-                                                        put("winRate", lowered(row.wrPercent, lift))
+                                                        put("winRate", row.winRate)
                                                         put("pickRate", row.pickRate)
                                                         put("banRate", row.banRate)
                                                     },
@@ -232,16 +261,34 @@ class TrueMainApi(
             }
         }
 
-        internal fun parseBuildFull(raw: JsonObject, data: GameData?): JsonElement {
+        internal fun parseTierList(raw: JsonObject, filterByLane: Boolean, position: String? = null): JsonElement {
+            val snapshot = parseTierSnapshot(raw)
+            return formatTierList(snapshot, position, minLanePlayRate = if (filterByLane && position == null) 0.0 else if (position == null) 0.08 else 0.02)
+        }
+
+        internal fun parseBuildFull(
+            raw: JsonObject,
+            data: GameData?,
+            bracketLift: Double? = null,
+            tierRow: TierRow? = null,
+        ): JsonElement {
             val header = raw["header"] as? JsonObject ?: return buildJsonObject {
                 put("builds", JsonArray(emptyList()))
             }
             val patch = header["patch"]?.jsonPrimitive?.content ?: ""
-            val totalGames = header["n"]?.jsonPrimitive?.intOrNull ?: 0
-            val avgWr = header["avgWr"]?.jsonPrimitive?.doubleOrNull ?: 50.0
-            val lift = (avgWr / 100.0) - 0.5
-            val overallWr = lowered(header["wr"]?.jsonPrimitive?.doubleOrNull ?: 50.0, lift)
-            val totalWins = (totalGames * overallWr).toInt()
+            val headerGames = header["n"]?.jsonPrimitive?.intOrNull ?: 0
+            val rawWr = header["wr"]?.jsonPrimitive?.doubleOrNull ?: 50.0
+            val avgWrDelta = header["avgWrDelta"]?.jsonPrimitive?.doubleOrNull
+            val avgWr = header["avgWr"]?.jsonPrimitive?.doubleOrNull
+            // Prefer the bracket's global lift from `ep=tier&lane=all` (identical to the tier list);
+            // otherwise use `avgWrDelta` or `wr - avgWr` (`avgWr` is already the normalized win rate).
+            val lift = bracketLift
+                ?: avgWrDelta?.div(100.0)
+                ?: avgWr?.let { (rawWr - it) / 100.0 }
+                ?: 0.0
+            val totalGames = tierRow?.games ?: headerGames
+            val overallWr = tierRow?.winRate ?: lowered(rawWr, lift)
+            val totalWins = kotlin.math.round(totalGames * overallWr).toInt()
 
             val spellVariations = parseSpellRows(raw["spells"] as? JsonArray, lift)
             val bootVariations = parseBootRows(raw["boots"] as? JsonArray, lift)

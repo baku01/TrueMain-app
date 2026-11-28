@@ -5,7 +5,7 @@ export interface TierEntry {
   games: number
   winRate: number
   pickRate: number
-  banRate: number
+  banRate: number | null
   tier: string
 }
 

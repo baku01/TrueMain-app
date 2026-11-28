@@ -27,27 +27,32 @@ export function useChampionTrend(
   championId: MaybeRefOrGetter<number>,
   position: MaybeRefOrGetter<string | null | undefined>,
   enabled: MaybeRefOrGetter<boolean> = true,
+  eloBracket?: MaybeRefOrGetter<string | null | undefined>,
 ) {
   const championIdRef = computed(() => toValue(championId))
   const positionRef = computed(() => toValue(position) || undefined)
   const enabledRef = computed(() => toValue(enabled))
+  const eloBracketRef = computed(() => toValue(eloBracket) || undefined)
 
   const apiFetch = useApiFetch()
 
   const result = useLazyAsyncData<ChampionTrendResponse>(
-    () => ['champion-trend', championIdRef.value, positionRef.value ?? ''].join('-'),
+    () => ['champion-trend', championIdRef.value, positionRef.value ?? '', eloBracketRef.value ?? ''].join('-'),
     (_nuxtApp, { signal }) => {
       // Hold an empty series until the gate opens so we never fire a throwaway
       // request with a not-yet-resolved lane.
       if (!enabledRef.value) {
         return Promise.resolve({ championId: championIdRef.value, position: '', points: [] })
       }
+      const query: Record<string, string> = {}
+      if (positionRef.value) query.position = positionRef.value
+      if (eloBracketRef.value) query.eloBracket = eloBracketRef.value
       return apiFetch<ChampionTrendResponse>(`/champions/${championIdRef.value}/trend`, {
-        query: positionRef.value ? { position: positionRef.value } : {},
+        query,
         signal,
       })
     },
-    { watch: [championIdRef, positionRef, enabledRef], server: false },
+    { watch: [championIdRef, positionRef, enabledRef, eloBracketRef], server: false },
   )
 
   const pending = computed(() => !enabledRef.value || isLoadingStatus(result.status.value))

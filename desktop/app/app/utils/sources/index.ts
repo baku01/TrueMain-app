@@ -13,12 +13,12 @@ import { compositionFromSource, compositionGamesFromBlitz } from '~/utils/source
 import { nextItemFromSource } from '~/utils/sources/next-item'
 import { championTraits, currentPatch  } from '~/utils/sources/champions'
 import type { NextItemRequest } from '~/utils/next-item'
-import { pageDirectory } from '~/utils/sources/directory'
+import { pageDirectory, readPooledDirectoryRows, visibleDirectoryRows } from '~/utils/sources/directory'
 import { lolalyticsBuilds, lolalyticsMatchups, lolalyticsOptions, lolalyticsRows, lolalyticsTierList, lolalyticsTrend } from '~/utils/sources/lolalytics'
 import { tencentBuilds, tencentMatchups, tencentOptions, tencentRows, tencentTierList, tencentTrend } from '~/utils/sources/tencent'
 import { opggBuilds, opggMatchups, opggOptions, opggRows, opggTierList, opggTrend } from '~/utils/sources/opgg'
 import { mobalyticsBuilds, mobalyticsMatchups, mobalyticsOptions, mobalyticsTrend } from '~/utils/sources/mobalytics'
-import { combineMatchups, combineOptions, combineRows, combineTrends } from '~/utils/sources/combined'
+import { combineMatchups, combineOptions, combineTrends } from '~/utils/sources/combined'
 import { buildsFromOptions } from '~/utils/sources/model'
 
 /**
@@ -110,15 +110,9 @@ export function settled<T>(reads: Promise<T>[]): Promise<(T | null)[]> {
 
 const present = <T>(answers: (T | null)[]) => answers.filter((answer): answer is T => answer !== null)
 
-/** Every source's rows of the tier list and the champions list, as one (`combineRows`): Mobalytics lists none. */
-async function pooledRows(query: Record<string, unknown>): Promise<ChampionSummaryResponse[]> {
-  const answers = await settled([
-    lolalyticsRows(query),
-    blitzDirectoryRows(query),
-    opggRows(query),
-  ])
-  return combineRows(present(answers))
-}
+/** Pooled rows cached per `(patch, eloBracket)` so `/tierlist`, `/champions`, and `/champions/:id` share one answer. */
+const pooledRows = (query: Record<string, unknown>) =>
+  readPooledDirectoryRows(query, async baseQuery => present(await settled([lolalyticsRows(baseQuery), blitzDirectoryRows(baseQuery), opggRows(baseQuery)])))
 
 /**
  * The sources whose lane builds are read on the same games (Emerald+): not
@@ -138,8 +132,7 @@ const pooledProvider: Provider = {
   builds: async (championId, position) => buildsFromOptions(championId, position, await pooledProvider.options(championId, position)),
   tierList: async (query) => {
     const position = typeof query.position === 'string' && query.position ? query.position : null
-    // Across every lane, only the lanes that make up a real share of the champion's games.
-    const rows = (await pooledRows(query)).filter(row => (position === null ? row.lanePlayRate >= 0.08 : row.position === position))
+    const rows = visibleDirectoryRows(await pooledRows(query), position)
     const tiers = ['S', 'A', 'B', 'C', 'D'].map(tier => ({
       tier,
       entries: rows.filter(row => row.tier === tier).sort((a, b) => b.tierScore - a.tierScore || b.winRate - a.winRate)
@@ -149,7 +142,10 @@ const pooledProvider: Provider = {
   },
   // Each row's build, its icons only: one source's, lolalytics' (the read its champion page reuses), else op.gg's —
   // pooling three sources for every row of the list was three requests a row, a thousand for the whole list.
-  directory: async query => pageDirectory(await pooledRows(query), query, (championId, position) => rowBuilds.builds(championId, position)),
+  directory: async (query) => {
+    const position = typeof query.position === 'string' && query.position ? query.position : null
+    return pageDirectory(visibleDirectoryRows(await pooledRows(query), position), query, (championId, pos) => rowBuilds.builds(championId, pos))
+  },
   matchups: async (championId, query) => {
     const position = typeof query.position === 'string' && query.position ? query.position : 'MIDDLE'
     return combineMatchups(championId, position, await settled(POOLED.map(source => source.matchups(championId, query))))

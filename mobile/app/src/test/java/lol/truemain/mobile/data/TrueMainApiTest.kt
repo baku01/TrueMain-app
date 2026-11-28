@@ -85,6 +85,8 @@ class TrueMainApiTest {
         val result = TrueMainApi.parseBuildFull(raw, data = null)
         assertEquals("16.23", result.str("patch"))
         assertEquals(100000, result.int("totalGames"))
+        // wr=53.0 and avgWr=51.0 -> delta=2.0%, so normalized win rate is 51.0% (51000 wins).
+        assertEquals(51000, result.int("totalWins"))
         val build = result.list("builds").first()
         assertEquals(8112, build.int("primaryKeystoneId"))
         assertEquals(3118, build.int("firstItemId"))
@@ -116,5 +118,53 @@ class TrueMainApiTest {
         )
         assertEquals("wukong", TrueMainApi.slugFor(62, data))
         assertEquals("leesin", TrueMainApi.slugFor(64, data))
+    }
+
+    @Test
+    fun keepsWinRateAndGamesIdenticalBetweenTierListAndChampionBuild() {
+        val tierRaw = Json.parseToJsonElement(
+            """
+            {
+              "tier": {
+                "1": { "lane": { "middle": { "cid": { "103": { "rank": 1, "pctLane": 96.0, "wr": 53.0, "pr": 11.4, "br": 4.1, "games": 226934 } } } } },
+                "5": { "lane": { "top": { "cid": { "266": { "rank": 8, "pctLane": 94.0, "wr": 50.4, "pr": 8.0, "br": 5.0, "games": 226934 } } } } }
+              }
+            }
+            """.trimIndent(),
+        ).jsonObject
+        val snapshot = TrueMainApi.parseTierSnapshot(tierRaw)
+        val allLanes = TrueMainApi.formatTierList(snapshot, position = null)
+        val midOnly = TrueMainApi.formatTierList(snapshot, position = "MIDDLE")
+        val ahriAll = allLanes.list("tiers").first().list("entries").first()
+        val ahriMid = midOnly.list("tiers").first().list("entries").first()
+        assertEquals(ahriAll.int("games"), ahriMid.int("games"))
+        assertEquals(ahriAll.double("winRate")!!, ahriMid.double("winRate")!!, 1e-9)
+
+        val buildRaw = Json.parseToJsonElement(
+            """
+            {
+              "header": { "patch": "16.23", "lane": "middle", "n": 227337, "wr": 53.0, "avgWr": 51.31, "avgWrDelta": 1.69 },
+              "summary": {}
+            }
+            """.trimIndent(),
+        ).jsonObject
+        val tierRow = snapshot.rows.first { it.championId == 103 && it.position == "MIDDLE" }
+        val build = TrueMainApi.parseBuildFull(buildRaw, data = null, bracketLift = snapshot.lift, tierRow = tierRow)
+        assertEquals(ahriAll.int("games"), build.int("totalGames"))
+        val buildWr = build.int("totalWins")!!.toDouble() / build.int("totalGames")!!.toDouble()
+        assertEquals(ahriAll.double("winRate")!!, buildWr, 0.0001)
+
+        // Sub-50% champion without tierRow must NOT invert lift (Azir regression: avgWr=48.08 < 50).
+        val azirRaw = Json.parseToJsonElement(
+            """
+            {
+              "header": { "patch": "16.23", "lane": "middle", "n": 55577, "wr": 49.58, "avgWr": 48.08, "avgWrDelta": 1.5 },
+              "summary": {}
+            }
+            """.trimIndent(),
+        ).jsonObject
+        val azirBuild = TrueMainApi.parseBuildFull(azirRaw, data = null)
+        val azirWr = azirBuild.int("totalWins")!!.toDouble() / azirBuild.int("totalGames")!!.toDouble()
+        assertEquals(0.4808, azirWr, 0.0002)
     }
 }

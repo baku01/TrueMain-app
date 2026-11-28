@@ -195,7 +195,7 @@ const buildPathOf = (row: DirectoryRow) => (row.topBuild?.itemPath ?? []).slice(
 
     <template #winRate-cell="{ row }">
       <USkeleton v-if="loading" class="ml-auto h-4 w-10" />
-      <span v-else class="font-semibold tabular-nums" :class="winRateTone(row.original.winRate)">{{ formatPercentage(row.original.winRate, 0) }}</span>
+      <span v-else class="font-semibold tabular-nums" :class="winRateTone(row.original.winRate)">{{ formatPercentage(row.original.winRate, 1) }}</span>
     </template>
     <template #winRateChange-header>
       <!-- Not sortable: the API orders by the columns it keeps, and it keeps no patch before. -->
@@ -207,13 +207,13 @@ const buildPathOf = (row: DirectoryRow) => (row.topBuild?.itemPath ?? []).slice(
     </template>
     <template #pickRate-cell="{ row }">
       <USkeleton v-if="loading" class="ml-auto h-4 w-10" />
-      <span v-else class="tabular-nums text-default">{{ formatPercentage(row.original.pickRate, 0) }}</span>
+      <span v-else class="tabular-nums text-default">{{ formatPercentage(row.original.pickRate, 1) }}</span>
     </template>
     <!-- Colour stays on the win rate alone: pick rate reads plain, ban rate and games
          recede. A dash on patches predating ban ingestion (#920): "not observed" is not 0%. -->
     <template #banRate-cell="{ row }">
       <USkeleton v-if="loading" class="ml-auto h-4 w-10" />
-      <span v-else class="tabular-nums text-muted">{{ formatPercentageOrDash(row.original.banRate, 0) }}</span>
+      <span v-else class="tabular-nums text-muted">{{ formatPercentageOrDash(row.original.banRate, 1) }}</span>
     </template>
     <template #games-cell="{ row }">
       <USkeleton v-if="loading" class="ml-auto h-4 w-12" />

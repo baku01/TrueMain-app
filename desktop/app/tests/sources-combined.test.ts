@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOptions } from '~/utils/sources/model'
 import { SOURCE_SPREAD, combineOptions, combineRows, effectiveGames, poolLists, poolMeasure, sameGames, weightOf } from '~/utils/sources/combined'
+import { filterAnswersByPatch, normalizePatch, readPooledDirectoryRows, visibleDirectoryRows } from '~/utils/sources/directory'
 
 const m = (games: number, winRate: number, pickRate = 0) => ({ games, winRate, pickRate })
 /** The pooled rate the rule gives: each source's weighed by `weightOf` its games. */
@@ -115,5 +116,45 @@ describe('effectiveGames', () => {
     expect(effectiveGames(0.5, 260000, 1)).toBeCloseTo(0.25 / (0.25 / 260000 + SOURCE_SPREAD ** 2))
     expect(effectiveGames(0.5, 260000, 3)).toBeGreaterThan(effectiveGames(0.5, 260000, 1))
     expect(effectiveGames(1, 50, 1)).toBeGreaterThan(0)
+  })
+})
+
+describe('directory & tier list parity', () => {
+  const row = (championId: number, position: string, lanePlayRate: number, patchVersion = '16.23', games = 10000) => ({
+    championId, position, games, wins: Math.round(games * 0.51), winRate: 0.51, pickRate: 0.08, lanePlayRate,
+    trueMainCount: 0, banRate: 0.03, tier: 'A', tierScore: 10, patchVersion, lastUpdatedAtUtc: '', topBuild: null,
+  })
+
+  it('applies the exact same visibility filter to both tier list and directory', () => {
+    const rows = [
+      row(103, 'MIDDLE', 0.95),
+      row(103, 'TOP', 0.03),
+      row(103, 'JUNGLE', 0.005),
+    ]
+    // All lanes: dominant lanes only (>= 8%)
+    expect(visibleDirectoryRows(rows, null).map(entry => entry.position)).toEqual(['MIDDLE'])
+    // Specific lane: secondary lanes >= 2% kept, < 2% off-role noise dropped
+    expect(visibleDirectoryRows(rows, 'TOP').map(entry => entry.position)).toEqual(['TOP'])
+    expect(visibleDirectoryRows(rows, 'JUNGLE')).toEqual([])
+  })
+
+  it('drops sources from another patch when a specific patch is requested', () => {
+    const lolaOld = [row(103, 'MIDDLE', 0.95, '16.22', 180000)]
+    const blitzLive = [row(103, 'MIDDLE', 0.95, '16.23.1', 210000)]
+    expect(normalizePatch('16.23.1')).toBe('16.23')
+    const kept = filterAnswersByPatch([lolaOld, blitzLive], '16.22')
+    expect(kept).toEqual([lolaOld])
+  })
+
+  it('caches pooled rows by (patch, eloBracket) and never forwards position or championId to sources', async () => {
+    const queries: Record<string, unknown>[] = []
+    const load = async (baseQuery: Record<string, unknown>) => {
+      queries.push(baseQuery)
+      return [[row(103, 'MIDDLE', 0.95, '16.23', 200000), row(266, 'TOP', 0.9, '16.23', 150000)]]
+    }
+    const first = await readPooledDirectoryRows({ eloBracket: 'DIAMOND_PLUS', position: 'MIDDLE', championId: 103 }, load)
+    const second = await readPooledDirectoryRows({ eloBracket: 'DIAMOND_PLUS', pageSize: 50, sort: 'winRate' }, load)
+    expect(queries).toEqual([{ eloBracket: 'DIAMOND_PLUS' }])
+    expect(second).toBe(first)
   })
 })

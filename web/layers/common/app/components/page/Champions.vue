@@ -136,13 +136,15 @@ watch([summaries, total], ([lines, count]) => {
   if (lines.length === 0 && count > 0 && currentPage.value > 1) void setPage(1)
 })
 
-// The row's destination: the champion page on its lane, at the patch the list
+// The row's destination: the champion page on its lane, at the patch and elo the list
 // shows. The row itself navigates (a button-style target, per #147).
 function rowDestination(row: { championId: number, position: string }) {
+  const elo = firstParamValue(route.query.elo) || undefined
   return {
     path: pathFor(row.championId),
     query: {
       ...(selectedPatch.value ? { patch: selectedPatch.value } : {}),
+      ...(elo ? { elo } : {}),
       ...(row.position ? { position: row.position } : {}),
     },
   }
