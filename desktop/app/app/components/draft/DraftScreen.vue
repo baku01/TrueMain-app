@@ -164,17 +164,13 @@ const { allyDamagePicks, enemyDamagePicks, lockedAllies } = useDraftDamagePicks(
 /** The source or Jev ranks the picks and lays the build; kept for the session. Jev only answers a click — its calls are paid. */
 const withJev = useState('draft-with-jev', () => false)
 
-/** What a pick with Jev is chosen for: our lane, its opponent, the teams so far, the source's measured candidates. */
+/** What a pick with Jev is chosen for: our lane, its opponent — ours, not that of the build on screen —, the teams so far, the source's measured candidates. */
 const jevPick = computed<PickSubject | null>(() => {
   const candidates = (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => ({ championId: candidate.championId, score: candidate.score }))
-  if (!candidates.length || !props.draft.myPosition) return null
-  return {
-    position: props.draft.myPosition,
-    opponentId: duel.value.opponentId,
-    allies: lockedAllies.value.map(ally => ally.championId),
-    enemies: props.draft.enemyChampions.map(championId => ({ championId, position: enemyLanes.value.find(lane => lane.championId === championId)?.position ?? null })),
-    candidates,
-  }
+  const position = props.draft.myPosition
+  if (!candidates.length || !position) return null
+  const enemies = props.draft.enemyChampions.map(championId => ({ championId, position: enemyLanes.value.find(lane => lane.championId === championId)?.position ?? null }))
+  return { position, opponentId: enemies.find(enemy => enemy.position === position)?.championId ?? null, allies: lockedAllies.value.map(ally => ally.championId), enemies, candidates }
 })
 const jevPicks = useJevPick(jevPick)
 const jevBuildSubject = computed(() => (subject.value ? { championId: subject.value.championId, request: subject.value.request } : null))
@@ -202,7 +198,8 @@ const askJev = () => (tab.value === 'builds' ? jevBuild.ask() : jevPicks.ask())
 const jevReadings = computed(() => (!withJev.value ? null : tab.value === 'builds' ? (jevBuild.enemies.value.length ? jevBuild.enemies.value : null) : jevPicks.assessment.value?.readings ?? null))
 const subtitle = computed(() => {
   if (!withJev.value) return t('draft.weights.subtitle')
-  return jevStatus.value === 'ready' ? t('draft.sugg.fromJev') : t('draft.sugg.askJev')
+  if (jevPick.value && !jevPicks.canAsk.value) return t('jev.pick.nothing')
+  return jevStatus.value !== 'ready' ? t('draft.sugg.askJev') : t(jevPicks.stale.value ? 'jev.card.stale' : 'draft.sugg.fromJev')
 })
 
 const suggested = computed(() => (recommendation.value?.candidates ?? []).filter(candidate => !candidate.thinSample).map(candidate => candidate.championId))
@@ -276,7 +273,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
               icon="i-tabler-chess-knight"
               :label="jevStatus === 'ready' ? t('jev.card.again') : t('jev.card.ask')"
               :loading="jevStatus === 'loading'"
-              :disabled="tab === 'builds' ? !jevBuildSubject : !jevPick"
+              :disabled="tab === 'builds' ? !jevBuildSubject : !jevPicks.canAsk.value"
               color="neutral"
               variant="soft"
               @click="askJev()"
@@ -344,8 +341,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         <!-- Suggestions: the grid; the side lists live under the teams. -->
         <div v-if="tab === 'suggestions'" class="@container min-h-0 flex-1 overflow-y-auto p-4">
           <div class="min-w-0">
-            <UAlert v-if="withJev && jevStatus === 'noKey'" class="mb-4" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
-            <UAlert v-else-if="withJev && jevStatus === 'error'" class="mb-4" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :actions="[{ label: t('common.retry'), color: 'error', variant: 'outline', onClick: () => askJev() }]" />
+            <JevStatusAlert v-if="withJev && suggestionKind === 'pick'" class="mb-4" :status="jevPicks.status.value" :failure="jevPicks.failure.value" :partial="jevPicks.partial.value" @retry="jevPicks.ask()" />
             <DraftSuggestions
               v-model:my-pool="myPool"
               :mode="suggestionKind"

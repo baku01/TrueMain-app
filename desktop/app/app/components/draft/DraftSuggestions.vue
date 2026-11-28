@@ -46,7 +46,7 @@ const emit = defineEmits<{ preview: [championId: number] }>()
 
 const { nameOf, champions } = useChampionStatics()
 const { t } = useT()
-const { writable } = useChampSelectActions()
+const { writable, taken, allyHovering, pickable, bannable } = useChampSelectActions()
 const { entryOf, status: tierListStatus } = useTierList()
 const { profileOf } = useDamageProfiles()
 const { games } = usePlayerRecord()
@@ -74,10 +74,24 @@ const comforts = computed(() => {
 const search = ref('')
 const hovered = ref<number | null>(null)
 
+/**
+ * The suggestions still possible now: an answer is for the draft it was asked
+ * for, and one still on screen while the next is pending (or after it failed)
+ * must not offer a champion banned, locked, hovered by an ally, or one the
+ * client does not let the player pick, since.
+ */
+const available = computed(() => {
+  const listed = props.mode === 'ban' ? bannable.value : pickable.value
+  return props.suggestions.filter(item => !taken.value.has(item.championId) && !allyHovering(item.championId) && (!listed || listed.has(item.championId)))
+})
+
 const shown = computed(() => {
   const query = search.value.trim().toLowerCase()
-  return query ? props.suggestions.filter(item => nameOf(item.championId).toLowerCase().includes(query)) : props.suggestions
+  return query ? available.value.filter(item => nameOf(item.championId).toLowerCase().includes(query)) : available.value
 })
+
+/** The last request failed: what is drawn is the previous answer, and says so. */
+const stale = computed(() => props.error !== null && available.value.length > 0)
 
 /** What the bans protect, in a few words. */
 const targetLabel = computed(() => {
@@ -146,6 +160,10 @@ const cards = computed(() => shown.value)
         <UInput v-model="search" icon="i-lucide-search" :placeholder="t('draft.sugg.search')" size="sm" class="w-44" />
       </div>
     </header>
+
+    <p v-if="stale" class="flex items-center gap-1.5 text-xs text-muted" role="status">
+      <UIcon name="i-lucide-history" class="size-3.5 shrink-0 text-dimmed" />{{ t('draft.sugg.stale') }}
+    </p>
 
     <template v-if="shown.length || others.length">
       <ol v-if="cards.length" class="grid grid-cols-2 gap-2.5 @lg:grid-cols-3 @5xl:grid-cols-4" @mouseleave="hovered = null">

@@ -117,11 +117,11 @@ describe('DraftSuggestions', () => {
     UInput: true,
   }
 
-  async function mountStrip(mode: 'pick' | 'ban') {
+  async function mountStrip(mode: 'pick' | 'ban', options: { error?: string | null, taken?: number[], pickable?: number[] | null } = {}) {
     const { ref } = await import('vue')
     vi.stubGlobal('ref', ref)
     vi.stubGlobal('useChampionStatics', () => ({ nameOf: (id: number) => (id === 103 ? 'Ahri' : 'Zed'), portraitOf: () => null, champions: ref(new Map()) }))
-    vi.stubGlobal('useChampSelectActions', () => ({ writable: ref(true) }))
+    vi.stubGlobal('useChampSelectActions', () => ({ writable: ref(true), taken: ref(new Set(options.taken ?? [])), allyHovering: () => null, pickable: ref(options.pickable ? new Set(options.pickable) : null), bannable: ref(null) }))
     vi.stubGlobal('useTierList', () => ({ entryOf: () => null, status: ref('ready') }))
     vi.stubGlobal('useDamageProfiles', () => ({ profileOf: () => null }))
     vi.stubGlobal('usePlayerRecord', () => ({ games: ref([game(103, true), game(103, false), game(64, true)]) }))
@@ -134,7 +134,7 @@ describe('DraftSuggestions', () => {
         hasPool: true,
         pending: false,
         position: 'MIDDLE',
-        error: null,
+        error: options.error ?? null,
         allies: [],
       },
       global: { stubs, components: { DraftSuggestionCard } },
@@ -146,6 +146,18 @@ describe('DraftSuggestions', () => {
 
     expect(titles[0]).toContain('Your Ahri: 2 of your last 3 games, 1 win')
     expect(titles[1]).not.toContain('of your last')
+  })
+
+  it('leaves out what was taken or cannot be picked since the answer came', async () => {
+    expect((await mountStrip('pick', { taken: [238] })).findAll('li')).toHaveLength(1)
+    expect((await mountStrip('pick', { pickable: [238] })).findAll('li')).toHaveLength(1)
+  })
+
+  it('marks an answer kept after a failed request as the previous one', async () => {
+    expect((await mountStrip('pick')).find('[role="status"]').exists()).toBe(false)
+    const stale = await mountStrip('pick', { error: 'offline' })
+    expect(stale.find('[role="status"]').text()).toContain('previous suggestions')
+    expect(stale.findAll('li')).toHaveLength(2)
   })
 
   it('says none on a ban', async () => {

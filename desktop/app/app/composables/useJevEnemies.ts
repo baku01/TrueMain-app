@@ -1,7 +1,9 @@
 import type { JevAnswer } from '~/utils/jev'
-import type { ChampionText } from '~/utils/jev-read'
+import type { Asked } from '~/utils/jev-ask'
+import type { ChampionText, Request } from '~/utils/jev-read'
 import type { EnemyLine, Needs, Resist } from '~/utils/jev-needs'
-import { championReadKey, keepChampionRead, knownChampionRead, readChampion } from '~/utils/jev-read'
+import { mergeAsked } from '~/utils/jev-ask'
+import { batches, championReadKey, enemyRequest, keepChampionRead, knownChampionRead, readChampion } from '~/utils/jev-read'
 import { laneNeeds, needsOf } from '~/utils/jev-needs'
 import { duesOf } from '~/utils/jev-rules'
 
@@ -17,10 +19,13 @@ export interface EnemyAssessment {
   dues: Resist[]
 }
 
+/** The enemy kits out with Jev, by read key: the pick and the build asking at once ask each enemy once, the other awaits it. */
+const reading = new Map<string, Promise<Asked>>()
+
 /**
  * The enemy team as Jev reads it, shared by the build and the pick: which
- * kits it has yet to read this patch (`unread`, asked with `enemyRequest`),
- * what came back kept for the session (`keep`), and the team's needs from
+ * kits it has yet to read this patch (`unread`), those asked and what came
+ * back kept for the session (`read`, `keep`), and the team's needs from
  * those reads and Blitz's measured damage split, each champion weighed by the
  * damage it deals (`assess`).
  */
@@ -39,6 +44,25 @@ export function useJevEnemies() {
     for (const enemy of asked) {
       const read = readChampion(enemy.id, answers)
       if (read) keepChampionRead(championReadKey(version(), enemy.id), read)
+    }
+  }
+
+  /** Asks `ask` for the enemies not read yet, those another ask has out awaited instead of asked twice. */
+  async function read(ids: number[], ask: (parts: Request[]) => Promise<Asked>): Promise<Asked> {
+    const key = (id: number) => championReadKey(version(), id)
+    const missing = unread(ids)
+    const mine = missing.filter(text => !reading.has(key(text.id)))
+    const others = new Set(missing.flatMap(text => (reading.has(key(text.id)) ? [reading.get(key(text.id))!] : [])))
+    const asked = ask(batches(enemyRequest(mine))).then((result) => {
+      keep(result.answers, mine)
+      return result
+    })
+    for (const text of mine) reading.set(key(text.id), asked)
+    try {
+      return mergeAsked(await asked, ...await Promise.all(others))
+    }
+    finally {
+      for (const text of mine) if (reading.get(key(text.id)) === asked) reading.delete(key(text.id))
     }
   }
 
@@ -67,5 +91,5 @@ export function useJevEnemies() {
     }
   }
 
-  return { unread, keep, assess, load: damage.load }
+  return { unread, keep, read, assess, load: damage.load }
 }

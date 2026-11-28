@@ -46,6 +46,11 @@ export function useDraftRecommendation(
   const recommendation = ref<DraftRecommendation | null>(null)
   const pending = ref(false)
   const error = ref<string | null>(null)
+  // The pool is filtered through the tier list (`useDraftCandidates`): asked before it lands, the pool is empty
+  // and the answer would say the player has nothing on the lane. A failed one is retried on its own; meanwhile
+  // the source's own tier list still places the enemies.
+  const { status: tierList } = useTierList()
+  const waiting = computed(() => tierList.value === 'idle' || tierList.value === 'pending')
 
   /** Allies locked in, keyed by the lane the client assigned them — the synergy's input. */
   const allies = computed(() => alliesByLane(draft.value, true))
@@ -68,6 +73,7 @@ export function useDraftRecommendation(
       recommendation.value = null
       return
     }
+    if (waiting.value) return
 
     const requestId = ++latestRequest
     pending.value = true
@@ -92,6 +98,8 @@ export function useDraftRecommendation(
     for (let start = 0; start < candidates.value.length; start += CANDIDATES_PER_REQUEST) {
       batches.push(candidates.value.slice(start, start + CANDIDATES_PER_REQUEST))
     }
+    // No candidate still asks once, with none: the enemy lanes come from the answer, and its empty list is
+    // what lets the panel say there is nothing to rank.
     if (!batches.length) batches.push([])
 
     try {
@@ -105,6 +113,8 @@ export function useDraftRecommendation(
     }
     catch (cause) {
       if (requestId !== latestRequest) return
+      // The previous answer stays drawn — an empty panel mid-pick helps nobody — and the error marks it as
+      // the previous one (`DraftSuggestions`), never as the current draft's.
       error.value = String(cause)
       // Offline in `npm run dev`: a scenario may carry the answer the API gave.
       if (import.meta.dev && !insideTauri()) recommendation.value = useDevScenarios().recommendation.value
@@ -127,6 +137,7 @@ export function useDraftRecommendation(
     hoveredAllies.value,
     candidates.value,
     eloBracket.value,
+    waiting.value,
   ]))
 
   watch(key, () => {

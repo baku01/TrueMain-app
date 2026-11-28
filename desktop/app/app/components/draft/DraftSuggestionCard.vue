@@ -79,18 +79,28 @@ const why = computed(() => {
 /** The ring's score: Jev's, else the weighted one; 0–1. */
 const score = computed(() => props.jev?.total ?? props.weighted?.total ?? null)
 
-/** The score, part by part: each part's share of the weight that counted, and the points it brings. */
+/**
+ * The score, part by part: each part's share of the weight that counted, and the points it brings. A part with
+ * nothing measured behind it (no ally pairing read, no opponent yet) reads even and is drawn dimmed, its hint
+ * saying so — its points are a default, not a measure.
+ */
 const breakdown = computed(() => {
   const parts = props.jev?.parts
   if (!parts) {
     const weighted = props.weighted?.parts
     return weighted
-      ? WEIGHT_KEYS.map(key => ({ key, label: t(`draft.weights.part.${key}`), hint: t(`draft.weights.part.${key}.hint`), ...weighted[key], points: weighted[key].points * 100 }))
+      ? WEIGHT_KEYS.map(key => ({
+          key,
+          label: t(`draft.weights.part.${key}`),
+          hint: weighted[key].measured ? t(`draft.weights.part.${key}.hint`) : `${t(`draft.weights.part.${key}.hint`)} ${t('draft.weights.notMeasured')}`,
+          ...weighted[key],
+          points: weighted[key].points * 100,
+        }))
       : []
   }
   const present = (['stats', 'lane', 'team', 'enemy'] as const).filter(part => parts[part] !== undefined)
   const weight = present.reduce((sum, part) => sum + PICK_WEIGHTS[part], 0)
-  return present.map(part => ({ key: part, label: t(`jev.pick.part.${part}`), hint: t(`jev.pick.part.${part}.hint`), value: parts[part]!, weight: PICK_WEIGHTS[part] / weight, points: (PICK_WEIGHTS[part] / weight) * parts[part]! * 100 }))
+  return present.map(part => ({ key: part, label: t(`jev.pick.part.${part}`), hint: t(`jev.pick.part.${part}.hint`), value: parts[part]!, weight: PICK_WEIGHTS[part] / weight, points: (PICK_WEIGHTS[part] / weight) * parts[part]! * 100, measured: true }))
 })
 
 const RISK_TONE = { medium: 'text-warning bg-warning/10', high: 'text-error bg-error/10', extreme: 'text-inverted bg-error' } as const
@@ -132,9 +142,9 @@ const risk = computed(() => {
               <span class="text-right text-dimmed">{{ t('jev.pick.weight') }}</span>
               <span class="text-right text-dimmed">{{ t('jev.pick.points') }}</span>
               <template v-for="row in breakdown" :key="row.key">
-                <span class="truncate text-muted" :title="row.hint">{{ row.label }} · {{ Math.round(row.value * 100) }}</span>
-                <span class="text-right text-muted">{{ Math.round(row.weight * 100) }}%</span>
-                <span class="text-right font-semibold text-highlighted">{{ Math.round(row.points) }}</span>
+                <span class="truncate text-muted" :class="!row.measured && 'opacity-50'" :title="row.hint">{{ row.label }} · {{ row.measured ? Math.round(row.value * 100) : '—' }}</span>
+                <span class="text-right text-muted" :class="!row.measured && 'opacity-50'">{{ Math.round(row.weight * 100) }}%</span>
+                <span class="text-right font-semibold text-highlighted" :class="!row.measured && 'opacity-50'">{{ Math.round(row.points) }}</span>
               </template>
               <template v-if="risk">
                 <span class="col-span-2 flex min-w-0 items-center gap-1.5 text-muted" :title="t('draft.weights.risk.hint')">

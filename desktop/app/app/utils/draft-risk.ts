@@ -26,7 +26,8 @@ import { NEUTRAL, shrunkRate } from '~/utils/draft-weights'
  * Measured on 16.22, Emerald+, the 40 most picked on each lane: 0.5 to 1.5
  * points (median 0.8 to 1.0 by lane) — Ezreal 0.46, Lulu 0.48, Lux 0.66 the
  * safest blind picks; Shaco support 1.54, Mel mid 1.37, Dr. Mundo top 1.38
- * the riskiest.
+ * the riskiest. Those figures predate the draft's k = 400 (`DELTA_SHRINK_GAMES`,
+ * 100 then): a thin matchup now weighs less, and they were not measured again.
  */
 
 /** A champion still to be picked on the lane, and its chance to be the one. */
@@ -66,6 +67,18 @@ export function counterRisk(championId: number, odds: LaneOdds, matchups: Counte
   }
   // The candidate itself is no opponent: the odds are read again without it.
   return open > 0 ? unknown * (harm / open) : 0
+}
+
+/**
+ * The risk of a candidate whose matchups could not be read: the median of the
+ * candidates measured, so it neither tops the blind order (no risk) nor sinks
+ * it; 0 when none was.
+ */
+export function medianRisk(risks: number[]): number {
+  const sorted = risks.filter(Number.isFinite).sort((a, b) => a - b)
+  if (!sorted.length) return 0
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2
 }
 
 export type RiskLevel = 'none' | 'medium' | 'high' | 'extreme'

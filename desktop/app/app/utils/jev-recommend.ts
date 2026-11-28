@@ -1,12 +1,12 @@
 import type { FitRead, ItemRead } from '~/utils/jev-read'
 import type { Answer, Needs, Resist } from '~/utils/jev-needs'
-import type { PickRead } from '~/utils/jev-read-pick'
 import type { JevOption, JevSlot, LaidBuild, SlotKind } from '~/utils/jev-build'
 import type { ItemSetBuild, PlaceItemBlock } from '~/utils/item-set'
 import { MIN_GAMES } from '~/utils/jev-build'
 import { PLACE_ALTERNATIVES } from '~/utils/item-set'
 import { STANDS_OUT, answerTo, fitOf } from '~/utils/jev-needs'
 import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
+import { readParts, total } from '~/utils/jev-pick-rank'
 
 /**
  * The Jev matchup page's ranking, all arithmetic and all in code — TypeSafe's
@@ -39,6 +39,8 @@ import { edgesOf, shareOf, statsPart } from '~/utils/jev-stats'
  */
 
 export type { Answer, EnemyLine, Fit, Needs } from '~/utils/jev-needs'
+export type { PickParts, RankedPick } from '~/utils/jev-pick-rank'
+export { PICK_WEIGHTS, rankPicks } from '~/utils/jev-pick-rank'
 export { NEEDS, STANDS_OUT, answerTo, answersDraft, callsOf, draftNeeds, fitOf, laneNeeds, needsOf } from '~/utils/jev-needs'
 
 export type Weights = Partial<Record<keyof Parts, number>>
@@ -141,12 +143,6 @@ export interface RankContext {
   due?: Resist[]
   /** The items a slot before gave up for its pick: one leading this slot is taken (`rankSlot`). */
   owed?: number[]
-}
-
-function total(parts: Parts, weights: Weights): number {
-  const present = (Object.keys(weights) as (keyof Parts)[]).filter(part => parts[part] !== undefined)
-  const weight = present.reduce((sum, part) => sum + weights[part]!, 0)
-  return weight ? present.reduce((sum, part) => sum + weights[part]! * parts[part]!, 0) / weight : 0
 }
 
 /**
@@ -332,8 +328,10 @@ export function rankSlot(slot: JevSlot, context: RankContext): RankedSlot {
       const after = option.after ?? 1
       parts.lane = after === 0 ? context.urgency : after === 1 ? 1 - Math.abs(context.urgency - 0.5) * 2 : 1 - context.urgency
     }
-    scored[option.key] = { total: total(parts, weights) * (misfit ? 0.5 : 1), parts, weights, answers, misfit }
+    scored[option.key] = { total: 0, parts, weights, answers, misfit }
   }
+  const read = readParts(['kit', 'lane'] as const, Object.values(scored).map(entry => entry.parts))
+  for (const entry of Object.values(scored)) entry.total = total(entry.parts, entry.weights, read) * (entry.misfit ? 0.5 : 1)
   const standard = slot.options[0]!
   const best = (options: JevOption[]) => options.reduce((top, option) => (scored[option.key]!.total > scored[top.key]!.total + 1e-9 ? option : top), options[0]!)
   if (!BY_REASON.includes(slot.kind)) return { slot, pick: best(slot.options), standard, scored }
@@ -361,36 +359,6 @@ export function reasonMessage(reason: DeviationReason, locale?: string): { key: 
   if (reason.kind === 'proven') return { key: 'jev.reason.proven', params: { points: (reason.edge * 100).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) } }
   if (reason.kind === 'draft') return { key: `jev.reason.draft.${reason.need ?? 'misfit'}` }
   return { key: `jev.reason.${reason.kind}` }
-}
-
-/** How a pick's parts weigh: the source's own ranking, then the lane, the team and the enemy team as Jev read them. */
-export const PICK_WEIGHTS = { stats: 0.4, lane: 0.25, team: 0.2, enemy: 0.15 } as const
-
-export interface PickParts { stats: number, lane?: number, team?: number, enemy?: number }
-export interface RankedPick { championId: number, total: number, parts: PickParts, confidence: number | null }
-
-/**
- * The champions we could pick, ranked: the source's ranking key (its own
- * mix of matchup, strength and synergy, measured) as where each stands among
- * these candidates — 0.5 the middle of them — beside what Jev read of the
- * lane, our team and the enemy team, weighed as `PICK_WEIGHTS` says, a part
- * Jev did not read giving its weight to the others.
- */
-export function rankPicks(candidates: { championId: number, score: number }[], reads: Map<number, PickRead>): RankedPick[] {
-  if (!candidates.length) return []
-  const mean = candidates.reduce((sum, candidate) => sum + candidate.score, 0) / candidates.length
-  const spread = Math.sqrt(candidates.reduce((sum, candidate) => sum + (candidate.score - mean) ** 2, 0) / candidates.length)
-  return candidates.map((candidate) => {
-    const read = reads.get(candidate.championId)
-    const parts: PickParts = { stats: spread > 0 ? 1 / (1 + Math.exp(-(candidate.score - mean) / spread)) : 0.5 }
-    if (read?.lane !== null && read?.lane !== undefined) parts.lane = read.lane
-    if (read?.team !== null && read?.team !== undefined) parts.team = read.team
-    if (read?.enemy !== null && read?.enemy !== undefined) parts.enemy = read.enemy
-    const present = (Object.keys(PICK_WEIGHTS) as (keyof PickParts)[]).filter(part => parts[part] !== undefined)
-    const weight = present.reduce((sum, part) => sum + PICK_WEIGHTS[part], 0)
-    const total = present.reduce((sum, part) => sum + PICK_WEIGHTS[part] * parts[part]!, 0) / weight
-    return { championId: candidate.championId, total, parts, confidence: read?.confidence ?? null }
-  }).sort((a, b) => b.total - a.total)
 }
 
 /** One place of a laid build: the slot that offers its item, the option taken, and the place (0 the boots, else the completed item's, 1 the first). */

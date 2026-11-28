@@ -23,7 +23,7 @@ const emit = defineEmits<{ selection: [value: DraftSelection] }>()
 const { t } = useT()
 const { nameOf } = useChampionStatics()
 const { tag } = useJevBaseLabels()
-const { status, error, ranked, needs, enemies, jevBuild, standardBuild, optionals, answered, stale, ask } = props.jev
+const { status, failure, partial, ranked, needs, enemies, jevBuild, standardBuild, optionals, answered, stale, ask } = props.jev
 const { offered, selected, pending } = props.bases
 
 const selection = computed(() => {
@@ -38,9 +38,8 @@ watch(() => JSON.stringify(selection.value), () => selection.value && emit('sele
 <template>
   <div class="flex flex-col gap-4">
     <JevBaseSelect v-if="subject" v-model="selected" :offered="offered" :pending="pending" :answered="status === 'ready' ? answered : null" />
-    <UAlert v-if="status === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
-    <UAlert v-else-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
-    <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :actions="[{ label: t('common.retry'), color: 'error', variant: 'outline', onClick: () => ask() }]" />
+    <JevStatusAlert :status="status" :failure="failure" :partial="partial" @retry="ask()" />
+    <UAlert v-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
     <UAlert
       v-if="status === 'ready' && stale"
       color="neutral"

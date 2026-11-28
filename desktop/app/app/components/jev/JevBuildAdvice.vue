@@ -17,7 +17,7 @@ const { loadChampion } = useStaticData()
 const subject = computed(() => ({ championId: props.championId, request: props.request }))
 const bases = useJevBases(subject, ref(true))
 const { offered, selected, pending } = bases
-const { status, error, ranked, needs, enemies, jevBuild, standardBuild, optionals, elapsedMs, answered, ask } = useJevBuild(subject, bases.chosen)
+const { status, failure, partial, ranked, needs, enemies, jevBuild, standardBuild, optionals, elapsedMs, answered, ask } = useJevBuild(subject, bases.chosen)
 
 watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { immediate: true })
 
@@ -37,9 +37,8 @@ watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { imm
 
     <JevBaseSelect v-model="selected" :offered="offered" :pending="pending" :answered="status === 'ready' ? answered : null" class="px-1" />
 
-    <UAlert v-if="status === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
-    <UAlert v-else-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
-    <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :actions="[{ label: t('common.retry'), color: 'error', variant: 'outline', onClick: () => ask() }]" />
+    <JevStatusAlert :status="status" :failure="failure" :partial="partial" @retry="ask()" />
+    <UAlert v-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
 
     <div v-if="status === 'loading'" class="flex flex-col gap-3">
       <USkeleton class="h-80 rounded-2xl" />
