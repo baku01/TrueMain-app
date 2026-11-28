@@ -8,21 +8,32 @@ const { t } = useT()
 const { champions: favorites, championsHydrated, clearChampions } = useFavoriteChampions()
 const { data: championsData } = useChampionStaticList()
 const championsById = useChampionsById(computed(() => championsData.value ?? []))
+const confirmClear = ref(false)
+function confirmAndClear() {
+  clearChampions()
+  confirmClear.value = false
+}
 </script>
 
 <template>
   <SharedPage :eyebrow="t('nav.favorites')" :title="t('app.page.favorites')">
     <div class="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader :eyebrow="t('nav.favorites')" :title="t('pages.favorites.title')">
-        <UButton
-          v-if="championsHydrated && favorites.length"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-trash-2"
-          :label="t('pages.favorites.clearAll')"
-          @click="clearChampions"
-        />
+        <template v-if="championsHydrated && favorites.length" #actions>
+          <div v-if="confirmClear" class="flex items-center gap-1.5">
+            <UButton size="xs" color="error" variant="soft" icon="i-lucide-trash-2" :label="t('common.confirm')" @click="confirmAndClear" />
+            <UButton size="xs" color="neutral" variant="ghost" :label="t('common.cancel')" @click="confirmClear = false" />
+          </div>
+          <UButton
+            v-else
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            :label="t('pages.favorites.clearAll')"
+            @click="confirmClear = true"
+          />
+        </template>
       </PageHeader>
 
       <div v-if="!championsHydrated" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

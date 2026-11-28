@@ -76,11 +76,11 @@ fun MatchmakingPanel(lobby: JsonElement, isLeader: Boolean, actions: PlayActions
             Button(shape = Tm.ButtonShape, 
                 onClick = { actions.run("start", "POST", SEARCH_PATH) },
                 enabled = isLeader && canStart && actions.idle,
-                colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.Ink950),
+                colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.colors.textInverted),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
                 if (actions.busy == "start") {
-                    CircularProgressIndicator(color = Tm.Ink950, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(color = Tm.colors.textInverted, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                 } else {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     Text(stringResource(R.string.play_find_match), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 8.dp))

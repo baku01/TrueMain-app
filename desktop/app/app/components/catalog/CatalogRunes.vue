@@ -71,10 +71,14 @@ watch(sections, (list) => {
 </script>
 
 <template>
-  <div class="surface grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,24rem)] overflow-hidden rounded-xl">
-    <div class="flex min-h-0 flex-col border-r border-default">
+  <div class="surface grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+    <div class="flex min-h-0 flex-col border-b border-default lg:border-b-0 lg:border-r">
       <div class="border-b border-default p-3">
-        <UInput v-model="query" icon="i-lucide-search" :placeholder="t('runes.search')" class="w-full" :aria-label="t('runes.search')" />
+        <UInput v-model="query" icon="i-lucide-search" :placeholder="t('runes.search')" class="w-full" :aria-label="t('runes.search')">
+          <template v-if="query" #trailing>
+            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="link" :aria-label="t('common.clearFilters')" @click="query = ''" />
+          </template>
+        </UInput>
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto p-3">
         <div v-if="loading && !runeTree" aria-busy="true" class="grid grid-cols-2 gap-3">
@@ -90,7 +94,7 @@ watch(sections, (list) => {
             <h2 class="flex items-center gap-2.5 border-b border-default px-3.5 py-2.5" :style="{ background: `linear-gradient(90deg, color-mix(in srgb, ${section.color} 18%, transparent), transparent)` }">
               <SkeletonImage v-if="section.iconUrl" :src="section.iconUrl" transparent :alt="section.name" :width="26" :height="26" class="size-6.5" />
               <span class="min-w-0">
-                <span class="block text-sm font-semibold uppercase tracking-wider" :style="{ color: section.color }">{{ section.name }}</span>
+                <span class="tree-title block text-sm font-semibold uppercase tracking-wider">{{ section.name }}</span>
                 <span v-if="section.tagline" class="block truncate text-[11px] text-muted">{{ section.tagline }}</span>
               </span>
             </h2>
@@ -130,9 +134,9 @@ watch(sections, (list) => {
           :style="{ background: `linear-gradient(135deg, color-mix(in srgb, ${selectedSection?.color ?? SHARD_COLOR} 22%, transparent), transparent 70%)` }"
         >
           <SkeletonImage :src="selected.iconUrl" transparent :alt="selected.name" :width="64" :height="64" class="size-16 shrink-0 rounded-full" />
-          <div class="min-w-0">
+          <div class="min-w-0" :style="{ '--tree': selectedSection?.color ?? SHARD_COLOR }">
             <h2 class="text-xl font-semibold leading-tight tracking-tight text-highlighted">{{ selected.name }}</h2>
-            <p v-if="selectedSection" class="mt-1 text-xs font-semibold uppercase tracking-wider" :style="{ color: selectedSection.color }">{{ selectedSection.name }}</p>
+            <p v-if="selectedSection" class="tree-title mt-1 text-xs font-semibold uppercase tracking-wider">{{ selectedSection.name }}</p>
           </div>
         </header>
         <section class="rounded-xl bg-default/40 p-4">
@@ -143,3 +147,12 @@ watch(sections, (list) => {
     </aside>
   </div>
 </template>
+
+<style scoped>
+.tree-title {
+  color: var(--tree);
+}
+:root:not(.dark) .tree-title {
+  color: color-mix(in oklch, var(--tree) 62%, black);
+}
+</style>

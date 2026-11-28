@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -18,10 +19,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -83,7 +86,9 @@ private sealed interface Carousel {
 @Composable
 fun SkinsSheet(me: Cell, actions: DraftActions, onDismiss: () -> Unit) {
     var carousel by remember { mutableStateOf<Carousel>(Carousel.Loading) }
-    LaunchedEffect(me.championId) {
+    var attemptTick by remember { mutableIntStateOf(0) }
+    val sheetSnackbar = rememberSheetSnackbar(actions)
+    LaunchedEffect(me.championId, attemptTick) {
         carousel = Carousel.Loading
         // Right after a lock the client may still be filling the carousel: an empty or failed
         // read is tried again a few times before the sheet says there is nothing.
@@ -109,17 +114,20 @@ fun SkinsSheet(me: Cell, actions: DraftActions, onDismiss: () -> Unit) {
         }
     }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberFullSheetState(), containerColor = Tm.Ink900) {
-        Column(Modifier.padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Eyebrow(stringResource(R.string.draft_skins_title), Modifier.padding(horizontal = 20.dp))
-            when (val state = carousel) {
-                Carousel.Loading -> Loading()
-                Carousel.Failed -> EmptyState(stringResource(R.string.draft_skins_failed))
-                is Carousel.Ready -> if (state.skins.isEmpty()) {
-                    EmptyState(stringResource(R.string.draft_skins_none))
-                } else {
-                    SkinPager(state.skins, me, actions)
+        Box(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Eyebrow(stringResource(R.string.draft_skins_title), Modifier.padding(horizontal = 20.dp))
+                when (val state = carousel) {
+                    Carousel.Loading -> Loading()
+                    Carousel.Failed -> EmptyState(stringResource(R.string.draft_skins_failed), action = stringResource(R.string.link_retry) to { attemptTick++ })
+                    is Carousel.Ready -> if (state.skins.isEmpty()) {
+                        EmptyState(stringResource(R.string.draft_skins_none))
+                    } else {
+                        SkinPager(state.skins, me, actions)
+                    }
                 }
             }
+            SnackbarHost(sheetSnackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
         }
     }
 }
@@ -140,7 +148,7 @@ private fun SkinPager(skins: List<Skin>, me: Cell, actions: DraftActions) {
             ) {
                 RemoteImage(skin.tile, 240.dp, shape = RoundedCornerShape(14.dp), grayscale = !skin.owned)
                 if (!skin.owned) Chip(stringResource(R.string.draft_skin_locked), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
-                if (selected) Chip(stringResource(R.string.draft_skin_selected), color = Tm.Ink950, background = Tm.Rose400, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
+                if (selected) Chip(stringResource(R.string.draft_skin_selected), color = Tm.colors.textInverted, background = Tm.Rose400, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             }
             Text(skin.name, style = MaterialTheme.typography.titleSmall, color = if (skin.owned) Tm.Ink100 else Tm.Ink500, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -152,19 +160,25 @@ private fun SkinPager(skins: List<Skin>, me: Cell, actions: DraftActions) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 chromas.forEach { chroma ->
                     val selected = chroma.id == me.skinId
-                    Text(
-                        chroma.name.ifBlank { stringResource(R.string.draft_chroma_unnamed) },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = when {
-                            selected -> Tm.Ink950
-                            chroma.owned -> Tm.Ink100
-                            else -> Tm.Ink500
-                        },
-                        modifier = Modifier.clip(RoundedCornerShape(50))
+                    Box(
+                        Modifier
+                            .heightIn(min = 40.dp)
+                            .clip(RoundedCornerShape(50))
                             .background(if (selected) Tm.Rose400 else Tm.Ink800)
                             .clickable(enabled = chroma.owned && !selected && !actions.busy) { actions.skin(chroma.id) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            chroma.name.ifBlank { stringResource(R.string.draft_chroma_unnamed) },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = when {
+                                selected -> Tm.colors.textInverted
+                                chroma.owned -> Tm.Ink100
+                                else -> Tm.Ink500
+                            },
+                        )
+                    }
                 }
             }
         }

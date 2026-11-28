@@ -40,7 +40,7 @@ watch(() => JSON.stringify(selection.value), () => selection.value && emit('sele
     <JevBaseSelect v-if="subject" v-model="selected" :offered="offered" :pending="pending" :answered="status === 'ready' ? answered : null" />
     <UAlert v-if="status === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
     <UAlert v-else-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
-    <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="error ?? undefined" />
+    <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :actions="[{ label: t('common.retry'), color: 'error', variant: 'outline', onClick: () => ask() }]" />
     <UAlert
       v-if="status === 'ready' && stale"
       color="neutral"
@@ -53,6 +53,7 @@ watch(() => JSON.stringify(selection.value), () => selection.value && emit('sele
     />
     <JevBuildBody
       v-if="status === 'ready' && subject"
+      compact
       :champion-id="subject.championId"
       :position="subject.request.position"
       :ranked="ranked"
@@ -67,9 +68,10 @@ watch(() => JSON.stringify(selection.value), () => selection.value && emit('sele
       <USkeleton class="h-40 rounded-2xl" />
       <USkeleton class="h-64 rounded-2xl" />
     </div>
-    <div v-else-if="status === 'idle'" class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+    <div v-else-if="status === 'idle'" class="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
       <UIcon name="i-tabler-chess-knight" class="size-6 text-dimmed" />
       <p class="max-w-md text-sm text-muted">{{ t('jev.coach.idleBuild') }}</p>
+      <UButton icon="i-tabler-chess-knight" :label="t('jev.card.ask')" :disabled="!subject" color="primary" variant="soft" @click="ask()" />
     </div>
   </div>
 </template>

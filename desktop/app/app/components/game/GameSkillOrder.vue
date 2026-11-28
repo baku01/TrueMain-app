@@ -14,7 +14,7 @@ const { loadChampion, championStatic } = useStaticData()
 
 const championId = computed(() => props.championId)
 const position = computed(() => props.player.position || null)
-const { response } = useChampionBuilds(championId, position)
+const { response, pending } = useChampionBuilds(championId, position)
 watch(championId, (id) => {
   if (id) void loadChampion(id)
 }, { immediate: true })
@@ -34,6 +34,7 @@ const next = computed(() => (skillOrder.value ? skillGrid(skillOrder.value.seque
       <span class="ml-auto text-[11px] text-dimmed">{{ t('game.skills.source') }}</span>
     </header>
     <BuildSkillGrid v-if="skillOrder" :skill-order="skillOrder" :champion-static="champion" :champion-id="championId" :current="level" />
+    <USkeleton v-else-if="pending" class="h-24 w-full rounded-lg" />
     <p v-else class="text-sm text-muted">{{ t('game.skills.none', { champion: champion.championName ?? '' }) }}</p>
   </section>
 </template>

@@ -12,7 +12,7 @@ import { basketName } from '~/utils/next-item'
  */
 const props = defineProps<{ game: GameState }>()
 
-const { failure, bootsDue, statics, order, top, remaining, path, state, name, starter, starterGold, questReward, fromKit } = useNextItemPanel(toRef(props, 'game'))
+const { bootsDue, statics, order, top, remaining, path, state, name, starter, starterGold, questReward, fromKit } = useNextItemPanel(toRef(props, 'game'))
 
 /** The gold still to earn before it can be bought; 0 once the gold in hand covers it. */
 const { t } = useT()
@@ -49,7 +49,6 @@ const message = computed(() => {
       <p class="text-[10px] font-semibold uppercase tracking-wider text-dimmed">{{ t('overlay.nextItem.title') }}</p>
       <USkeleton v-if="!message" class="mt-1 h-3 w-28" />
       <p v-else class="text-[11px] text-muted">{{ message }}</p>
-      <p v-if="state === 'offline' && failure" class="mt-0.5 line-clamp-3 break-all text-[9px] leading-tight text-dimmed">{{ failure }}</p>
     </div>
   </div>
   <!-- A support's quest reward, to pick when the quest is done: picked, never bought (`useStarter`). -->

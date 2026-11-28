@@ -191,9 +191,8 @@ const cards = computed(() => shown.value)
     </template>
 
     <div v-else class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
-      <UIcon :name="empty.icon" class="size-6 text-dimmed" />
+      <UIcon :name="empty.icon" class="size-6 text-dimmed" :class="empty.icon === 'i-lucide-loader-circle' && 'animate-spin'" />
       <p class="text-sm text-muted">{{ empty.text }}</p>
-      <p v-if="error" class="max-w-sm text-xs text-dimmed">{{ error }}</p>
     </div>
   </section>
 </template>

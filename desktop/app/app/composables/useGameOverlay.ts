@@ -23,6 +23,7 @@ function devChords(settings: OverlaySettings): OverlayView['chords'] {
  */
 export function useGameOverlay() {
   const view = useState<OverlayView | null>('overlay-view', () => null)
+  const error = useState<string | null>('overlay-error', () => null)
   const subscribed = useState<boolean>('overlay-subscribed', () => false)
 
   async function call(command: string, args?: Record<string, unknown>): Promise<OverlayView> {
@@ -39,15 +40,28 @@ export function useGameOverlay() {
     return current
   }
 
+  async function reload() {
+    error.value = null
+    try {
+      view.value = await call('overlay_view')
+    }
+    catch (caught) {
+      error.value = String(caught)
+    }
+  }
+
   if (!subscribed.value) {
     subscribed.value = true
     onMounted(async () => {
       if (insideTauri()) {
         const { listen } = await import('@tauri-apps/api/event')
-        const stop = await listen<OverlayView>('overlay://view', event => (view.value = event.payload))
+        const stop = await listen<OverlayView>('overlay://view', (event) => {
+          view.value = event.payload
+          error.value = null
+        })
         onScopeDispose(stop)
       }
-      view.value = await call('overlay_view')
+      await reload()
     })
   }
 
@@ -86,5 +100,5 @@ export function useGameOverlay() {
     await invoke('overlay_fit', { panel, width, height })
   }
 
-  return { view, save, preview, fit, check, readBinds }
+  return { view, error, reload, save, preview, fit, check, readBinds }
 }

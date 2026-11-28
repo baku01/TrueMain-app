@@ -116,10 +116,14 @@ const risk = computed(() => {
     <!-- The score: Jev's in its ring, its breakdown on hover; else the leading reason's figure. -->
     <div class="absolute right-2 top-2 z-10">
       <UTooltip v-if="score !== null" :content="{ side: 'top' }" :delay-duration="100">
-        <span class="flex items-center gap-1 rounded-md bg-ink-950/70 px-1.5 py-1 ring-1 ring-white/10 backdrop-blur">
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-md bg-ink-950/70 px-1.5 py-1 ring-1 ring-white/10 backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          :aria-label="jev ? t('jev.pick.breakdown') : t('draft.weights.breakdown')"
+        >
           <svg viewBox="0 0 20 20" class="size-4 -rotate-90"><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" class="stroke-white/15" /><circle cx="10" cy="10" r="8" fill="none" stroke-width="3" stroke-linecap="round" class="stroke-primary" :stroke-dasharray="`${50.27 * score} 50.27`" /></svg>
           <span class="font-display text-xs font-bold tabular-nums text-white">{{ Math.round(score * 100) }}</span>
-        </span>
+        </button>
         <template #content>
           <div class="flex w-64 flex-col gap-1.5 rounded-md bg-default p-2 ring-1 ring-default">
             <p class="text-xs font-semibold text-highlighted">{{ jev ? t('jev.pick.breakdown') : t('draft.weights.breakdown') }}</p>
@@ -159,14 +163,14 @@ const risk = computed(() => {
         <TierBadge v-if="entry" :caption="false" :size="18" :tier="entry.tier" />
         <p class="min-w-0 flex-1 truncate font-display text-[13px] font-bold uppercase tracking-[0.06em] text-white">{{ nameOf(championId) }}</p>
       </div>
-      <p v-if="lead && !jev" class="truncate text-[11px] leading-tight text-white/60">{{ lead.short }}</p>
+      <p v-if="lead" class="truncate text-[11px] leading-tight text-white/75">{{ lead.short }}</p>
       <div v-if="(lead && thin) || note" class="flex flex-wrap gap-1">
         <UBadge v-if="lead && thin" color="neutral" variant="soft" size="sm">{{ t('draft.card.fewGames') }}</UBadge>
         <span v-if="note" class="flex items-center gap-1 whitespace-nowrap rounded bg-ink-950/70 px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-white/10" :class="note.adds === 'magic' ? 'text-stat-mr' : 'text-stat-ad'">
           <UIcon name="i-lucide-plus" class="size-2.5" />{{ note.adds === 'magic' ? t('draft.card.addsMagic') : t('draft.card.addsPhysical') }}
         </span>
       </div>
-      <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/0 transition-colors duration-200 group-hover:text-primary">{{ t('draft.card.cta') }}</p>
+      <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/0 transition-colors duration-200 group-hover:text-primary group-focus-within:text-primary">{{ t('draft.card.cta') }}</p>
     </div>
     <slot />
   </div>

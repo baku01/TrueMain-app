@@ -78,7 +78,7 @@ const { subject, shownView, duel } = useDraftSubject(draft, enemyLanes, viewed, 
 const { build, pending: buildPending, error: buildError } = useDraftBuild(subject)
 // The build selected for our locked pick written into the client on its own, when Settings say so (`useAutoImport`).
 const importSelection = shallowRef<DraftSelection | null>(null)
-useDraftAutoImport(draft, importSelection)
+const autoImport = useDraftAutoImport(draft, importSelection)
 // The items this draft moves the build toward: shown over the build, and marked inside the Blitz build panel.
 const { pushes: itemAdvice, build: draftBuild, buildPending: draftBuildPending } = useDraftItemAdvice(subject)
 
@@ -321,6 +321,22 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
               <span v-if="build && build.championId === duel.championId && build.lane?.winRate != null" class="text-xs font-semibold tabular-nums text-highlighted" :title="t('draft.duel.laneWinRate')">{{ `${(build.lane.winRate * 100).toFixed(1)}%` }}</span>
             </div>
 
+            <button
+              v-if="autoImport.enabled.value && draft.myChampionLocked && autoImport.lastError.value"
+              type="button"
+              class="flex h-9 items-center gap-1.5 rounded-lg bg-error/10 px-2.5 text-xs font-semibold text-error ring-1 ring-inset ring-error/30 transition-colors hover:bg-error/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              :title="autoImport.lastError.value"
+              @click="autoImport.retry()"
+            >
+              <UIcon name="i-lucide-rotate-cw" class="size-3.5" />{{ t('draft.autoImport.failed') }}
+            </button>
+            <span v-else-if="autoImport.enabled.value && draft.myChampionLocked && autoImport.importing.value" class="flex h-9 items-center gap-1.5 rounded-lg bg-accented/60 px-2.5 text-xs font-medium text-muted ring-1 ring-inset ring-default">
+              <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin text-primary" />{{ t('draft.autoImport.importing') }}
+            </span>
+            <span v-else-if="autoImport.enabled.value && draft.myChampionLocked && autoImport.importedParts.value.length" class="flex h-9 items-center gap-1.5 rounded-lg bg-data-good/10 px-2.5 text-xs font-semibold text-data-good ring-1 ring-inset ring-data-good/30" :title="autoImport.importedParts.value.join(' · ')">
+              <UIcon name="i-lucide-check" class="size-3.5" />{{ t('draft.autoImport.done') }}
+            </span>
+
             <DraftLockButton />
           </div>
         </header>
@@ -329,7 +345,7 @@ const suggested = computed(() => (recommendation.value?.candidates ?? []).filter
         <div v-if="tab === 'suggestions'" class="@container min-h-0 flex-1 overflow-y-auto p-4">
           <div class="min-w-0">
             <UAlert v-if="withJev && jevStatus === 'noKey'" class="mb-4" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
-            <UAlert v-else-if="withJev && jevStatus === 'error'" class="mb-4" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" />
+            <UAlert v-else-if="withJev && jevStatus === 'error'" class="mb-4" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :actions="[{ label: t('common.retry'), color: 'error', variant: 'outline', onClick: () => askJev() }]" />
             <DraftSuggestions
               v-model:my-pool="myPool"
               :mode="suggestionKind"

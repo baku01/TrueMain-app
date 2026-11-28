@@ -104,19 +104,19 @@ const rankCount = computed(() => Math.max(1, props.ability.maxRank))
 </template>
 
 <style scoped>
-/* The game's tooltip colours, by the tag the description wraps a figure in. */
-.ability-text :deep(.ab-physical) { color: #f0913a; font-weight: 600; }
-.ability-text :deep(.ab-magic) { color: #4fb4f0; font-weight: 600; }
-.ability-text :deep(.ab-true) { color: #f2f2f2; font-weight: 600; }
-.ability-text :deep(.ab-heal), .ability-text :deep(.ab-health) { color: #5fd18a; font-weight: 600; }
-.ability-text :deep(.ab-shield) { color: #c9d4e3; font-weight: 600; }
+/* The game's tooltip colours, bound to theme-aware stat tokens so light and dark themes both keep contrast. */
+.ability-text :deep(.ab-physical) { color: var(--color-stat-ad); font-weight: 600; }
+.ability-text :deep(.ab-magic) { color: var(--color-stat-mana); font-weight: 600; }
+.ability-text :deep(.ab-true) { color: var(--color-stat-true); font-weight: 600; }
+.ability-text :deep(.ab-heal), .ability-text :deep(.ab-health) { color: var(--color-stat-health); font-weight: 600; }
+.ability-text :deep(.ab-shield) { color: var(--color-stat-shield); font-weight: 600; }
 .ability-text :deep(.ab-status), .ability-text :deep(.ab-keyword) { color: var(--ui-text-highlighted); font-weight: 600; }
-.ability-text :deep(.ab-speed) { color: #e9d27a; font-weight: 600; }
+.ability-text :deep(.ab-speed) { color: var(--color-stat-speed); font-weight: 600; }
 .ability-text :deep(.ab-recast), .ability-text :deep(.ab-spellname) { color: var(--ui-primary); font-weight: 600; }
-.ability-text :deep(.ab-ad) { color: #f0913a; }
-.ability-text :deep(.ab-ap) { color: #b48df2; }
-.ability-text :deep(.ab-armor) { color: #e9b06a; }
-.ability-text :deep(.ab-mr) { color: #6ad3e9; }
+.ability-text :deep(.ab-ad) { color: var(--color-stat-ad); }
+.ability-text :deep(.ab-ap) { color: var(--color-stat-ap); }
+.ability-text :deep(.ab-armor) { color: var(--color-stat-armor); }
+.ability-text :deep(.ab-mr) { color: var(--color-stat-mr); }
 .ability-text :deep(.ab-attention) { color: var(--ui-text-highlighted); }
 .ability-text :deep(.ab-rules) { color: var(--ui-text-dimmed); font-style: italic; }
 </style>

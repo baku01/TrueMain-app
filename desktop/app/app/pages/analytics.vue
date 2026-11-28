@@ -14,6 +14,8 @@ import { LOLALYTICS_REGIONS } from '~/utils/sources/lolalytics'
  * picked; the page opens on the lane the tier list plays it most.
  */
 const { t } = useT()
+const route = useRoute()
+const router = useRouter()
 const { champions, nameOf, portraitOf } = useChampionStatics()
 const { items, summoners, runeTree, loadChampion, championStatic } = useStaticData()
 const { mainEntryOf } = useTierList()
@@ -25,50 +27,75 @@ const source = computed(() => (sources.value.length ? sources.value : [leadSourc
 const ELOS = ['ALL', 'GOLD_PLUS', 'PLATINUM_PLUS', 'EMERALD_PLUS', 'DIAMOND_PLUS', 'MASTER_PLUS'] as const
 const LANE_KEYS: Record<string, string> = { TOP: 'probuild.role.top', JUNGLE: 'probuild.role.jungle', MIDDLE: 'probuild.role.middle', BOTTOM: 'probuild.role.bottom', UTILITY: 'probuild.role.utility' }
 
-const query = ref('')
-const championId = ref<number | null>(null)
-const position = ref<string | null>(null)
-const elo = ref<typeof ELOS[number]>('EMERALD_PLUS')
+const parseId = (raw: unknown) => {
+  const n = Number(raw)
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+const parseLane = (raw: unknown) => {
+  const value = typeof raw === 'string' ? raw.toUpperCase() : ''
+  return LANES.includes(value as typeof LANES[number]) ? value : null
+}
+const parseElo = (raw: unknown): typeof ELOS[number] => {
+  const value = typeof raw === 'string' ? raw.toUpperCase() : ''
+  return (ELOS as readonly string[]).includes(value) ? value as typeof ELOS[number] : 'EMERALD_PLUS'
+}
+const parseRegion = (raw: unknown): typeof LOLALYTICS_REGIONS[number] => {
+  const value = typeof raw === 'string' ? raw.toLowerCase() : ''
+  return (LOLALYTICS_REGIONS as readonly string[]).includes(value) ? value as typeof LOLALYTICS_REGIONS[number] : 'all'
+}
+
+const championId = ref<number | null>(parseId(route.query.champion))
+const position = ref<string | null>(parseLane(route.query.position) ?? (championId.value !== null ? (mainEntryOf(championId.value)?.position ?? 'MIDDLE') : null))
+const elo = ref<typeof ELOS[number]>(parseElo(route.query.elo))
 /** lolalytics reads a region; the others read the whole world. */
-const region = ref<typeof LOLALYTICS_REGIONS[number]>('all')
+const region = ref<typeof LOLALYTICS_REGIONS[number]>(parseRegion(route.query.region))
+const opponentId = ref<number | null>(parseId(route.query.opponent))
 const regional = computed(() => leadSource.value === 'lolalytics')
 const regions = computed(() => LOLALYTICS_REGIONS.map(value => ({ value, label: value === 'all' ? t('analytics.region.all') : value.toUpperCase() })))
 const analytics = shallowRef<ChampionAnalytics | null>(null)
+const loadedChampionId = ref<number | null>(null)
 const reading = ref(false)
 const failed = ref(false)
 
-const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-/** The champions whose names hold every word of `text`, none while it names the one `picked`. */
-function matching(text: string, picked: number | null) {
-  const words = fold(text).split(/\s+/).filter(Boolean)
-  if (words.length === 0 || picked !== null && fold(nameOf(picked)) === fold(text)) return []
-  return [...champions.value.keys()].filter(id => words.every(word => fold(nameOf(id)).includes(word))).sort((a, b) => nameOf(a).localeCompare(nameOf(b))).slice(0, 8)
-}
-const matches = computed(() => matching(query.value, championId.value))
+const championItems = computed(() =>
+  [...champions.value.values()].map(c => ({ championId: c.id, name: c.name, iconUrl: portraitOf(c.id) ?? '' })),
+)
 
-/**
- * The lane opponent, as lolalytics reads a champion against one: the whole
- * page then over that matchup's games only, where the source measures it
- * (`MATCHUP_SOURCES`); picked by name or from the matchups on the lane.
- */
-const opponentQuery = ref('')
-const opponentId = ref<number | null>(null)
-const opponentMatches = computed(() => matching(opponentQuery.value, opponentId.value))
 const matchupSource = computed(() => MATCHUP_SOURCES.includes(leadSource.value))
 function pickOpponent(id: number | null) {
   opponentId.value = id
-  opponentQuery.value = id === null ? '' : nameOf(id)
 }
 
-function pick(id: number) {
+function pick(id: number | null) {
   championId.value = id
-  query.value = nameOf(id)
+  opponentId.value = null
+  if (id === null) {
+    position.value = null
+    analytics.value = null
+    loadedChampionId.value = null
+    return
+  }
   position.value = mainEntryOf(id)?.position ?? 'MIDDLE'
   loadChampion(id)
 }
 
+if (championId.value !== null) loadChampion(championId.value)
+
+watch([championId, position, elo, region, opponentId], ([id, lane, bracket, area, opponent]) => {
+  const nextQuery: Record<string, string | undefined> = {
+    champion: id !== null ? String(id) : undefined,
+    position: id !== null && lane ? lane : undefined,
+    elo: bracket !== 'EMERALD_PLUS' ? bracket : undefined,
+    region: area !== 'all' ? area : undefined,
+    opponent: id !== null && opponent !== null ? String(opponent) : undefined,
+  }
+  const same = Object.entries(nextQuery).every(([key, value]) => (route.query[key] ?? undefined) === value)
+  if (!same) void router.replace({ query: nextQuery })
+})
+
 let latest = 0
-watch([championId, position, elo, region, opponentId], async ([id, lane, bracket, area, opponent]) => {
+const attempt = ref(0)
+watch([championId, position, elo, region, opponentId, attempt], async ([id, lane, bracket, area, opponent]) => {
   if (id === null || !lane) return
   const read = ++latest
   reading.value = true
@@ -77,6 +104,7 @@ watch([championId, position, elo, region, opponentId], async ([id, lane, bracket
     const answer = await trackLoad(readAnalytics(id, lane, bracket, regional.value ? area : 'all', opponent))
     if (read !== latest) return
     analytics.value = answer.analytics
+    loadedChampionId.value = id
     sources.value = answer.sources
     failed.value = !answer.analytics.header && !answer.analytics.options
   }
@@ -86,7 +114,7 @@ watch([championId, position, elo, region, opponentId], async ([id, lane, bracket
   finally {
     if (read === latest) reading.value = false
   }
-})
+}, { immediate: true })
 
 /** The lanes to offer: the source's, with the share of games on each, or the five when it does not say. */
 const lanes = computed(() => (analytics.value?.lanes.length ? analytics.value.lanes : LANES.map(lane => ({ position: lane, share: 0 }))))
@@ -112,33 +140,23 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
       <PageHeader :eyebrow="t('analytics.eyebrow')" :title="t('analytics.title')" :description="t('analytics.description')" />
 
       <div class="flex flex-wrap items-center gap-3">
-        <div class="relative w-full max-w-sm">
-          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('analytics.search')" class="w-full" :aria-label="t('analytics.search')" @update:model-value="championId = null" />
-          <ul v-if="matches.length" class="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-default bg-elevated p-1 shadow-lg">
-            <li v-for="id in matches" :key="id">
-              <button type="button" class="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-accented" @click="pick(id)">
-                <img v-if="portraitOf(id)" :src="portraitOf(id)!" alt="" width="28" height="28" class="img-skeleton size-7 rounded">
-                <span class="text-sm text-default">{{ nameOf(id) }}</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-        <!-- Against one lane opponent: the page over that matchup's games. -->
-        <div v-if="championId !== null" class="relative w-full max-w-xs">
-          <UInput v-model="opponentQuery" icon="i-lucide-swords" :placeholder="t('analytics.versus.search')" class="w-full" :aria-label="t('analytics.versus.search')" @update:model-value="opponentId = null">
-            <template v-if="opponentQuery" #trailing>
-              <UButton icon="i-lucide-x" size="xs" color="neutral" variant="link" :aria-label="t('analytics.versus.clear')" @click="pickOpponent(null)" />
-            </template>
-          </UInput>
-          <ul v-if="opponentMatches.length" class="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-default bg-elevated p-1 shadow-lg">
-            <li v-for="id in opponentMatches" :key="id">
-              <button type="button" class="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-accented" @click="pickOpponent(id)">
-                <img v-if="portraitOf(id)" :src="portraitOf(id)!" alt="" width="28" height="28" class="img-skeleton size-7 rounded">
-                <span class="text-sm text-default">{{ nameOf(id) }}</span>
-              </button>
-            </li>
-          </ul>
-        </div>
+        <ChampionPicker
+          :champions="championItems"
+          :champion-id="championId"
+          :placeholder="t('analytics.search')"
+          trigger-class="w-60"
+          size="sm"
+          @update:champion-id="pick"
+        />
+        <ChampionPicker
+          v-if="championId !== null"
+          :champions="championItems"
+          :champion-id="opponentId"
+          :placeholder="t('analytics.versus.search')"
+          trigger-class="w-56"
+          size="sm"
+          @update:champion-id="pickOpponent"
+        />
         <USelect v-model="elo" :items="ELOS.map(value => ({ value, label: t(`analytics.elo.${value}`) }))" size="sm" class="w-40" :aria-label="t('analytics.elo')" />
         <!-- lolalytics reads a matchup over every server: its page takes no region. -->
         <USelect v-if="regional && opponentId === null" v-model="region" :items="regions" size="sm" class="w-40" :aria-label="t('analytics.region')" />
@@ -153,20 +171,21 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
           <div class="min-w-0">
             <h2 class="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-highlighted">
               {{ nameOf(championId) }}
-              <span v-if="analytics?.versus" class="flex items-center gap-1.5 text-base font-medium text-muted">
+              <span v-if="analytics?.versus && loadedChampionId === championId" class="flex items-center gap-1.5 text-base font-medium text-muted">
                 {{ t('analytics.versus.label') }}
                 <img v-if="portraitOf(analytics.versus)" :src="portraitOf(analytics.versus)!" alt="" width="24" height="24" class="img-skeleton size-6 rounded">
                 <span class="text-highlighted">{{ nameOf(analytics.versus) }}</span>
               </span>
+              <UIcon v-if="reading" name="i-lucide-loader-circle" class="size-4 animate-spin text-primary" />
             </h2>
-            <p v-if="analytics?.patch" class="text-xs text-muted">Patch {{ analytics.patch }}</p>
+            <p v-if="analytics?.patch && loadedChampionId === championId" class="text-xs text-muted">Patch {{ analytics.patch }}</p>
             <div v-if="championStatic(championId)" class="mt-1.5 flex gap-1">
               <span v-for="key in ABILITIES" :key="key" class="relative size-7">
                 <GameTooltipChampionSpellIcon :spell="championStatic(championId)?.championSpells[key] ?? null" :width="28" :height="28" class="size-7 rounded" /><ItemRankBadge :value="key" />
               </span>
             </div>
           </div>
-          <div class="ml-auto flex flex-wrap gap-1.5" role="group">
+          <div class="ml-auto flex flex-wrap items-center gap-1.5" role="group">
             <UButton
               v-for="lane in lanes"
               :key="lane.position"
@@ -176,13 +195,25 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
               :variant="position === lane.position ? 'soft' : 'ghost'"
               @click="position = lane.position"
             />
+            <UButton
+              :to="{ path: `/champions/${championId}`, query: position ? { position } : undefined }"
+              icon="i-lucide-external-link"
+              :label="t('analytics.openChampion')"
+              size="xs"
+              color="neutral"
+              variant="outline"
+              class="ml-1"
+            />
           </div>
         </header>
 
-        <div v-if="reading && !analytics" aria-busy="true" class="space-y-3"><USkeleton class="h-24 w-full" /><USkeleton class="h-96 w-full" /></div>
-        <p v-else-if="failed" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ opponentId !== null && matchupSource ? t('analytics.versus.none', { source }) : t('analytics.failed') }}</p>
+        <div v-if="reading && (!analytics || loadedChampionId !== championId)" aria-busy="true" class="space-y-3"><USkeleton class="h-24 w-full" /><USkeleton class="h-96 w-full" /></div>
+        <div v-else-if="failed" class="surface flex flex-col items-center gap-3 rounded-xl px-4 py-10 text-center text-sm text-muted">
+          <p>{{ opponentId !== null && matchupSource ? t('analytics.versus.none', { source }) : t('analytics.failed') }}</p>
+          <UButton :label="t('common.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="subtle" @click="attempt++" />
+        </div>
 
-        <template v-else-if="analytics">
+        <div v-else-if="analytics" class="space-y-4 transition-opacity" :class="reading && 'pointer-events-none opacity-55'" :aria-busy="reading || undefined">
           <!-- An opponent the source cannot read against: the lane's figures, said so. -->
           <p v-if="opponentId !== null && analytics.versus === null" class="flex items-center gap-2 rounded-xl bg-accented/30 px-4 py-2.5 text-sm text-muted">
             <UIcon name="i-lucide-info" class="size-4 shrink-0" />{{ t('analytics.versus.unsupported', { source }) }}
@@ -263,7 +294,7 @@ const trendEmpty = computed(() => !analytics.value || Object.values(analytics.va
               </AnalyticsSection>
             </div>
           </div>
-        </template>
+        </div>
       </template>
     </div>
   </SharedPage>

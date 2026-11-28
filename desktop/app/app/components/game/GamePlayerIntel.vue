@@ -159,7 +159,7 @@ const recentRate = computed(() => (form.value ? recentWinRate(form.value) : null
         <span
           v-if="fit"
           class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1"
-          :class="fit.kind === 'autofill' ? 'bg-primary/10 text-primary ring-primary/30' : 'bg-elevated/60 text-muted ring-default'"
+          :class="fit.kind === 'autofill' ? 'bg-data-bad/10 text-data-bad ring-data-bad/30' : 'bg-elevated/60 text-muted ring-default'"
           :title="fitTitle"
         >
           <UIcon v-if="fit.kind === 'autofill'" name="i-lucide-shuffle" class="size-3" />

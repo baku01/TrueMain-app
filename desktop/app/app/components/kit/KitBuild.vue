@@ -53,18 +53,21 @@ const champion = computed(() => nameOf(props.kit.championId))
     </BuildCore>
 
     <div class="relative">
-      <UTooltip v-if="available" :text="t('kit.build.importItems')" :content="{ side: 'left' }">
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          square
-          icon="i-lucide-download"
-          :loading="importing === 'items'"
-          :aria-label="t('kit.build.importItems')"
-          class="absolute right-0 top-0 z-10 text-dimmed hover:text-highlighted"
-          @click="importItems(kit, champion)"
-        />
+      <UTooltip :text="available ? t('kit.build.importItems') : t('app.status.clientOff')" :content="{ side: 'left' }">
+        <span class="absolute right-0 top-0 z-10 inline-flex" :tabindex="available ? undefined : 0">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            square
+            icon="i-lucide-download"
+            :disabled="!available"
+            :loading="importing === 'items'"
+            :aria-label="t('kit.build.importItems')"
+            class="text-dimmed hover:text-highlighted"
+            @click="importItems(kit, champion)"
+          />
+        </span>
       </UTooltip>
       <KitTree :tree="kit.tree" :items="items" :boots="kit.boots" :size="28" />
     </div>

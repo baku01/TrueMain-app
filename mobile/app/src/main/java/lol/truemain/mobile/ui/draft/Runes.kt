@@ -2,7 +2,9 @@ package lol.truemain.mobile.ui.draft
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,11 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -112,7 +116,7 @@ fun RunesPanel(draft: Draft, data: GameData?, actions: DraftActions) {
 /** A page in one line: primary path, keystone, its three runes, the secondary path and its two, the shards. */
 @Composable
 fun PerkStrip(primary: Int, sub: Int, perks: List<Int>, data: GameData?) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         RemoteImage(data?.styleIcon(primary), 20.dp, shape = CircleShape)
         perks.getOrNull(0)?.let { RemoteImage(data?.perkIcon(it), 40.dp, shape = CircleShape) }
         perks.drop(1).take(3).forEach { RemoteImage(data?.perkIcon(it), 26.dp, shape = CircleShape) }
@@ -129,26 +133,32 @@ fun PerkStrip(primary: Int, sub: Int, perks: List<Int>, data: GameData?) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PagesSheet(pages: List<RunePage>, currentId: Int?, data: GameData?, actions: DraftActions, onDismiss: () -> Unit) {
+    val sheetSnackbar = rememberSheetSnackbar(actions)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberFullSheetState(), containerColor = Tm.Ink900) {
-        Eyebrow(stringResource(R.string.draft_runes_pages_title), Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-            items(pages, key = { it.id }) { page ->
-                val selected = page.id == currentId
-                Column(
-                    Modifier.fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 3.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (selected) Tm.Rose950 else Color.Transparent)
-                        .clickable(enabled = !selected && !actions.busy) {
-                            actions.send("PUT", "/lol-perks/v1/currentpage", JsonPrimitive(page.id))
+        Box(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth()) {
+                Eyebrow(stringResource(R.string.draft_runes_pages_title), Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                    items(pages, key = { it.id }) { page ->
+                        val selected = page.id == currentId
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 3.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (selected) Tm.Rose950 else Color.Transparent)
+                                .clickable(enabled = !selected && !actions.busy) {
+                                    actions.send("PUT", "/lol-perks/v1/currentpage", JsonPrimitive(page.id))
+                                }
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(page.name, style = MaterialTheme.typography.bodyMedium, color = if (selected) Tm.Rose300 else Tm.Ink100, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            PerkStrip(page.primary, page.sub, page.perks, data)
                         }
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(page.name, style = MaterialTheme.typography.bodyMedium, color = if (selected) Tm.Rose300 else Tm.Ink100, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    PerkStrip(page.primary, page.sub, page.perks, data)
+                    }
                 }
             }
+            SnackbarHost(sheetSnackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
         }
     }
 }

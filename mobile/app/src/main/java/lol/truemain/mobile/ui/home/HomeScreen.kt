@@ -16,12 +16,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +50,7 @@ import lol.truemain.mobile.lcu.str
 import lol.truemain.mobile.link.LinkState
 import lol.truemain.mobile.ui.builds.winRateColor
 import lol.truemain.mobile.ui.components.Eyebrow
+import lol.truemain.mobile.ui.components.Loading
 import lol.truemain.mobile.ui.components.Panel
 import lol.truemain.mobile.ui.components.RemoteImage
 import lol.truemain.mobile.ui.components.SplashHero
@@ -56,6 +61,7 @@ import lol.truemain.mobile.ui.phaseLabel
 import lol.truemain.mobile.ui.theme.Tm
 
 /** Who is playing, where, and their ranks; the recent games under it. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen() {
     val graph = LocalContext.current.graph
@@ -66,27 +72,51 @@ fun HomeScreen() {
     var summoner by remember { mutableStateOf<JsonElement?>(null) }
     var ranked by remember { mutableStateOf<JsonElement?>(null) }
     var leadChampion by remember { mutableStateOf<Int?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var retryTick by remember { mutableIntStateOf(0) }
     val connected = appState.bool("connected") == true
     val riotId = appState.str("riotId")
 
-    LaunchedEffect(link is LinkState.Open, connected, riotId, phase) {
+    LaunchedEffect(link is LinkState.Open, connected, riotId, phase, retryTick) {
         if (link !is LinkState.Open || !connected) {
             summoner = null
             ranked = null
+            loading = false
             return@LaunchedEffect
         }
-        summoner = runCatching { graph.session.get("/lol-summoner/v1/current-summoner") }.getOrNull()?.takeIf { it.ok }?.body
-        ranked = runCatching { graph.session.get("/lol-ranked/v1/current-ranked-stats") }.getOrNull()?.takeIf { it.ok }?.body
+        loading = true
+        try {
+            summoner = runCatching { graph.session.get("/lol-summoner/v1/current-summoner") }.getOrNull()?.takeIf { it.ok }?.body
+            ranked = runCatching { graph.session.get("/lol-ranked/v1/current-ranked-stats") }.getOrNull()?.takeIf { it.ok }?.body
+        } finally {
+            loading = false
+        }
     }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    PullToRefreshBox(
+        isRefreshing = loading && summoner != null,
+        onRefresh = { retryTick++ },
+        modifier = Modifier.fillMaxSize(),
     ) {
-        if (link is LinkState.Open && !connected) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+        if (link !is LinkState.Open) {
+            Panel { Text(stringResource(R.string.home_offline), color = Tm.Ink300) }
+        } else if (!connected) {
             Panel { Text(stringResource(R.string.link_no_client), color = Tm.Gold) }
+        } else if (loading && summoner == null) {
+            Panel { Loading() }
         } else if (summoner.str("gameName").isNullOrEmpty()) {
-            Panel { Text(stringResource(R.string.home_not_logged), color = Tm.Ink300) }
+            Panel {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(stringResource(R.string.home_not_logged), color = Tm.Ink300, modifier = Modifier.weight(1f))
+                    TextButton(shape = Tm.ButtonShape, onClick = { retryTick++ }) {
+                        Text(stringResource(R.string.link_retry), color = Tm.colors.primary)
+                    }
+                }
+            }
         } else {
             val splashId = leadChampion ?: 103
             SplashHero(
@@ -143,7 +173,7 @@ fun HomeScreen() {
                                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                             ) {
                                 Box(Modifier.size(6.dp).background(Tm.colors.primary, CircleShape))
-                                Text(phaseLabel(phase), style = MaterialTheme.typography.labelMedium, color = Color(0xFFD9EDFF))
+                                Text(phaseLabel(phase), style = MaterialTheme.typography.labelMedium, color = Color.White)
                             }
                         }
                     }
@@ -159,7 +189,23 @@ fun HomeScreen() {
         }
 
         HistorySection(onLeadChampion = { leadChampion = it })
+        }
     }
+}
+
+@Composable
+private fun localizedTier(tier: String): String = when (tier.uppercase()) {
+    "IRON" -> stringResource(R.string.tier_iron)
+    "BRONZE" -> stringResource(R.string.tier_bronze)
+    "SILVER" -> stringResource(R.string.tier_silver)
+    "GOLD" -> stringResource(R.string.tier_gold)
+    "PLATINUM" -> stringResource(R.string.tier_platinum)
+    "EMERALD" -> stringResource(R.string.tier_emerald)
+    "DIAMOND" -> stringResource(R.string.tier_diamond)
+    "MASTER" -> stringResource(R.string.tier_master)
+    "GRANDMASTER" -> stringResource(R.string.tier_grandmaster)
+    "CHALLENGER" -> stringResource(R.string.tier_challenger)
+    else -> tier.lowercase().replaceFirstChar(Char::uppercase)
 }
 
 @Composable
@@ -185,7 +231,7 @@ private fun RankCard(title: String, queue: JsonElement?, modifier: Modifier) {
             val total = wins + losses
             val wr = if (total > 0) wins.toDouble() / total else null
             Text(
-                "${tier.lowercase().replaceFirstChar(Char::uppercase)} $division".trim(),
+                "${localizedTier(tier)} $division".trim(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = if (apex) Tm.Gold else Tm.Rose300,

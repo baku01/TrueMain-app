@@ -17,6 +17,7 @@
     <string name="connect_step3">Scan it here, with your phone on the same Wi-Fi.</string>
     <string name="connect_scan">Scan the QR code</string>
     <string name="connect_paste">Or paste the pairing link</string>
+    <string name="connect_paste_button">Paste</string>
     <string name="connect_paste_action">Pair</string>
     <string name="connect_bad_link">That is not a TrueMain pairing code.</string>
     <string name="connect_scanner_unavailable">The scanner is unavailable on this phone. Paste the link instead.</string>
@@ -35,6 +36,7 @@
     <string name="link_error_link_off">The phone link is turned off on your computer.</string>
     <string name="link_error_other">The computer refused the connection (%1$s).</string>
     <string name="link_no_client">League is not running on your computer.</string>
+    <string name="link_timer_paused">Offline · paused</string>
 
     <!-- Ready check -->
     <string name="ready_title">Match found!</string>
@@ -52,6 +54,7 @@
     <string name="home_record">%1$dW %2$dL</string>
     <string name="home_lp">%1$d LP</string>
     <string name="home_not_logged">Log in to League on your computer.</string>
+    <string name="home_offline">Connect to your computer to see your profile.</string>
 
     <!-- Phases -->
     <string name="phase_none">In the client</string>
@@ -79,4 +82,28 @@
     <string name="update_dismiss">OK</string>
 
     <string name="error_generic">Something went wrong. Try again.</string>
+    <string name="menu_more">More options</string>
+    <string name="search_clear">Clear search</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="confirm_unpair_title">Unpair this computer?</string>
+    <string name="confirm_unpair_body">You will need to scan a new QR code to reconnect.</string>
+    <string name="confirm_leave_lobby_title">Leave lobby?</string>
+    <string name="confirm_leave_lobby_body">You will leave the current party.</string>
+    <string name="confirm_kick_title">Remove %1$s?</string>
+    <string name="confirm_kick_body">Remove this player from the lobby?</string>
+    <string name="confirm_reroll_title">Use reroll?</string>
+    <string name="confirm_reroll_body">Swap your champion for a random one. This consumes 1 reroll.</string>
+    <string name="builds_elo_badge">Emerald+</string>
+    <string name="draft_recommended_full_build">See full build</string>
+    <string name="tier_iron">Iron</string>
+    <string name="tier_bronze">Bronze</string>
+    <string name="tier_silver">Silver</string>
+    <string name="tier_gold">Gold</string>
+    <string name="tier_platinum">Platinum</string>
+    <string name="tier_emerald">Emerald</string>
+    <string name="tier_diamond">Diamond</string>
+    <string name="tier_master">Master</string>
+    <string name="tier_grandmaster">Grandmaster</string>
+    <string name="tier_challenger">Challenger</string>
 </resources>

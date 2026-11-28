@@ -215,11 +215,11 @@ const edgePath = ({ parent, child }: { parent: { x: number, y: number }, child: 
         <button
           v-if="editable"
           type="button"
-          class="absolute -right-1.5 -top-1.5 hidden size-4 items-center justify-center rounded-full bg-elevated text-dimmed ring-1 ring-default hover:text-error group-hover:flex group-focus-within:flex"
+          class="absolute -right-2 -top-2 hidden size-6 items-center justify-center rounded-full bg-elevated text-dimmed ring-1 ring-default hover:text-error focus-visible:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:flex group-focus-within:flex"
           :aria-label="t('kit.tree.removeAndFollowing', { name: name(node.itemId) })"
           @click="emit('remove', node.at)"
         >
-          <UIcon name="i-lucide-x" class="size-3" />
+          <UIcon name="i-lucide-x" class="size-3.5" />
         </button>
       </div>
 

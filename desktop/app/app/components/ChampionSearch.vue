@@ -30,12 +30,12 @@ watch(term, (value) => {
   if (!id) return
   const asked = ++latest
   timer = setTimeout(async () => {
-    const [account, home] = await Promise.all([
-      readPlayerAccount(lastRegion.value, id.gameName, id.tagLine).catch(() => null),
-      homeRegionOf(id.gameName, id.tagLine).catch(() => null),
-    ])
+    const home = await homeRegionOf(id.gameName, id.tagLine).catch(() => null)
     if (asked !== latest) return
-    players.value = account ? [{ region: home ?? lastRegion.value, account }] : []
+    const region = home ?? lastRegion.value
+    const account = await readPlayerAccount(region, id.gameName, id.tagLine).catch(() => null)
+    if (asked !== latest) return
+    players.value = account ? [{ region, account }] : []
     looking.value = false
   }, 400)
 })

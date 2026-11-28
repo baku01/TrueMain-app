@@ -10,14 +10,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,7 +29,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,13 +67,22 @@ private val TAGS = listOf(
     "Support" to R.string.draft_tag_support,
 )
 
-/**
- * The champions for the action a tap writes to. A tap only hovers (the
- * client's own click does the same); locking or banning is a separate button,
- * behind a confirmation, and only while the turn is really open.
- */
+/** Computed picker state shared between the unified Draft grid and the pinned bottom Lock/Ban bar. */
+data class ChampionPickerState(
+    val hovered: Int?,
+    val shown: List<Champion>,
+    val isAllowed: (Int) -> Boolean,
+)
+
 @Composable
-fun ChampionPicker(draft: Draft, target: Action, data: GameData?, actions: DraftActions) {
+fun rememberChampionPickerState(
+    draft: Draft,
+    target: Action,
+    data: GameData?,
+    query: String,
+    tag: String?,
+    actions: DraftActions,
+): ChampionPickerState {
     val pickable by actions.session.state(Session.PICKABLE).collectAsState()
     val bannable = rememberBannable(actions.session, target, draft.taken.size)
     // The client's own list wins; without one, everything not already taken. An empty list is
@@ -81,13 +91,40 @@ fun ChampionPicker(draft: Draft, target: Action, data: GameData?, actions: Draft
         ActionKind.Pick -> pickable?.items?.mapNotNull { it.int }?.toSet()
         ActionKind.Ban -> bannable
     }?.takeIf { it.isNotEmpty() }
-    var query by rememberSaveable { mutableStateOf("") }
-    var tag by rememberSaveable { mutableStateOf<String?>(null) }
-    var confirming by remember { mutableStateOf(false) }
     val planning = draft.current == null
     // In planning the client may keep the intent on the seat rather than on the action.
     val hovered = target.championId.takeIf { it > 0 } ?: draft.me?.pickIntent?.takeIf { planning && it > 0 }
+    val taken = draft.taken
+    val isAllowed: (Int) -> Boolean = remember(allowed, taken, hovered) {
+        { id -> allowed?.contains(id) ?: (id == hovered || id !in taken) }
+    }
+    val shown = remember(data, query, tag, isAllowed) {
+        if (data == null) emptyList()
+        else {
+            val needle = query.fold()
+            data.champions.values
+                .filter { tag == null || tag in it.tags }
+                .filter { needle.isEmpty() || it.name.fold().contains(needle) }
+                .sortedWith(compareBy<Champion>({ !isAllowed(it.id) }, { it.name }))
+        }
+    }
+    return ChampionPickerState(hovered, shown, isAllowed)
+}
 
+/** Search, role chips and a horizontal 3-row champion grid (no vertical scroll conflict with DraftScreen). */
+@Composable
+fun ChampionPickerPanel(
+    draft: Draft,
+    target: Action,
+    picker: ChampionPickerState,
+    data: GameData?,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    tag: String?,
+    onTagChange: (String?) -> Unit,
+    actions: DraftActions,
+) {
+    val planning = draft.current == null
     Panel {
         Eyebrow(
             stringResource(
@@ -104,65 +141,89 @@ fun ChampionPicker(draft: Draft, target: Action, data: GameData?, actions: Draft
         }
         TmSearchField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = onQueryChange,
             placeholder = stringResource(R.string.draft_search),
         )
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SelectChip(stringResource(R.string.draft_tag_all), tag == null) { tag = null }
-            TAGS.forEach { (key, label) -> SelectChip(stringResource(label), tag == key) { tag = if (tag == key) null else key } }
+            SelectChip(stringResource(R.string.draft_tag_all), tag == null) { onTagChange(null) }
+            TAGS.forEach { (key, label) -> SelectChip(stringResource(label), tag == key) { onTagChange(if (tag == key) null else key) } }
         }
-        val taken = draft.taken
-        val isAllowed = { id: Int -> allowed?.contains(id) ?: (id == hovered || id !in taken) }
-        val shown = remember(data, query, tag, allowed, taken, hovered) {
-            val needle = query.fold()
-            data.champions.values
-                .filter { tag == null || tag in it.tags }
-                .filter { needle.isEmpty() || it.name.fold().contains(needle) }
-                .sortedWith(compareBy<Champion>({ !isAllowed(it.id) }, { it.name }))
-        }
-        if (shown.isEmpty()) {
+        if (picker.shown.isEmpty()) {
             Text(stringResource(R.string.draft_no_match), color = Tm.Ink400, style = MaterialTheme.typography.bodyMedium)
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(64.dp),
-                modifier = Modifier.fillMaxWidth().height(300.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            val rows = if (picker.shown.size <= 5) 1 else if (picker.shown.size <= 10) 2 else 3
+            LazyHorizontalGrid(
+                rows = GridCells.Fixed(rows),
+                modifier = Modifier.fillMaxWidth().height((rows * 86).dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(shown, key = { it.id }) { champion ->
-                    val enabled = isAllowed(champion.id)
-                    ChampionTile(champion, selected = champion.id == hovered, available = enabled, clickable = enabled && !actions.busy) {
-                        if (champion.id != hovered) actions.hover(target, champion.id)
+                items(picker.shown, key = { it.id }) { champion ->
+                    val enabled = picker.isAllowed(champion.id)
+                    ChampionTile(
+                        champion = champion,
+                        selected = champion.id == picker.hovered,
+                        available = enabled,
+                        clickable = enabled && !actions.busy,
+                    ) {
+                        if (champion.id != picker.hovered) actions.hover(target, champion.id)
                     }
                 }
             }
         }
         if (planning) {
             Text(stringResource(R.string.draft_intent_note), color = Tm.Ink400, style = MaterialTheme.typography.bodySmall)
-        } else {
-            val ban = target.kind == ActionKind.Ban
+        }
+    }
+}
+
+/** Pinned footer shown during the player's active Pick or Ban turn so Lock/Ban never scrolls off-screen. */
+@Composable
+fun DraftTurnBar(
+    draft: Draft,
+    target: Action,
+    picker: ChampionPickerState,
+    data: GameData?,
+    actions: DraftActions,
+) {
+    var confirming by remember(target.id) { mutableStateOf(false) }
+    val ban = target.kind == ActionKind.Ban
+    val hovered = picker.hovered
+    val canConfirm = hovered != null && picker.isAllowed(hovered) && !actions.busy
+
+    Column(Modifier.fillMaxWidth().background(Tm.colors.bgElevated)) {
+        HorizontalDivider(thickness = 1.dp, color = Tm.colors.border)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (hovered != null) {
+                ChampionIcon(hovered, 42.dp)
+            }
             Button(
                 shape = Tm.ButtonShape,
                 onClick = { confirming = true },
-                enabled = hovered != null && isAllowed(hovered) && !actions.busy,
+                enabled = canConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = if (ban) Tm.Red else Tm.Rose400, contentColor = Tm.colors.textInverted),
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
             ) {
                 Text(
                     when {
                         hovered == null -> stringResource(R.string.draft_hover_first)
-                        ban -> stringResource(R.string.draft_ban_named, data.championName(hovered))
-                        else -> stringResource(R.string.draft_lock_named, data.championName(hovered))
+                        ban -> stringResource(R.string.draft_ban_named, data?.championName(hovered).orEmpty())
+                        else -> stringResource(R.string.draft_lock_named, data?.championName(hovered).orEmpty())
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
 
     if (confirming && hovered != null) {
-        val ban = target.kind == ActionKind.Ban
         val name = data?.championName(hovered).orEmpty()
         AlertDialog(
             onDismissRequest = { confirming = false },
@@ -215,10 +276,11 @@ private fun rememberBannable(session: Session, target: Action, takenCount: Int):
 private const val BANNABLE_EVERY = 3_000L
 
 @Composable
-private fun ChampionTile(champion: Champion, selected: Boolean, available: Boolean, clickable: Boolean, onClick: () -> Unit) {
+internal fun ChampionTile(champion: Champion, selected: Boolean, available: Boolean, clickable: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(8.dp)
     Column(
         Modifier
+            .width(74.dp)
             .alpha(if (available || selected) 1f else 0.4f)
             .clip(shape)
             .background(if (selected) Tm.Rose950 else Color.Transparent)
@@ -241,5 +303,5 @@ private fun ChampionTile(champion: Champion, selected: Boolean, available: Boole
 }
 
 /** Case- and accent-blind, so `kaisa` finds Kai'Sa and `nunu` finds Nunu & Willump. */
-private fun String.fold(): String =
+internal fun String.fold(): String =
     Normalizer.normalize(lowercase(), Normalizer.Form.NFD).replace(Regex("[^\\p{L}\\p{N}]"), "")

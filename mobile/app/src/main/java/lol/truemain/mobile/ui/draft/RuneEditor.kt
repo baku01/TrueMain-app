@@ -3,11 +3,13 @@ package lol.truemain.mobile.ui.draft
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,7 +28,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -119,88 +124,118 @@ fun RuneEditorSheet(data: GameData, initial: RunePage?, championName: String, ac
     val state = remember(data) { RuneEditorState(data, initial) }
     // A champion's page is named the way the desktop names its own, so the import reuses that slot.
     var name by remember { mutableStateOf(if (championName.isNotBlank()) ownedPageName(championName) else ownedPageName("").trim()) }
+    var saveError by remember { mutableStateOf<Int?>(null) }
+    val sheetSnackbar = rememberSheetSnackbar(actions)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberFullSheetState(), containerColor = Tm.Ink900) {
-        Column(
-            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Eyebrow(stringResource(R.string.draft_editor_primary))
-            StyleRow(data.styles, state.primary?.id, exclude = null, onPick = state::choosePrimary)
-            state.primary?.let { style ->
-                style.slots.forEachIndexed { slot, perks ->
-                    PerkRow(perks, data, if (slot == 0) 44.dp else 34.dp, selected = { state.primaryPicks[slot] == it }) { state.primaryPicks[slot] = it }
-                }
-            }
-
-            Eyebrow(stringResource(R.string.draft_editor_secondary))
-            StyleRow(data.styles, state.secondary?.id, exclude = state.primary?.id, onPick = state::chooseSecondary)
-            state.secondary?.let { style ->
-                style.slots.drop(1).forEachIndexed { index, perks ->
-                    val slot = index + 1
-                    PerkRow(perks, data, 34.dp, selected = { perk -> state.secondaryPicks.any { it == slot to perk } }) { state.toggleSecondary(slot, it) }
-                }
-            }
-
-            Eyebrow(stringResource(R.string.draft_editor_shards))
-            data.shardRows.forEachIndexed { row, perks ->
-                PerkRow(perks, data, 28.dp, selected = { state.shards[row] == it }) { state.shards[row] = it }
-            }
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it.take(25) },
-                singleLine = true,
-                label = { Text(stringResource(R.string.draft_editor_name)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            val draft = state.draft(name)
-            Button(shape = Tm.ButtonShape, 
-                onClick = {
-                    draft ?: return@Button
-                    actions.run {
-                        val result = actions.session.importRunes(draft)
-                        actions.say(result.message())
-                        if (result == RuneImport.Done) onDismiss()
+        Box(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Eyebrow(stringResource(R.string.draft_editor_primary))
+                StyleRow(data.styles, state.primary?.id, exclude = null, onPick = state::choosePrimary)
+                state.primary?.let { style ->
+                    style.slots.forEachIndexed { slot, perks ->
+                        PerkRow(perks, data, if (slot == 0) 44.dp else 34.dp, selected = { state.primaryPicks[slot] == it }) { state.primaryPicks[slot] = it }
                     }
-                },
-                enabled = draft != null && !actions.busy,
-                colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.Ink950),
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-            ) { Text(stringResource(if (draft == null) R.string.draft_editor_incomplete else R.string.draft_editor_save)) }
+                }
+
+                Eyebrow(stringResource(R.string.draft_editor_secondary))
+                StyleRow(data.styles, state.secondary?.id, exclude = state.primary?.id, onPick = state::chooseSecondary)
+                state.secondary?.let { style ->
+                    style.slots.drop(1).forEachIndexed { index, perks ->
+                        val slot = index + 1
+                        PerkRow(perks, data, 34.dp, selected = { perk -> state.secondaryPicks.any { it == slot to perk } }) { state.toggleSecondary(slot, it) }
+                    }
+                }
+
+                Eyebrow(stringResource(R.string.draft_editor_shards))
+                data.shardRows.forEachIndexed { row, perks ->
+                    PerkRow(perks, data, 28.dp, selected = { state.shards[row] == it }) { state.shards[row] = it }
+                }
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(25) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.draft_editor_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                saveError?.let { res ->
+                    Text(stringResource(res), color = Tm.Red, style = MaterialTheme.typography.bodySmall)
+                }
+                val draft = state.draft(name)
+                Button(
+                    shape = Tm.ButtonShape,
+                    onClick = {
+                        draft ?: return@Button
+                        saveError = null
+                        actions.run {
+                            val result = actions.session.importRunes(draft)
+                            if (result == RuneImport.Done) {
+                                actions.say(result.message())
+                                onDismiss()
+                            } else {
+                                saveError = result.message()
+                            }
+                        }
+                    },
+                    enabled = draft != null && !actions.busy,
+                    colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.colors.textInverted),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                ) { Text(stringResource(if (draft == null) R.string.draft_editor_incomplete else R.string.draft_editor_save)) }
+            }
+            SnackbarHost(sheetSnackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
         }
     }
 }
 
 @Composable
 private fun StyleRow(styles: List<PerkStyle>, selected: Int?, exclude: Int?, onPick: (PerkStyle) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         styles.filter { it.id != exclude }.forEach { style ->
             val on = style.id == selected
-            RemoteImage(
-                style.icon,
-                40.dp,
-                Modifier.border(2.dp, if (on) Tm.Rose400 else Color.Transparent, CircleShape).clickable { onPick(style) }.padding(3.dp),
-                shape = CircleShape,
-                grayscale = selected != null && !on,
-                contentDescription = style.name,
-            )
+            Box(
+                Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .clip(CircleShape)
+                    .clickable { onPick(style) },
+                contentAlignment = Alignment.Center,
+            ) {
+                RemoteImage(
+                    style.icon,
+                    40.dp,
+                    Modifier.border(2.dp, if (on) Tm.Rose400 else Color.Transparent, CircleShape).padding(3.dp),
+                    shape = CircleShape,
+                    grayscale = selected != null && !on,
+                    contentDescription = style.name,
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun PerkRow(perks: List<Int>, data: GameData, size: Dp, selected: (Int) -> Boolean, onPick: (Int) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         perks.forEach { perk ->
             val on = selected(perk)
-            RemoteImage(
-                data.perkIcon(perk),
-                size,
-                Modifier.border(2.dp, if (on) Tm.Rose400 else Color.Transparent, CircleShape).clickable { onPick(perk) }.padding(2.dp),
-                shape = CircleShape,
-                grayscale = !on,
-                contentDescription = data.perks[perk]?.name,
-            )
+            Box(
+                Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .clip(CircleShape)
+                    .clickable { onPick(perk) },
+                contentAlignment = Alignment.Center,
+            ) {
+                RemoteImage(
+                    data.perkIcon(perk),
+                    size,
+                    Modifier.border(2.dp, if (on) Tm.Rose400 else Color.Transparent, CircleShape).padding(2.dp),
+                    shape = CircleShape,
+                    grayscale = !on,
+                    contentDescription = data.perks[perk]?.name,
+                )
+            }
         }
     }
     val picked = perks.firstOrNull(selected)?.let { data.perks[it] }

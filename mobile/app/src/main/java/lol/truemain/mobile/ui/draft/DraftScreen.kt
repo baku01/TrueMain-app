@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +30,7 @@ import lol.truemain.mobile.data.GameData
 import lol.truemain.mobile.graph
 import lol.truemain.mobile.lcu.get
 import lol.truemain.mobile.lcu.str
+import lol.truemain.mobile.link.LinkState
 import lol.truemain.mobile.session.Session
 import lol.truemain.mobile.ui.components.EmptyState
 import lol.truemain.mobile.ui.components.rememberGameData
@@ -37,8 +42,10 @@ import lol.truemain.mobile.ui.components.rememberGameData
  * of the player's, and a lock or a ban is two.
  */
 @Composable
-fun DraftScreen() {
-    val session = LocalContext.current.graph.session
+fun DraftScreen(onOpenFullBuild: ((championId: Int, position: String?) -> Unit)? = null) {
+    val graph = LocalContext.current.graph
+    val session = graph.session
+    val link by graph.link.state.collectAsState()
     val json by session.state(Session.CHAMP_SELECT).collectAsState()
     val data = rememberGameData()
     val snackbar = remember { SnackbarHostState() }
@@ -50,33 +57,64 @@ fun DraftScreen() {
             EmptyState(stringResource(R.string.draft_empty_title), stringResource(R.string.draft_empty_body))
         } else {
             YourTurnBuzz(draft)
-            DraftContent(draft, data, actions)
+            DraftContent(draft, data, actions, online = link is LinkState.Open, onOpenFullBuild = onOpenFullBuild)
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
     }
 }
 
 @Composable
-private fun DraftContent(draft: Draft, data: GameData?, actions: DraftActions) {
+private fun DraftContent(
+    draft: Draft,
+    data: GameData?,
+    actions: DraftActions,
+    online: Boolean,
+    onOpenFullBuild: ((championId: Int, position: String?) -> Unit)?,
+) {
     val gameflow by actions.session.state(Session.GAMEFLOW_SESSION).collectAsState()
     // The mode filters the spells: ARAM's Mark, Classic's Smite.
     val mode = gameflow["map"].str("gameMode") ?: gameflow["gameData"]["queue"].str("gameMode")
     val me = draft.me
     val target = draft.target
+    var query by rememberSaveable { mutableStateOf("") }
+    var tag by rememberSaveable { mutableStateOf<String?>(null) }
+    val picker = target?.let { rememberChampionPickerState(draft, it, data, query, tag, actions) }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 56.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        DraftHeader(draft)
-        IncomingSwaps(draft, data, actions)
-        if (target != null) ChampionPicker(draft, target, data, actions)
-        if (draft.benchEnabled) BenchPanel(draft, data, actions)
-        TeamsPanel(draft, data)
-        if (me != null) LoadoutPanel(draft, me, data, mode, actions)
-        RunesPanel(draft, data, actions)
-        if (draft.myChampion > 0) RecommendedPanel(draft, data, actions)
-        SwapOffers(draft, data, actions)
+    Column(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            DraftHeader(draft, online = online)
+            IncomingSwaps(draft, data, actions)
+            if (target != null && picker != null) {
+                ChampionPickerPanel(
+                    draft = draft,
+                    target = target,
+                    picker = picker,
+                    data = data,
+                    query = query,
+                    onQueryChange = { query = it },
+                    tag = tag,
+                    onTagChange = { tag = it },
+                    actions = actions,
+                )
+            }
+            if (draft.benchEnabled) BenchPanel(draft, data, actions)
+            TeamsPanel(draft, data)
+            if (me != null) LoadoutPanel(draft, me, data, mode, actions)
+            RunesPanel(draft, data, actions)
+            if (draft.myChampion > 0) RecommendedPanel(draft, data, actions, onOpenFullBuild)
+            SwapOffers(draft, data, actions)
+        }
+        if (target != null && draft.current != null && picker != null) {
+            DraftTurnBar(draft, target, picker, data, actions)
+        }
     }
 }
 

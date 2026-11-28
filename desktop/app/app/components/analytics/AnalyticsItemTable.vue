@@ -27,11 +27,21 @@ watch(() => props.tabs.map(tab => tab.key).join(), () => {
 })
 type SortKey = 'winRate' | 'pickRate' | 'games' | 'minute'
 const sort = ref<SortKey>('games')
+const sortDir = ref<'desc' | 'asc'>('desc')
 const expanded = ref(false)
+
+function toggleSort(key: SortKey) {
+  if (sort.value === key) sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
+  else {
+    sort.value = key
+    sortDir.value = key === 'minute' ? 'asc' : 'desc'
+  }
+}
 
 const rows = computed(() => {
   const list = [...(props.tabs.find(tab => tab.key === active.value)?.rows ?? [])]
-  list.sort((a, b) => (b[sort.value] ?? -1) - (a[sort.value] ?? -1))
+  const factor = sortDir.value === 'desc' ? 1 : -1
+  list.sort((a, b) => factor * ((b[sort.value] ?? -1) - (a[sort.value] ?? -1)))
   return expanded.value ? list : list.slice(0, props.limit)
 })
 const total = computed(() => props.tabs.find(tab => tab.key === active.value)?.rows.length ?? 0)
@@ -64,9 +74,9 @@ const columns = computed(() => [
       <thead>
         <tr class="stat-label">
           <th class="pb-1.5 text-left font-semibold">{{ spellsOnly(tabs) ? t('analytics.table.spells') : t('analytics.table.items') }}</th>
-          <th v-for="column in columns" :key="column.key" class="pb-1.5 text-right font-semibold">
-            <button type="button" class="inline-flex items-center gap-0.5 uppercase" :class="sort === column.key ? 'text-highlighted' : 'hover:text-muted'" @click="sort = column.key">
-              {{ column.label }}<UIcon v-if="sort === column.key" name="i-lucide-arrow-down" class="size-3" />
+          <th v-for="column in columns" :key="column.key" class="pb-1.5 text-right font-semibold" :aria-sort="sort === column.key ? (sortDir === 'desc' ? 'descending' : 'ascending') : 'none'">
+            <button type="button" class="inline-flex items-center gap-0.5" :class="sort === column.key ? 'text-highlighted' : 'hover:text-muted'" @click="toggleSort(column.key)">
+              {{ column.label }}<UIcon v-if="sort === column.key" :name="sortDir === 'desc' ? 'i-lucide-arrow-down' : 'i-lucide-arrow-up'" class="size-3" />
             </button>
           </th>
         </tr>

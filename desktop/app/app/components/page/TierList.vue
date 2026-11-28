@@ -136,7 +136,7 @@ await tierListFetch
     </PageHeader>
 
     <ClientOnly>
-      <FetchErrorAlert v-if="error" :error="error" :title="t('pages.tierlist.loadFailed')" />
+      <FetchErrorAlert v-if="error" :error="error" :title="t('pages.tierlist.loadFailed')" :on-retry="() => refreshTierList()" />
       <TierlistSkeleton v-else-if="isPending" />
 
       <template v-else>
@@ -159,7 +159,7 @@ await tierListFetch
               <li v-for="entry in group.entries" :key="`${entry.championId}-${entry.position}`">
                 <NuxtLink
                   :to="championDestination(entry)"
-                  class="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.04]"
+                  class="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accented/60"
                   :title="`${entry.name} · ${t('champion.pickRate')} ${formatPercentage(entry.pickRate, 1)}`"
                 >
                   <span class="relative shrink-0">

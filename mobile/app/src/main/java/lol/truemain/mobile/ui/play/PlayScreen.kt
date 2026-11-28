@@ -99,16 +99,16 @@ fun PlayScreen() {
 @Composable
 fun FailureBanner(failure: PlayFailure, onDismiss: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Tm.Rose950, RoundedCornerShape(12.dp)).padding(start = 14.dp),
+        Modifier.fillMaxWidth().background(Tm.Red.copy(alpha = if (Tm.colors.light) 0.12f else 0.2f), RoundedCornerShape(12.dp)).padding(start = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             failure.reason ?: stringResource(R.string.error_generic),
             style = MaterialTheme.typography.bodyMedium,
-            color = Tm.Rose300,
+            color = Tm.Red,
             modifier = Modifier.weight(1f).padding(vertical = 10.dp),
         )
-        IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.play_close), tint = Tm.Rose300) }
+        IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.play_close), tint = Tm.Red) }
     }
 }
 

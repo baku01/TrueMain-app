@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,13 +67,20 @@ private fun PlayerRow(player: LivePlayer, clock: Double, data: GameData?) {
         Box {
             ChampionIcon(player.championId, 40.dp, grayscale = player.dead)
             if (player.dead && player.respawnAt != null) {
-                Text(
-                    clockText(player.respawnAt - clock),
-                    Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Tm.Ink100,
-                    fontWeight = FontWeight.Bold,
-                )
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.55f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        clockText(player.respawnAt - clock),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
             LevelBadge(player.level)
         }

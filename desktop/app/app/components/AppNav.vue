@@ -29,14 +29,26 @@ interface Tab {
 
 const live = computed(() => ({ dot: 'bg-primary', label: t('badge.live') }))
 
+const listQuery = computed(() => {
+  if (!isActive('/champions') && !isActive('/tierlist')) return ''
+  const keep = ['position', 'elo', 'patch', 'truemainsOnly', 'championId']
+  const params = new URLSearchParams()
+  for (const key of keep) {
+    const value = route.query[key]
+    if (typeof value === 'string' && value) params.set(key, value)
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+})
+
 const groups = computed<{ label: string | null, tabs: Tab[] }[]>(() => [
   { label: null, tabs: [
     { label: t('nav.dashboard'), icon: 'i-tabler-home', to: '/', active: route.path === '/' },
     { label: t('nav.nerdStats'), icon: 'i-tabler-math-function', to: '/nerd-stats', active: isActive('/nerd-stats') },
   ] },
   { label: t('nav.group.champions'), tabs: [
-    { label: t('nav.champions'), icon: 'i-tabler-swords', to: '/champions', active: isActive('/champions') },
-    { label: t('nav.tierlist'), icon: 'i-tabler-chart-bar', to: '/tierlist', active: isActive('/tierlist') },
+    { label: t('nav.champions'), icon: 'i-tabler-swords', to: `/champions${listQuery.value}`, active: isActive('/champions') },
+    { label: t('nav.tierlist'), icon: 'i-tabler-chart-bar', to: `/tierlist${listQuery.value}`, active: isActive('/tierlist') },
     { label: t('nav.analytics'), icon: 'i-tabler-chart-line', to: '/analytics', active: isActive('/analytics') },
     { label: t('nav.classes'), icon: 'i-tabler-hierarchy-2', to: '/classes', active: isActive('/classes') },
     { label: t('nav.stats'), icon: 'i-tabler-chart-dots', to: '/stats', active: isActive('/stats') },
@@ -69,15 +81,25 @@ const foot = computed<Tab[]>(() => [
 ])
 
 // Folded by the player (kept), or by a window too narrow for the names.
+// The app launches at 1180px (`tauri.conf.json`), so auto-collapse only kicks
+// in below 1024px — and the toggle stays reachable even when narrow.
 const FOLDED_KEY = 'truemain-rail-folded'
 const folded = ref(localStorage.getItem(FOLDED_KEY) === '1')
 watch(folded, value => localStorage.setItem(FOLDED_KEY, value ? '1' : '0'))
-const narrowQuery = window.matchMedia('(max-width: 1279px)')
+const narrowQuery = window.matchMedia('(max-width: 1023px)')
 const narrow = ref(narrowQuery.matches)
-const onWidth = (event: MediaQueryListEvent) => (narrow.value = event.matches)
+const expandedWhileNarrow = ref(false)
+const onWidth = (event: MediaQueryListEvent) => {
+  narrow.value = event.matches
+  if (!event.matches) expandedWhileNarrow.value = false
+}
 narrowQuery.addEventListener('change', onWidth)
 onScopeDispose(() => narrowQuery.removeEventListener('change', onWidth))
-const compact = computed(() => folded.value || narrow.value)
+const compact = computed(() => (narrow.value ? !expandedWhileNarrow.value : folded.value))
+function toggleCompact() {
+  if (narrow.value) expandedWhileNarrow.value = !expandedWhileNarrow.value
+  else folded.value = !folded.value
+}
 </script>
 
 <template>
@@ -96,12 +118,11 @@ const compact = computed(() => folded.value || narrow.value)
     <div class="space-y-0.5 border-t border-default px-2 py-2">
       <AppNavItem v-for="tab in foot" :key="tab.to" :tab="tab" :compact="compact" />
       <button
-        v-if="!narrow"
         type="button"
         class="rail-item w-full"
         :aria-label="compact ? t('nav.expand') : t('nav.collapse')"
         :title="compact ? t('nav.expand') : t('nav.collapse')"
-        @click="folded = !folded"
+        @click="toggleCompact"
       >
         <UIcon :name="compact ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'" class="size-[18px] shrink-0" />
         <span v-if="!compact" class="truncate">{{ t('nav.collapse') }}</span>

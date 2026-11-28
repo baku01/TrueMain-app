@@ -29,7 +29,8 @@ const KIND_STYLE: Record<ChangeKind, { icon: string, text: string, ring: string,
   adjust: { icon: 'i-lucide-arrow-left-right', text: 'text-warning', ring: 'ring-warning/40', bar: 'bg-warning' },
 }
 const counts = computed(() => {
-  const all = props.note.sections.flatMap(entry => entry.blocks).map(kindOf)
+  const scoped = props.note.sections.filter(entry => !section.value || entry.id === section.value)
+  const all = scoped.flatMap(entry => entry.blocks).map(kindOf)
   return Object.fromEntries(KINDS.map(entry => [entry, all.filter(value => value === entry).length])) as Record<ChangeKind, number>
 })
 
@@ -67,7 +68,11 @@ watch(() => props.note, () => {
 <template>
   <div class="shrink-0 space-y-5">
     <div class="flex flex-wrap items-center gap-3">
-      <UInput v-model="query" icon="i-lucide-search" :placeholder="t('patchnotes.search')" class="min-w-60 flex-1" :aria-label="t('patchnotes.search')" />
+      <UInput v-model="query" icon="i-lucide-search" :placeholder="t('patchnotes.search')" class="min-w-60 flex-1" :aria-label="t('patchnotes.search')">
+        <template v-if="query" #trailing>
+          <UButton icon="i-lucide-x" size="xs" color="neutral" variant="link" :aria-label="t('common.clearFilters')" @click="query = ''" />
+        </template>
+      </UInput>
       <div class="flex flex-wrap gap-1.5" role="group" :aria-label="t('patchnotes.sections')">
         <UButton
           :label="t('patchnotes.allSections')"
@@ -138,7 +143,9 @@ watch(() => props.note, () => {
       </div>
     </section>
 
-    <p v-if="total === 0" class="py-8 text-center text-sm text-muted">{{ t('patchnotes.noMatch', { query }) }}</p>
+    <p v-if="total === 0" class="py-8 text-center text-sm text-muted">
+      {{ query.trim() ? t('patchnotes.noMatch', { query: query.trim() }) : t('stats.none') }}
+    </p>
   </div>
 </template>
 

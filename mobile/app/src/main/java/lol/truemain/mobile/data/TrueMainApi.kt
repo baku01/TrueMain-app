@@ -36,9 +36,11 @@ class TrueMainApi(
     private data class Cached(val atMs: Long, val body: JsonElement)
     private data class CachedSnapshot(val atMs: Long, val snapshot: TierSnapshot)
 
-    private suspend fun loadTierSnapshot(): TierSnapshot {
+    private suspend fun loadTierSnapshot(forceRefresh: Boolean = false): TierSnapshot {
         val now = System.currentTimeMillis()
-        tierSnapshotCache?.takeIf { now - it.atMs < CACHE_TTL_MS }?.let { return it.snapshot }
+        if (!forceRefresh) {
+            tierSnapshotCache?.takeIf { now - it.atMs < CACHE_TTL_MS }?.let { return it.snapshot }
+        }
 
         val raw = fetchLolalytics(
             mapOf(
@@ -47,14 +49,15 @@ class TrueMainApi(
                 "tier" to DEFAULT_TIER,
             ),
         )
-        val snapshot = parseTierSnapshot(raw)
+        val fallbackPatch = runCatching { staticData.load()?.version?.split(".")?.take(2)?.joinToString(".") }.getOrNull()
+        val snapshot = parseTierSnapshot(raw, fallbackPatch)
         tierSnapshotCache = CachedSnapshot(now, snapshot)
         return snapshot
     }
 
     /** `tier` endpoint: Emerald+ tier list, always read once from `lane=all` and filtered in memory. */
-    suspend fun tierList(position: String? = null): JsonElement {
-        val snapshot = loadTierSnapshot()
+    suspend fun tierList(position: String? = null, forceRefresh: Boolean = false): JsonElement {
+        val snapshot = loadTierSnapshot(forceRefresh)
         return formatTierList(snapshot, position)
     }
 
@@ -168,10 +171,13 @@ class TrueMainApi(
         internal data class TierSnapshot(
             val lift: Double,
             val rows: List<TierRow>,
+            val patchVersion: String? = null,
         )
 
-        internal fun parseTierSnapshot(raw: JsonObject): TierSnapshot {
-            val tierObj = raw["tier"] as? JsonObject ?: return TierSnapshot(0.0, emptyList())
+        internal fun parseTierSnapshot(raw: JsonObject, fallbackPatch: String? = null): TierSnapshot {
+            val headerPatch = (raw["header"] as? JsonObject)?.get("patch")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+            val patchVersion = headerPatch ?: fallbackPatch?.takeIf { it.isNotBlank() }
+            val tierObj = raw["tier"] as? JsonObject ?: return TierSnapshot(0.0, emptyList(), patchVersion)
             val rawRows = mutableListOf<TierRow>()
             var totalGames = 0L
             var weightedWr = 0.0
@@ -211,7 +217,7 @@ class TrueMainApi(
 
             val lift = if (totalGames > 0) (weightedWr / totalGames) - 0.5 else 0.0
             val rows = rawRows.map { it.copy(winRate = lowered(it.wrPercent, lift)) }
-            return TierSnapshot(lift, rows)
+            return TierSnapshot(lift, rows, patchVersion)
         }
 
         internal fun formatTierList(
@@ -225,6 +231,7 @@ class TrueMainApi(
             }
 
             return buildJsonObject {
+                snapshot.patchVersion?.let { put("patchVersion", it) }
                 put(
                     "tiers",
                     buildJsonArray {

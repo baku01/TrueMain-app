@@ -19,8 +19,10 @@ import { platesBox } from '~/utils/scoreboard-geometry'
  * outlined on the screen at the player's HUD scale (`hud`), moved only by its
  * nudge; dropped from the side, it comes back there.
  */
-const props = defineProps<{ settings: OverlaySettings, chords?: OverlayView['chords'], hud?: HudSettings }>()
+const props = defineProps<{ settings: OverlaySettings, chords?: OverlayView['chords'], hud?: HudSettings, opacity?: number, backdrop?: 'dark' | 'light' }>()
 const emit = defineEmits<{ place: [panel: OverlayPanel, custom: Point], show: [panel: OverlayPanel], hide: [panel: OverlayPanel] }>()
+
+const effectiveOpacity = computed(() => props.opacity ?? props.settings.opacity)
 
 const { t } = useT()
 const screen = currentScreen()
@@ -184,8 +186,13 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <div
         ref="canvas"
-        class="relative w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse_at_40%_35%,var(--ui-bg-accented),var(--ui-bg-muted)_70%)] ring-1 ring-default"
-        :class="ghost?.over && 'ring-primary/60'"
+        class="relative w-full overflow-hidden rounded-lg ring-1 ring-default transition-colors"
+        :class="[
+          props.backdrop === 'light'
+            ? 'bg-[radial-gradient(ellipse_at_40%_35%,#e2e8f0,#cbd5e1_70%)]'
+            : 'bg-[radial-gradient(ellipse_at_40%_35%,var(--ui-bg-accented),var(--ui-bg-muted)_70%)]',
+          ghost?.over && 'ring-primary/60',
+        ]"
         :style="{ aspectRatio: `${screen.width} / ${screen.height}` }"
         :aria-label="t('overlay.editor.screen')"
       >
@@ -194,25 +201,38 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
         <div
           v-for="panel in shown"
           :key="panel"
-          class="group absolute touch-none rounded-sm outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-primary"
-          :class="[drag?.panel === panel && drag.moved ? 'opacity-25' : 'hover:ring-1 hover:ring-primary/60', onScoreboard(panel) ? 'cursor-default' : 'cursor-grab']"
+          class="group absolute touch-none rounded-sm transition-opacity"
           :style="boxStyle(panel)"
-          tabindex="0"
-          role="button"
-          :aria-label="t(onScoreboard(panel) ? 'overlay.editor.panelOnScoreboard' : 'overlay.editor.panelMovable', { panel: OVERLAY_PANEL_INFO[panel].label })"
-          @pointerdown="!onScoreboard(panel) && begin(panel, 'screen', $event)"
-          @keydown="nudge(panel, $event)"
         >
-          <OverlayPanelMock
-            :panel="panel"
-            :zoom="zoom(panel)"
-            :chord="chords?.[panel]?.label"
-            :height="onScoreboard(panel) ? boxOf(panel).height / scaleOf(panel) : undefined"
-            :lanes="panel === 'item-value' ? !settings.laneGold.enabled : undefined"
-            removable
-            @remove="emit('hide', panel)"
-            @measure="measure(panel, $event)"
-          />
+          <div
+            class="size-full rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            :class="[drag?.panel === panel && drag.moved ? 'opacity-25' : 'hover:ring-1 hover:ring-primary/60', onScoreboard(panel) ? 'cursor-default' : 'cursor-grab']"
+            :style="drag?.panel === panel && drag.moved ? undefined : { opacity: effectiveOpacity }"
+            tabindex="0"
+            role="button"
+            :aria-label="t(onScoreboard(panel) ? 'overlay.editor.panelOnScoreboard' : 'overlay.editor.panelMovable', { panel: OVERLAY_PANEL_INFO[panel].label })"
+            @pointerdown="!onScoreboard(panel) && begin(panel, 'screen', $event)"
+            @keydown="nudge(panel, $event)"
+          >
+            <OverlayPanelMock
+              :panel="panel"
+              :zoom="zoom(panel)"
+              :chord="chords?.[panel]?.label"
+              :height="onScoreboard(panel) ? boxOf(panel).height / scaleOf(panel) : undefined"
+              :lanes="panel === 'item-value' ? !settings.laneGold.enabled : undefined"
+              @measure="measure(panel, $event)"
+            />
+          </div>
+          <button
+            type="button"
+            class="absolute -right-1.5 -top-1.5 z-10 flex size-4.5 items-center justify-center rounded-full bg-elevated text-muted opacity-0 shadow ring-1 ring-default transition hover:bg-error hover:text-white focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+            :aria-label="t('overlay.editor.remove', { panel: OVERLAY_PANEL_INFO[panel].label })"
+            :title="t('overlay.editor.remove', { panel: OVERLAY_PANEL_INFO[panel].label })"
+            @pointerdown.stop
+            @click.stop="emit('hide', panel)"
+          >
+            <UIcon name="i-lucide-x" class="size-3" />
+          </button>
         </div>
 
         <p v-if="!shown.length" class="absolute inset-0 flex items-center justify-center text-sm text-muted">
@@ -233,7 +253,7 @@ function nudge(panel: OverlayPanel, event: KeyboardEvent) {
     </aside>
 
     <Teleport to="body">
-      <div v-if="ghost" class="pointer-events-none fixed z-50 rounded-sm shadow-lg ring-1 ring-primary" :class="ghost.dropping && 'opacity-60'" :style="ghost.style">
+      <div v-if="ghost" class="pointer-events-none fixed z-50 rounded-sm shadow-lg ring-1 ring-primary" :style="{ ...ghost.style, opacity: ghost.dropping ? effectiveOpacity * 0.6 : effectiveOpacity }">
         <OverlayPanelMock
           :panel="ghost.panel"
           :zoom="zoom(ghost.panel)"

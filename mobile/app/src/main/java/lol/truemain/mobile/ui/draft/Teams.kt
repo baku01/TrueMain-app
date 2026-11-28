@@ -47,6 +47,7 @@ import lol.truemain.mobile.data.Art
 import lol.truemain.mobile.data.GameData
 import lol.truemain.mobile.data.Position
 import lol.truemain.mobile.ui.components.ChampionIcon
+import lol.truemain.mobile.ui.components.Chip
 import lol.truemain.mobile.ui.components.Eyebrow
 import lol.truemain.mobile.ui.components.Panel
 import lol.truemain.mobile.ui.components.PositionIcon
@@ -59,9 +60,11 @@ import lol.truemain.mobile.ui.theme.Tm
  * last value received and re-anchored on each new one.
  */
 @Composable
-fun rememberCountdown(timeLeftMs: Long, phase: String): Long {
+fun rememberCountdown(timeLeftMs: Long, phase: String, running: Boolean = true): Long {
     var left by remember { mutableLongStateOf(timeLeftMs) }
-    LaunchedEffect(timeLeftMs, phase) {
+    LaunchedEffect(timeLeftMs, phase, running) {
+        left = timeLeftMs
+        if (!running) return@LaunchedEffect
         val deadline = SystemClock.elapsedRealtime() + timeLeftMs
         while (true) {
             left = (deadline - SystemClock.elapsedRealtime()).coerceAtLeast(0)
@@ -85,8 +88,8 @@ private fun draftPhaseLabel(phase: String): String = stringResource(
 
 /** The phase, its countdown, and where the player stands in the turn order. */
 @Composable
-fun DraftHeader(draft: Draft) {
-    val left = rememberCountdown(draft.timeLeftMs, draft.phase)
+fun DraftHeader(draft: Draft, online: Boolean = true) {
+    val left = rememberCountdown(draft.timeLeftMs, draft.phase, running = online)
     // The longest time seen in this phase stands for its length: the client never sends the total.
     var total by remember(draft.phase) { mutableLongStateOf(0L) }
     if (draft.timeLeftMs > total) total = draft.timeLeftMs
@@ -134,12 +137,15 @@ fun DraftHeader(draft: Draft) {
                     color = if (yourTurn) Tm.Ink100 else Tm.Ink200,
                 )
             }
-            Text(
-                stringResource(R.string.draft_seconds, ((left + 999) / 1000).toInt()),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = if (yourTurn && left < 10_000) Tm.Rose400 else Tm.Ink100,
-            )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.draft_seconds, ((left + 999) / 1000).toInt()),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (!online) Tm.Ink400 else if (yourTurn && left < 10_000) Tm.Red else Tm.Ink100,
+                )
+                if (!online) Chip(stringResource(R.string.link_timer_paused), color = Tm.Red)
+            }
         }
         if (total > 0) {
             LinearProgressIndicator(
@@ -263,7 +269,7 @@ private fun CellRow(cell: Cell, data: GameData?, ally: Boolean, me: Boolean, act
                     name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (me) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (me) Color(0xFF86C2FF) else primaryText,
+                    color = if (me) (if (hasArt) Color(0xFF86C2FF) else Tm.colors.primary) else primaryText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = if (ally) TextAlign.Start else TextAlign.End,
@@ -314,12 +320,12 @@ private fun CellRow(cell: Cell, data: GameData?, ally: Boolean, me: Boolean, act
 @Composable
 private fun BansRow(draft: Draft) {
     if (draft.myBans.isEmpty() && draft.theirBans.isEmpty()) return
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-        Bans(draft.myBans, Tm.Blue)
-        Spacer(Modifier.weight(1f))
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Eyebrow(stringResource(R.string.draft_bans))
-        Spacer(Modifier.weight(1f))
-        Bans(draft.theirBans, Tm.Red)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Bans(draft.myBans, Tm.Blue)
+            Bans(draft.theirBans, Tm.Red)
+        }
     }
 }
 

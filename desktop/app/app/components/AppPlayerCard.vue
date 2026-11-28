@@ -44,7 +44,7 @@ const title = computed(() => riotIdLabel(identity.value.gameName, identity.value
 
 <template>
   <UTooltip :text="`${title} · ${status.label}`" :content="{ side: 'bottom' }">
-    <div class="flex h-9 min-w-0 items-center rounded-lg px-1.5 transition-colors hover:bg-accented/60">
+    <NuxtLink to="/" class="flex h-9 min-w-0 items-center rounded-lg px-1.5 transition-colors hover:bg-accented/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
       <Account :identity="identity" :patch="patch || null" size="sm" :to="false" class="min-w-0" :ui="{ body: 'min-w-0 @max-4xl:sr-only', tag: 'hidden' }">
         <template #avatar-badge>
           <span class="absolute -bottom-0.5 -right-0.5 flex size-2.5">
@@ -56,6 +56,6 @@ const title = computed(() => riotIdLabel(identity.value.gameName, identity.value
           <span class="block truncate text-[11px] leading-tight text-muted">{{ status.label }}</span>
         </template>
       </Account>
-    </div>
+    </NuxtLink>
   </UTooltip>
 </template>

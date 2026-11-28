@@ -28,8 +28,10 @@ const PAGES: [string, string, string | null][] = [
   ['/analytics', 'i-tabler-chart-line', 'nav.group.champions'], ['/classes', 'i-tabler-hierarchy-2', 'nav.group.champions'],
   ['/stats', 'i-tabler-chart-dots', 'nav.group.champions'],
   ['/matchup', 'i-tabler-scale', 'nav.group.champions'], ['/jev', 'i-tabler-chess-knight', 'nav.group.champions'], ['/probuild', 'i-tabler-trophy', 'nav.group.builds'],
+  ['/guides', 'i-tabler-book', 'nav.group.builds'],
   ['/kits', 'i-tabler-backpack', 'nav.group.builds'], ['/items', 'i-tabler-flask', 'nav.group.builds'],
   ['/patchnotes', 'i-tabler-news', 'nav.group.builds'], ['/draft', 'i-tabler-users-group', 'nav.inGame'],
+  ['/lobby', 'i-tabler-users-group', 'nav.inGame'],
   ['/game', 'i-tabler-crosshair', 'nav.inGame'], ['/overlay', 'i-tabler-eye', 'nav.inGame'],
   ['/favorites', 'i-tabler-star', null], ['/settings', 'i-tabler-settings', null], ['/nerd-stats', 'i-tabler-math-function', null],
 ]
@@ -57,7 +59,7 @@ const section = computed(() => (page.value?.[2] ? t(page.value[2]) : null))
         <slot name="actions" />
       </div>
     </div>
-    <div v-if="$slots.tabs" class="flex gap-6 border-b border-default">
+    <div v-if="$slots.tabs" class="flex flex-wrap gap-x-6 gap-y-1 overflow-x-auto border-b border-default">
       <slot name="tabs" />
     </div>
     <slot />

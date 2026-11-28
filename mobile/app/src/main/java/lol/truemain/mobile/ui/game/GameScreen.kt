@@ -31,6 +31,7 @@ import kotlinx.serialization.json.JsonElement
 import lol.truemain.mobile.R
 import lol.truemain.mobile.data.GameData
 import lol.truemain.mobile.graph
+import lol.truemain.mobile.link.LinkState
 import lol.truemain.mobile.link.LinkUnavailable
 import lol.truemain.mobile.session.Session
 import lol.truemain.mobile.ui.components.Chip
@@ -59,15 +60,17 @@ private const val POLL_MILLIS = 3_000L
 fun GameScreen() {
     val graph = LocalContext.current.graph
     val data = rememberGameData()
+    val link by graph.link.state.collectAsState()
     val phase by graph.session.phase.collectAsState()
     val state by graph.session.state(Session.GAME).collectAsState()
+    val online = link is LinkState.Open
     val inGame = phase in IN_GAME
     val hasState = state != null
     var polled by remember { mutableStateOf<JsonElement?>(null) }
 
-    LaunchedEffect(inGame, hasState) {
+    LaunchedEffect(inGame, hasState, online) {
         polled = null
-        if (!inGame) return@LaunchedEffect
+        if (!inGame || !online) return@LaunchedEffect
         while (true) {
             if (hasState) {
                 delay(RESYNC_MILLIS)
@@ -85,7 +88,7 @@ fun GameScreen() {
 
     val game = remember(state, polled, data) { liveGameOfState(state, data) ?: liveGameOfPayload(polled, data) }
     when {
-        game != null -> LiveGameView(game, running = inGame, data = data)
+        game != null -> LiveGameView(game, running = inGame && online, offline = inGame && !online, data = data)
         inGame -> Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Loading()
             Text(stringResource(R.string.game_loading), color = Tm.Ink400, style = MaterialTheme.typography.bodyMedium)
@@ -116,14 +119,14 @@ private fun rememberClock(gameTime: Double, running: Boolean): Double {
 }
 
 @Composable
-private fun LiveGameView(game: LiveGame, running: Boolean, data: GameData?) {
+private fun LiveGameView(game: LiveGame, running: Boolean, offline: Boolean, data: GameData?) {
     val clock = rememberClock(game.gameTime, running)
     val first = game.mySide ?: Side.Order
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        GameHeader(game, clock)
+        GameHeader(game, clock, offline)
         game.vitals?.let { VitalsPanel(it) }
         game.objectives?.let { ObjectivesPanel(it, game.mySide, clock) }
         game.timers?.let { TimersPanel(it, clock) }
@@ -133,7 +136,7 @@ private fun LiveGameView(game: LiveGame, running: Boolean, data: GameData?) {
 }
 
 @Composable
-private fun GameHeader(game: LiveGame, clock: Double) {
+private fun GameHeader(game: LiveGame, clock: Double, offline: Boolean) {
     Panel {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -147,6 +150,7 @@ private fun GameHeader(game: LiveGame, clock: Double) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     modeLabel(game.gameMode)?.let { Chip(it) }
                     if (game.mySide == null) Chip(stringResource(R.string.game_spectating), color = Tm.Gold)
+                    if (offline) Chip(stringResource(R.string.link_timer_paused), color = Tm.Red)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

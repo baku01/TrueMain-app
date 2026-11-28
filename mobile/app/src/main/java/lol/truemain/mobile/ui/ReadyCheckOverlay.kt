@@ -1,5 +1,6 @@
 package lol.truemain.mobile.ui
 
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.animation.AnimatedVisibility
@@ -13,11 +14,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,11 +48,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import lol.truemain.mobile.R
 import lol.truemain.mobile.graph
 import lol.truemain.mobile.lcu.double
 import lol.truemain.mobile.lcu.str
+import lol.truemain.mobile.link.LinkState
 import lol.truemain.mobile.session.Session
 import lol.truemain.mobile.ui.components.TmMark
 import lol.truemain.mobile.ui.theme.Tm
@@ -62,13 +68,37 @@ fun ReadyCheckOverlay() {
     val context = LocalContext.current
     val graph = context.graph
     val check by graph.session.state(Session.READY_CHECK).collectAsState()
+    val link by graph.link.state.collectAsState()
     val scope = rememberCoroutineScope()
-    var sending by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<String?>(null) }
+    var errorRes by remember { mutableStateOf<Int?>(null) }
 
     val inProgress = check.str("state") == "InProgress"
     val response = check.str("playerResponse") ?: "None"
-    val timer = check.double("timer") ?: 0.0
+    val serverTimer = check.double("timer") ?: 0.0
+    val isOnline = link is LinkState.Open
     val visible = inProgress && (response == "None" || response == "Accepted")
+
+    var totalSeconds by remember(inProgress) { mutableDoubleStateOf(12.0) }
+    if (serverTimer > totalSeconds) totalSeconds = serverTimer
+    var elapsed by remember(inProgress) { mutableDoubleStateOf(serverTimer) }
+
+    LaunchedEffect(visible) {
+        if (!visible) {
+            pendingAction = null
+            errorRes = null
+        }
+    }
+
+    LaunchedEffect(inProgress, serverTimer, isOnline) {
+        elapsed = serverTimer
+        if (!inProgress || !isOnline) return@LaunchedEffect
+        val anchor = SystemClock.elapsedRealtime()
+        while (true) {
+            delay(200)
+            elapsed = (serverTimer + (SystemClock.elapsedRealtime() - anchor) / 1000.0).coerceAtMost(totalSeconds)
+        }
+    }
 
     LaunchedEffect(inProgress && response == "None") {
         if (inProgress && response == "None") {
@@ -79,6 +109,7 @@ fun ReadyCheckOverlay() {
     AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut()) {
         val primary = Tm.colors.primary
         val cardShape = RoundedCornerShape(16.dp)
+        val remaining = (totalSeconds - elapsed).coerceAtLeast(0.0)
         Box(
             Modifier.fillMaxSize().background(Tm.Ink950.copy(alpha = 0.90f))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
@@ -115,7 +146,7 @@ fun ReadyCheckOverlay() {
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(
-                        progress = { (1f - (timer / 12.0).toFloat()).coerceIn(0f, 1f) },
+                        progress = { (remaining / totalSeconds).toFloat().coerceIn(0f, 1f) },
                         color = Tm.Rose400,
                         trackColor = Tm.Ink800,
                         strokeWidth = 6.dp,
@@ -123,12 +154,29 @@ fun ReadyCheckOverlay() {
                         modifier = Modifier.size(104.dp),
                     )
                     Text(
-                        stringResource(R.string.ready_seconds, (12 - timer.toInt()).coerceAtLeast(0)),
+                        stringResource(R.string.ready_seconds, kotlin.math.ceil(remaining).toInt()),
                         fontFamily = Tm.DisplayFont,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Tm.Ink100,
                     )
+                }
+                if (!isOnline) {
+                    Text(
+                        stringResource(R.string.link_offline),
+                        color = Tm.Red,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                } else {
+                    errorRes?.let { res ->
+                        Text(
+                            stringResource(res),
+                            color = Tm.Red,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
                 if (response == "Accepted") {
                     Text(stringResource(R.string.ready_accepted), color = Tm.Success, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
@@ -136,31 +184,45 @@ fun ReadyCheckOverlay() {
                     Button(
                         shape = Tm.ButtonShape,
                         onClick = {
-                            sending = true
+                            pendingAction = "accept"
+                            errorRes = null
                             scope.launch {
-                                graph.session.act("POST", "/lol-matchmaking/v1/ready-check/accept")
-                                sending = false
+                                val ok = graph.session.act("POST", "/lol-matchmaking/v1/ready-check/accept")
+                                if (!ok) errorRes = R.string.error_generic
+                                pendingAction = null
                             }
                         },
-                        enabled = !sending,
+                        enabled = pendingAction == null,
                         colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.colors.textInverted),
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                     ) {
+                        if (pendingAction == "accept") {
+                            CircularProgressIndicator(Modifier.size(18.dp), color = Tm.colors.textInverted, strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
                         Text(stringResource(R.string.ready_accept), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
                     Row(Modifier.fillMaxWidth()) {
                         OutlinedButton(
                             shape = Tm.ButtonShape,
                             onClick = {
-                                sending = true
+                                pendingAction = "decline"
+                                errorRes = null
                                 scope.launch {
-                                    graph.session.act("POST", "/lol-matchmaking/v1/ready-check/decline")
-                                    sending = false
+                                    val ok = graph.session.act("POST", "/lol-matchmaking/v1/ready-check/decline")
+                                    if (!ok) errorRes = R.string.error_generic
+                                    pendingAction = null
                                 }
                             },
-                            enabled = !sending,
+                            enabled = pendingAction == null,
                             modifier = Modifier.fillMaxWidth().height(44.dp),
-                        ) { Text(stringResource(R.string.ready_decline), color = Tm.Ink300) }
+                        ) {
+                            if (pendingAction == "decline") {
+                                CircularProgressIndicator(Modifier.size(16.dp), color = Tm.Ink300, strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(stringResource(R.string.ready_decline), color = Tm.Ink300)
+                        }
                     }
                 }
             }

@@ -43,10 +43,14 @@ function select(itemId: number) {
 </script>
 
 <template>
-  <div class="surface grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,26rem)] overflow-hidden rounded-xl">
-    <div class="flex min-h-0 flex-col border-r border-default">
+  <div class="surface grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+    <div class="flex min-h-0 flex-col border-b border-default lg:border-b-0 lg:border-r">
       <div class="space-y-2 border-b border-default p-3">
-        <UInput v-model="query" icon="i-lucide-search" :placeholder="t('items.search')" class="w-full" :aria-label="t('items.search')" />
+        <UInput v-model="query" icon="i-lucide-search" :placeholder="t('items.search')" class="w-full" :aria-label="t('items.search')">
+          <template v-if="query" #trailing>
+            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="link" :aria-label="t('common.clearFilters')" @click="query = ''" />
+          </template>
+        </UInput>
         <div class="flex flex-wrap items-center gap-3">
           <UTabs
             v-model="group"

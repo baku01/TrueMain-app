@@ -38,7 +38,7 @@ const red = computed(() => props.game.objectives.chaos.drakes)
 const racing = computed(() => blue.value.length + red.value.length > 0)
 
 const { t } = useT()
-const NAMES: Record<Exclude<ObjectiveKey, 'dragon'>, string> = { grubs: t('overlay.objectives.voidgrubs'), herald: t('overlay.objectives.herald'), baron: t('overlay.objectives.baron') }
+const NAMES = computed<Record<Exclude<ObjectiveKey, 'dragon'>, string>>(() => ({ grubs: t('overlay.objectives.voidgrubs'), herald: t('overlay.objectives.herald'), baron: t('overlay.objectives.baron') }))
 
 const pills = computed(() => {
   const all = timers.value
@@ -46,7 +46,7 @@ const pills = computed(() => {
   return (['dragon', 'grubs', 'herald', 'baron'] as const)
     .map(key => ({
       key,
-      name: key === 'dragon' ? dragonLabel(all) : NAMES[key],
+      name: key === 'dragon' ? dragonLabel(all) : NAMES.value[key],
       icon: objectiveIcon(key, all),
       status: pillStatus(key, all, clock.value),
     }))

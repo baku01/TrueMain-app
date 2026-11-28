@@ -117,10 +117,14 @@ const metal = (name: string, color: string): Record<string, string> => ({
 /** The app's mark (`AppMark`, the app icon): the accent, lit at the top and deepened at the foot. */
 export const markStops = (color: string): [string, string, string] => [mix(color, WHITE, 0.45), color, mix(color, BLACK, 0.4)]
 
+/** Accents too close to loss-red to double as a positive/win indicator. */
+const RED_ACCENTS = new Set<Accent>(['red', 'maroon', 'flamingo'])
+
 /** Every token a flavour restates, as custom properties. */
 export function flavorTokens(theme: PaletteTheme, accent: Accent): Record<string, string> {
   const { palette: p, light } = themeDef(theme)
   const a = p[accent]
+  const good = RED_ACCENTS.has(accent) ? p.green : a
   const tokens: Record<string, string> = {
     'color-scheme': light ? 'light' : 'dark',
     '--ui-bg': light ? p.crust : p.mantle,
@@ -146,8 +150,8 @@ export function flavorTokens(theme: PaletteTheme, accent: Accent): Record<string
     '--color-gold': p.yellow,
     '--color-ally': p.blue,
     '--color-enemy': p.red,
-    '--color-data-good': a,
-    '--color-data-good-dim': mix(a, p.overlay1, 0.5),
+    '--color-data-good': good,
+    '--color-data-good-dim': mix(good, p.overlay1, 0.5),
     '--color-data-mid': light ? p.overlay2 : p.overlay1,
     '--color-data-bad-dim': light ? p.subtext0 : p.overlay0,
     '--color-data-bad': light ? p.subtext1 : p.surface2,

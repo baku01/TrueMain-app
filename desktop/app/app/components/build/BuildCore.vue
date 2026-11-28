@@ -74,7 +74,7 @@ withDefaults(defineProps<{
         <div class="mb-3 flex items-center gap-3">
           <h3 class="text-sm font-semibold text-highlighted">{{ t('build.compact.runes') }}</h3>
           <span v-if="runePage && runePage.games > 0" class="text-xs text-muted">{{ formatPercentage(runePage.winRate, 1) }} · {{ t('build.skillGrid.games', { games: formatCount(runePage.games) }) }}</span>
-          <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" labeled class="ml-auto" />
+          <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" :closed-hint="t('app.status.clientOff')" labeled class="ml-auto" />
         </div>
         <div ref="runesBox" class="flex w-full flex-1 items-center justify-center overflow-hidden">
           <ChampionCoreRunes v-if="runePage && runeTree" :page="runePage" :tree="runeTree" :size="runeSize" :keystone-size="Math.round(runeSize * 1.3)" />
@@ -117,14 +117,14 @@ withDefaults(defineProps<{
             <ChampionCoreRunes v-if="runePage && runeTree" :page="runePage" :tree="runeTree" :size="40" :keystone-size="48" />
             <p v-else-if="!runePage && noRunesMessage" class="text-sm text-muted">{{ noRunesMessage }}</p>
           </div>
-          <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" class="absolute right-3 top-3" />
+          <BuildRuneImport v-if="runePage && runeTree && championName !== null" :page="runePage" :champion="championName" :closed-hint="t('app.status.clientOff')" class="absolute right-3 top-3" />
         </div>
 
         <div class="grid flex-1 content-start gap-x-6 gap-y-5 surface rounded-xl p-4 sm:grid-cols-2">
           <div class="relative">
             <ChampionCoreSpells :summoners="summonerSpells" :summoners-map="summonersMap" :summoners-pending="summonersPending" />
-            <!-- A kit's spell import (#2185), in the summoners' corner as the runes' is in theirs. -->
-            <div v-if="$slots.spells" class="absolute -right-8 top-6"><slot name="spells" /></div>
+            <!-- A kit's spell import (#2185), in the summoners' corner without overlapping Boots. -->
+            <div v-if="$slots.spells" class="absolute right-0 top-0"><slot name="spells" /></div>
           </div>
           <ChampionCoreBoots :boots="boots" :items-map="itemsMap" />
           <div :class="questReward ? '' : 'sm:col-span-2'">

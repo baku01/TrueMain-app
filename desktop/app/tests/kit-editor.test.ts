@@ -212,6 +212,6 @@ describe('KitBuild', () => {
     kitImport.available.value = false
     const away = mount(KitBuild, { props: { kit: kit() }, global })
     expect(away.find('[aria-label="Set these spells in champion select"]').exists()).toBe(false)
-    expect(away.find('[aria-label="Import items into the client"]').exists()).toBe(false)
+    expect(away.get('[aria-label="Import items into the client"]').attributes('disabled')).toBeDefined()
   })
 })

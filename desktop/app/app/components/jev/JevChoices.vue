@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Parts, RankedSlot } from '~/utils/jev-recommend'
 import { formatPercentage } from '#shared/utils/ddragon'
+import { winRateTone } from '#common/utils/rate-tone'
 
 /**
  * Every choice of the build as a table, one panel per choice and one row per
@@ -15,10 +16,10 @@ import { formatPercentage } from '#shared/utils/ddragon'
  * accent, the most played carries its mark, and a panel where the two part
  * says so.
  */
-const props = defineProps<{ ranked: RankedSlot[], championId: number }>()
+const props = defineProps<{ ranked: RankedSlot[], championId: number, compact?: boolean }>()
 const { t } = useT()
-const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
-const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
+const compactNum = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
+const tone = (value: number) => winRateTone(value)
 const percent = (value: number | undefined) => `${Math.round((value ?? 0) * 100)}%`
 const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 const wpaTone = (value: number) => (value >= 0.01 ? 'text-primary' : value <= -0.01 ? 'text-error' : 'text-muted')
@@ -40,7 +41,36 @@ const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5re
 </script>
 
 <template>
-  <div class="overflow-x-auto">
+  <div v-if="props.compact" class="flex flex-col gap-2">
+    <section v-for="{ entry, options } in rows" :key="entry.slot.name" class="rounded-xl bg-accented/15 p-1.5">
+      <ul class="flex flex-col gap-1">
+        <li
+          v-for="option in options"
+          :key="option.key"
+          :class="option.key === entry.pick.key ? 'bg-primary/10 ring-1 ring-primary/40' : ''"
+          class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2 py-1.5"
+        >
+          <span class="flex w-4 shrink-0 flex-col items-center gap-0.5">
+            <UIcon v-if="option.key === entry.pick.key" name="i-tabler-chess-knight" class="size-4 text-primary" :aria-label="t('jev.card.jevPick')" />
+            <UIcon v-if="option.key === entry.standard.key" name="i-tabler-database" class="size-3.5 text-dimmed" :aria-label="t('jev.card.standardPick')" />
+          </span>
+          <span class="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+            <JevOptionVisual :option="option" :champion-id="championId" />
+            <UBadge v-if="option.situational" :label="t('jev.card.situational')" color="warning" variant="subtle" size="xs" />
+            <UBadge v-if="entry.scored[option.key]?.misfit" :label="t('jev.card.misfit')" color="error" variant="subtle" size="xs" :title="t('jev.card.misfitHint')" />
+          </span>
+          <span class="text-sm font-semibold tabular-nums" :class="option.key === entry.pick.key ? 'text-primary' : 'text-muted'" :title="t('jev.card.totalHint')">{{ Math.round((entry.scored[option.key]?.total ?? 0) * 100) }}</span>
+          <span class="w-12 text-right text-xs font-semibold tabular-nums" :class="option.games ? tone(option.winRate) : 'text-dimmed'">{{ option.games ? formatPercentage(option.winRate, 1) : '—' }}</span>
+          <span class="w-18 text-right text-[11px] tabular-nums text-muted">{{ option.games ? `${formatPercentage(option.pickRate, 1)} · ${compactNum.format(option.games)}` : '—' }}</span>
+          <span v-if="entry.scored[option.key]?.answers.length" class="flex flex-wrap gap-1 text-[10px] font-semibold">
+            <span v-for="answer in entry.scored[option.key]?.answers.slice(0, 3) ?? []" :key="answer.need" class="rounded bg-primary/15 px-1.5 py-px text-primary" :title="t('jev.card.answersHint')">{{ t(`jev.need.${answer.need}`) }}</span>
+          </span>
+        </li>
+      </ul>
+    </section>
+  </div>
+
+  <div v-else class="overflow-x-auto">
     <div class="flex min-w-[66rem] flex-col gap-2">
       <!-- The column names, once over every panel. -->
       <div :class="COLUMNS" class="px-2 text-[10px] font-semibold uppercase tracking-wide text-dimmed">
@@ -89,7 +119,7 @@ const COLUMNS = 'grid grid-cols-[1.5rem_11rem_5.5rem_3.5rem_5.5rem_6.5rem_20.5re
 
             <!-- What was measured. -->
             <span class="text-right text-sm font-semibold tabular-nums" :class="option.games ? tone(option.winRate) : 'text-dimmed'">{{ option.games ? formatPercentage(option.winRate, 1) : '—' }}</span>
-            <span class="text-right text-xs tabular-nums text-muted">{{ option.games ? `${formatPercentage(option.pickRate, 1)} · ${compact.format(option.games)}` : '—' }}</span>
+            <span class="text-right text-xs tabular-nums text-muted">{{ option.games ? `${formatPercentage(option.pickRate, 1)} · ${compactNum.format(option.games)}` : '—' }}</span>
             <span class="flex flex-col items-end text-xs font-semibold tabular-nums">
               <span v-if="has(option.wpa)" :class="wpaTone(option.wpa)" :title="t('jev.card.wpaHint')">{{ signed(option.wpa) }}</span>
               <span v-if="has(option.slotWpa)" class="text-[10px]" :class="wpaTone(option.slotWpa)" :title="t('jev.card.slotWpaHint', { games: option.slotGames ?? 0 })">{{ t('jev.card.slot') }} {{ signed(option.slotWpa) }}</span>

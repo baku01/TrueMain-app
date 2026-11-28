@@ -70,7 +70,7 @@ fun IncomingSwaps(draft: Draft, data: GameData?, actions: DraftActions) {
                 Button(shape = Tm.ButtonShape, 
                     onClick = { actions.swap(swap, "accept") },
                     enabled = !actions.busy,
-                    colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.Ink950),
+                    colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.colors.textInverted),
                     modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.draft_accept)) }
                 OutlinedButton(shape = Tm.ButtonShape, onClick = { actions.swap(swap, "decline") }, enabled = !actions.busy, modifier = Modifier.weight(1f)) {

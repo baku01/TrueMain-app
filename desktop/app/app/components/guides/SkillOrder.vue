@@ -67,9 +67,11 @@ watch(() => SKILLS.map(key => spellOf(key)?.iconUrl).concat(spellOf('P')?.iconUr
         role="table"
         :aria-label="t('guides.abilities')"
       >
-        <span role="columnheader" />
-        <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-5 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
-        <template v-for="key in skills" :key="key">
+        <div role="row" class="contents">
+          <span role="columnheader" />
+          <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-5 place-items-center font-medium tabular-nums text-dimmed">{{ level }}</span>
+        </div>
+        <div v-for="key in skills" :key="key" role="row" class="contents">
           <span role="rowheader" class="flex min-w-0 items-center gap-2 pr-2">
             <GuidesAbilityIcon :spell="spellOf(key)" :fallback="rowOf(key)?.image" :name="nameOf(key)" :size="28" />
             <span class="min-w-0 truncate text-xs font-medium text-toned">{{ nameOf(key) }}</span>
@@ -81,7 +83,7 @@ watch(() => SKILLS.map(key => spellOf(key)?.iconUrl).concat(spellOf('P')?.iconUr
             class="grid aspect-square max-h-8 w-full place-items-center rounded-md transition-colors"
             :class="points[level] === key ? (key === 'R' ? 'bg-primary/25 text-primary' : 'bg-primary/12 text-highlighted') : 'bg-accented/25'"
           >{{ points[level] === key ? key : '' }}</span>
-        </template>
+        </div>
       </div>
     </div>
   </div>

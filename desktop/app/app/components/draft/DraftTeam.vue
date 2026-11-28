@@ -139,6 +139,9 @@ function label(row: TeamRow) {
             :draggable="correctable && row.championId !== null"
             :aria-label="label(row)"
             @click="readable(row) && emit('view', row.championId!)"
+            @focus="row.riotId && openCard(index, true)"
+            @blur="openCard(index, false)"
+            @keydown.escape="openCard(index, false)"
             @dragstart="onDragStart($event, row.lane)"
             @dragend="dragging = null"
           >

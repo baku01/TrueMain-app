@@ -109,12 +109,18 @@ internal fun ChampionBuildScreen(championId: Int, position: String?, onPosition:
                 onClick = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(10.dp)
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF080C14).copy(alpha = 0.65f)),
+                    .padding(4.dp)
+                    .size(48.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.builds_back), tint = Color.White, modifier = Modifier.size(18.dp))
+                Box(
+                    Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF080C14).copy(alpha = 0.65f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.builds_back), tint = Color.White, modifier = Modifier.size(18.dp))
+                }
             }
             Row(
                 Modifier
@@ -259,7 +265,7 @@ private fun StatTile(label: String, value: String, valueColor: Color, modifier: 
             color = valueColor,
             maxLines = 1,
         )
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Tm.Ink400, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Tm.Ink400, maxLines = 2, lineHeight = 14.sp, overflow = TextOverflow.Ellipsis)
     }
 }
 

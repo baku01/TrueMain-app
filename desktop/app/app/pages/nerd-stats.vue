@@ -183,15 +183,15 @@ const tab = computed<Tab>({
  * grey with no hue of its own, so "at par" reads as neither side.
  */
 .nerd {
-  --nerd-win: var(--color-rosegold-500);
-  --nerd-loss: #ef4444;
-  --nerd-mid: #2c3038;
+  --nerd-win: var(--color-data-good, var(--color-rosegold-500));
+  --nerd-loss: var(--ui-error, #ef4444);
+  --nerd-mid: var(--ui-bg-accented, #2c3038);
 }
 
 :root:not(.dark) .nerd {
-  --nerd-win: var(--color-rosegold-600);
-  --nerd-loss: #e03131;
-  --nerd-mid: #e4e6ea;
+  --nerd-win: var(--color-data-good, var(--color-rosegold-600));
+  --nerd-loss: var(--ui-error, #e03131);
+  --nerd-mid: var(--ui-bg-accented, #e4e6ea);
 }
 
 .nerd-tab-enter {

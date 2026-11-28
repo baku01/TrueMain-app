@@ -27,14 +27,15 @@ function draw(nodes: ProseNode[]): VNodeArrayChildren {
   return nodes.map((node) => {
     if (typeof node === 'string') return node
     if ('ref' in node) return h(GuidesRef, { reference: node.ref })
-    return h(node.tag, node.attrs, node.children.length ? draw(node.children) : undefined)
+    const attrs = 'data-video' in node.attrs ? { ...node.attrs, tabindex: '0', role: 'button', 'aria-label': t('guides.watchVideo') } : node.attrs
+    return h(node.tag, attrs, node.children.length ? draw(node.children) : undefined)
   })
 }
 
 const Prose: FunctionalComponent<{ nodes: ProseNode[] }> = ({ nodes }) => draw(nodes)
 Prose.props = ['nodes']
 
-async function play(event: MouseEvent) {
+async function play(event: Event) {
   const video = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-video]')?.dataset.video
   if (!video || !/^[\w-]{11}$/.test(video)) return
   if (insideTauri()) {
@@ -53,8 +54,8 @@ async function play(event: MouseEvent) {
       <span class="flex-1 text-sm font-semibold uppercase tracking-wide text-highlighted">{{ chapter.title }}</span>
       <UIcon :name="open ? 'i-lucide-minus' : 'i-lucide-plus'" class="size-4 text-muted" />
     </button>
-    <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions, vuejs-accessibility/click-events-have-key-events -- the click is a video's in the writing -->
-    <div v-if="open" class="guide-html border-t border-default/60 px-5 py-4 text-sm leading-relaxed text-default" :data-watch="t('guides.watchVideo')" @click="play">
+    <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -- delegates clicks/keys to focusable [data-video] buttons -->
+    <div v-if="open" class="guide-html border-t border-default/60 px-5 py-4 text-sm leading-relaxed text-default" :data-watch="t('guides.watchVideo')" @click="play" @keydown.enter.prevent="play" @keydown.space.prevent="play">
       <Prose :nodes="tree" />
     </div>
   </section>

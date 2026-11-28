@@ -2,8 +2,7 @@ package lol.truemain.mobile.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,7 @@ import lol.truemain.mobile.ui.builds.BuildsScreen
 import lol.truemain.mobile.ui.components.TmIcons
 import lol.truemain.mobile.ui.components.TmWordmark
 import lol.truemain.mobile.ui.connect.ConnectScreen
+import lol.truemain.mobile.ui.connect.linkError
 import lol.truemain.mobile.ui.draft.DraftScreen
 import lol.truemain.mobile.ui.game.GameScreen
 import lol.truemain.mobile.ui.home.HomeScreen
@@ -73,7 +77,7 @@ enum class Tab(val label: Int, val icon: ImageVector) {
 
 /** The tab a phase calls for: the phone follows the client the way its window does. */
 fun tabFor(phase: String): Tab? = when (phase) {
-    "Lobby", "Matchmaking", "ReadyCheck" -> Tab.Play
+    "Lobby", "Matchmaking" -> Tab.Play
     "ChampSelect" -> Tab.Draft
     "InProgress", "Reconnect" -> Tab.Game
     else -> null
@@ -86,8 +90,8 @@ fun TrueMainRoot() {
     val paired by graph.link.paired.collectAsState()
     when {
         !paired || state is LinkState.NotPaired || state is LinkState.Revoked -> {
-            Column(Modifier.fillMaxSize().background(Tm.Ink950)) {
-                UpdateBanner(Modifier.statusBarsPadding())
+            Column(Modifier.fillMaxSize().background(Tm.Ink950).statusBarsPadding()) {
+                UpdateBanner()
                 Box(Modifier.weight(1f).fillMaxWidth()) { ConnectScreen(state) }
             }
         }
@@ -100,6 +104,8 @@ private fun Main(state: LinkState) {
     val graph = LocalContext.current.graph
     val phase by graph.session.phase.collectAsState()
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
+    var openBuildRequest by remember { mutableStateOf<Pair<Int, String?>?>(null) }
+    val stateHolder = rememberSaveableStateHolder()
     val liveTab = tabFor(phase)
     LaunchedEffect(phase) { liveTab?.let { tab = it } }
 
@@ -110,20 +116,71 @@ private fun Main(state: LinkState) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
+                ConnectionBanner(state)
                 UpdateBanner()
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (tab) {
-                        Tab.Home -> HomeScreen()
-                        Tab.Play -> PlayScreen()
-                        Tab.Draft -> DraftScreen()
-                        Tab.Game -> GameScreen()
-                        Tab.Builds -> BuildsScreen()
+                    stateHolder.SaveableStateProvider(tab) {
+                        when (tab) {
+                            Tab.Home -> HomeScreen()
+                            Tab.Play -> PlayScreen()
+                            Tab.Draft -> DraftScreen(onOpenFullBuild = { championId, position ->
+                                openBuildRequest = championId to position
+                                tab = Tab.Builds
+                            })
+                            Tab.Game -> GameScreen()
+                            Tab.Builds -> BuildsScreen(
+                                externalTarget = openBuildRequest,
+                                onExternalConsumed = { openBuildRequest = null },
+                            )
+                        }
                     }
                 }
             }
             ReadyCheckOverlay()
         }
     }
+}
+
+@Composable
+private fun ConnectionBanner(state: LinkState) {
+    if (state is LinkState.Open) return
+    val graph = LocalContext.current.graph
+    val offline = state is LinkState.Offline
+    val tint = if (offline) Tm.Red else Tm.Gold
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(tint.copy(alpha = if (Tm.colors.light) 0.12f else 0.16f))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (offline) {
+            Box(Modifier.size(8.dp).background(Tm.Red, CircleShape))
+            Text(
+                linkError(state.code),
+                style = MaterialTheme.typography.labelMedium,
+                color = Tm.Ink100,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(shape = Tm.ButtonShape, onClick = graph.link::retry) {
+                Text(stringResource(R.string.link_retry), color = Tm.colors.primary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            }
+        } else {
+            CircularProgressIndicator(Modifier.size(14.dp), color = Tm.Gold, strokeWidth = 2.dp)
+            Text(
+                when (state) {
+                    is LinkState.Connecting -> state.address?.let { stringResource(R.string.link_connecting_to, it) } ?: stringResource(R.string.link_connecting)
+                    LinkState.Searching -> stringResource(R.string.link_searching)
+                    else -> stringResource(R.string.link_offline)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = Tm.Ink200,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+    HorizontalDivider(thickness = 1.dp, color = tint.copy(alpha = 0.25f))
 }
 
 /** Desktop-matched top bar: TrueMain wordmark on the left, compact PC status pill and menu on the right. */
@@ -145,38 +202,30 @@ private fun TmTopBar(state: LinkState) {
 
 @Composable
 private fun LinkStatusPill(state: LinkState) {
-    val graph = LocalContext.current.graph
     val (dot, text) = when (state) {
         is LinkState.Open -> Tm.Success to state.pc.name
         is LinkState.Connecting -> Tm.Gold to (state.address ?: stringResource(R.string.link_connecting))
         LinkState.Searching -> Tm.Gold to stringResource(R.string.link_searching)
         else -> Tm.Red to stringResource(R.string.link_offline)
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(Tm.colors.bgMuted)
-                .border(1.dp, Tm.colors.border, RoundedCornerShape(8.dp))
-                .padding(horizontal = 9.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(Modifier.size(7.dp).background(dot, CircleShape))
-            Text(
-                text,
-                style = MaterialTheme.typography.labelMedium,
-                color = Tm.Ink200,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 132.dp),
-            )
-        }
-        if (state is LinkState.Offline) {
-            TextButton(shape = Tm.ButtonShape, onClick = graph.link::retry) {
-                Text(stringResource(R.string.link_retry), color = Tm.Rose400, style = MaterialTheme.typography.labelMedium)
-            }
-        }
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Tm.colors.bgMuted)
+            .border(1.dp, Tm.colors.border, RoundedCornerShape(8.dp))
+            .padding(horizontal = 9.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(7.dp).background(dot, CircleShape))
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            color = Tm.Ink200,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 156.dp),
+        )
     }
 }
 
@@ -199,9 +248,9 @@ private fun TmBottomBar(current: Tab, live: Tab?, onSelect: (Tab) -> Unit) {
                     Modifier
                         .weight(1f)
                         .height(62.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
                             onClick = { onSelect(item) },
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -257,8 +306,9 @@ private fun TmBottomBar(current: Tab, live: Tab?, onSelect: (Tab) -> Unit) {
 private fun LinkMenu() {
     val graph = LocalContext.current.graph
     var open by remember { mutableStateOf(false) }
+    var confirmForget by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
-        Icon(Icons.Filled.MoreVert, contentDescription = null, tint = Tm.Ink300)
+        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.menu_more), tint = Tm.Ink300)
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
         DropdownMenuItem(text = { Text(stringResource(R.string.update_check)) }, onClick = {
@@ -267,8 +317,27 @@ private fun LinkMenu() {
         })
         DropdownMenuItem(text = { Text(stringResource(R.string.link_forget)) }, onClick = {
             open = false
-            graph.link.forget()
+            confirmForget = true
         })
+    }
+    if (confirmForget) {
+        AlertDialog(
+            onDismissRequest = { confirmForget = false },
+            title = { Text(stringResource(R.string.confirm_unpair_title)) },
+            text = { Text(stringResource(R.string.confirm_unpair_body)) },
+            confirmButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = {
+                    confirmForget = false
+                    graph.link.forget()
+                }) { Text(stringResource(R.string.action_confirm), color = Tm.Red) }
+            },
+            dismissButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = { confirmForget = false }) {
+                    Text(stringResource(R.string.action_cancel), color = Tm.Ink300)
+                }
+            },
+            containerColor = Tm.Ink900,
+        )
     }
 }
 

@@ -21,7 +21,16 @@ const { items, summoners, runeTree } = useStaticData()
 const { classes: itemClasses } = useItemClasses()
 
 const draft = ref<Kit>(cloneKit(props.kit))
-watch(() => props.kit.id, () => (draft.value = cloneKit(props.kit)))
+const snapshot = ref(JSON.stringify(draft.value))
+const confirmDiscard = ref(false)
+const previousTree = ref<Kit['tree'] | null>(null)
+watch(() => props.kit.id, () => {
+  draft.value = cloneKit(props.kit)
+  snapshot.value = JSON.stringify(draft.value)
+  confirmDiscard.value = false
+  previousTree.value = null
+})
+const dirty = computed(() => JSON.stringify(draft.value) !== snapshot.value)
 
 const issues = computed(() => kitIssues(draft.value, runeTree.value))
 
@@ -79,7 +88,19 @@ function swap(a: number[], b: number[]) {
   const tree = swapNodes(draft.value.tree, a, b, maxDepth(draft.value.boots))
   if (tree) draft.value = { ...draft.value, tree }
 }
-const removeNode = (at: number[]) => (draft.value = { ...draft.value, tree: removeSubtree(draft.value.tree, at) })
+function removeNode(at: number[]) {
+  previousTree.value = cloneKit(draft.value).tree
+  draft.value = { ...draft.value, tree: removeSubtree(draft.value.tree, at) }
+}
+function undoRemove() {
+  if (!previousTree.value) return
+  draft.value = { ...draft.value, tree: previousTree.value }
+  previousTree.value = null
+}
+function requestCancel() {
+  if (dirty.value) confirmDiscard.value = true
+  else emit('cancel')
+}
 const removeStarter = (index: number) => (draft.value = { ...draft.value, starter: draft.value.starter.filter((_, i) => i !== index) })
 const removeBoots = (index: number) => (draft.value = withBoots(draft.value, draft.value.boots.filter((_, i) => i !== index)))
 </script>
@@ -119,26 +140,29 @@ const removeBoots = (index: number) => (draft.value = withBoots(draft.value, dra
     </div>
 
     <div>
-      <p class="stat-label mb-2">{{ t('kit.editor.items') }}</p>
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <p class="stat-label">{{ t('kit.editor.items') }}</p>
+        <UButton v-if="previousTree" size="xs" color="neutral" variant="soft" icon="i-lucide-undo-2" :label="t('common.undo')" @click="undoRemove" />
+      </div>
       <KitTree :tree="draft.tree" :items="items" :boots="draft.boots" editable @pick="target = { kind: 'tree', ...$event }" @remove="removeNode" @swap="swap" />
     </div>
 
-    <div class="flex items-center justify-end gap-2 border-t border-default pt-3">
-      <UButton :label="t('kit.action.cancel')" color="neutral" variant="ghost" @click="emit('cancel')" />
-      <!-- What keeps the kit from being saved, on the button it disables. The
-           tooltip hangs on a wrapper: a disabled button takes no pointer. -->
-      <UTooltip :disabled="!issues.length" :content="{ side: 'top', align: 'end' }">
-        <span class="inline-flex" :tabindex="issues.length ? 0 : undefined">
-          <UButton :label="t('kit.action.save')" icon="i-lucide-check" :disabled="issues.length > 0" :loading="saving" @click="emit('save', draft)" />
-        </span>
-        <template #content>
-          <ul class="space-y-1 text-xs" :aria-label="t('kit.editor.beforeSaving')">
-            <li v-for="issue in issues" :key="issue" class="flex items-center gap-1.5">
-              <UIcon name="i-lucide-triangle-alert" class="size-3.5 shrink-0 text-warning" />{{ issue }}
-            </li>
-          </ul>
-        </template>
-      </UTooltip>
+    <ul v-if="issues.length" class="space-y-1 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning ring-1 ring-inset ring-warning/30" :aria-label="t('kit.editor.beforeSaving')">
+      <li v-for="issue in issues" :key="issue" class="flex items-center gap-1.5">
+        <UIcon name="i-lucide-triangle-alert" class="size-3.5 shrink-0" />{{ issue }}
+      </li>
+    </ul>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-default pt-3">
+      <template v-if="confirmDiscard">
+        <span class="mr-auto text-xs font-medium text-warning">{{ t('common.discardChanges') }}</span>
+        <UButton :label="t('common.cancel')" size="xs" color="neutral" variant="ghost" @click="confirmDiscard = false" />
+        <UButton :label="t('common.confirm')" size="xs" color="error" variant="soft" @click="confirmDiscard = false; emit('cancel')" />
+      </template>
+      <template v-else>
+        <UButton :label="t('kit.action.cancel')" color="neutral" variant="ghost" @click="requestCancel" />
+        <UButton :label="t('kit.action.save')" icon="i-lucide-check" :disabled="issues.length > 0" :loading="saving" @click="emit('save', draft)" />
+      </template>
     </div>
 
     <KitItemPicker v-model:open="pickerOpen" :items="items" :groups="pickerGroups" :blocked="blocked" :blocked-note="target?.kind === 'boots' ? t('kit.picker.alreadyChosen') : t('kit.picker.alreadyOnPath')" :classes="itemClasses" :title="pickerTitle" @pick="picked" />

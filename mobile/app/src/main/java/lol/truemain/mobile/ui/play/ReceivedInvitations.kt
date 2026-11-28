@@ -62,7 +62,7 @@ fun ReceivedInvitations(invitations: JsonElement?, catalog: QueueCatalog?, actio
                 FilledIconButton(
                     onClick = { actions.run("accept:$id", "POST", "/lol-lobby/v2/received-invitations/$id/accept") },
                     enabled = actions.idle,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Tm.Rose400, contentColor = Tm.Ink950),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Tm.Rose400, contentColor = Tm.colors.textInverted),
                 ) { Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.play_accept)) }
             }
         }

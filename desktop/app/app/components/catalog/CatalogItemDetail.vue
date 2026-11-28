@@ -20,7 +20,7 @@ const parsed = computed(() => (props.entry.item.description ? parseItemDescripti
 
 <template>
   <div class="space-y-4">
-    <header class="relative overflow-hidden rounded-xl border border-default bg-gradient-to-br from-rosegold-950/70 via-elevated to-elevated p-4">
+    <header class="relative overflow-hidden rounded-xl border border-default bg-gradient-to-br from-primary/10 via-elevated to-elevated p-4">
       <div class="flex items-center gap-4">
         <SkeletonImage :src="entry.item.iconUrl" :alt="entry.item.name" :width="64" :height="64" class="size-16 shrink-0 rounded-xl shadow-lg ring-2 ring-primary/50" />
         <div class="min-w-0">

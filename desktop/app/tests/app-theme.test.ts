@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { appIconSvg } from '~/utils/app-icon'
 import { ACCENTS_KEY, ACCENT_KEY, DARK_FLAVOR_KEY, THEME_KEY, captionColor, flavorTokens, readThemeChoice, themeCss } from '~/utils/app-theme'
-import { THEMES } from '~/utils/themes'
+import { THEMES, themeDef } from '~/utils/themes'
 import { PALETTES, mix } from '~/utils/catppuccin'
 
 const storage = (values: Record<string, string>) => ({ getItem: (key: string) => values[key] ?? null })
@@ -119,5 +119,13 @@ describe('app theme', () => {
     expect(appIconSvg({ theme: 'macchiato', accent: 'green' })).toContain(`fill="${PALETTES.macchiato.crust}"`)
     expect(appIconSvg({ theme: 'macchiato', accent: 'green' })).toContain(`stop-color="${PALETTES.macchiato.green}"`)
     expect(appIconSvg({ theme: 'latte', accent: 'green' })).toContain(`fill="${PALETTES.latte.base}"`)
+  })
+
+  it('decouples positive data colour from red-family accents so wins and losses stay distinct', () => {
+    for (const [theme, accent] of [['soviet', 'red'], ['christmas', 'red'], ['mocha', 'maroon']] as const) {
+      const tokens = flavorTokens(theme, accent)
+      expect(tokens['--color-data-good']).not.toBe(tokens['--ui-error'])
+      expect(tokens['--color-data-good']).toBe(themeDef(theme).palette.green)
+    }
   })
 })

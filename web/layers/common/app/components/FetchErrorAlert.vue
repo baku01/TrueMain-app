@@ -7,10 +7,16 @@ const props = defineProps<{
   title: string
   /** Overrides the line derived from `error`. Reserved for a failure the app diagnoses itself. */
   description?: string
+  /** Optional retry action; renders an inline button when provided. */
+  onRetry?: () => void
   class?: string
 }>()
 
+const { t } = useT()
 const description = computed(() => props.description ?? describeFetchError(props.error))
+const actions = computed(() => (props.onRetry
+  ? [{ label: t('common.retry'), icon: 'i-lucide-refresh-cw', color: 'error' as const, variant: 'subtle' as const, onClick: props.onRetry }]
+  : undefined))
 </script>
 
 <template>
@@ -33,6 +39,7 @@ const description = computed(() => props.description ?? describeFetchError(props
     icon="i-lucide-triangle-alert"
     :title="title"
     :description="description"
+    :actions="actions"
     :class="props.class"
   />
 </template>

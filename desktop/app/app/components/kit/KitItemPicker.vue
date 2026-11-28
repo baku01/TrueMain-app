@@ -65,7 +65,11 @@ function pick(itemId: number) {
   <UModal v-model:open="open" :title="title" :ui="{ content: 'max-w-xl', body: 'p-0 sm:p-0' }">
     <template #body>
       <div class="space-y-2 border-b border-default p-3">
-        <UInput v-model="query" icon="i-lucide-search" :placeholder="t('kit.picker.search')" class="w-full" :aria-label="t('kit.picker.search')" />
+        <UInput v-model="query" autofocus icon="i-lucide-search" :placeholder="t('kit.picker.search')" class="w-full" :aria-label="t('kit.picker.search')">
+          <template v-if="query" #trailing>
+            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="link" :aria-label="t('common.clearFilters')" @click="query = ''" />
+          </template>
+        </UInput>
         <UTabs
           v-if="filtersByClass"
           v-model="shopClass"
@@ -89,6 +93,7 @@ function pick(itemId: number) {
               class="rounded transition hover:brightness-125 focus-visible:outline-2 focus-visible:outline-primary aria-disabled:cursor-not-allowed aria-disabled:opacity-30 aria-disabled:hover:brightness-100"
               :aria-disabled="blocked.includes(item.id)"
               :aria-label="blocked.includes(item.id) ? `${item.name}, ${note}` : item.name"
+              :title="blocked.includes(item.id) ? `${item.name} — ${note}` : item.name"
               @click="pick(item.id)"
             >
               <GameTooltipItemIcon :item="item" :width="36" :height="36" class="size-9 rounded" />

@@ -19,16 +19,17 @@ const { nameOf } = useChampionStatics()
 const read = ref<CounterRead | null>(null)
 const failed = ref(false)
 const laning = ref(false)
+const attempt = ref(0)
 
-watch(() => `${props.championId}:${props.position}`, async (key) => {
+watch(() => `${props.championId}:${props.position}:${attempt.value}`, async (key) => {
   read.value = null
   failed.value = false
   try {
     const answer = await readCounters(props.championId, props.position)
-    if (key === `${props.championId}:${props.position}`) read.value = answer
+    if (key === `${props.championId}:${props.position}:${attempt.value}`) read.value = answer
   }
   catch {
-    failed.value = true
+    if (key === `${props.championId}:${props.position}:${attempt.value}`) failed.value = true
   }
 }, { immediate: true })
 
@@ -47,7 +48,10 @@ const name = computed(() => nameOf(props.championId))
       <StatsSourceBadge v-if="read" :source="read.source" />
     </div>
 
-    <div v-if="failed" class="surface rounded-2xl p-6 text-center text-sm text-muted">{{ t('counters.failed') }}</div>
+    <div v-if="failed" class="surface flex flex-col items-center gap-3 rounded-2xl p-6 text-center text-sm text-muted">
+      <p>{{ t('counters.failed') }}</p>
+      <UButton :label="t('common.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="subtle" @click="attempt++" />
+    </div>
     <div v-else-if="!read" class="grid gap-3 lg:grid-cols-2">
       <USkeleton v-for="table in 2" :key="table" class="h-96 rounded-2xl" />
     </div>

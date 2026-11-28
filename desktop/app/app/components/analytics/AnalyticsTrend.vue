@@ -27,13 +27,14 @@ const charts = computed(() => (['winRate', 'pickRate', 'banRate', 'games'] as co
   const min = Math.min(...values)
   const max = Math.max(...values)
   const span = max - min || 1
-  const path = (line: TrendSeries) => line.points.map((point, index) => {
-    const x = line.points.length === 1 ? W / 2 : (index / (line.points.length - 1)) * W
-    const y = H - 8 - ((point.value - min) / span) * (H - 16)
-    return `${index ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
+  const pointCoords = (line: TrendSeries) => line.points.map((point, index) => ({
+    x: line.points.length === 1 ? W / 2 : (index / (line.points.length - 1)) * W,
+    y: H - 8 - ((point.value - min) / span) * (H - 16),
+    label: `${point.label}: ${format(point.value)}`,
+  }))
+  const path = (line: TrendSeries) => pointCoords(line).map((pt, index) => `${index ? 'L' : 'M'}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ')
   const format = (value: number) => (key === 'games' ? Math.round(value).toLocaleString() : formatPercentage(value, 2))
-  return { key, series, path, min: format(min), max: format(max), last: series[0]?.points.at(-1) ? format(series[0].points.at(-1)!.value) : '—', single: series.every(line => line.points.length < 2) }
+  return { key, series, path, pointCoords, min: format(min), max: format(max), last: series[0]?.points.at(-1) ? format(series[0].points.at(-1)!.value) : '—', single: series.every(line => line.points.length < 2) }
 }).filter(chart => chart.series.length))
 const brackets = computed(() => [...new Set(props.trend.winRate.map(line => line.label))])
 </script>
@@ -52,6 +53,11 @@ const brackets = computed(() => [...new Set(props.trend.winRate.map(line => line
         <p class="text-lg font-semibold tabular-nums text-highlighted">{{ chart.last }}</p>
         <svg v-if="!chart.single" :viewBox="`0 0 ${W} ${H}`" class="mt-1 h-28 w-full" preserveAspectRatio="none" role="img" :aria-label="t(`analytics.trend.${chart.key}`)">
           <path v-for="line in [...chart.series].reverse()" :key="line.label" :d="chart.path(line)" fill="none" :stroke="COLORS[line.label] ?? 'var(--ui-text-dimmed)'" :stroke-width="line.label === 'all' ? 2.5 : 1.25" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+          <g v-if="chart.series[0]">
+            <circle v-for="(pt, idx) in chart.pointCoords(chart.series[0])" :key="idx" :cx="pt.x" :cy="pt.y" r="5" fill="transparent" class="cursor-pointer hover:fill-primary/40">
+              <title>{{ pt.label }}</title>
+            </circle>
+          </g>
         </svg>
         <div v-if="!chart.single" class="flex justify-between text-[10px] tabular-nums text-dimmed"><span>{{ chart.min }}</span><span>{{ chart.max }}</span></div>
       </div>

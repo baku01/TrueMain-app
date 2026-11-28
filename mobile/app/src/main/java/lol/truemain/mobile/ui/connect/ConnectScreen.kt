@@ -1,6 +1,7 @@
 package lol.truemain.mobile.ui.connect
 
 import android.app.Activity
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.foundation.background
@@ -13,11 +14,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -80,6 +85,7 @@ fun ConnectScreen(state: LinkState) {
         graph.link.pair(invite)
     }
 
+    val connecting = linkState is LinkState.Connecting || linkState is LinkState.Searching
     val primary = Tm.colors.primary
     Box(Modifier.fillMaxSize().background(Tm.colors.bg)) {
         // Subtle radial glow at top, echoing desktop's `.tm-emblem`
@@ -94,7 +100,12 @@ fun ConnectScreen(state: LinkState) {
                 ),
         )
         Column(
-            Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
+            Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Spacer(Modifier.height(16.dp))
@@ -166,6 +177,7 @@ fun ConnectScreen(state: LinkState) {
 
             Button(
                 shape = Tm.ButtonShape,
+                enabled = !connecting,
                 onClick = {
                     problem = null
                     runCatching {
@@ -190,9 +202,24 @@ fun ConnectScreen(state: LinkState) {
             OutlinedTextField(
                 value = pasted,
                 onValueChange = { pasted = it },
+                enabled = !connecting,
                 label = { Text(stringResource(R.string.connect_paste)) },
                 singleLine = true,
                 shape = Tm.ButtonShape,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (!connecting && pasted.isNotBlank()) pair(pasted) }),
+                trailingIcon = {
+                    TextButton(
+                        enabled = !connecting,
+                        onClick = {
+                            val clipboard = context.getSystemService(ClipboardManager::class.java)
+                            val clip = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString()?.trim()
+                            if (!clip.isNullOrEmpty()) pasted = clip
+                        },
+                    ) {
+                        Text(stringResource(R.string.connect_paste_button), color = Tm.colors.primary, style = MaterialTheme.typography.labelMedium)
+                    }
+                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Tm.colors.primary,
                     unfocusedBorderColor = Tm.colors.border,
@@ -202,7 +229,7 @@ fun ConnectScreen(state: LinkState) {
                 modifier = Modifier.fillMaxWidth(),
             )
             if (pasted.isNotBlank()) {
-                TextButton(shape = Tm.ButtonShape, onClick = { pair(pasted) }) {
+                TextButton(shape = Tm.ButtonShape, enabled = !connecting, onClick = { pair(pasted) }) {
                     Text(stringResource(R.string.connect_paste_action), color = Tm.Rose400)
                 }
             }

@@ -68,7 +68,7 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
             </span>
             <span v-if="entry" class="w-11 text-right text-xs font-semibold tabular-nums" :class="winRateTone(entry.winRate)">{{ formatPercentage(entry.winRate) }}</span>
           </button>
-          <DraftChampionAction :champion-id="championId" compact class="opacity-0 transition-opacity group-hover:opacity-100" />
+          <DraftChampionAction :champion-id="championId" compact class="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100" />
         </li>
       </ul>
       <p v-else class="px-2.5 pb-2.5 text-[11px] text-dimmed">{{ t('draft.side.favoritesEmpty') }}</p>
@@ -91,7 +91,7 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
             </span>
             <span class="w-11 text-right text-xs font-semibold tabular-nums text-data-good">{{ formatPercentage(counter.winRate) }}</span>
           </button>
-          <DraftChampionAction :champion-id="counter.championId" compact class="opacity-0 transition-opacity group-hover:opacity-100" />
+          <DraftChampionAction :champion-id="counter.championId" compact class="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100" />
         </li>
       </ul>
     </details>
@@ -112,7 +112,7 @@ const standout = (reading: EnemyReading) => FACTS.filter(fact => reading.read[fa
             </span>
             <span class="w-11 text-right text-xs font-semibold tabular-nums text-highlighted">{{ formatPercentage(entry.winRate) }}</span>
           </button>
-          <DraftChampionAction :champion-id="entry.championId" compact class="opacity-0 transition-opacity group-hover:opacity-100" />
+          <DraftChampionAction :champion-id="entry.championId" compact class="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100" />
         </li>
       </ul>
     </details>

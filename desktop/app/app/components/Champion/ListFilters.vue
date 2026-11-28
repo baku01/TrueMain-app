@@ -43,6 +43,11 @@ function onPatchChange(value: unknown) {
   if (typeof value !== 'string' || !value) return
   update({ patch: value })
 }
+
+const hasActiveFilters = computed(() => Boolean(filterChampionId.value !== null || selectedPosition.value !== null || filters.value.patch || filters.value.eloBracket || filters.value.truemainsOnly))
+function clearAll() {
+  update({ championId: null, position: null, eloBracket: null, patch: null, truemainsOnly: false })
+}
 </script>
 
 <template>
@@ -52,6 +57,7 @@ function onPatchChange(value: unknown) {
       :champion-id="filterChampionId"
       :placeholder="t('champion.searchForChampion')"
       trigger-class="w-56"
+      size="sm"
       @update:champion-id="value => update({ championId: value })"
     />
     <RolePicker
@@ -74,6 +80,15 @@ function onPatchChange(value: unknown) {
       size="sm"
       class="w-24"
       @update:model-value="onPatchChange"
+    />
+    <UButton
+      v-if="hasActiveFilters"
+      size="xs"
+      color="neutral"
+      variant="ghost"
+      icon="i-lucide-rotate-ccw"
+      :label="t('common.clearFilters')"
+      @click="clearAll"
     />
   </div>
 </template>

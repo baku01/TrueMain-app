@@ -20,7 +20,7 @@ const router = useRouter()
 
 const championId = computed(() => Number(route.params.id))
 const { nameOf, portraitOf, splashOf } = useChampionStatics()
-const { entries: defaultEntries, patch: defaultPatch } = useTierList()
+const { entries: defaultEntries, patch: defaultPatch, status: tierListStatus } = useTierList()
 
 const requestedPatch = computed(() => (typeof route.query.patch === 'string' && route.query.patch ? route.query.patch : null))
 const requestedElo = computed(() => (typeof route.query.elo === 'string' && route.query.elo ? route.query.elo.toUpperCase() : null))
@@ -31,14 +31,17 @@ const customSlice = computed(() => Boolean(
 
 const sliceEntries = shallowRef<TierEntry[] | null>(null)
 const slicePatch = ref('')
+const sliceLoading = ref(false)
 let sliceToken = 0
 watch([requestedPatch, requestedElo, customSlice], async ([patchQuery, eloQuery, isCustom]) => {
   const token = ++sliceToken
   if (!isCustom) {
     sliceEntries.value = null
     slicePatch.value = ''
+    sliceLoading.value = false
     return
   }
+  sliceLoading.value = true
   const query: Record<string, string> = {}
   if (patchQuery) query.patch = patchQuery
   if (eloQuery) query.eloBracket = eloQuery
@@ -51,10 +54,15 @@ watch([requestedPatch, requestedElo, customSlice], async ([patchQuery, eloQuery,
   catch {
     if (token === sliceToken) sliceEntries.value = null
   }
+  finally {
+    if (token === sliceToken) sliceLoading.value = false
+  }
 }, { immediate: true })
 
 const entries = computed(() => sliceEntries.value ?? defaultEntries.value)
 const patch = computed(() => slicePatch.value || defaultPatch.value)
+const tierListSettled = computed(() => tierListStatus.value === 'ready' || tierListStatus.value === 'error')
+const heroLoading = computed(() => !entry.value && (!tierListSettled.value || sliceLoading.value))
 
 /** The lanes the champion is tiered on, most played first. */
 const lanes = computed<Lane[]>(() => entries.value
@@ -67,7 +75,9 @@ const lanes = computed<Lane[]>(() => entries.value
 const lane = computed<Lane | null>({
   get: () => {
     const asked = String(route.query.position ?? '').toUpperCase() as Lane
-    return POSITIONS.includes(asked) ? asked : lanes.value[0] ?? null
+    if (POSITIONS.includes(asked)) return asked
+    if (lanes.value[0]) return lanes.value[0]
+    return tierListSettled.value ? 'MIDDLE' : null
   },
   set: value => void router.replace({ query: { ...route.query, position: value ?? undefined } }),
 })
@@ -127,10 +137,17 @@ const heroTrend = computed<ChampionTrendPoint[] | null>(() => {
 
 <template>
   <div class="flex h-full flex-col">
-    <!-- The site's champion banner: the tier list's sample for the lane and the
+    <!-- Breadcrumb and champion banner: the tier list's sample for the lane and the
          lane's figures against the patch before; the app's lane picker stands in
          for the lane icon. -->
-    <div class="shrink-0 px-4 pt-4">
+    <div class="shrink-0 space-y-2 px-4 pt-3">
+      <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-xs text-muted">
+        <UButton icon="i-lucide-arrow-left" :label="t('app.page.champions')" to="/champions" size="xs" color="neutral" variant="ghost" />
+        <span class="text-dimmed">/</span>
+        <NuxtLink to="/tierlist" class="rounded px-1.5 py-0.5 transition-colors hover:bg-accented/50 hover:text-highlighted">{{ t('app.page.tierlist') }}</NuxtLink>
+        <span class="text-dimmed">/</span>
+        <span class="font-medium text-highlighted">{{ nameOf(championId) }}</span>
+      </nav>
       <ChampionHero
         class="on-art"
         :champion-name="nameOf(championId)"
@@ -142,12 +159,21 @@ const heroTrend = computed<ChampionTrendPoint[] | null>(() => {
         :total-games="entry?.games ?? heroTrend?.at(-1)?.games ?? 0"
         :tier="entry?.tier ?? null"
         :trend="heroTrend"
-        :trend-loading="trendPending && !entry"
+        :loading="heroLoading"
+        :trend-loading="(trendPending || heroLoading) && !entry"
       >
-        <template v-if="lanes.length" #lane>
+        <template #lane>
           <RolePicker v-model:position="lane" hide-all />
         </template>
         <template #actions>
+          <UButton
+            :to="{ path: '/analytics', query: { champion: String(championId), ...(lane ? { position: lane } : {}) } }"
+            icon="i-tabler-chart-dots-3"
+            :label="t('nav.analytics')"
+            size="sm"
+            color="neutral"
+            variant="subtle"
+          />
           <FavoriteToggle
             :champion="{ championId, position: lane }"
             :champion-label="[nameOf(championId), positionLabel(lane)].filter(Boolean).join(' ')"
@@ -201,6 +227,10 @@ const heroTrend = computed<ChampionTrendPoint[] | null>(() => {
           </div>
         </template>
       </BuildView>
+    </div>
+    <div v-else class="flex min-h-0 flex-1 flex-col gap-3 p-4" aria-busy="true">
+      <USkeleton class="h-10 w-80 rounded-lg" />
+      <USkeleton class="min-h-64 flex-1 rounded-xl" />
     </div>
   </div>
 </template>

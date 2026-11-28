@@ -18,11 +18,12 @@ import { nudgeLabel } from '~/utils/scoreboard-geometry'
  * Not `/overlay/<panel>`: those are the panels' own windows (`[panel].vue`),
  * drawn outside the app's shell.
  */
-const { view, save, preview, readBinds } = useGameOverlay()
+const { view, error: overlayError, reload, save, preview, readBinds } = useGameOverlay()
 const current = computed(() => view.value?.settings ?? null)
+const previewBackdrop = ref<'dark' | 'light'>('dark')
 
 const { t } = useT()
-const SHOWS: { value: OverlayShow, label: string }[] = [{ value: 'always', label: t('overlay.settings.showAlways') }, { value: 'whileDead', label: t('overlay.settings.showWhileDead') }]
+const SHOWS = computed<{ value: OverlayShow, label: string }[]>(() => [{ value: 'always', label: t('overlay.settings.showAlways') }, { value: 'whileDead', label: t('overlay.settings.showWhileDead') }])
 
 function apply(change: Partial<OverlaySettings>) {
   void save(change)
@@ -87,7 +88,10 @@ function resize(panel: OverlayPanel, value: number | undefined) {
   resized.add(panel)
   settle({})
 }
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  if (Object.keys(pending).length > 0 || resized.size > 0) flush()
+})
 
 // The on-screen preview lasts as long as this page.
 onBeforeUnmount(() => void preview(false))
@@ -118,7 +122,8 @@ onBeforeUnmount(() => void preview(false))
       />
       <UAlert v-else-if="view?.notice" color="neutral" variant="subtle" icon="i-lucide-info" :description="view.notice" />
 
-      <USkeleton v-if="!current" class="aspect-video w-full rounded-xl" />
+      <FetchErrorAlert v-if="overlayError && !current" :title="t('overlay.settings.loadFailed')" :on-retry="() => void reload()" />
+      <USkeleton v-else-if="!current" class="aspect-video w-full rounded-xl" />
       <template v-else>
         <section class="surface space-y-4 rounded-xl p-5" data-overlay-layout>
           <header class="flex flex-wrap items-start gap-3">
@@ -126,8 +131,17 @@ onBeforeUnmount(() => void preview(false))
             <div class="min-w-0 flex-1 space-y-1">
               <h2 class="text-sm font-semibold text-highlighted">{{ t('overlay.layout.title') }}</h2>
               <p class="text-xs text-muted">{{ view?.preview ? t('overlay.settings.onScreenPreviewing') : t('overlay.layout.description') }}</p>
+              <p class="text-[11px] text-dimmed">{{ t('overlay.layout.clickThrough') }}</p>
             </div>
             <div class="flex shrink-0 flex-wrap gap-2">
+              <UButton
+                :label="previewBackdrop === 'dark' ? t('overlay.layout.backdropLight') : t('overlay.layout.backdropDark')"
+                :icon="previewBackdrop === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon'"
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                @click="previewBackdrop = previewBackdrop === 'dark' ? 'light' : 'dark'"
+              />
               <UButton v-if="moved" :label="t('overlay.settings.resetPositions')" icon="i-lucide-rotate-ccw" size="sm" color="neutral" variant="ghost" @click="resetPositions" />
               <UButton
                 :label="view?.preview ? t('overlay.settings.done') : t('overlay.settings.placeOnScreen')"
@@ -144,6 +158,8 @@ onBeforeUnmount(() => void preview(false))
             :settings="current"
             :chords="view?.chords"
             :hud="view?.hud"
+            :opacity="opacity"
+            :backdrop="previewBackdrop"
             :class="!current.enabled && 'opacity-60'"
             @place="place"
             @show="show"
@@ -175,9 +191,20 @@ onBeforeUnmount(() => void preview(false))
                   @change="setTrigger(panel, $event)"
                 />
                 <div class="space-y-1.5">
-                  <div class="flex items-baseline justify-between text-xs">
+                  <div class="flex items-center justify-between text-xs">
                     <span class="text-muted">{{ t('overlay.settings.size') }}</span>
-                    <span class="stat-value">{{ formatPercentage(sizeOf(panel), 0) }}</span>
+                    <div class="flex items-center gap-1.5">
+                      <button
+                        v-if="Math.round(sizeOf(panel) * 100) !== 100"
+                        type="button"
+                        class="rounded px-1 text-[10px] font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        :title="t('overlay.settings.resetSize')"
+                        @click="resize(panel, 1)"
+                      >
+                        100%
+                      </button>
+                      <span class="stat-value">{{ formatPercentage(sizeOf(panel), 0) }}</span>
+                    </div>
                   </div>
                   <USlider
                     :model-value="sizeOf(panel)"

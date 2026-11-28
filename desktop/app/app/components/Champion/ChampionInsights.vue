@@ -22,15 +22,20 @@ const { championStatic, loadChampion, items } = useStaticData()
 
 const insights = shallowRef<ChampionInsights | null>(null)
 const status = ref<'pending' | 'ready' | 'error'>('pending')
-watch(() => props.championId, async (id) => {
+const attempt = ref(0)
+let latest = 0
+watch([() => props.championId, attempt], async ([id]) => {
+  const token = ++latest
   status.value = 'pending'
   loadChampion(id)
   try {
-    insights.value = await readChampionInsights(id)
+    const answer = await readChampionInsights(id)
+    if (token !== latest) return
+    insights.value = answer
     status.value = 'ready'
   }
   catch {
-    status.value = 'error'
+    if (token === latest) status.value = 'error'
   }
 }, { immediate: true })
 
@@ -56,7 +61,11 @@ const KEY_TONE: Record<string, string> = { P: 'text-dimmed', Q: 'text-toned', W:
       <div v-if="status === 'pending'" class="space-y-3" aria-busy="true">
         <USkeleton v-for="i in 8" :key="i" class="h-5 w-full" />
       </div>
-      <p v-else-if="!insights || status === 'error'" class="py-6 text-center text-sm text-muted">{{ t('insights.none') }}</p>
+      <div v-else-if="status === 'error'" class="flex flex-col items-center gap-3 py-6 text-center text-sm text-muted">
+        <p>{{ t('stats.failed') }}</p>
+        <UButton :label="t('common.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="subtle" @click="attempt++" />
+      </div>
+      <p v-else-if="!insights" class="py-6 text-center text-sm text-muted">{{ t('insights.none') }}</p>
       <template v-else>
         <div v-if="embedded" class="flex flex-wrap gap-1" role="tablist">
           <UButton

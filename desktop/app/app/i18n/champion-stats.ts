@@ -61,7 +61,7 @@ export default {
     'mastery.description': 'The win rate of players at each champion mastery level and up. Improvement is how much more the 100+ players win than the 5+ ones; lanes under a tenth of a champion\'s games show only when searched for.',
   },
   'pt-BR': {
-    'nav.stats': 'Estatísticas',
+    'nav.stats': 'Estatísticas de campeões',
     'counters.tab': 'Counters',
     'counters.description': 'Ordenado pelo quanto a taxa de vitória de cada confronto se afasta do que as taxas de {champion} e do oponente preveem, não pela taxa de vitória pura.',
     'counters.laning': 'Só a fase de rotas',

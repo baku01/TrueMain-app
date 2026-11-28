@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,10 +56,10 @@ internal fun winRateColor(winRate: Double?): Color = when {
 
 /** A rate over its label, as the site's tables print them. */
 @Composable
-internal fun Rate(value: Double?, label: String, color: Color = Tm.Ink200, width: Dp = 46.dp) {
-    Column(Modifier.width(width), horizontalAlignment = Alignment.End) {
-        Text(percent(value), color = color, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
-        Text(label, color = Tm.Ink500, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+internal fun Rate(value: Double?, label: String, color: Color = Tm.Ink200, width: Dp = 50.dp) {
+    Column(Modifier.widthIn(min = width), horizontalAlignment = Alignment.End) {
+        Text(percent(value), color = color, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
+        Text(label, color = Tm.Ink500, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false)
     }
 }
 
@@ -129,12 +131,23 @@ internal fun SpellsLine(spells: JsonElement?, data: GameData?) {
     }
 }
 
-private fun skillColor(key: String): Color = when (key.uppercase()) {
-    "Q" -> Color(0xFF38BDF8) // Sky blue
-    "W" -> Color(0xFF34D399) // Emerald
-    "E" -> Color(0xFFFBBF24) // Amber
-    "R" -> Color(0xFFF472B6) // Rose
-    else -> Color(0xFF52A8FF)
+@Composable
+private fun skillColor(key: String): Color = if (Tm.colors.light) {
+    when (key.uppercase()) {
+        "Q" -> Color(0xFF0284C7) // Deep sky
+        "W" -> Color(0xFF059669) // Deep emerald
+        "E" -> Color(0xFFB45309) // Deep amber
+        "R" -> Color(0xFFBE185D) // Deep rose
+        else -> Color(0xFF1D4ED8)
+    }
+} else {
+    when (key.uppercase()) {
+        "Q" -> Color(0xFF38BDF8) // Sky blue
+        "W" -> Color(0xFF34D399) // Emerald
+        "E" -> Color(0xFFFBBF24) // Amber
+        "R" -> Color(0xFFF472B6) // Rose
+        else -> Color(0xFF52A8FF)
+    }
 }
 
 /**

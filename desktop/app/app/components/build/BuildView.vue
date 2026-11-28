@@ -10,6 +10,7 @@ import type { Needs } from '~/utils/jev-recommend'
 import type { DraftOptional } from '~/utils/jev-optionals'
 import { situationalFromTree } from '~/utils/item-set'
 import { formatPercentage } from '#shared/utils/ddragon'
+import { winRateTone } from '#common/utils/rate-tone'
 import { kitPaths } from '~/utils/kit-tree'
 import { draftBlocks } from '~/utils/jev-optionals'
 import { REMEMBER_BUILD, useBuildOptions, usePlaystylePreset } from '~/composables/useBuildOptions'
@@ -118,7 +119,6 @@ const importName = computed(() => {
   if (!name) return null
   return props.draft?.opponentId ? `${name} vs ${nameOf(props.draft.opponentId)}` : name
 })
-/** What the item set button imports: the build on screen, named for the set's title. */
 /** The items that answer the draft, a block per need, once Jev answered for it; and the same items as the situational ones, most needed first. */
 const draftItemBlocks = computed(() => draftBlocks(props.draftOptionals ?? [], nameOf))
 const draftSituational = computed(() => [...new Set(draftItemBlocks.value.flatMap(block => block.items))])
@@ -238,7 +238,7 @@ const emptyMessage = computed(() => t('build.view.none'))
               <GameTooltipItemIcon :item="items[option.firstItemId] ?? null" :width="20" :height="20" class="rounded" />
               <span class="min-w-0 flex-1 truncate font-semibold">{{ option.name }}</span>
               <span class="tabular-nums text-muted">{{ option.games.toLocaleString() }}</span>
-              <span v-if="option.winRate !== null" class="w-12 text-right font-semibold tabular-nums text-data-good">{{ formatPercentage(option.winRate, 1) }}</span>
+              <span v-if="option.winRate !== null" class="w-12 text-right font-semibold tabular-nums" :class="winRateTone(option.winRate)">{{ formatPercentage(option.winRate, 1) }}</span>
             </button>
           </div>
         </template>
@@ -261,11 +261,11 @@ const emptyMessage = computed(() => t('build.view.none'))
       </UPopover>
       <div v-if="shown && !kitShown" class="ml-auto flex gap-6 text-right">
         <div v-if="shown.winRate !== null">
-          <p class="text-lg font-bold leading-tight tabular-nums text-data-good">{{ formatPercentage(shown.winRate, 1) }}</p>
+          <p class="text-lg font-bold leading-tight tabular-nums" :class="winRateTone(shown.winRate)">{{ formatPercentage(shown.winRate, 1) }}</p>
           <p class="text-[11px] text-muted">{{ t('build.compact.gameWinRate') }}</p>
         </div>
         <div v-if="draft?.build?.lane?.winRate != null">
-          <p class="text-lg font-bold leading-tight tabular-nums text-data-good">{{ formatPercentage(draft.build.lane.winRate, 1) }}</p>
+          <p class="text-lg font-bold leading-tight tabular-nums" :class="winRateTone(draft.build.lane.winRate)">{{ formatPercentage(draft.build.lane.winRate, 1) }}</p>
           <p class="text-[11px] text-muted">{{ t('build.compact.laneWinRate') }}</p>
         </div>
       </div>
@@ -298,16 +298,16 @@ const emptyMessage = computed(() => t('build.view.none'))
       :situational="draftSituational.length ? draftSituational : situationalFromTree(shown.buildTree, shown.core.itemPath?.itemIds ?? [])"
     >
       <template #itemImport>
-        <BuildItemSetImport v-if="itemSetSubject" :subject="itemSetSubject" labeled />
+        <BuildItemSetImport v-if="itemSetSubject" :subject="itemSetSubject" :closed-hint="t('app.status.clientOff')" labeled />
       </template>
     </BuildCore>
     <div v-else class="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
-      <UIcon :name="waiting ? 'i-lucide-loader-circle' : 'i-lucide-scroll-text'" class="size-6 text-dimmed" />
+      <UIcon :name="waiting ? 'i-lucide-loader-circle' : 'i-lucide-scroll-text'" class="size-6 text-dimmed" :class="waiting && 'animate-spin'" />
       <p class="text-sm text-muted">{{ waiting ? t('build.view.reading') : emptyMessage }}</p>
     </div>
   </div>
 
-  <div v-else class="surface relative grid h-full min-h-0 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
+  <div v-else class="surface relative grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-xl lg:grid-cols-[18rem_minmax(0,1fr)]">
     <!-- The thin bar that says a newer draft is being asked for, without hiding the answer on screen. -->
     <div v-if="draft?.pending && shown" class="absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden">
       <div class="h-full w-1/3 animate-[tm-scan_1.1s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-primary to-transparent" />
@@ -392,7 +392,7 @@ const emptyMessage = computed(() => t('build.view.none'))
     </div>
 
     <div v-else class="flex flex-col items-center justify-center gap-2 p-8 text-center">
-      <UIcon :name="waiting ? 'i-lucide-loader-circle' : 'i-lucide-scroll-text'" class="size-6 text-dimmed" />
+      <UIcon :name="waiting ? 'i-lucide-loader-circle' : 'i-lucide-scroll-text'" class="size-6 text-dimmed" :class="waiting && 'animate-spin'" />
       <p class="text-sm text-muted">{{ waiting ? t('build.view.reading') : emptyMessage }}</p>
       <p v-if="draft?.error && !waiting" class="max-w-xs text-xs text-dimmed">{{ draft.error }}</p>
     </div>

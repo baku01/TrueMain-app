@@ -61,17 +61,17 @@ const multi = computed(() => props.stats
   ? (['double', 'triple', 'quadra', 'penta'] as const).map(key => ({ key, count: props.stats!.multiKills[key] })).filter(entry => entry.count > 0)
   : [])
 
-const TONE_TEXT = { good: 'text-primary', bad: 'text-error', even: 'text-muted' } as const
-const TONE_BAR = { good: 'bg-primary', bad: 'bg-error', even: 'bg-(--ui-text-dimmed)' } as const
+const TONE_TEXT = { good: 'text-data-good', bad: 'text-error', even: 'text-muted' } as const
+const TONE_BAR = { good: 'bg-data-good', bad: 'bg-error', even: 'bg-(--ui-text-dimmed)' } as const
 </script>
 
 <template>
-  <section class="surface rounded-2xl">
-    <button type="button" class="flex w-full items-center gap-2 px-4 py-3 text-left" :aria-expanded="open" @click="open = !open">
+  <section class="surface overflow-hidden rounded-2xl">
+    <button type="button" class="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-accented/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary" :aria-expanded="open" @click="open = !open">
       <UIcon name="i-ph-chart-bar-light" class="size-4 text-primary" />
       <h2 class="text-sm font-semibold text-highlighted">{{ t('dash.stats.title') }}</h2>
       <span v-if="stats" class="text-xs text-muted">{{ t('dash.stats.sample', { games: stats.games, wins: stats.wins, losses: stats.games - stats.wins }) }}</span>
-      <span v-if="overall !== null" class="rounded-md px-1.5 py-0.5 text-[11px] font-semibold" :class="[TONE_TEXT[tone(overall)], tone(overall) === 'good' ? 'bg-primary/10' : tone(overall) === 'bad' ? 'bg-error/10' : 'bg-accented/60']">
+      <span v-if="overall !== null" class="rounded-md px-1.5 py-0.5 text-[11px] font-semibold" :class="[TONE_TEXT[tone(overall)], tone(overall) === 'good' ? 'bg-data-good/10' : tone(overall) === 'bad' ? 'bg-error/10' : 'bg-accented/60']">
         {{ verdict(overall) }}
       </span>
       <span class="ml-auto text-[10px] text-dimmed">{{ t('dash.stats.source') }}</span>

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -14,11 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,6 +54,7 @@ import lol.truemain.mobile.ui.theme.Tm
 fun LoadoutPanel(draft: Draft, me: Cell, data: GameData?, mode: String?, actions: DraftActions) {
     var spellsOpen by remember { mutableStateOf(false) }
     var skinsOpen by remember { mutableStateOf(false) }
+    var confirmReroll by remember { mutableStateOf(false) }
     Panel {
         Eyebrow(stringResource(R.string.draft_loadout))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -69,8 +73,9 @@ fun LoadoutPanel(draft: Draft, me: Cell, data: GameData?, mode: String?, actions
                 Text(stringResource(if (draft.locked) R.string.draft_skins else R.string.draft_skins_after_lock), color = if (draft.locked) Tm.Ink100 else Tm.Ink500)
             }
             if (draft.allowRerolling) {
-                OutlinedButton(shape = Tm.ButtonShape, 
-                    onClick = { actions.send("POST", "/lol-champ-select/v1/session/my-selection/reroll") },
+                OutlinedButton(
+                    shape = Tm.ButtonShape,
+                    onClick = { confirmReroll = true },
                     enabled = !actions.busy && draft.rerollsRemaining > 0,
                 ) {
                     Icon(Icons.Filled.Refresh, contentDescription = null, tint = Tm.Ink300)
@@ -81,6 +86,25 @@ fun LoadoutPanel(draft: Draft, me: Cell, data: GameData?, mode: String?, actions
     }
     if (spellsOpen && data != null) SpellsSheet(me, data, mode, actions) { spellsOpen = false }
     if (skinsOpen) SkinsSheet(me, actions) { skinsOpen = false }
+    if (confirmReroll) {
+        AlertDialog(
+            onDismissRequest = { confirmReroll = false },
+            title = { Text(stringResource(R.string.confirm_reroll_title)) },
+            text = { Text(stringResource(R.string.confirm_reroll_body)) },
+            confirmButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = {
+                    confirmReroll = false
+                    actions.send("POST", "/lol-champ-select/v1/session/my-selection/reroll")
+                }) { Text(stringResource(R.string.action_confirm), color = Tm.colors.primary) }
+            },
+            dismissButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = { confirmReroll = false }) {
+                    Text(stringResource(R.string.action_cancel), color = Tm.Ink300)
+                }
+            },
+            containerColor = Tm.Ink900,
+        )
+    }
 }
 
 /** The spells the game mode allows, as Data Dragon tags them; every classic one when the mode is unknown. */
@@ -100,46 +124,50 @@ fun spellsFor(data: GameData, mode: String?): List<SummonerSpell> {
 private fun SpellsSheet(me: Cell, data: GameData, mode: String?, actions: DraftActions, onDismiss: () -> Unit) {
     var slot by remember { mutableIntStateOf(0) }
     val current = listOf(me.spell1, me.spell2)
+    val sheetSnackbar = rememberSheetSnackbar(actions)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberFullSheetState(), containerColor = Tm.Ink900) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Eyebrow(stringResource(R.string.draft_spells_title))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                listOf(R.string.draft_spell_d, R.string.draft_spell_f).forEachIndexed { index, key ->
-                    Column(
-                        Modifier.clip(RoundedCornerShape(12.dp))
-                            .border(2.dp, if (slot == index) Tm.Rose400 else Tm.Ink700, RoundedCornerShape(12.dp))
-                            .clickable { slot = index }
-                            .padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        RemoteImage(data.spellIcon(current[index]), 48.dp)
-                        Text(stringResource(key), style = MaterialTheme.typography.labelMedium, color = Tm.Ink300)
+        Box(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Eyebrow(stringResource(R.string.draft_spells_title))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf(R.string.draft_spell_d, R.string.draft_spell_f).forEachIndexed { index, key ->
+                        Column(
+                            Modifier.clip(RoundedCornerShape(12.dp))
+                                .border(2.dp, if (slot == index) Tm.Rose400 else Tm.Ink700, RoundedCornerShape(12.dp))
+                                .clickable { slot = index }
+                                .padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            RemoteImage(data.spellIcon(current[index]), 48.dp)
+                            Text(stringResource(key), style = MaterialTheme.typography.labelMedium, color = Tm.Ink300)
+                        }
+                    }
+                    TextButton(shape = Tm.ButtonShape, onClick = { actions.spells(me.spell2, me.spell1) }, enabled = !actions.busy) {
+                        Text(stringResource(R.string.draft_spells_swap), color = Tm.Rose400)
                     }
                 }
-                TextButton(shape = Tm.ButtonShape, onClick = { actions.spells(me.spell2, me.spell1) }, enabled = !actions.busy) {
-                    Text(stringResource(R.string.draft_spells_swap), color = Tm.Rose400)
-                }
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                spellsFor(data, mode).forEach { spell ->
-                    val selectedHere = current[slot] == spell.id
-                    Column(
-                        Modifier.width(64.dp).clip(RoundedCornerShape(10.dp))
-                            .background(if (selectedHere) Tm.Rose950 else Color.Transparent)
-                            .clickable(enabled = !actions.busy && !selectedHere) {
-                                val other = current[1 - slot]
-                                val pair = if (spell.id == other) listOf(current[1], current[0]) else current.toMutableList().also { it[slot] = spell.id }
-                                actions.spells(pair[0], pair[1])
-                                slot = 1 - slot
-                            }
-                            .padding(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        RemoteImage(data.spellIcon(spell.id), 44.dp, grayscale = spell.id in current && !selectedHere)
-                        Text(spell.name, style = MaterialTheme.typography.labelSmall, color = Tm.Ink300, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    spellsFor(data, mode).forEach { spell ->
+                        val selectedHere = current[slot] == spell.id
+                        Column(
+                            Modifier.width(64.dp).clip(RoundedCornerShape(10.dp))
+                                .background(if (selectedHere) Tm.Rose950 else Color.Transparent)
+                                .clickable(enabled = !actions.busy && !selectedHere) {
+                                    val other = current[1 - slot]
+                                    val pair = if (spell.id == other) listOf(current[1], current[0]) else current.toMutableList().also { it[slot] = spell.id }
+                                    actions.spells(pair[0], pair[1])
+                                    slot = 1 - slot
+                                }
+                                .padding(4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            RemoteImage(data.spellIcon(spell.id), 44.dp, grayscale = spell.id in current && !selectedHere)
+                            Text(spell.name, style = MaterialTheme.typography.labelSmall, color = Tm.Ink300, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                        }
                     }
                 }
             }
+            SnackbarHost(sheetSnackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
         }
     }
 }

@@ -39,7 +39,7 @@ watch(() => props.championId, id => void loadChampion(id).catch(() => {}), { imm
 
     <UAlert v-if="status === 'noKey'" color="warning" variant="subtle" icon="i-lucide-key-round" :title="t('jev.card.noKey')" :actions="[{ label: t('jev.card.openSettings'), to: '/settings', color: 'warning', variant: 'outline' }]" />
     <UAlert v-else-if="status === 'noOptions'" color="neutral" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.noOptions')" />
-    <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :description="error ?? undefined" />
+    <UAlert v-else-if="status === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="t('jev.card.error')" :actions="[{ label: t('common.retry'), color: 'error', variant: 'outline', onClick: () => ask() }]" />
 
     <div v-if="status === 'loading'" class="flex flex-col gap-3">
       <USkeleton class="h-80 rounded-2xl" />

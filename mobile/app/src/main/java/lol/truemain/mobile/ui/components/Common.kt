@@ -18,9 +18,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,11 +43,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import lol.truemain.mobile.R
 import lol.truemain.mobile.data.Art
 import lol.truemain.mobile.data.GameData
 import lol.truemain.mobile.data.Position
@@ -83,8 +87,15 @@ fun RemoteImage(
 }
 
 @Composable
-fun ChampionIcon(championId: Int?, size: Dp, modifier: Modifier = Modifier, grayscale: Boolean = false, circle: Boolean = false) {
-    RemoteImage(Art.championIcon(championId), size, modifier, if (circle) CircleShape else RoundedCornerShape(size / 6), grayscale)
+fun ChampionIcon(
+    championId: Int?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    grayscale: Boolean = false,
+    circle: Boolean = false,
+    contentDescription: String? = null,
+) {
+    RemoteImage(Art.championIcon(championId), size, modifier, if (circle) CircleShape else RoundedCornerShape(size / 6), grayscale, contentDescription)
 }
 
 /** Official League client role icon (`TOP`, `JUNGLE`, `MIDDLE`, `BOTTOM`, `UTILITY`, `FILL`). */
@@ -192,7 +203,7 @@ fun SplashHero(
     }
 }
 
-/** Desktop-style compact search well (`bg-muted` + hairline border, `rounded-lg`). */
+/** Desktop-style compact search well (`bg-muted` + hairline border, `rounded-lg`) with 48dp touch height and clear button. */
 @Composable
 fun TmSearchField(
     value: String,
@@ -204,11 +215,11 @@ fun TmSearchField(
     Row(
         modifier
             .fillMaxWidth()
-            .height(42.dp)
+            .height(48.dp)
             .clip(shape)
             .background(Tm.colors.bgMuted)
             .border(1.dp, Tm.colors.border, shape)
-            .padding(horizontal = 12.dp),
+            .padding(start = 12.dp, end = if (value.isNotEmpty()) 4.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -225,6 +236,11 @@ fun TmSearchField(
                 cursorBrush = SolidColor(Tm.colors.primary),
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        if (value.isNotEmpty()) {
+            IconButton(onClick = { onValueChange("") }, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.search_clear), tint = Tm.Ink400, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,8 +38,11 @@ class DraftActions(
     var busy by mutableStateOf(false)
         private set
 
+    internal var sheetSnackbar: SnackbarHostState? = null
+
     fun say(@StringRes text: Int) {
-        scope.launch { snackbar.showSnackbar(context.getString(text)) }
+        val target = sheetSnackbar ?: snackbar
+        scope.launch { target.showSnackbar(context.getString(text)) }
     }
 
     /** Runs a suspending job with the busy flag held; anything it throws reads as a failure. */
@@ -88,4 +92,15 @@ fun rememberDraftActions(snackbar: SnackbarHostState): DraftActions {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     return remember(snackbar) { DraftActions(context.graph.session, scope, context.applicationContext, snackbar) }
+}
+
+/** Routes draft error/feedback snackbars to a ModalBottomSheet's own SnackbarHost while it is open. */
+@Composable
+fun rememberSheetSnackbar(actions: DraftActions): SnackbarHostState {
+    val host = remember { SnackbarHostState() }
+    DisposableEffect(actions, host) {
+        actions.sheetSnackbar = host
+        onDispose { if (actions.sheetSnackbar === host) actions.sheetSnackbar = null }
+    }
+    return host
 }

@@ -14,14 +14,17 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,6 +69,7 @@ fun LobbyPanel(lobby: JsonElement, catalog: QueueCatalog?, actions: PlayActions)
     val maxSize = config.int("maxLobbySize") ?: 5
     val canInvite = local.bool("allowedInviteOthers") != false && members.size + pending.size < maxSize
     var inviting by rememberSaveable { mutableStateOf(false) }
+    var confirmLeave by remember { mutableStateOf(false) }
 
     Panel {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -78,7 +82,7 @@ fun LobbyPanel(lobby: JsonElement, catalog: QueueCatalog?, actions: PlayActions)
                 )
                 Text(stringResource(R.string.play_members_count, members.size, maxSize), style = MaterialTheme.typography.bodySmall, color = Tm.Ink400)
             }
-            IconButton(onClick = { actions.run("leave", "DELETE", Session.LOBBY) }, enabled = actions.idle) {
+            IconButton(onClick = { confirmLeave = true }, enabled = actions.idle) {
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.play_leave), tint = Tm.Ink300)
             }
         }
@@ -124,12 +128,32 @@ fun LobbyPanel(lobby: JsonElement, catalog: QueueCatalog?, actions: PlayActions)
         val taken = (members.mapNotNull { it.long("summonerId") } + pending.mapNotNull { it.long("toSummonerId") }).toSet()
         InviteDialog(taken, actions) { inviting = false }
     }
+    if (confirmLeave) {
+        AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { Text(stringResource(R.string.confirm_leave_lobby_title)) },
+            text = { Text(stringResource(R.string.confirm_leave_lobby_body)) },
+            confirmButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = {
+                    confirmLeave = false
+                    actions.run("leave", "DELETE", Session.LOBBY)
+                }) { Text(stringResource(R.string.action_confirm), color = Tm.Red) }
+            },
+            dismissButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = { confirmLeave = false }) {
+                    Text(stringResource(R.string.action_cancel), color = Tm.Ink300)
+                }
+            },
+            containerColor = Tm.Ink900,
+        )
+    }
 }
 
 @Composable
 private fun MemberRow(member: JsonElement, isLocal: Boolean, showLanes: Boolean, canKick: Boolean, actions: PlayActions) {
     val data = rememberGameData()
     val summonerId = member.long("summonerId")
+    var confirmKick by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         RemoteImage(
             data?.profileIcon(member.int("summonerIconId")),
@@ -164,9 +188,28 @@ private fun MemberRow(member: JsonElement, isLocal: Boolean, showLanes: Boolean,
             }
         }
         if (canKick && summonerId != null) {
-            IconButton(onClick = { actions.run("kick:$summonerId", "POST", "/lol-lobby/v2/lobby/members/$summonerId/kick") }, enabled = actions.idle) {
+            IconButton(onClick = { confirmKick = true }, enabled = actions.idle) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.play_kick), tint = Tm.Ink400)
             }
         }
+    }
+    if (confirmKick && summonerId != null) {
+        AlertDialog(
+            onDismissRequest = { confirmKick = false },
+            title = { Text(stringResource(R.string.confirm_kick_title, member.displayName())) },
+            text = { Text(stringResource(R.string.confirm_kick_body)) },
+            confirmButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = {
+                    confirmKick = false
+                    actions.run("kick:$summonerId", "POST", "/lol-lobby/v2/lobby/members/$summonerId/kick")
+                }) { Text(stringResource(R.string.action_confirm), color = Tm.Red) }
+            },
+            dismissButton = {
+                TextButton(shape = Tm.ButtonShape, onClick = { confirmKick = false }) {
+                    Text(stringResource(R.string.action_cancel), color = Tm.Ink300)
+                }
+            },
+            containerColor = Tm.Ink900,
+        )
     }
 }

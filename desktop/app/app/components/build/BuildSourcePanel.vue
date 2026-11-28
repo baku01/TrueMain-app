@@ -182,7 +182,7 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
     </div>
   </div>
   <div v-else class="flex flex-col items-center justify-center gap-2 p-8 text-center">
-    <UIcon :name="failed ? 'i-lucide-scroll-text' : 'i-lucide-loader-circle'" class="size-6 text-dimmed" />
+    <UIcon :name="failed ? 'i-lucide-scroll-text' : 'i-lucide-loader-circle'" class="size-6 text-dimmed" :class="!failed && 'animate-spin'" />
     <p class="text-sm text-muted">{{ failed ? t('build.view.none') : t('build.view.reading') }}</p>
   </div>
 </template>

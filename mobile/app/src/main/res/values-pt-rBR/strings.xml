@@ -13,6 +13,7 @@
     <string name="connect_step3">Escaneie aqui, com o celular no mesmo Wi-Fi.</string>
     <string name="connect_scan">Escanear o QR code</string>
     <string name="connect_paste">Ou cole o link de pareamento</string>
+    <string name="connect_paste_button">Colar</string>
     <string name="connect_paste_action">Parear</string>
     <string name="connect_bad_link">Isso não é um código de pareamento do TrueMain.</string>
     <string name="connect_scanner_unavailable">O leitor não está disponível neste celular. Cole o link.</string>
@@ -30,6 +31,7 @@
     <string name="link_error_link_off">O celular está desativado no seu computador.</string>
     <string name="link_error_other">O computador recusou a conexão (%1$s).</string>
     <string name="link_no_client">O League não está aberto no computador.</string>
+    <string name="link_timer_paused">Offline · pausado</string>
 
     <string name="ready_title">Partida encontrada!</string>
     <string name="ready_accept">Aceitar</string>
@@ -45,6 +47,7 @@
     <string name="home_record">%1$dV %2$dD</string>
     <string name="home_lp">%1$d PDL</string>
     <string name="home_not_logged">Entre no League no computador.</string>
+    <string name="home_offline">Conecte ao computador para ver seu perfil.</string>
 
     <string name="phase_none">No cliente</string>
     <string name="phase_lobby">No lobby</string>
@@ -70,4 +73,28 @@
     <string name="update_dismiss">OK</string>
 
     <string name="error_generic">Algo deu errado. Tente de novo.</string>
+    <string name="menu_more">Mais opções</string>
+    <string name="search_clear">Limpar busca</string>
+    <string name="action_confirm">Confirmar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="confirm_unpair_title">Desparear este computador?</string>
+    <string name="confirm_unpair_body">Você precisará escanear um novo QR code para reconectar.</string>
+    <string name="confirm_leave_lobby_title">Sair do saguão?</string>
+    <string name="confirm_leave_lobby_body">Você sairá do grupo atual.</string>
+    <string name="confirm_kick_title">Expulsar %1$s?</string>
+    <string name="confirm_kick_body">Remover este jogador do saguão?</string>
+    <string name="confirm_reroll_title">Usar dado?</string>
+    <string name="confirm_reroll_body">Trocar seu campeão por um aleatório. Isso consome 1 dado.</string>
+    <string name="builds_elo_badge">Esmeralda+</string>
+    <string name="draft_recommended_full_build">Ver build completa</string>
+    <string name="tier_iron">Ferro</string>
+    <string name="tier_bronze">Bronze</string>
+    <string name="tier_silver">Prata</string>
+    <string name="tier_gold">Ouro</string>
+    <string name="tier_platinum">Platina</string>
+    <string name="tier_emerald">Esmeralda</string>
+    <string name="tier_diamond">Diamante</string>
+    <string name="tier_master">Mestre</string>
+    <string name="tier_grandmaster">Grão-Mestre</string>
+    <string name="tier_challenger">Desafiante</string>
 </resources>

@@ -9,6 +9,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,7 +58,12 @@ private sealed interface Recommendation {
  * site's API on the phone, applied through the desktop on a tap.
  */
 @Composable
-fun RecommendedPanel(draft: Draft, data: GameData?, actions: DraftActions) {
+fun RecommendedPanel(
+    draft: Draft,
+    data: GameData?,
+    actions: DraftActions,
+    onOpenFullBuild: ((championId: Int, position: String?) -> Unit)? = null,
+) {
     val api = LocalContext.current.graph.api
     val champion = draft.myChampion
     val me = draft.me ?: return
@@ -77,7 +83,14 @@ fun RecommendedPanel(draft: Draft, data: GameData?, actions: DraftActions) {
     }
 
     Panel {
-        Eyebrow(stringResource(R.string.draft_recommended), color = Tm.Rose400)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Eyebrow(stringResource(R.string.draft_recommended), color = Tm.Rose400)
+            if (onOpenFullBuild != null) {
+                TextButton(shape = Tm.ButtonShape, onClick = { onOpenFullBuild(champion, position?.api) }) {
+                    Text(stringResource(R.string.draft_recommended_full_build), color = Tm.colors.primary, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
         val name = data?.championName(champion).orEmpty()
         val context = listOfNotNull(name.ifBlank { null }, position?.let { stringResource(it.label) }).joinToString(" · ")
         if (context.isNotBlank()) Text(context, style = MaterialTheme.typography.titleSmall, color = Tm.Ink100)
@@ -93,12 +106,9 @@ fun RecommendedPanel(draft: Draft, data: GameData?, actions: DraftActions) {
 }
 
 private suspend fun fetch(api: TrueMainApi, champion: Int, position: Position?, opponent: Int?): Recommendation {
-    if (opponent != null) {
-        val narrowed = api.championBuild(champion, position?.api, opponent)
-        // Too few games against this opponent: the lane's build is the better advice.
-        if (narrowed["builds"].items.isNotEmpty()) return Recommendation.Ready(narrowed, vsOpponent = true)
-    }
-    return Recommendation.Ready(api.championBuild(champion, position?.api), vsOpponent = false)
+    // TrueMainApi currently reads the lane's general build from Lolalytics (`build-full`),
+    // so never mislabel it as narrowed to the lane opponent.
+    return Recommendation.Ready(api.championBuild(champion, position?.api, opponent), vsOpponent = false)
 }
 
 @Composable
@@ -126,7 +136,7 @@ private fun Ready(state: Recommendation.Ready, me: Cell, championName: String, d
         Button(shape = Tm.ButtonShape, 
             onClick = { actions.run { actions.say(actions.session.importRunes(runes).message()) } },
             enabled = !actions.busy,
-            colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.Ink950),
+            colors = ButtonDefaults.buttonColors(containerColor = Tm.Rose400, contentColor = Tm.colors.textInverted),
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.draft_recommended_apply_runes)) }
     }

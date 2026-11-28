@@ -6,6 +6,7 @@ import type { DraftOptional } from '~/utils/jev-optionals'
 import type { SkillKey } from '~/utils/skill-grid'
 import { formatPercentage } from '#shared/utils/ddragon'
 import { getActiveLocale } from '#common/utils/i18n'
+import { winRateTone } from '#common/utils/rate-tone'
 import { completeSkillGrid, skillGrid } from '~/utils/skill-grid'
 import { buildSteps, itemSetOf, reasonMessage, stepOthers } from '~/utils/jev-recommend'
 import { draftBlocks } from '~/utils/jev-optionals'
@@ -31,7 +32,7 @@ const opened = defineModel<OpenedStep | null>('opened', { default: null })
 const { t } = useT()
 const { nameOf } = useChampionStatics()
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
-const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-highlighted')
+const tone = (value: number) => winRateTone(value)
 const signed = (value: number) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 const wpaTone = (value: number) => (value >= 0.01 ? 'text-primary' : value <= -0.01 ? 'text-error' : 'text-muted')
 const has = (value: number | null | undefined): value is number => value !== null && value !== undefined
@@ -82,8 +83,8 @@ const levelsOf = (option: JevOption) => {
       <h3 class="text-sm font-semibold" :class="recommended ? 'text-primary' : 'text-highlighted'">{{ title ?? (recommended ? t('jev.card.jevBuild') : t('jev.card.standardBuild')) }}</h3>
       <!-- Into the client, on a click: this build's rune page and its item set. -->
       <span class="ml-auto flex items-center gap-1.5">
-        <BuildRuneImport v-if="build.runePage" :page="build.runePage" :champion="importName ?? nameOf(championId)" labeled />
-        <BuildItemSetImport :subject="itemSet" labeled />
+        <BuildRuneImport v-if="build.runePage" :page="build.runePage" :champion="importName ?? nameOf(championId)" :closed-hint="t('app.status.clientOff')" labeled />
+        <BuildItemSetImport :subject="itemSet" :closed-hint="t('app.status.clientOff')" labeled />
       </span>
     </header>
 

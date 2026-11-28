@@ -177,6 +177,7 @@ await directory.ready
         v-if="error"
         :error="error"
         :title="t('pages.championListFailed')"
+        :on-retry="() => directory.refresh()"
       />
 
       <template v-else>

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,8 +20,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,12 +52,14 @@ import lol.truemain.mobile.lcu.int
 import lol.truemain.mobile.lcu.list
 import lol.truemain.mobile.lcu.str
 import lol.truemain.mobile.ui.components.ChampionIcon
+import lol.truemain.mobile.ui.components.Chip
 import lol.truemain.mobile.ui.components.EmptyState
 import lol.truemain.mobile.ui.components.Loading
 import lol.truemain.mobile.ui.components.PositionIcon
 import lol.truemain.mobile.ui.components.TmSearchField
 import lol.truemain.mobile.ui.components.TmTierBadge
 import lol.truemain.mobile.ui.components.rememberGameData
+import lol.truemain.mobile.ui.draft.fold
 import lol.truemain.mobile.ui.theme.Tm
 
 /** One champion on one lane in the tier list. */
@@ -88,11 +93,22 @@ private fun entriesOf(tierList: JsonElement): List<TierEntry> = tierList.list("t
  * internet — the desktop is needed only to push a rune page to the client.
  */
 @Composable
-fun BuildsScreen() {
+fun BuildsScreen(
+    externalTarget: Pair<Int, String?>? = null,
+    onExternalConsumed: () -> Unit = {},
+) {
     var championId by rememberSaveable { mutableIntStateOf(0) }
     var championPosition by rememberSaveable { mutableStateOf<String?>(null) }
     var lane by rememberSaveable { mutableStateOf<Position?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(externalTarget) {
+        if (externalTarget != null) {
+            championId = externalTarget.first
+            championPosition = externalTarget.second
+            onExternalConsumed()
+        }
+    }
 
     if (championId > 0) {
         BackHandler { championId = 0 }
@@ -111,6 +127,7 @@ private sealed interface Load {
     data class Ready(val patch: String?, val entries: List<TierEntry>) : Load
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TierListScreen(
     lane: Position?,
@@ -124,18 +141,22 @@ private fun TierListScreen(
     // Each lane's list kept for the screen's life: switching back is instant.
     val loaded = remember { mutableStateMapOf<Position?, Load>() }
     var attempt by remember { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(lane, attempt) {
-        if (loaded[lane] is Load.Ready) return@LaunchedEffect
-        loaded[lane] = Load.Loading
-        loaded[lane] = try {
-            val answer = api.tierList(lane?.api)
+        val force = refreshing
+        if (!force && loaded[lane] is Load.Ready) return@LaunchedEffect
+        if (!force) loaded[lane] = Load.Loading
+        val next = try {
+            val answer = api.tierList(lane?.api, forceRefresh = force)
             Load.Ready(answer.str("patchVersion"), entriesOf(answer))
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            Load.Failed
+            if (loaded[lane] is Load.Ready) loaded[lane]!! else Load.Failed
         }
+        loaded[lane] = next
+        refreshing = false
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -155,29 +176,45 @@ private fun TierListScreen(
                 action = stringResource(R.string.builds_retry) to { attempt++ },
             )
             is Load.Ready -> {
-                val needle = query.trim()
+                val needle = query.fold()
                 val shown = state.entries.filter { entry ->
-                    needle.isEmpty() || data?.champion(entry.championId)?.let { it.name.contains(needle, true) || it.alias.contains(needle, true) } == true
+                    needle.isEmpty() || data?.champion(entry.championId)?.let { it.name.fold().contains(needle) || it.alias.fold().contains(needle) } == true
                 }
-                if (shown.isEmpty()) {
-                    EmptyState(stringResource(if (needle.isEmpty()) R.string.builds_empty else R.string.builds_no_match))
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        state.patch?.let { patch ->
+                PullToRefreshBox(
+                    isRefreshing = refreshing,
+                    onRefresh = {
+                        refreshing = true
+                        loaded.clear()
+                        attempt++
+                    },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) {
+                    if (shown.isEmpty()) {
+                        EmptyState(stringResource(if (needle.isEmpty()) R.string.builds_empty else R.string.builds_no_match))
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
                             item {
-                                Text(
-                                    stringResource(R.string.builds_patch, patch),
-                                    color = Tm.Ink400,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-                                )
+                                Row(
+                                    Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    state.patch?.let { patch ->
+                                        Text(
+                                            stringResource(R.string.builds_patch, patch),
+                                            color = Tm.Ink400,
+                                            style = MaterialTheme.typography.labelMedium,
+                                        )
+                                    }
+                                    Chip(stringResource(R.string.builds_elo_badge), color = Tm.colors.primary, background = Tm.colors.primary.copy(alpha = 0.14f))
+                                }
                             }
-                        }
-                        items(shown, key = { "${it.championId}-${it.position}" }) { entry ->
-                            TierRow(entry, data, showLane = lane == null) { onOpen(entry) }
+                            items(shown, key = { "${it.championId}-${it.position}" }) { entry ->
+                                TierRow(entry, data, showLane = lane == null) { onOpen(entry) }
+                            }
                         }
                     }
                 }
@@ -207,6 +244,7 @@ internal fun SelectChip(text: String, selected: Boolean, roleIcon: String? = nul
     val shape = RoundedCornerShape(6.dp)
     Row(
         Modifier
+            .heightIn(min = 42.dp)
             .clip(shape)
             .background(if (selected) Tm.Rose950 else Tm.colors.pane)
             .then(
@@ -215,7 +253,7 @@ internal fun SelectChip(text: String, selected: Boolean, roleIcon: String? = nul
                 else Modifier.border(1.dp, Tm.colors.border.copy(alpha = 0.35f), shape),
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {

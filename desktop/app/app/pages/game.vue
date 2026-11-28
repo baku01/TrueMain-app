@@ -64,9 +64,12 @@ const waiting = computed(() => {
 
     <div v-else class="relative flex h-full flex-col items-center justify-center gap-5 overflow-hidden px-8 text-center">
       <ChampionArt :alias="backdropAlias()" fade="vignette" position="60% 25%" class="opacity-40" />
-      <span class="relative flex size-3 items-center justify-center">
+      <span v-if="state.connected || screen === 'in-game'" class="relative flex size-3 items-center justify-center">
         <span class="absolute inline-flex size-full animate-tm-pulse rounded-full bg-primary" />
         <span class="relative inline-flex size-1.5 rounded-full bg-primary" />
+      </span>
+      <span v-else class="relative flex size-9 items-center justify-center rounded-full bg-warning/15 text-warning ring-1 ring-warning/30">
+        <UIcon name="i-lucide-unplug" class="size-4" />
       </span>
       <div class="relative space-y-2">
         <h1 class="text-2xl font-semibold tracking-tight text-highlighted">{{ waiting.title }}</h1>

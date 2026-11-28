@@ -109,7 +109,7 @@ const rankLabel = computed(() => {
 
         <template #name>
           <div class="flex min-w-0 items-center gap-2">
-            <h1 class="truncate text-[22px] font-semibold leading-tight text-highlighted">
+            <h1 class="selectable truncate text-[22px] font-semibold leading-tight text-highlighted">
               {{ identity.gameName }}<span
                 v-if="identity.tagLine"
                 class="ml-1 font-medium text-muted"
@@ -183,16 +183,15 @@ const rankLabel = computed(() => {
       name="view"
     />
 
-    <!-- `on-art`: the tiles keep their dark glass in the light theme too. -->
     <div
       v-if="!$slots.view"
-      class="on-art grid grid-cols-2 gap-2 sm:grid-cols-4"
+      class="grid grid-cols-2 gap-2 sm:grid-cols-4"
     >
       <template v-if="loading && !matches.length">
         <USkeleton
           v-for="index in 4"
           :key="index"
-          class="h-[86px] rounded-lg bg-ink-950/55"
+          class="h-[86px] rounded-lg"
         />
       </template>
       <KpiTile

@@ -20,6 +20,7 @@ const items = computed(() => [{ label: t('tips.voice.none'), value: NONE }, ...p
 const chosen = computed(() => (packs.value.some(pack => pack.id === settings.value.pack) ? settings.value.pack! : NONE))
 
 const rows = computed(() => packs.value.map(pack => ({ pack, ...coverage(pack.clips), active: pack.id === chosen.value })))
+const confirmRemoveId = ref<string | null>(null)
 
 const picker = ref<HTMLInputElement | null>(null)
 async function picked(event: Event) {
@@ -98,14 +99,19 @@ const byline = (pack: VoicePack) => [pack.author && t('tips.voice.by', { author:
             @click="select(row.pack.id)"
           />
           <UButton :label="t('tips.voice.test')" icon="i-lucide-play" size="xs" color="neutral" variant="ghost" @click="test(row.pack)" />
+          <div v-if="confirmRemoveId === row.pack.id" class="flex items-center gap-1">
+            <UButton size="xs" color="error" variant="soft" :label="t('common.confirm')" @click="confirmRemoveId = null; remove(row.pack)" />
+            <UButton size="xs" color="neutral" variant="ghost" :label="t('common.cancel')" @click="confirmRemoveId = null" />
+          </div>
           <UButton
+            v-else
             icon="i-lucide-trash-2"
             size="xs"
             color="error"
             variant="ghost"
             :aria-label="t('tips.voice.remove', { name: row.pack.name })"
             :title="t('tips.voice.remove', { name: row.pack.name })"
-            @click="remove(row.pack)"
+            @click="confirmRemoveId = row.pack.id"
           />
         </div>
         <details v-if="row.missing.length" class="mt-1.5 pl-7 text-xs">

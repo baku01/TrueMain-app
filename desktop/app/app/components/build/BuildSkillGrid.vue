@@ -102,9 +102,11 @@ function warm() {
           role="table"
           :aria-label="t('build.skillGrid.label')"
         >
-          <span role="columnheader" />
-          <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums" :class="level === current ? 'rounded-md bg-primary/20 font-bold text-primary' : 'text-dimmed'">{{ level }}</span>
-          <template v-for="key in SKILL_ROWS" :key="key">
+          <div role="row" class="contents">
+            <span role="columnheader" />
+            <span v-for="level in LEVELS" :key="`level-${level}`" role="columnheader" class="grid h-6 place-items-center font-medium tabular-nums" :class="level === current ? 'rounded-md bg-primary/20 font-bold text-primary' : 'text-dimmed'">{{ level }}</span>
+          </div>
+          <div v-for="key in SKILL_ROWS" :key="key" role="row" class="contents">
             <span role="rowheader" class="grid place-items-center">
               <AbilityHover v-if="championId && spell(key)" :champion-id="championId" :spell-key="key">
                 <img :src="spell(key)!.iconUrl" :alt="spell(key)!.name" width="32" height="32" class="size-6 cursor-help rounded-md @lg:size-7 @xl:size-8">
@@ -119,7 +121,7 @@ function warm() {
               class="grid aspect-square max-h-9 w-full max-w-9 place-items-center self-center justify-self-center rounded-md"
               :class="[grid[level] === key ? [colorOf(key).text, colorOf(key).cell] : 'bg-accented/25', level === current && 'ring-1 ring-primary/60', current && level < current && 'opacity-50']"
             >{{ grid[level] === key ? key : '' }}</span>
-          </template>
+          </div>
         </div>
       </div>
     </div>

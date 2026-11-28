@@ -52,8 +52,8 @@ async function saveEdited(kit: Kit) {
       </template>
     </PageHeader>
 
-    <div v-if="groups.length || editing" class="surface grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] overflow-hidden rounded-xl">
-      <aside class="min-h-0 overflow-y-auto border-r border-default bg-muted/50 p-2">
+    <div v-if="groups.length || editing" class="surface grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <aside class="max-h-56 min-h-0 overflow-y-auto border-b border-default bg-muted/50 p-2 lg:max-h-none lg:border-b-0 lg:border-r">
         <section v-for="group in groups" :key="group.championId" class="mb-3 last:mb-0">
           <h2 class="flex items-center gap-2 px-2.5 py-1.5">
             <img :src="portraitOf(group.championId) ?? undefined" :alt="group.name" width="20" height="20" class="size-5 rounded img-skeleton">

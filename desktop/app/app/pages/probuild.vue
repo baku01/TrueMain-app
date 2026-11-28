@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatPercentage } from '#shared/utils/ddragon'
+import { winRateTone } from '#common/utils/rate-tone'
 import type { ChampionBuildResponse } from '~/types/build'
 import type { ChampionStats, Tally } from '~/utils/high-elo'
 import { POSITION_BY_CODE, THIN_SAMPLE, winRate } from '~/utils/high-elo'
@@ -19,23 +20,19 @@ const { champions, nameOf, portraitOf } = useChampionStatics()
 const { items, summoners, runeTree } = useStaticData()
 const { lanes: readLanes } = useProBuilds()
 
-const query = ref('')
 const championId = ref<number | null>(null)
 const position = ref<string | null>(null)
 const result = ref<ChampionStats | null>(null)
 const reading = ref(false)
+const failed = ref(false)
 const answers = ref<Record<string, ChampionBuildResponse>>({})
 
-const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-const matches = computed(() => {
-  const words = fold(query.value).split(/\s+/).filter(Boolean)
-  if (words.length === 0 || championId.value !== null && fold(nameOf(championId.value)) === fold(query.value)) return []
-  return [...champions.value.keys()].filter(id => words.every(word => fold(nameOf(id)).includes(word))).sort((a, b) => nameOf(a).localeCompare(nameOf(b))).slice(0, 8)
-})
+const championItems = computed(() =>
+  [...champions.value.values()].map(c => ({ championId: c.id, name: c.name, iconUrl: portraitOf(c.id) ?? '' })),
+)
 
-function pick(id: number) {
+function pick(id: number | null) {
   championId.value = id
-  query.value = nameOf(id)
   position.value = null
 }
 
@@ -43,6 +40,7 @@ async function read() {
   if (championId.value === null) return
   const id = championId.value
   reading.value = true
+  failed.value = false
   try {
     const read = await readLanes(id)
     if (id !== championId.value) return
@@ -51,8 +49,11 @@ async function read() {
     position.value ??= mostPlayedLane(read)
     result.value = statsFromSite(id, read, position.value ?? '')
   }
+  catch {
+    if (id === championId.value) failed.value = true
+  }
   finally {
-    reading.value = false
+    if (id === championId.value) reading.value = false
   }
 }
 
@@ -76,7 +77,7 @@ const keystones = computed(() => (result.value?.keystones ?? []).slice(0, 5))
 const lanes = computed(() => (result.value?.positions ?? []).filter(tally => POSITION_BY_CODE[tally.id]))
 const LANE_KEYS: Record<string, string> = { TOP: 'probuild.role.top', JUNGLE: 'probuild.role.jungle', MIDDLE: 'probuild.role.middle', BOTTOM: 'probuild.role.bottom', UTILITY: 'probuild.role.utility' }
 const percent = (value: number) => formatPercentage(value, 1)
-const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ? 'text-muted' : 'text-default')
+const tone = (value: number) => winRateTone(value)
 </script>
 
 <template>
@@ -85,17 +86,14 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
       <PageHeader :eyebrow="t('probuild.eyebrow')" :title="t('probuild.title')" :description="t('probuild.description')" />
 
       <section class="space-y-5">
-        <div class="relative max-w-md">
-          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('probuild.champion.search')" class="w-full" :aria-label="t('probuild.champion.search')" @update:model-value="championId = null" />
-          <ul v-if="matches.length" class="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-default bg-elevated p-1 shadow-lg">
-            <li v-for="id in matches" :key="id">
-              <button type="button" class="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-accented" @click="pick(id)">
-                <img v-if="portraitOf(id)" :src="portraitOf(id)!" alt="" width="28" height="28" class="img-skeleton size-7 rounded">
-                <span class="text-sm text-default">{{ nameOf(id) }}</span>
-              </button>
-            </li>
-          </ul>
-        </div>
+        <ChampionPicker
+          :champions="championItems"
+          :champion-id="championId"
+          :placeholder="t('probuild.champion.search')"
+          trigger-class="w-72"
+          size="sm"
+          @update:champion-id="pick"
+        />
 
         <p v-if="championId === null" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('probuild.champion.pick') }}</p>
 
@@ -189,6 +187,10 @@ const tone = (value: number) => (value >= 0.52 ? 'text-primary' : value < 0.48 ?
           </template>
         </template>
         <div v-else-if="reading" aria-busy="true" class="space-y-3"><USkeleton class="h-24 w-full" /><USkeleton class="h-40 w-full" /></div>
+        <div v-else-if="failed" class="surface flex flex-col items-center gap-3 rounded-xl px-4 py-10 text-center text-sm text-muted">
+          <p>{{ t('stats.failed') }}</p>
+          <UButton :label="t('common.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="subtle" @click="read()" />
+        </div>
       </section>
 
       <!-- The best players on the champion: Blitz's pros with their games, and the lead source's ranked players beside them. -->

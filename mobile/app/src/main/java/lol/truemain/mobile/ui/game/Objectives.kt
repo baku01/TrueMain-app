@@ -33,7 +33,7 @@ private fun drakeColor(element: String?): Color = when (element) {
     "infernal" -> Color(0xFFE5703A)
     "ocean" -> Color(0xFF4FB3C9)
     "mountain" -> Color(0xFFA8865A)
-    "cloud" -> Color(0xFFBFD3E6)
+    "cloud" -> if (Tm.colors.light) Color(0xFF5B7B9A) else Color(0xFFBFD3E6)
     "hextech" -> Color(0xFF5FC9C0)
     "chemtech" -> Color(0xFF8FC24A)
     else -> Tm.Ink500

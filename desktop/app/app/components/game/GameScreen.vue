@@ -40,8 +40,8 @@ const props = defineProps<{
 const clock = useGameClock(() => props.sync)
 
 const { t } = useT()
-const MAPS: Record<number, string> = { 11: t('game.map.rift'), 12: t('game.map.abyss'), 30: t('game.map.arena') }
-const mapName = computed(() => MAPS[props.game.mapNumber] ?? t('game.map.live'))
+const MAPS = computed<Record<number, string>>(() => ({ 11: t('game.map.rift'), 12: t('game.map.abyss'), 30: t('game.map.arena') }))
+const mapName = computed(() => MAPS.value[props.game.mapNumber] ?? t('game.map.live'))
 
 // ─── The board ──────────────────────────────────────────────────────────────
 

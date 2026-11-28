@@ -38,7 +38,7 @@ onBeforeUnmount(() => suspended.end())
         <template #fallback>
           <div
             aria-busy="true"
-            class="mx-auto max-w-6xl space-y-6 p-4 md:p-6"
+            class="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6"
           >
             <PageHeader
               :eyebrow="eyebrow"

@@ -45,9 +45,16 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
   const toast = useToast()
 
   const locked = computed(() => draft.value.myChampionLocked && draft.value.myChampion !== null)
+  const importing = ref(false)
+  const importedParts = ref<string[]>([])
+  const lastError = ref<string | null>(null)
 
   watch(() => [draft.value.myChampion, locked.value] as const, ([champion, isLocked]) => {
-    if (!isLocked || champion !== written.champion) Object.assign(written, { champion: isLocked ? champion : null, runes: '', spells: '', items: '' })
+    if (!isLocked || champion !== written.champion) {
+      Object.assign(written, { champion: isLocked ? champion : null, runes: '', spells: '', items: '' })
+      importedParts.value = []
+      lastError.value = null
+    }
   }, { immediate: true })
 
   /** Blitz's measured buying order of each completed item, for the champion's lane; none when Blitz has none. */
@@ -87,24 +94,33 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
     const chosen = current?.selected
     if (!enabled.value || !locked.value || !current || !chosen || current.championId !== draft.value.myChampion || !state.value.connected || !insideTauri()) return
     busy = true
+    importing.value = true
     const champion = nameOf(current.championId)
     const done: string[] = []
+    let failed: string | null = null
     try {
       const { invoke } = await import('@tauri-apps/api/core')
 
       const runesKey = `${chosen.key}|${JSON.stringify(chosen.runePage)}`
       if (settings.value.runes && chosen.runePage && written.runes !== runesKey) {
-        written.runes = runesKey
-        await invoke('import_runes', { champion: chosen.title, page: chosen.runePage }).then(() => done.push(tr('autoImport.part.runes')), (error: unknown) => {
-          toast.add({ title: tr('build.runes.failed'), description: String(error) === 'no-slot' ? tr('build.runes.noSlotDescription') : String(error), icon: 'i-lucide-circle-x', color: 'error' })
+        await invoke('import_runes', { champion: chosen.title, page: chosen.runePage }).then(() => {
+          written.runes = runesKey
+          done.push(tr('autoImport.part.runes'))
+        }, (error: unknown) => {
+          const description = String(error) === 'no-slot' ? tr('build.runes.noSlotDescription') : String(error)
+          failed = description
+          toast.add({ title: tr('build.runes.failed'), description, icon: 'i-lucide-circle-x', color: 'error' })
         })
       }
 
       const spellsKey = `${chosen.key}|${chosen.spells?.join(',')}|${settings.value.flash}`
       if (settings.value.spells && chosen.spells && written.spells !== spellsKey) {
-        written.spells = spellsKey
         const [spell1Id, spell2Id] = spellsInOrder(chosen.spells[0], chosen.spells[1], settings.value.flash)
-        await invoke('champ_select_spells', { spell1Id, spell2Id }).then(() => done.push(tr('autoImport.part.spells')), (error: unknown) => {
+        await invoke('champ_select_spells', { spell1Id, spell2Id }).then(() => {
+          written.spells = spellsKey
+          done.push(tr('autoImport.part.spells'))
+        }, (error: unknown) => {
+          failed = String(error)
           toast.add({ title: tr('kit.import.spellsFailed'), description: String(error), icon: 'i-lucide-circle-x', color: 'error' })
         })
       }
@@ -115,17 +131,25 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
         const sets = recommendedSets(withMeasuredPlaces(chosen, measures), current.others.map(build => withMeasuredPlaces(build, measures)), championKey, blockTitles(), items.value, await ordersFor(current.championId, draft.value.myPosition))
         const key = JSON.stringify(sets)
         if (sets.length && written.items !== key) {
-          written.items = key
-          await invoke('write_recommended_item_sets', { sets }).then(() => done.push(tr('autoImport.part.items')), (error: unknown) => {
+          await invoke('write_recommended_item_sets', { sets }).then(() => {
+            written.items = key
+            done.push(tr('autoImport.part.items'))
+          }, (error: unknown) => {
+            failed = String(error)
             toast.add({ title: tr('build.items.failed'), description: String(error), icon: 'i-lucide-circle-x', color: 'error' })
           })
         }
       }
 
-      if (done.length) toast.add({ title: tr('autoImport.done', { champion }), description: `${chosen.title} — ${done.join(' · ')}`, icon: 'i-lucide-download', color: 'success' })
+      if (done.length) {
+        importedParts.value = [...new Set([...importedParts.value, ...done])]
+        toast.add({ title: tr('autoImport.done', { champion }), description: `${chosen.title} — ${done.join(' · ')}`, icon: 'i-lucide-download', color: 'success' })
+      }
+      lastError.value = failed
     }
     finally {
       busy = false
+      importing.value = false
       // A selection that changed while this one was written: written in turn.
       if (again) {
         again = false
@@ -133,4 +157,11 @@ export function useDraftAutoImport(draft: Ref<DraftState>, selection: Ref<DraftS
       }
     }
   }
+
+  function retry() {
+    lastError.value = null
+    void write()
+  }
+
+  return { enabled, importing, importedParts, lastError, retry }
 }

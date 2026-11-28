@@ -104,7 +104,7 @@ export default {
     'champion.hero.byMains': ' jogadas por mains',
     'champion.hero.allPlayers': ' entre todos os jogadores monitorados',
     'champion.hero.winRate': ' · {rate} WR',
-    'champion.hero.deltaHint': 'Todos os elos, em relação ao patch {patch}',
+    'champion.hero.deltaHint': 'Em relação ao patch {patch}',
     'champion.hero.noGames': 'Nenhuma partida neste recorte',
     'champion.hero.games': '{count} partidas{population}{winRate}',
     'champion.chip.wr': '{value} WR',

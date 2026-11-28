@@ -76,11 +76,8 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                 }
             }
             is UpdateState.Available -> {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             stringResource(R.string.update_available_title, s.info.versionName),
                             style = MaterialTheme.typography.titleSmall,
@@ -93,19 +90,21 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                             color = Tm.Ink300,
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = updater::dismiss) {
-                        Text(stringResource(R.string.update_later), color = Tm.Ink400)
-                    }
-                    Button(
-                        onClick = { updater.downloadAndInstall(context) },
-                        shape = Tm.ButtonShape,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Tm.colors.primary,
-                            contentColor = Tm.colors.textInverted,
-                        ),
-                    ) {
-                        Text(stringResource(R.string.update_action))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = updater::dismiss) {
+                            Text(stringResource(R.string.update_later), color = Tm.Ink400)
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Button(
+                            onClick = { updater.downloadAndInstall(context) },
+                            shape = Tm.ButtonShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Tm.colors.primary,
+                                contentColor = Tm.colors.textInverted,
+                            ),
+                        ) {
+                            Text(stringResource(R.string.update_action))
+                        }
                     }
                 }
             }
@@ -169,6 +168,9 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                         color = Tm.Red,
                         modifier = Modifier.weight(1f),
                     )
+                    TextButton(onClick = { updater.check(silent = false) }) {
+                        Text(stringResource(R.string.link_retry), color = Tm.colors.primary)
+                    }
                     TextButton(onClick = updater::dismiss) {
                         Text(stringResource(R.string.update_dismiss), color = Tm.Ink300)
                     }

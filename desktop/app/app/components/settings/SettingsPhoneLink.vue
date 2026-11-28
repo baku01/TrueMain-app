@@ -14,6 +14,8 @@ const svgUrl = computed(() => invite.value ? `data:image/svg+xml;charset=utf-8,$
 const remaining = ref(0)
 const totalSeconds = ref(1)
 const copied = ref(false)
+const confirmReset = ref(false)
+const confirmForgetId = ref<string | null>(null)
 let timer: ReturnType<typeof setInterval> | undefined
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -36,11 +38,16 @@ onBeforeUnmount(() => {
 })
 
 async function copyLink() {
-  if (!invite.value?.uri) return
-  await navigator.clipboard?.writeText(invite.value.uri).catch(() => {})
-  copied.value = true
-  clearTimeout(copiedTimer)
-  copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  if (!invite.value?.uri || !navigator.clipboard) return
+  try {
+    await navigator.clipboard.writeText(invite.value.uri)
+    copied.value = true
+    clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  }
+  catch {
+    copied.value = false
+  }
 }
 
 function seen(seconds: number) {
@@ -124,17 +131,25 @@ onMounted(load)
               </p>
             </div>
             <UBadge v-if="phone.online" color="success" variant="soft" size="sm" :label="t('phoneLink.connected')" />
-            <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-trash-2" :aria-label="t('phoneLink.forget')" :disabled="busy" @click="forget(phone.phoneId)" />
+            <div v-if="confirmForgetId === phone.phoneId" class="flex items-center gap-1">
+              <UButton size="xs" color="error" variant="soft" :label="t('common.confirm')" :disabled="busy" @click="confirmForgetId = null; forget(phone.phoneId)" />
+              <UButton size="xs" color="neutral" variant="ghost" :label="t('common.cancel')" @click="confirmForgetId = null" />
+            </div>
+            <UButton v-else size="xs" color="neutral" variant="ghost" icon="i-lucide-trash-2" :aria-label="t('phoneLink.forget')" :disabled="busy" @click="confirmForgetId = phone.phoneId" />
           </li>
         </ul>
+        <div v-if="status.phones.length && confirmReset" class="flex items-center gap-2">
+          <UButton size="xs" color="error" variant="soft" :label="t('common.confirm')" :disabled="busy" @click="confirmReset = false; reset()" />
+          <UButton size="xs" color="neutral" variant="ghost" :label="t('common.cancel')" @click="confirmReset = false" />
+        </div>
         <UButton
-          v-if="status.phones.length"
+          v-else-if="status.phones.length"
           size="xs"
           color="error"
           variant="ghost"
           :label="t('phoneLink.reset')"
           :disabled="busy"
-          @click="reset"
+          @click="confirmReset = true"
         />
       </div>
     </template>

@@ -45,7 +45,7 @@ const laneLabel = computed(() => positionLabel(props.position, { short: true }))
         <span class="text-lg font-semibold leading-none tabular-nums" :class="winRateTone(lane.winRate)">{{ formatPercentage(lane.winRate) }}</span>
         <span class="stat-label">{{ t('draft.duel.laneWinRate') }}</span>
       </template>
-      <UIcon v-else-if="pending" name="i-lucide-loader-circle" class="size-4 text-dimmed" />
+      <UIcon v-else-if="pending" name="i-lucide-loader-circle" class="size-4 animate-spin text-dimmed" />
     </div>
   </div>
 </template>

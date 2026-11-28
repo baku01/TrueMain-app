@@ -11,13 +11,15 @@ import { leadSource } from '~/utils/data-source'
  */
 const { t } = useT()
 const takesWindow = computed(() => leadSource.value === 'lolalytics')
+const pendingWindow = ref(dataWindow.value)
+const hasChange = computed(() => pendingWindow.value !== dataWindow.value)
 
 /** The patches a specific one is picked from: the live one and the ten before it. */
 const patches = ref<string[]>([])
 onMounted(async () => {
   patches.value = recentPatches(await currentPatch().catch(() => ''))
 })
-const specific = computed(() => (dataWindow.value.startsWith('patch:') ? dataWindow.value.slice('patch:'.length) : null))
+const specific = computed(() => (pendingWindow.value.startsWith('patch:') ? pendingWindow.value.slice('patch:'.length) : null))
 const patchItems = computed(() => patches.value.map(value => ({ value, label: t('dataWindow.patch', { patch: value }) })))
 </script>
 
@@ -36,10 +38,10 @@ const patchItems = computed(() => patches.value.map(value => ({ value, label: t(
         :key="option"
         type="button"
         role="radio"
-        :aria-checked="dataWindow === option"
+        :aria-checked="pendingWindow === option"
         class="rounded-lg px-3 py-2 text-left transition-colors"
-        :class="dataWindow === option ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/30 hover:bg-accented/60'"
-        @click="setDataWindow(option)"
+        :class="pendingWindow === option ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-accented/30 hover:bg-accented/60'"
+        @click="pendingWindow = option"
       >
         <span class="block text-sm font-medium text-highlighted">{{ t(`dataWindow.option.${option}`) }}</span>
         <span class="block text-xs text-muted">{{ t(`dataWindow.option.${option}.description`) }}</span>
@@ -60,8 +62,12 @@ const patchItems = computed(() => patches.value.map(value => ({ value, label: t(
         size="sm"
         class="w-40"
         :aria-label="t('dataWindow.option.specific')"
-        @update:model-value="(value: string) => setDataWindow(`patch:${value}`)"
+        @update:model-value="(value: string) => (pendingWindow = `patch:${value}`)"
       />
+    </div>
+    <div v-if="hasChange" class="flex items-center justify-end gap-2">
+      <UButton size="xs" color="neutral" variant="ghost" :label="t('common.cancel')" @click="pendingWindow = dataWindow" />
+      <UButton size="xs" color="primary" icon="i-lucide-refresh-cw" :label="t('common.applyReload')" @click="setDataWindow(pendingWindow)" />
     </div>
     <p class="flex items-start gap-2 rounded-lg bg-accented/50 px-3 py-2 text-xs text-muted">
       <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />

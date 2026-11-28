@@ -20,15 +20,25 @@ const { nameOf, portraitOf } = useChampionStatics()
 
 type SortKey = 'tier' | 'winRate' | 'delta' | 'games'
 const sort = ref<SortKey>('tier')
+const sortDir = ref<'desc' | 'asc'>('desc')
 const expanded = ref(false)
 const LIMIT = 25
 watch(() => props.rows, () => (expanded.value = false))
 
+function toggleSort(key: SortKey) {
+  if (sort.value === key) sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
+  else {
+    sort.value = key
+    sortDir.value = 'desc'
+  }
+}
+
 const hasDelta = computed(() => props.rows.some(row => row.delta !== null))
 const sorted = computed(() => {
-  if (sort.value === 'tier') return [...props.rows].sort(bySynergy)
+  const factor = sortDir.value === 'desc' ? 1 : -1
+  if (sort.value === 'tier') return [...props.rows].sort((a, b) => factor * bySynergy(a, b))
   const value = (row: SynergyRow) => (sort.value === 'winRate' ? row.winRate : sort.value === 'delta' ? row.delta ?? -1 : row.games)
-  return [...props.rows].sort((a, b) => value(b) - value(a) || b.games - a.games)
+  return [...props.rows].sort((a, b) => factor * (value(b) - value(a)) || b.games - a.games)
 })
 const shown = computed(() => (expanded.value ? sorted.value : sorted.value.slice(0, LIMIT)))
 /** A pair's first column as wide as the longest first name shown (its portrait and gap, then the name), so the second champion stands close, at one place on every row. */
@@ -51,15 +61,15 @@ const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${
           <th class="w-8 pb-1.5 text-left font-semibold">#</th>
           <th v-if="pair" class="w-16 pb-1.5 text-center font-semibold">{{ t('stats.col.roles') }}</th>
           <th class="pb-1.5 text-left font-semibold">{{ pair ? t('stats.col.champions') : t('stats.col.ally') }}</th>
-          <th v-for="column in columns" :key="column.key" class="w-20 pb-1.5 font-semibold" :class="column.align" :title="column.key === 'delta' ? t('stats.col.deltaTitle') : undefined">
-            <button type="button" class="inline-flex items-center gap-0.5 uppercase" :class="sort === column.key ? 'text-highlighted' : 'hover:text-muted'" @click="sort = column.key">
-              {{ column.label }}<UIcon v-if="sort === column.key" name="i-lucide-arrow-down" class="size-3" />
+          <th v-for="column in columns" :key="column.key" class="w-20 pb-1.5 font-semibold" :class="column.align" :title="column.key === 'delta' ? t('stats.col.deltaTitle') : undefined" :aria-sort="sort === column.key ? (sortDir === 'desc' ? 'descending' : 'ascending') : 'none'">
+            <button type="button" class="inline-flex items-center gap-0.5" :class="sort === column.key ? 'text-highlighted' : 'hover:text-muted'" @click="toggleSort(column.key)">
+              {{ column.label }}<UIcon v-if="sort === column.key" :name="sortDir === 'desc' ? 'i-lucide-arrow-down' : 'i-lucide-arrow-up'" class="size-3" />
             </button>
           </th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(row, index) in shown" :key="`${row.championId}-${row.allyChampionId}`" class="border-t border-default/60">
+        <tr v-for="(row, index) in shown" :key="`${row.championId}-${row.allyChampionId}`" class="border-t border-default/60 transition-colors hover:bg-accented/40">
           <td class="py-1 tabular-nums text-dimmed">{{ index + 1 }}</td>
           <td v-if="pair" class="py-1">
             <span class="flex items-center justify-center gap-1">
@@ -71,9 +81,9 @@ const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${
             <span class="min-w-0 items-center gap-2" :class="pair ? 'grid' : 'flex'" :style="pair ? { gridTemplateColumns: pairColumns } : undefined">
               <template v-for="(id, at) in pair ? [row.championId, row.allyChampionId] : [row.allyChampionId]" :key="`${id}-${at}`">
                 <span v-if="at > 0" class="text-dimmed">&amp;</span>
-                <NuxtLink :to="{ path: `/champions/${id}`, query: { position: at === 0 && pair ? row.position : row.allyPosition } }" class="flex min-w-0 items-center gap-2 hover:text-primary">
+                <NuxtLink :to="{ path: `/champions/${id}`, query: { position: at === 0 && pair ? row.position : row.allyPosition } }" class="group flex min-w-0 items-center gap-2">
                   <img v-if="portraitOf(id)" :src="portraitOf(id)!" :alt="nameOf(id)" width="28" height="28" class="img-skeleton size-7 shrink-0 rounded-md">
-                  <span class="truncate font-semibold text-highlighted">{{ nameOf(id) }}</span>
+                  <span class="truncate font-semibold text-highlighted transition-colors group-hover:text-primary">{{ nameOf(id) }}</span>
                 </NuxtLink>
               </template>
             </span>

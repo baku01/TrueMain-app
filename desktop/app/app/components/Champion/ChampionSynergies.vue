@@ -22,7 +22,8 @@ const query = ref('')
 
 const read = ref<SynergySourceRead | null>(null)
 const failed = ref(false)
-const key = computed(() => `${props.championId}:${props.position}:${ally.value}`)
+const attempt = ref(0)
+const key = computed(() => `${props.championId}:${props.position}:${ally.value}:${attempt.value}`)
 watch(key, async (asked) => {
   read.value = null
   failed.value = false
@@ -52,7 +53,10 @@ const rows = computed(() => searchPairs(read.value?.rows ?? [], query.value, nam
     </div>
     <section class="surface rounded-2xl p-4">
       <h3 class="mb-2 text-sm font-semibold text-highlighted">{{ t('synergies.title', { champion: nameOf(championId) }) }}</h3>
-      <p v-if="failed" class="py-6 text-center text-sm text-muted">{{ t('stats.failed') }}</p>
+      <div v-if="failed" class="flex flex-col items-center gap-3 py-6 text-center text-sm text-muted">
+        <p>{{ t('stats.failed') }}</p>
+        <UButton :label="t('common.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="subtle" @click="attempt++" />
+      </div>
       <div v-else-if="!read" class="space-y-1.5">
         <USkeleton v-for="row in 8" :key="row" class="h-8 w-full" />
       </div>

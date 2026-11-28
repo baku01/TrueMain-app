@@ -25,19 +25,21 @@ const COLORS: Record<string, string> = { P: 'text-muted', Q: 'text-toned', W: 't
 
 const abilities = shallowRef<AbilityData[]>([])
 const status = ref<'pending' | 'ready' | 'error'>('pending')
-watch(() => props.championId, async (id) => {
+const attempt = ref(0)
+watch(() => `${props.championId}:${attempt.value}`, async (key) => {
+  const id = props.championId
   status.value = 'pending'
   abilities.value = []
   // Every clip of the tab starts downloading now, the one on screen first: they do not wait on the game data.
   warmClips(id, ['Q', 'W', 'E', 'R', 'P'])
   try {
     const read = await readAbilities(id, getActiveLocale().startsWith('pt') ? 'pt' : 'en')
-    if (id !== props.championId) return
+    if (key !== `${props.championId}:${attempt.value}`) return
     abilities.value = read
     status.value = 'ready'
   }
   catch {
-    if (id === props.championId) status.value = 'error'
+    if (key === `${props.championId}:${attempt.value}`) status.value = 'error'
   }
 }, { immediate: true })
 
@@ -57,7 +59,10 @@ const iconOf = (key: string) => championStatic(props.championId)?.championSpells
       <div class="space-y-2"><USkeleton v-for="row in 5" :key="row" class="h-16 w-full rounded-xl" /></div>
       <USkeleton class="h-96 w-full rounded-2xl" />
     </div>
-    <p v-else-if="view === 'error'" class="surface rounded-xl px-4 py-10 text-center text-sm text-muted">{{ t('abilities.failed') }}</p>
+    <div v-else-if="view === 'error'" class="surface flex flex-col items-center gap-3 rounded-xl px-4 py-10 text-center text-sm text-muted lg:col-span-2">
+      <p>{{ t('abilities.failed') }}</p>
+      <UButton :label="t('common.retry')" icon="i-lucide-refresh-cw" size="xs" color="neutral" variant="subtle" @click="attempt++" />
+    </div>
 
     <template v-else>
       <div class="min-h-0 lg:overflow-y-auto">
@@ -67,10 +72,8 @@ const iconOf = (key: string) => championStatic(props.championId)?.championSpells
             type="button"
             role="option"
             :aria-selected="active === entry.key"
-            class="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors"
+            class="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             :class="active === entry.key ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : 'bg-[var(--tm-pane)] hover:bg-accented/60'"
-            @mouseenter="active = entry.key"
-            @focus="active = entry.key"
             @click="active = entry.key"
           >
             <span class="relative shrink-0">

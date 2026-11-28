@@ -69,16 +69,16 @@ const percent = (value: number) => `${Math.round(value * 100)}%`
         @view="emit('view', $event)"
         @swap="(from, to) => emit('swap', from, to)"
       />
-      <UButton
-        v-if="hasCorrections"
-        size="xs"
-        color="neutral"
-        variant="ghost"
-        icon="i-lucide-rotate-ccw"
-        :label="t('draft.team.resetLanes')"
-        class="absolute -bottom-1.5 right-0"
-        @click="emit('reset')"
-      />
+      <div v-if="hasCorrections" class="mt-1 flex justify-end">
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-rotate-ccw"
+          :label="t('draft.team.resetLanes')"
+          @click="emit('reset')"
+        />
+      </div>
     </div>
   </div>
 </template>
