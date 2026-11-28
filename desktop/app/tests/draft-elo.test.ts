@@ -30,6 +30,7 @@ describe('draftEloBracket', () => {
 
 const lcu = ref<{ riotId: string | null }>({ riotId: 'Faker#KR1' })
 const rankHistory = ref<{ tier: string }[]>([])
+const tierListStatus = ref<'idle' | 'pending' | 'ready' | 'error'>('ready')
 const posted = vi.hoisted(() => [] as { url: string, body: Record<string, unknown> }[])
 
 vi.mock('~/utils/sources', () => ({ activeProvider: () => ({}) }))
@@ -74,6 +75,8 @@ beforeEach(() => {
   vi.stubGlobal('insideTauri', () => false)
   vi.stubGlobal('useLcuState', () => ({ state: lcu }))
   vi.stubGlobal('usePlayerRecord', () => ({ rankHistory }))
+  vi.stubGlobal('useTierList', () => ({ status: tierListStatus }))
+  tierListStatus.value = 'ready'
 })
 
 afterEach(() => {
@@ -129,6 +132,19 @@ describe('the draft requests', () => {
     await vi.advanceTimersByTimeAsync(200)
     expect(posted).toHaveLength(2)
     expect(posted.at(-1)!.body.eloBracket).toBeNull()
+  })
+
+  it('wait for the tier list the pool is filtered through, then ask', async () => {
+    tierListStatus.value = 'pending'
+    const { useDraftRecommendation } = await import('~/composables/useDraftRecommendation')
+    useDraftRecommendation(ref(draft()), ref({}), ref([]))
+
+    await vi.advanceTimersByTimeAsync(200)
+    expect(posted).toHaveLength(0)
+
+    tierListStatus.value = 'ready'
+    await vi.advanceTimersByTimeAsync(200)
+    expect(posted.at(-1)).toMatchObject({ url: 'sources:draft', body: { candidates: [] } })
   })
 
   it('send the bracket with the bans', async () => {

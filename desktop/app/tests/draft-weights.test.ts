@@ -74,7 +74,8 @@ describe('the mastery floor', () => {
 describe('each category', () => {
   it('pulls a win rate toward even by its games, then places it between 40% and 60%', () => {
     expect(shrunkRate(0.6, 0)).toBe(0.5)
-    expect(shrunkRate(0.6, 100)).toBeCloseTo(0.55)
+    // k = 400, the API back-test's (`DELTA_SHRINK_GAMES`): 400 games keep half the gap.
+    expect(shrunkRate(0.6, 400)).toBeCloseTo(0.55)
     expect(rateScore(0.55)).toBeCloseTo(0.75)
     expect(rateScore(0.3)).toBe(0)
   })
@@ -91,7 +92,7 @@ describe('each category', () => {
     expect(metaScore(0.494, 1_000_000)).toBeCloseTo(0.5, 2)
     expect(metaScore(0.44, 1_000_000)).toBe(0)
     expect(metaScore(0.6, 0)).toBe(1)
-    expect(metaScore(0.6, 100)).toBe(1)
+    expect(metaScore(0.6, 1_000)).toBe(1)
     expect(metaScore(0.52, 100)).toBeLessThan(metaScore(0.52, 10_000))
     expect(metaScore(null, 5000)).toBe(0)
   })

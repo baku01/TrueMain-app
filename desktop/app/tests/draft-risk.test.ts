@@ -33,7 +33,8 @@ describe('the counter-pick risk', () => {
 
   it('pulls a thin matchup toward even, and reads one with no score or no row as even', () => {
     const odds = new Map([[2, 0.5], [3, 0.5]])
-    expect(counterRisk(1, odds, [matchup(2, -0.05, 100)], 1)).toBeCloseTo(0.0125, 4)
+    // k = 400 (`DELTA_SHRINK_GAMES`): 400 games keep half of the five points, against one of the two odds.
+    expect(counterRisk(1, odds, [matchup(2, -0.05, 400)], 1)).toBeCloseTo(0.0125, 4)
     expect(counterRisk(1, odds, [matchup(2, null, 5000)], 1)).toBe(0)
     expect(counterRisk(1, new Map(), [], 1)).toBe(0)
   })

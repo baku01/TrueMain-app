@@ -120,8 +120,16 @@ export function clearsMastery(level: number | null | undefined, topLevel: number
 
 /** Unknown is even. */
 export const NEUTRAL = 0.5
-/** Games that pull a win rate halfway back to even. */
-const PRIOR_GAMES = 100
+/**
+ * Games that pull a win-rate delta halfway back to zero (`delta × n / (n + k)`),
+ * for every matchup, strength and synergy delta the draft reads: the k the API's
+ * back-test settled on (`Tools/DraftEvaluation`, k = 400 — decisions,
+ * product-matchups), one constant so the source's order and the weighted one shrink alike.
+ */
+export const DELTA_SHRINK_GAMES = 400
+
+/** A win-rate delta pulled toward zero by how few games it rests on. */
+export const shrinkDelta = (delta: number, games: number) => (games > 0 ? delta * (games / (games + DELTA_SHRINK_GAMES)) : 0)
 
 /** 0 at `low`, 1 at `high`, linear between. */
 const band = (value: number, low: number, high: number) => (value <= low ? 0 : value >= high ? 1 : (value - low) / (high - low))
@@ -129,7 +137,7 @@ const band = (value: number, low: number, high: number) => (value <= low ? 0 : v
 /** A win rate pulled toward an even one by how few games it rests on; none at all is even. */
 export function shrunkRate(rate: number, games: number): number {
   if (!finite(rate) || !(games > 0)) return NEUTRAL
-  return NEUTRAL + (clamp01(rate) - NEUTRAL) * (games / (games + PRIOR_GAMES))
+  return NEUTRAL + shrinkDelta(clamp01(rate) - NEUTRAL, games)
 }
 
 /** A win rate placed between 40% (0) and 60% (1). */
@@ -230,39 +238,53 @@ export interface WeightedInput {
   /** Its win rate against the lane opponent minus its own on the lane, and the games. */
   matchupDelta: number
   matchupGames: number
-  /** What our allies add to it, as a win-rate difference, and the games. */
+  /** What our allies add to it: the mean of their deltas, each already shrunk by its games (`utils/draft-scoring`), and the games summed; 0 games is unmeasured. */
   synergyDelta: number
   synergyGames: number
   /** `comfortScore`, null when nothing is known of the player on it. */
   comfort: number | null
-  /** `counterRisk`: what a counter-pick may cost it, in win-rate points (0.01 is one); 0 once the lane opponent is known. */
+  /** The chance the matchup's opponent is our lane opponent (the solver's, 1 when pinned); the matchup counts that much. Absent is sure. */
+  matchupConfidence?: number
+  /** `counterRisk`: what a counter-pick may cost it, in win-rate points (0.01 is one), already weighed by the chance the opponent is still to come. */
   counterRisk?: number
 }
 
 /**
- * Each category 0–1, and its points: the category times its weight. The
- * total is the points summed, less the points the counter-pick risk takes:
- * the risk comes off the counter category's win rate, before it is placed
- * between 40% and 60% — one point of risk is 0.05 of the category, so under
- * Balanced (counter 35.8%) 1.8 points of 100.
+ * Each category 0–1, its points (the category times its weight), and whether
+ * anything was measured behind it — an unmeasured one reads even. The counter
+ * category is the API's lane blend, c × matchup + (1 − c) × blind: the matchup
+ * counts as sure as its opponent is ours (`matchupConfidence`), and the blind
+ * part is the counter-pick risk, which carries its (1 − c) already
+ * (`counterRisk`) — weighed there, never again here. The risk comes off the
+ * category's win rate before it is placed between 40% and 60%, so the total is
+ * the points summed less the points it takes: one point of risk is 0.05 of the
+ * category, under Balanced (counter 35.8%) 1.8 points of 100.
  */
 export interface WeightedScore {
   total: number
-  parts: Record<WeightKey, { value: number, weight: number, points: number }>
+  parts: Record<WeightKey, { value: number, weight: number, points: number, measured: boolean }>
   risk: { rate: number, points: number }
 }
 
 export function weightedScore(input: WeightedInput, settings: SuggestionWeights): WeightedScore {
   const weights = normalized(settings)
-  const matchup = shrunkRate(NEUTRAL + input.matchupDelta, input.matchupGames)
+  const confidence = finite(input.matchupConfidence) ? clamp01(input.matchupConfidence) : 1
+  const matchup = NEUTRAL + confidence * (shrunkRate(NEUTRAL + input.matchupDelta, input.matchupGames) - NEUTRAL)
+  const rate = finite(input.counterRisk) ? Math.max(input.counterRisk, 0) : 0
   const values: Record<WeightKey, number> = {
     meta: metaScore(input.winRate, input.games),
     counter: rateScore(matchup),
-    teamFit: rateScore(shrunkRate(NEUTRAL + input.synergyDelta, input.synergyGames)),
+    // Already shrunk per ally: shrinking the mean again by the summed games would count the sample twice.
+    teamFit: input.synergyGames > 0 && finite(input.synergyDelta) ? rateScore(NEUTRAL + input.synergyDelta) : NEUTRAL,
     comfort: input.comfort ?? NEUTRAL,
   }
-  const parts = Object.fromEntries(WEIGHT_KEYS.map(key => [key, { value: values[key], weight: weights[key], points: values[key] * weights[key] }])) as WeightedScore['parts']
-  const rate = finite(input.counterRisk) ? Math.max(input.counterRisk, 0) : 0
+  const measured: Record<WeightKey, boolean> = {
+    meta: finite(input.winRate),
+    counter: (input.matchupGames > 0 && confidence > 0) || rate > 0,
+    teamFit: input.synergyGames > 0,
+    comfort: input.comfort !== null,
+  }
+  const parts = Object.fromEntries(WEIGHT_KEYS.map(key => [key, { value: values[key], weight: weights[key], points: values[key] * weights[key], measured: measured[key] }])) as WeightedScore['parts']
   const risk = { rate, points: (values.counter - rateScore(matchup - rate)) * weights.counter }
   return { total: clamp01(WEIGHT_KEYS.reduce((sum, key) => sum + parts[key].points, 0) - risk.points), parts, risk }
 }

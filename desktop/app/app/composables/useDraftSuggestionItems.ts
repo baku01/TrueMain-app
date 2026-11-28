@@ -18,8 +18,9 @@ import { clearsMastery, comfortScore, weightedScore } from '~/utils/draft-weight
  * their latest games (the comfort line's twenty) for the games, the wins and
  * the last time on the champion. The meta category reads the tier list's win
  * rate moved by Blitz's experience shift (`useExperienceShifts`) — the
- * player's own experience stays comfort's —, and the counter category gives up
- * the counter-pick risk while the lane opponent is still to come (`useDraftRisk`).
+ * player's own experience stays comfort's —, and the counter category counts the
+ * matchup as sure as its opponent is ours and gives up the counter-pick risk for
+ * the rest of that chance (`useDraftRisk`).
  */
 export function useDraftSuggestionItems(
   draft: Ref<DraftState>,
@@ -39,6 +40,11 @@ export function useDraftSuggestionItems(
   const mastery = computed(() => new Map((lcu.value.championMastery ?? []).map(entry => [entry.championId, entry])))
   const topLevel = computed(() => Math.max(0, ...(lcu.value.championMastery ?? []).map(entry => entry.championLevel)))
   const recent = computed(() => games.value.filter(game => !game.remake).slice(0, COMFORT_GAMES))
+  /** How sure the matchup's opponent is ours: the counter category's blend weight (`weightedScore`). */
+  const confidence = computed(() => {
+    const answer = recommendation.value
+    return answer && answer.laneOpponentChampionId !== null ? answer.laneOpponentConfidence : 0
+  })
 
   function comfortOf(championId: number, position: string): number | null {
     const own = mastery.value.get(championId)
@@ -74,6 +80,7 @@ export function useDraftSuggestionItems(
             synergyDelta: candidate.synergyDelta,
             synergyGames: candidate.synergyGames,
             comfort: comfortOf(candidate.championId, position),
+            matchupConfidence: confidence.value,
             counterRisk: risks.value.get(candidate.championId) ?? 0,
           }, weights),
         }

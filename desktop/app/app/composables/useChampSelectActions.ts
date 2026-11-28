@@ -207,5 +207,9 @@ function create(draft: Ref<DraftState>) {
   /** Champions nobody can pick or ban any more: banned, or locked by either side. */
   const taken = computed(() => new Set([...banned.value, ...picked.value]))
 
-  return { writable: computed(() => choices.value.writable), kind, shownKind, hovered, canLock, turnLabel, pending, availability, taken, allyHovering, allyName, hover, ban, lock }
+  // What the client lists for each write, null while unknown — an empty list is no list either (see `availability`).
+  const pickable = computed(() => (choices.value.pickable?.length ? new Set(choices.value.pickable) : null))
+  const bannable = computed(() => (choices.value.bannable?.length ? new Set(choices.value.bannable) : null))
+
+  return { writable: computed(() => choices.value.writable), pickable, bannable, kind, shownKind, hovered, canLock, turnLabel, pending, availability, taken, allyHovering, allyName, hover, ban, lock }
 }

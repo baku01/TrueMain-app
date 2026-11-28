@@ -1,27 +1,30 @@
 import type { ChampionTierListResponse } from '#shared/types/champions'
-import type { DraftBanCandidate, DraftBans, DraftCandidate, DraftReason, DraftRecommendation, EnemyLane } from '~/types/draft'
+import type { DraftBanCandidate, DraftBans, DraftReason, DraftRecommendation, EnemyLane } from '~/types/draft'
 import type { Provider } from '~/utils/sources'
-import { POSITIONS } from '#common/utils/positions'
+import type { AllyTable } from '~/utils/draft-scoring'
+import { laneOpponent, sharesOf, solveEnemyLanes } from '~/utils/draft-lanes'
+import { byScore, scoreCandidate } from '~/utils/draft-scoring'
+import { shrinkDelta } from '~/utils/draft-weights'
+import { readAllySynergies } from '~/utils/sources/synergies'
 
 /**
  * Champion select's picks and bans from the source Settings picked, in the
  * shapes TrueMain's draft endpoints answer, so the draft screen draws them
- * unchanged. No source scores a whole draft the way TrueMain's model does, so
- * the reading is the one every source can give:
+ * unchanged. TrueMain's model is never asked; the reading is the API's model
+ * on what every source can give:
  *
  * - the enemies share the five lanes (one each): the lanes the player pinned,
- *   then, among the rest, the split that keeps each enemy closest to where the
- *   source sees it played; the lane opponent is the enemy on the player's lane;
- * - a pick is scored by its strength on the lane (its win rate against the
- *   lane's average) and by its matchup against that opponent, each shrunk by
- *   its games so a thin sample does not outrank a measured one;
+ *   then the placements of the rest, each as likely as the product of the
+ *   lane shares the source sees them at (`utils/draft-lanes`); the lane
+ *   opponent is the enemy most likely on the player's lane, and that chance
+ *   is how much its matchup counts;
+ * - a pick is scored by its strength on the lane, its matchup against that
+ *   opponent and its synergy with the allies on the board, each shrunk by its
+ *   games (`utils/draft-scoring`);
  * - a ban is a champion the player's pick (or pool) loses to most, or, with
  *   nothing to protect, the lane's most banned.
  */
 
-/** A fact's weight by its games: a hundred games count a quarter, a thousand three quarters. */
-const SHRINK = 300
-const shrink = (delta: number, games: number) => delta * (games / (games + SHRINK))
 /** A source that counts no games (Tencent's tier list) is taken at a usable sample. */
 const gamesOf = (games: number) => (games > 0 ? games : 1000)
 
@@ -32,47 +35,9 @@ const reason = (fields: Partial<DraftReason> & Pick<DraftReason, 'kind'>): Draft
 interface Entry { championId: number, position: string, games: number, winRate: number, pickRate: number, banRate: number | null }
 const entriesOf = (list: ChampionTierListResponse): Entry[] => list.tiers.flatMap(group => group.entries)
 
-/**
- * Every enemy on its own lane: pinned by the player, else the split of the
- * lanes left that keeps the most of each enemy's play share there. One lane
- * each, as in the game — two enemies the source both sees mid cannot share
- * it, or the board, which draws one enemy per lane, would lose one of them.
- */
-export function enemyLanes(enemies: number[], pinned: Record<string, string>, rows: Entry[]): EnemyLane[] {
-  const share = (championId: number, position: string) => {
-    const lanes = rows.filter(row => row.championId === championId)
-    const total = lanes.reduce((sum, row) => sum + row.pickRate, 0)
-    return total > 0 ? (lanes.find(row => row.position === position)?.pickRate ?? 0) / total : 0
-  }
-  const placed = new Map<number, EnemyLane>()
-  for (const championId of enemies) {
-    const position = pinned[championId]
-    if (position && ![...placed.values()].some(lane => lane.position === position)) {
-      placed.set(championId, { championId, position, confidence: 1, pinned: true })
-    }
-  }
-  const free = enemies.filter(championId => !placed.has(championId))
-  const open = POSITIONS.filter(position => ![...placed.values()].some(lane => lane.position === position))
-
-  // At most five enemies on five lanes: every split is tried (120 at most), the
-  // first best kept, so the same draft always reads the same way.
-  let best: string[] = []
-  let bestScore = -1
-  const split = (index: number, taken: string[], score: number) => {
-    if (index === free.length || taken.length === open.length) {
-      if (score > bestScore) [best, bestScore] = [taken, score]
-      return
-    }
-    for (const position of open) {
-      if (!taken.includes(position)) split(index + 1, [...taken, position], score + share(free[index]!, position))
-    }
-  }
-  split(0, [], 0)
-  free.forEach((championId, index) => {
-    const position = best[index] ?? 'MIDDLE'
-    placed.set(championId, { championId, position, confidence: share(championId, position), pinned: false })
-  })
-  return enemies.map(championId => placed.get(championId)!)
+/** Every enemy on its own lane, the most probable placement (`solveEnemyLanes`), each with the chance of its lane. */
+export function enemyLanes(enemies: number[], pinned: Record<string, string>, rows: Entry[], previous: Record<string, string> = {}): EnemyLane[] {
+  return solveEnemyLanes(enemies, pinned, sharesOf(rows), previous).lanes
 }
 
 /** The enemies on their lanes for a screen with no draft recommendation to read them from (the Jev matchup page). */
@@ -85,11 +50,26 @@ interface RecommendationRequest {
   position: string
   enemyChampions: number[]
   pinnedEnemyLanes?: Record<string, string>
+  /** The lanes on screen, kept when a re-solve finds another placement just as likely. */
+  previousEnemyLanes?: Record<string, string>
   allies?: Record<string, number>
   hoveredAllies?: Record<string, number>
   bans?: number[]
   candidates: number[]
   eloBracket?: string | null
+}
+
+/** Each ally on the board with its synergy table on our lane; an ally no source answered for is left out. */
+async function allyTables(request: RecommendationRequest): Promise<AllyTable[]> {
+  const board = [
+    ...Object.entries(request.allies ?? {}).map(([lane, championId]) => ({ lane, championId, tentative: false })),
+    ...Object.entries(request.hoveredAllies ?? {}).map(([lane, championId]) => ({ lane, championId, tentative: true })),
+  ].filter(ally => ally.lane !== request.position)
+  const tables = await Promise.all(board.map(async (ally) => {
+    const rows = await readAllySynergies(ally.championId, ally.lane, request.position, request.eloBracket ?? null)
+    return rows?.length ? { championId: ally.championId, tentative: ally.tentative, rows: new Map(rows.map(row => [row.allyChampionId, { delta: row.delta, games: row.games }])) } : null
+  }))
+  return tables.filter(table => table !== null)
 }
 
 export async function draftRecommendationFromSource(provider: Provider, request: RecommendationRequest): Promise<DraftRecommendation> {
@@ -98,44 +78,41 @@ export async function draftRecommendationFromSource(provider: Provider, request:
   const rows = entriesOf(list)
   const lane = rows.filter(row => row.position === request.position)
   const average = lane.length ? lane.reduce((sum, row) => sum + row.winRate, 0) / lane.length : 0.5
-  const lanes = enemyLanes(request.enemyChampions, request.pinnedEnemyLanes ?? {}, rows)
-  const opponent = lanes.filter(entry => entry.position === request.position).sort((a, b) => b.confidence - a.confidence)[0] ?? null
-  const versus = opponent ? await provider.matchups(opponent.championId, { position: request.position, eloBracket: elo }).catch(() => null) : null
+  const share = sharesOf(rows)
+  const previous = request.previousEnemyLanes ?? {}
+  const solution = solveEnemyLanes(request.enemyChampions, request.pinnedEnemyLanes ?? {}, share, previous)
+  const opponent = laneOpponent(solution, request.position, share, previous)
 
-  const taken = new Set([...request.enemyChampions, ...(request.bans ?? []), ...Object.values(request.allies ?? {})])
-  const pool = request.candidates.length ? request.candidates : [...lane].sort((a, b) => b.pickRate - a.pickRate).slice(0, 40).map(row => row.championId)
-  const candidates: DraftCandidate[] = pool.filter(id => !taken.has(id)).map((championId) => {
+  // Nothing to rank is an empty answer, never a stand-in list: the panel then says why (no pool on the lane, #1783).
+  const taken = new Set([...request.enemyChampions, ...(request.bans ?? []), ...Object.values(request.allies ?? {}), ...Object.values(request.hoveredAllies ?? {})])
+  const pool = request.candidates.filter(id => !taken.has(id))
+  const [versus, allies] = await Promise.all([
+    pool.length && opponent ? provider.matchups(opponent.championId, { position: request.position, eloBracket: elo }).catch(() => null) : null,
+    pool.length ? allyTables(request) : [] as AllyTable[],
+  ])
+
+  const patch = list.patchVersion || null
+  const candidates = pool.map((championId) => {
     const own = lane.find(row => row.championId === championId)
-    const strengthDelta = own ? own.winRate - average : 0
-    const strengthGames = own ? gamesOf(own.games) : 0
-    // The opponent's matchups are its win rate against each champion: the candidate's is the other side of it.
     const row = versus?.matchups.find(entry => entry.opponentChampionId === championId)
-    const matchupDelta = row ? (1 - row.winRate) - (own?.winRate ?? 0.5) : 0
-    const matchupGames = row?.games ?? 0
-    const reasons: DraftReason[] = []
-    if (row && opponent) reasons.push(reason({ kind: 'laneMatchup', championId: opponent.championId, position: request.position, delta: matchupDelta, games: matchupGames, probability: opponent.confidence }))
-    if (own) reasons.push(reason({ kind: 'laneStrength', position: request.position, delta: strengthDelta, games: strengthGames }))
-    reasons.sort((a, b) => Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0))
-    return {
+    return scoreCandidate({
       championId,
-      matchupDelta,
-      matchupGames,
-      strengthDelta,
-      strengthGames,
-      synergyDelta: 0,
-      synergyGames: 0,
-      score: 1.5 * shrink(matchupDelta, matchupGames) + shrink(strengthDelta, strengthGames),
-      thinSample: matchupGames + strengthGames < 200,
-      reasons,
-      patch: list.patchVersion || null,
-    }
-  }).sort((a, b) => b.score - a.score || a.championId - b.championId)
+      position: request.position,
+      own: own ? { winRate: own.winRate, games: gamesOf(own.games) } : null,
+      average,
+      opponent,
+      matchupsRead: versus !== null,
+      versus: row ? { winRate: row.winRate, games: row.games } : null,
+      allies,
+      patch,
+    })
+  }).sort(byScore)
 
   return {
     position: request.position,
-    patch: list.patchVersion || null,
+    patch,
     eloBracket: elo ?? 'ALL',
-    enemyLanes: lanes,
+    enemyLanes: solution.lanes,
     laneOpponentChampionId: opponent?.championId ?? null,
     laneOpponentConfidence: opponent?.confidence ?? 0,
     candidates,
@@ -174,7 +151,7 @@ export async function draftBansFromSource(provider: Provider, request: BansReque
         const share = lane.find(entry => entry.championId === row.opponentChampionId)?.pickRate ?? null
         return {
           championId: row.opponentChampionId,
-          score: -shrink(delta, row.games),
+          score: -shrinkDelta(delta, row.games),
           reasons: [reason({ kind: 'laneThreat', championId: target, position: request.position, delta, games: row.games, share })],
         }
       })

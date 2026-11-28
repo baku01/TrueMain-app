@@ -20,7 +20,8 @@ describe('enemyLanes from a source', () => {
     const rows = [row(1, 'MIDDLE', 1), row(2, 'MIDDLE', 0.7), row(2, 'TOP', 0.3)]
     const lanes = enemyLanes([1, 2], { 2: 'MIDDLE' }, rows)
     expect(lanes).toEqual([
-      { championId: 1, position: expect.not.stringMatching('MIDDLE'), confidence: 0, pinned: false },
+      // Never seen off mid, it is as likely on any of the four lanes left: the chance of the lane, not its share there.
+      { championId: 1, position: expect.not.stringMatching('MIDDLE'), confidence: 0.25, pinned: false },
       { championId: 2, position: 'MIDDLE', confidence: 1, pinned: true },
     ])
   })

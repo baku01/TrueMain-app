@@ -66,6 +66,34 @@ export async function readSynergies(championId: number, position: string, ally: 
   return { source, ...answer }
 }
 
+/** The draft's ally tables, by `ally:lane:our lane:bracket`; a failed read is dropped so the next draft state asks again. */
+const allyTables = new Map<string, Promise<SynergyRow[] | null>>()
+const ALLY_TABLES = 60
+
+/**
+ * An ally's partners on our lane, for the draft's synergy (`utils/draft-scoring`):
+ * the ally's own table read once and every candidate looked up in it, rather
+ * than each candidate's table read for every ally. A pair's games are the same
+ * from either side, and the sources' delta is over what both champions' own
+ * rates predict, so the ally's side measures the same pairing. Null when no
+ * source answered: that ally then does not count. The sources read no bracket
+ * for synergies; it is in the key so a bracket change cannot serve an older read.
+ */
+export function readAllySynergies(allyId: number, allyPosition: string, position: string, bracket: string | null): Promise<SynergyRow[] | null> {
+  const key = `${allyId}:${allyPosition}:${position}:${bracket ?? 'ALL'}`
+  const cached = allyTables.get(key)
+  if (cached) return cached
+  if (allyTables.size >= ALLY_TABLES) allyTables.clear()
+  const read = readSynergies(allyId, allyPosition, position)
+    .then(answer => answer.rows)
+    .catch(() => {
+      allyTables.delete(key)
+      return null
+    })
+  allyTables.set(key, read)
+  return read
+}
+
 export async function readDuos(position: string, ally: string): Promise<SynergySourceRead> {
   const { source, answer } = await readFirst(standInOrder(leadSource.value, DUO_SOURCES), () => duosFromBlitz(position, ally), blank)
   return { source, ...answer }
