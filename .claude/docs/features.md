@@ -420,8 +420,11 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   against — and ranked with the source's own ranking key placed among them, `rankPicks`: source 40%, lane 25%, team
   20%, enemies 15%), the breakdown on hover, a click opening the build, a control hovering it; once our champion is set,
   Jev's build for the draft in short — buy order, rune and item-set import — the whole of it (`JevBuildBody`) in a
-  slide-over. Jev answers only a click; an answer is dropped when the draft changes, not when its clock ticks. The
-  draft screen keeps one damage split, the thin bars under each team.
+  slide-over. Jev answers only a click; an answer stays, marked stale, when the board it read changes (an ally's hover,
+  the bracket or a peek at another build change nothing it read), comes back with its champion, and a failed batch keeps
+  the others' reads — "Ask for the rest" pays only for what is missing; a first pick with nothing to judge asks nothing.
+  A missing or refused key shows the Settings link, not a retry. The draft screen keeps one damage split, the thin bars
+  under each team.
 - **Shell** — sidebar (Dashboard, Champions, Classes, Tier list, Matchup, Truemains, Favorites; Champ select, Game — each
   badged "Live" during its phase; Overlay; Recordings, badged "Rec" while a game is recorded, listed once the shell answers for
   recording), player card (Riot ID, level, client status), top bar with a ⌘K champion search (no
@@ -493,7 +496,12 @@ Reads the local League client (LCU) in Rust; the webview renders the state. Deta
   score) and that reason in one line under the name ("Safe blind", "vs Zed (likely)", "With Lulu (hover)"), every reason
   on hover (#1906, worded in `utils/draft-reasons.ts`) — with three allies on the board, how the pick does with such a
   team ("+2.1 pts with a mostly physical team, over 1,240 games"), and the player's own recent games on the pick from
-  their client's history ("Your Ahri: 12 of your last 20 games, 7 wins", never part of the order). Both requests carry the player's Solo/Duo tier and
+  their client's history ("Your Ahri: 12 of your last 20 games, 7 wins", never part of the order). On the desktop the
+  ranking comes from the active source alone (`utils/sources/draft.ts`, `utils/draft-lanes.ts`, `utils/draft-scoring.ts`)
+  but follows the same model: the enemies' lanes as probabilities over every placement (the lane opponent is the most
+  likely, its matchup counted by that probability and the rest as blind risk), the mean synergy with the allies (hovered
+  at half), every delta shrunk at k = 400; no candidates is no suggestion (never the lane's meta in their place), a
+  champion taken since the answer is hidden, and a failed refresh says the list is the previous one. Both requests carry the player's Solo/Duo tier and
   above as their bracket (`useDraftEloBracket`, the tier this machine last saw), every bracket when unknown. On our ban turn, and in ranked planning once we hover a pick, the
   same strip is "Your ban" (`POST champions/draft/bans` through the shell's `draft_bans`): the threats to our hovered
   pick, else to our pool, with what they protect beside the heading; an ally's hover or lock is never suggested.

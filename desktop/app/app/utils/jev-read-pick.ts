@@ -80,3 +80,20 @@ export function readPick(id: number, answers: Record<string, JevAnswer>): PickRe
   const value = (fact: keyof typeof PICK_SCALES) => reads.find(([name]) => name === fact)?.[1]?.value ?? null
   return { lane: value('lane'), team: value('team'), enemy: value('enemy'), confidence: known.reduce((sum, [, read]) => sum + read!.confidence, 0) / known.length }
 }
+
+/** What a pick is read against: our lane, its opponent, our locked allies, the enemies — nothing the source's scores move. */
+export interface PickBoard { position: string, opponentId: number | null, allies: number[], enemyIds: number[] }
+
+/** A board as a key: the same champions in another order are the same board. */
+export const pickBoardKey = (board: PickBoard) =>
+  [board.position, board.opponentId ?? '-', [...board.allies].sort((a, b) => a - b).join(','), [...board.enemyIds].sort((a, b) => a - b).join(',')].join('|')
+
+/** Whether the board gives Jev anything to judge a pick against (`pickRequest` asks nothing else): a first pick does not. */
+export const judgeable = (board: PickBoard) => board.opponentId !== null || board.allies.length > 0 || board.enemyIds.length > 0
+
+/** What was read of each candidate this session, by patch, board and candidate: a candidate already read is not asked again. */
+const pickReads = new Map<string, PickRead>()
+
+export const pickReadKey = (patch: string, board: PickBoard, id: number) => `${patch}:${pickBoardKey(board)}:${id}`
+export const knownPickRead = (key: string) => pickReads.get(key)
+export const keepPickRead = (key: string, read: PickRead) => void pickReads.set(key, read)
